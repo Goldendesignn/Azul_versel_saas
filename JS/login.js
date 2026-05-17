@@ -39,12 +39,18 @@ async function login() {
       .eq("status", "active")
       .single();
 
-    if (error || !organization) {
-      showMessage("Licenca invalida ou inativa.");
-      btn.disabled = false;
-      btn.textContent = "Ativar";
-      return;
-    }
+   if (error || !organization) {
+  console.error("Erro Supabase:", error);
+
+  showMessage(
+    error ? "Erro Supabase: " + error.message : "Licenca invalida ou inativa."
+  );
+
+  btn.disabled = false;
+  btn.textContent = "Ativar";
+  return;
+}
+
 
     var { error: profileError } = await supabaseClient
       .from("profiles")
