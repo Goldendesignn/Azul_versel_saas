@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azul Gestão</title>
+<base target="_top">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="CSS/core.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">Azul Gestão</div>
+    <div class="date-txt" id="dateTxt"></div>
+  </div>
+
+  <!-- NAV -->
+  <div class="nav">
+    <button class="tab active" onclick="goTo('dashboard', this)"> Dashboard</button>
+    <button class="tab" onclick="goTo('venda', this)"> Nova Venda</button>
+    <button class="tab" onclick="goTo('achat', this)"> Novo Achat</button>
+    <button class="tab" id="tab-transfert" onclick="goTo('transfert', this)"> Estoque</button>
+    <button class="tab" onclick="goTo('clientes', this)"> Clientes</button>
+    <button class="tab" onclick="goTo('depenses', this)"> Depenses</button>
+    <button class="tab" onclick="goTo('forn', this)"> Fornecedores</button>
+    <button class="tab" onclick="goTo('tresorerie', this)">Tresorerie</button>
+    <button class="tab" onclick="goTo('comptabilite', this)">Comptabilite</button>
+    <button class="tab" onclick="goTo('revendeurs', this)">Revendeurs</button>
+    <button class="tab" onclick="goTo('settings', this)"> Definicoes</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+
+      <!-- FILTROS -->
+      <div class="dash-filters">
+        <div class="filter-group">
+          <label class="form-label">Periodo</label>
+          <select class="filter-input" id="df-period" onchange="onPeriodChange()">
+            <option value="hoje">Hoje</option>
+            <option value="semana">Esta semana</option>
+            <option value="mes" selected>Este mes</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div class="filter-group" id="df-custom" style="display:none;">
+          <label class="form-label">De</label>
+          <input type="date" class="filter-input" id="df-from">
+        </div>
+        <div class="filter-group" id="df-custom2" style="display:none;">
+          <label class="form-label">Ate</label>
+          <input type="date" class="filter-input" id="df-to">
+        </div>
+        <div class="filter-group">
+          <label class="form-label">Produto</label>
+          <input type="text" class="filter-input" id="df-prod" placeholder="Todos">
+        </div>
+        <div class="filter-group">
+          <label class="form-label">Fornecedor</label>
+          <input type="text" class="filter-input" id="df-forn" placeholder="Todos">
+        </div>
+        <button class="filter-btn" id="dashApplyBtn" onclick="loadDashboard()">Aplicar</button>
+        <button class="filter-btn" id="dashPrintBtn" onclick="printDashboardTicket()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);">Imprimir</button>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Vendas</div>
+          <div class="kpi-val" id="k-hoje">- Kz</div>
+          <div class="kpi-sub" id="k-hoje-n">0 transacoes</div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-label">Lucro</div>
+          <div class="kpi-val" id="k-lucro">- Kz</div>
+          <div class="kpi-sub">Receita - Custo</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-label">Depenses</div>
+          <div class="kpi-val" id="k-depenses">- Kz</div>
+          <div class="kpi-sub" id="k-depenses-n">0 registos</div>
+        </div>
+        <div class="kpi" style="--kpi-color:var(--orange)">
+          <div class="kpi-label">Alertas Stock</div>
+          <div class="kpi-val" id="k-alertas" style="color:var(--orange)">-</div>
+          <div class="kpi-sub">produtos em falta</div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="card">
+          <div class="card-title"> Top Produtos</div>
+          <div id="top-list"><div class="empty">A carregar...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"> Meios de Pagamento</div>
+          <div id="pay-bars">
+            <div class="pay-row">
+              <div class="pay-lbl">Cash</div>
+              <div class="pay-wrap"><div class="pay-bar cash" id="b-cash" style="width:0%"></div></div>
+              <div class="pay-amt" id="a-cash">-</div>
+            </div>
+            <div class="pay-row">
+              <div class="pay-lbl">Express</div>
+              <div class="pay-wrap"><div class="pay-bar express" id="b-express" style="width:0%"></div></div>
+              <div class="pay-amt" id="a-express">-</div>
+            </div>
+            <div class="pay-row">
+              <div class="pay-lbl">Cartao</div>
+              <div class="pay-wrap"><div class="pay-bar card" id="b-card" style="width:0%"></div></div>
+              <div class="pay-amt" id="a-card">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="card">
+          <div class="card-title"> Alertas de Stock Baixo</div>
+          <div id="alert-list"><div class="empty">A verificar...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"> Ultimas Depenses</div>
+          <div id="depenses-list"><div class="empty">A carregar...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOVA VENDA -->
+    <div class="page" id="page-venda">
+       <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
+        <button class="mode-btn active" id="vente-tab-novo" onclick="switchVendaTab('novo',this)"> Novo venda</button>
+        <button class="mode-btn" id="vente-tab-historico" onclick="switchVendaTab('historico',this)"> Historico</button>
+      </div>
+      <div id="vente-panel-novo">
+        <div class="pos-wrap">
+          <div class="pos-left">
+            <div class="search-wrap">
+              <span></span>
+              <input type="text" id="searchInput" placeholder="Pesquisar produto..." oninput="filterProds()">
+              <button onclick="loadProducts(true)" title="Actualizar produtos" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:0 4px;" id="refreshBtn">Refresh</button>
+            </div>
+            <div class="prod-grid" id="prodGrid">
+              <div class="empty" style="grid-column:1/-1">A carregar produtos...</div>
+            </div>
+          </div>
+
+          <div class="pos-right">
+            <div class="cart-head">
+              <span class="cart-title"> Carrinho</span>
+              <button class="cart-clear" onclick="clearCart()">Limpar</button>
+            </div>
+            <div class="client-wrap">
+              <div>
+                  <div class="form-label" style="margin-bottom:4px;">Data da venda</div>
+                  <input type="date" class="form-input" id="vendaDate" style="width:100%;padding:7px 10px;font-size:12px;">
+              </div>
+              <input type="text" id="clientInput" placeholder=" Nome do cliente (deixa vazio = Anonimo)">
+            </div>
+            <div class="cart-body" id="cartBody">
+              <div class="empty">Adiciona produtos ao carrinho</div>
+            </div>
+            <div class="cart-foot">
+              <div class="total-row">
+                <span class="total-lbl">Total</span>
+                <span class="total-val" id="cartTotal">0 Kz</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:10px;">
+                <button class="pay-btn" id="type-stock" onclick="selType(this,'interno')" style="border-color:var(--blue);color:var(--blue);background:rgba(201,168,76,0.1);"> Stock</button>
+                <button class="pay-btn" id="type-commande" onclick="selType(this,'Externo')"> Commande</button>
+              </div>
+              <!-- Paiement mixte - plusieurs moyens possibles -->
+              <div style="margin-bottom:8px;">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Paiement</div>
+                <div id="payment-lines-wrap" style="display:flex;flex-direction:column;gap:5px;"></div>
+                <button onclick="addPaymentLine()" style="margin-top:5px;padding:4px 12px;background:var(--surface2);border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-family:DM Sans,sans-serif;font-size:11px;cursor:pointer;">
+                  + Ajouter moyen de paiement
+                </button>
+                <div id="payment-status" style="margin-top:6px;font-size:11px;color:var(--muted);">Pago: 0 Kz / Total: 0 Kz</div>
+              </div>
+              <div class="progress-label" id="progressLabel">A registar venda...</div>
+              <div class="progress-wrap" id="progressWrap">
+                <div class="progress-bar" id="progressBar"></div>
+              </div>
+              <button class="confirm-btn" id="confirmBtn" onclick="openPaymentModal()" disabled>
+                Paiement
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- HISTORICO -->
+      <div id="vente-panel-historico" style="display:none">
+        <div class="hist-filters">
+          <input type="date" class="filter-input" id="h-from">
+          <input type="date" class="filter-input" id="h-to">
+          <input type="text" class="filter-input" id="h-search" placeholder=" Produto ou cliente...">
+          <button class="filter-btn" onclick="loadHist()">Filtrar</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th><th>Produto</th><th>Cliente</th>
+                <th>Qtd</th><th>P.Unit</th><th>Total</th>
+                <th>Pagamento</th><th>N Recibo</th>
+              </tr>
+            </thead>
+            <tbody id="histBody">
+              <tr><td colspan="8" class="empty">Clica em Filtrar para carregar</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOVO ACHAT -->
+    <div class="page" id="page-achat">
+      <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
+        <button class="mode-btn active" id="achat-tab-novo" onclick="switchAchatTab('novo',this)"> Novo Achat</button>
+        <button class="mode-btn" id="achat-tab-pagamento" onclick="switchAchatTab('pagamento',this)"> Registar Pagamento</button>
+        <button class="mode-btn" id="achat-tab-resumo" onclick="switchAchatTab('resumo',this)"> Resumo Dettes</button>
+      </div>
+
+      <!-- NOVO ACHAT -->
+      <div id="achat-panel-novo">
+        <div class="section-title">Registar Novo Achat</div>
+
+        <!-- Fournisseur commun -->
+        <div class="form-group" style="margin-bottom:16px;max-width:360px;">
+          <label class="form-label">Fornecedor</label>
+          <input type="text" class="form-input" id="a-forn" list="list-pay-forn" placeholder="Nome do fornecedor">
+        </div>
+        <div style="margin:-6px 0 14px 0;font-size:12px;color:var(--muted);max-width:760px;line-height:1.5;">O nome do produto, o preço de compra e o fornecedor são obrigatórios. O código, a categoria, a variação, a foto e o preço de venda são opcionais por produto.</div>
+        <datalist id="prodList"></datalist>
+
+        <!-- Tableau multi-lignes produits -->
+        <div class="achat-lines-wrap">
+          <table class="achat-lines-table" id="achat-lines-table">
+            <tbody id="achat-lines-body"></tbody>
+          </table>
+        </div>
+
+        <button onclick="addAchatLine()" style="padding:7px 16px;background:var(--surface2);border:1px dashed var(--blue);border-radius:7px;color:var(--blue);font-family:DM Sans,sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px;">
+          + Adicionar produto
+        </button>
+
+        <!-- Total global -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--surface2);border-radius:8px;max-width:600px;margin-bottom:14px;">
+          <span style="font-size:13px;color:var(--muted);">Pedido total</span>
+          <span id="achat-total-global" style="font-family:Playfair Display,serif;font-size:20px;color:var(--blue);">0 Kz</span>
+        </div>
+
+        <!-- Case credit -->
+        <div style="max-width:600px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
+            <input type="checkbox" id="a-credit" onchange="toggleCredit()" style="width:16px;height:16px;accent-color:var(--blue);">
+            <div>
+              <div style="font-size:13px;font-weight:600;">Compra a crédito</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Marque esta caixa se ainda não tiver pago integralmente a este fornecedor.</div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Section paiements (visible si credit) -->
+        <div id="a-credit-fields" style="display:none;max-width:600px;margin-bottom:16px;">
+          <!-- Total du -->
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(224,92,92,0.06);border-radius:6px;margin-bottom:12px;font-size:12px;">
+            <span style="color:var(--muted);">Total devido</span>
+            <span id="a-total-du-display" style="color:var(--red);font-weight:700;">0 Kz</span>
+          </div>
+
+          <!-- Tableau paiements -->
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Pagamentos efetuados</div>
+          <table style="width:100%;border-collapse:collapse;" id="paiements-table">
+            <thead>
+              <tr style="background:var(--surface2);">
+                <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Data</th>
+                <th style="padding:7px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Valor pago</th>
+                <th style="padding:7px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);">Resto</th>
+                <th style="width:30px;border-bottom:1px solid var(--border);"></th>
+              </tr>
+            </thead>
+            <tbody id="paiements-body"></tbody>
+          </table>
+
+          <button onclick="addPaiementLine()" style="margin-top:8px;padding:7px 14px;background:var(--surface2);border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-family:DM Sans,sans-serif;font-size:12px;cursor:pointer;">
+            + Pagamento adicional
+          </button>
+
+          <!-- Resume -->
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
+              <span style="color:var(--muted);">Total paye</span>
+              <span id="a-total-paye" style="color:var(--green);font-weight:600;">0 Kz</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:8px 12px;background:var(--surface2);border-radius:6px;">
+              <span>Reste a payer</span>
+              <span id="a-reste-payer" style="color:var(--red);">0 Kz</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="form-submit" onclick="saveAchat()"> Registar Achat</button>
+      </div>
+
+      <!-- REGISTAR PAGAMENTO -->
+      <div id="achat-panel-pagamento" style="display:none;">
+        <div class="section-title">Registar Pagamento Fornecedor</div>
+        <div class="form-grid" style="max-width:500px;">
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input type="date" class="form-input" id="p-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fornecedor</label>
+            <input type="text" class="form-input" list="list-pay-forn" id="p-forn" placeholder="Nome do fornecedor" oninput="updateResteApayerFourn()">
+            <datalist id="list-pay-forn"></datalist>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Montant Paye</label>
+            <input type="number" class="form-input" id="p-montant" placeholder="0" min="0">
+          </div>
+          <div class="form-group full" style="display: inline;font-size:12px;font-weight:600;">
+            <label class="form-label" style="">Montant restant : </label><span id="restePayFourn">0 kz</span>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Note (opcional)</label>
+            <input type="text" class="form-input" id="p-note" placeholder="Ex: Pagamento parcial...">
+          </div>
+          <div class="form-group full">
+            <button class="form-submit" id="pg-forn-btn" onclick="savePagamentoForn()"> Registar Pagamento</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESUMO DETTES -->
+      <div id="achat-panel-resumo" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div class="section-title" style="margin:0;">Resumo Dettes Fornecedores</div>
+          <button class="filter-btn" onclick="loadResumoDettes()">Actualizar</button>
+        </div>
+        <div id="resumo-dettes">
+          <div class="empty">Clica em "Actualizar" para carregar</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TRANSFERENCIA -->
+    <div class="page" id="page-transfert">
+
+      <!-- MODE TOGGLE -->
+      <div style="display:flex;gap:10px;margin-bottom:20px;max-width:500px;">
+        <button class="mode-btn active" id="modeSingle" onclick="switchMode('single', this)"> Individual</button>
+        <button class="mode-btn" id="modeTudo" onclick="switchMode('tudo', this)"> Tudo para Boutique</button>
+        <button class="mode-btn" id="modestock" onclick="switchMode('stock', this)"> Stock</button>
+      </div>
+
+      <!-- MODO INDIVIDUAL -->
+      <div id="transferSingle">
+        <div class="transfer-visual">
+          <div class="store-box"><div class="store-icon"></div><div class="store-name">Armazem</div></div>
+          <div class="arrow-tr">-></div>
+          <div class="store-box"><div class="store-icon"></div><div class="store-name">Boutique</div></div>
+        </div>
+        <div class="form-grid" style="grid-template-columns:1fr; max-width:360px;">
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input type="date" class="form-input" id="t-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Produto</label>
+            <input type="text" class="form-input" id="t-prod" list="transProdList" placeholder="Nome do produto">
+            <datalist id="transProdList"></datalist>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantidade</label>
+            <input type="number" class="form-input" id="t-qty" placeholder="0" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Observacao (opcional)</label>
+            <input type="text" class="form-input" id="t-obs" placeholder="Nota...">
+          </div>
+          <div class="form-group">
+            <button class="form-submit" onclick="saveTransfer()"> Registar Transferencia</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODO TUDO PARA BOUTIQUE -->
+      <div id="transferTudo" style="display:none; max-width:500px;">
+        <div class="card" style="margin-bottom:14px;background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
+          <div class="card-title"> Como funciona</div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6;">
+            Transfere <b style="color:var(--text)">todo o stock do Armazem</b> para a Boutique de uma so vez.
+            Ideal quando nao tens armazem separado.
+          </p>
+        </div>
+        <div id="tudo-preview" style="margin-bottom:14px;">
+          <div class="empty">Clica em "Ver Stock" para pre-visualizar</div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="form-submit" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);box-shadow:none;" onclick="carregarStockArmazem()"> Ver Stock</button>
+          <button class="form-submit" id="btnTudoBoutique" onclick="transferirTudoBoutique()" > Transferir Tudo</button>
+        </div>
+      </div>
+      <!-- VOIR LES STOCK -->
+      <div id="stock" style="display:none;"> 
+        <div class="card">
+          <div class="card-title">Inventaires</div>
+          <div style="overflow-x:auto;">
+            <div class="card" style="margin-bottom:14px;">
+                <div style="display:flex;gap:16px;flex-wrap:wrap;" id="kpi-inventaire">
+                  <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
+                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);"  id="nbreStocktotal">0</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Stock Magasin Total</div>
+                  </div>
+                  <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
+                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);" id="valeurStocktotal">0</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Valeur du stock</div>
+                  </div>
+                  <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
+                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);"  id="nbreStock">0</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Stock Magasin Total</div>
+                  </div>
+                   <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
+                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);"  id="valeurmagasin">0</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Valeur dans le magasin</div>
+                  </div>
+                  <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
+                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);" id="nbreboutique">0</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Stock boutique total</div>
+                  </div>
+                  <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
+                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);"  id="valeurboutique">0</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Valuer dans la boutique</div>
+                  </div>
+                </div>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Designation</th>
+                  <th>Fournisseur</th>
+                  <th>Entrees</th>
+                  <th>Sorties</th>
+                  <th>Stock boutique</th>
+                  <th>Stock Magasin</th>
+                  <th>total</th>
+                  <th>Prix dachat</th>
+                  <th>Valeur</th>
+                </tr>
+              </thead>
+              <tbody id="Inventaires">
+                <tr><td colspan="8" class="empty">A charger...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEFINICOES -->
+    <div class="page" id="page-settings">
+      <div class="section-title">Definicoes</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:700px;">
+
+        <div class="card" style="grid-column:1/-1;">
+          <div class="card-title"> Identidade da Boutique</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="form-group">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-input" id="cfg-name" placeholder="Nome da boutique">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Slogan</label>
+              <input type="text" class="form-input" id="cfg-slogan" placeholder="Slogan opcional">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"> Moeda</div>
+          <select class="form-input" id="cfg-currency" style="width:100%;">
+            <option value="Kz"> Kwanza (Kz)</option>
+            <option value="FCFA"> Franc CFA (FCFA)</option>
+            <option value="USD"> Dollar (USD)</option>
+            <option value="EUR"> Euro (EUR)</option>
+            <option value="GBP"> Pound (GBP)</option>
+            <option value="XOF"> XOF</option>
+          </select>
+        </div>
+
+        <div class="card">
+          <div class="card-title"> Langue</div>
+          <select class="form-input" id="cfg-language" style="width:100%;">
+            <option value="pt">Portugues</option>
+            <option value="fr">Francais</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <div class="card">
+          <div class="card-title"> Tema</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button class="mode-btn" id="cfg-theme-light" onclick="selectTheme('light',this)" style="flex:1;"> Claro</button>
+            <button class="mode-btn" id="cfg-theme-dark" onclick="selectTheme('dark',this)" style="flex:1;"> Escuro</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div class="color-opt" data-color="#0b3d91" style="background:#0b3d91;" onclick="selectColor(this,'#0b3d91','#071e4f')"></div>
+            <div class="color-opt" data-color="#2c7be5" style="background:#2c7be5;" onclick="selectColor(this,'#2c7be5','#5b9bd5')"></div>
+            <div class="color-opt" data-color="#e05c5c" style="background:#e05c5c;" onclick="selectColor(this,'#e05c5c','#e88080')"></div>
+            <div class="color-opt" data-color="#4caf7d" style="background:#4caf7d;" onclick="selectColor(this,'#4caf7d','#7dcca0')"></div>
+            <div class="color-opt" data-color="#7c3aed" style="background:#7c3aed;" onclick="selectColor(this,'#7c3aed','#a370f7')"></div>
+            <div class="color-opt" data-color="#e08c3a" style="background:#e08c3a;" onclick="selectColor(this,'#e08c3a','#f0b060')"></div>
+            <div class="color-opt" data-color="#1a1a2e" style="background:#1a1a2e;" onclick="selectColor(this,'#1a1a2e','#444466')"></div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column:1/-1;">
+          <div class="card-title"> Modo de Stock</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;" id="cfg-stock-boutique" onclick="setCfgStockMode('boutique')">
+              <input type="radio" name="cfgStockMode" value="boutique" style="margin-top:2px;accent-color:var(--blue);">
+              <div>
+                <div style="font-size:13px;font-weight:500;"> Stock Boutique uniquement</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px;">Achats -> directement en Boutique. Pas de transferts.</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;" id="cfg-stock-armazem" onclick="setCfgStockMode('armazem')">
+              <input type="radio" name="cfgStockMode" value="armazem" style="margin-top:2px;accent-color:var(--blue);">
+              <div>
+                <div style="font-size:13px;font-weight:500;"> Stock Boutique + Armazem</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px;">Achats -> Armazem -> Transfert -> Boutique.</div>
+              </div>
+            </label>
+          </div>
+          <!-- Ancien toggle cache mais garde pour compatibilite -->
+          <input type="checkbox" id="toggleArmazem" style="display:none;" onchange="saveSettings()">
+        </div>
+
+        <div class="card" style="grid-column:1/-1;">
+          <div class="card-title"> Personalizacao do Recibo</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="form-group">
+              <label class="form-label">Endereco / Localizacao</label>
+              <input type="text" class="form-input" id="cfg-address" placeholder="Ex: Rua da Missao, Luanda">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefone</label>
+              <input type="text" class="form-input" id="cfg-phone" placeholder="Ex: +244 923 000 000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mensagem de rodape do recibo</label>
+              <input type="text" class="form-input" id="cfg-footer" placeholder="Ex: Obrigado pela sua preferencia!">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fonte do Texto</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <select class="form-input" id="cfg-font" style="flex:1;" onchange="applyReceiptFont()">
+                  <option value="DM Sans">DM Sans (padrao)</option>
+                  <option value="Georgia">Georgia (elegante)</option>
+                  <option value="Arial">Arial (simples)</option>
+                  <option value="Courier New">Courier New (ticket)</option>
+                  <option value="Roboto">Roboto (moderno)</option>
+                </select>
+                <select class="form-input" id="cfg-font-size" style="width:80px;" onchange="applyReceiptFont()">
+                  <option value="9">9pt</option>
+                  <option value="10" selected>10pt</option>
+                  <option value="11">11pt</option>
+                  <option value="12">12pt</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Imagem do Logo do Recibo</label>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <input type="file" class="form-input" id="cfg-logo-file" accept="image/*" onchange="handleReceiptLogoFile(event)">
+                <input type="text" class="form-input" id="cfg-logo-url" placeholder="Cola aqui a URL ou o base64 da imagem do logo" oninput="updateReceiptLogoUrl(this.value)">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <button type="button" onclick="clearReceiptLogo()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">Remover imagem</button>
+                  <span style="font-size:12px;color:var(--muted);">PNG, JPG ou WebP</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tamanho do Logo do Recibo</label>
+              <select class="form-input" id="cfg-logo-size" style="width:120px;" onchange="applyReceiptFont()">
+                <option value="14">14pt</option>
+                <option value="16" selected>16pt</option>
+                <option value="18">18pt</option>
+                <option value="22">22pt</option>
+                <option value="26">26pt</option>
+                <option value="32">32pt</option>
+                <option value="40">40pt</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mostrar no recibo</label>
+              <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                  <input type="checkbox" id="cfg-show-date" checked> Data
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                  <input type="checkbox" id="cfg-show-client" checked> Cliente
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                  <input type="checkbox" id="cfg-show-payment" checked> Pagamento
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                  <input type="checkbox" id="cfg-show-recibo" checked> N Recibo
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                  <input type="checkbox" id="cfg-show-address" checked> Endereco/Tel
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column:1/-1;">
+          <div class="card-title">Seguranca</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div>
+              <div style="font-size:13px;font-weight:500;">Modo de Edicao Directa</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Desbloqueia as feuilles por 1 minuto para corrigir ou eliminar linhas. Bloqueia automaticamente depois.</div>
+            </div>
+          </div>
+          <button id="editModeBtn" onclick="activarEdicao()" style="width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;">
+            Activar Modo Edicao (1 min)
+          </button>
+          <div id="editModeTimer" style="display:none;text-align:center;font-size:12px;color:var(--red);margin-top:8px;font-weight:600;"></div>
+        </div>
+
+        <div class="card" style="grid-column:1/-1;">
+          <button class="form-submit" onclick="saveAllSettings()" style="width:100%;">Guardar Configuracoes</button>
+          <div style="margin-top:10px;text-align:center;">
+            <button onclick="showSetup()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">Reiniciar configuracao</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE CLIENTES -->
+    <div class="page" id="page-clientes">
+      <!-- BOUTON DE NAVIGATION CLIENTS -->
+       <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
+        <button class="mode-btn active" id="client-tab-pagamento" onclick="switchClientTab('fiche',this)">Fiche client</button>
+        <button class="mode-btn" id="client-tab-fiche" onclick="switchClientTab('pagamento',this)"> Enregistrer paiement</button>
+      </div>
+      <!-- FICHE CLIENTES -->
+      <div id="client-panel-fiche">
+        <div class="section-title">Fiche Clientes</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;max-width:500px;">
+          <input type="text" class="filter-input" id="cli-search" list="list-client" placeholder=" Nome do cliente..." style="flex:1;">
+          <datalist id="list-client"></datalist>
+          <button class="filter-btn" onclick="loadClientDetail()">Pesquisar</button>
+        </div>
+        <div id="cli-result"><div class="empty">Pesquisa um cliente para ver a sua fiche</div></div>
+      </div>
+      <!-- REGISTAR PAGAMENTO CLIENTES -->
+      <div id="client-panel-pagamento" style="display:none">
+        <div class="section-title">Registar Pagamento cliente</div>
+        <div class="form-grid" style="max-width:500px;">
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input type="date" class="form-input" id="c-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cliente</label>
+            <input type="text" class="form-input" list="list-client" id="c-client" placeholder="Nome do cliente" oninput="updateResteApayerClient()">
+            <datalist id="list-client"></datalist>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Montant Paye</label>
+            <input type="number" class="form-input" id="c-montant" placeholder="0" min="0">
+          </div>
+          <div class="form-group full">
+            <label class="form-label" style="font-size:12px;font-weight:600;">Montant restant : <span id="restePayClient">0 kz</span></label>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Note (opcional)</label>
+            <input type="text" class="form-input" id="c-note" placeholder="Ex: Pagamento parcial...">
+          </div>
+          <div class="form-group full">
+            <button class="form-submit" id="pg-cl-btn" onclick="savePagamentoClient()"> Registar Pagamento</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- DEPENSES -->
+    <div class="page" id="page-depenses">
+      <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
+        <button class="mode-btn active" id="dep-tab-new" onclick="switchDepenseTab('new',this)">Nouvelle Depense</button>
+        <button class="mode-btn" id="dep-tab-dashboard" onclick="switchDepenseTab('dashboard',this)">Dashboard Depenses</button>
+        <button class="mode-btn" id="dep-tab-history" onclick="switchDepenseTab('history',this)">Historique Depenses</button>
+      </div>
+
+      <div id="dep-panel-new">
+        <div class="section-title">Registar Depense</div>
+        <div class="form-grid" style="max-width:600px;">
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input type="date" class="form-input" id="dep-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select class="form-input" id="dep-tipo">
+              <option>Loyer</option>
+              <option>Electricite</option>
+              <option>Transport</option>
+              <option>Salaire</option>
+              <option>Autre</option>
+            </select>
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+              <input type="text" class="form-input" id="dep-new-category" placeholder="Nouvelle categorie..." style="flex:1;">
+              <button type="button" class="filter-btn" onclick="addDepenseCategory()">Ajouter</button>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Description</label>
+            <input type="text" class="form-input" id="dep-desc" placeholder="Description de la depense...">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Montant</label>
+            <input type="number" class="form-input" id="dep-montant" placeholder="0" min="0" >
+          </div>
+          <div class="form-group full">
+            <button class="form-submit" id="depBtn" onclick="saveDepense()"> Registar Depense</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="dep-panel-dashboard" style="display:none;">
+        <div class="card">
+          <div class="card-title depense">Dashboard Depenses</div>
+          <div class="form-grid" style="max-width:none;grid-template-columns:1fr 1fr 1fr auto;">
+            <div class="form-group">
+              <label class="form-label depense">De</label>
+              <input type="date" class="form-input" id="dep-filter-from">
+            </div>
+            <div class="form-group">
+              <label class="form-label depense">A</label>
+              <input type="date" class="form-input" id="dep-filter-to">
+            </div>
+            <div class="form-group">
+              <label class="form-label depense">Categorie</label>
+              <select class="form-input" id="dep-filter-category"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">&nbsp;</label>
+              <button class="filter-btn" style="width:100%;" id="depFilterBtn" onclick="loadDepenseInsights()">Appliquer</button>
+            </div>
+          </div>
+          <div class="kpi-grid" style="margin-top:6px;">
+            <div class="kpi red">
+              <div class="kpi-label depense">Total Depenses</div>
+              <div class="kpi-val" id="dep-kpi-total">0 Kz</div>
+              <div class="kpi-sub" id="dep-kpi-count">0 registos</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label depense">Moyenne</div>
+              <div class="kpi-val" id="dep-kpi-avg">0 Kz</div>
+              <div class="kpi-sub depense">Par depense</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label depense">Maximum</div>
+              <div class="kpi-val" id="dep-kpi-max">0 Kz</div>
+              <div class="kpi-sub depense" id="dep-kpi-max-cat">Categorie</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label depense">Aujourd hui</div>
+              <div class="kpi-val" id="dep-kpi-today">0 Kz</div>
+              <div class="kpi-sub depense">Depenses du jour</div>
+            </div>
+          </div>
+          <div class="row2" style="margin-top:16px;">
+            <div class="card" style="padding:14px;background:var(--surface2);">
+              <div class="card-title depense">Par categorie</div>
+              <div id="dep-cat-chart"><div class="empty">A charger...</div></div>
+            </div>
+            <div class="card" style="padding:14px;background:var(--surface2);">
+              <div class="card-title depense">Evolution journaliere</div>
+              <div id="dep-day-chart"><div class="empty">A charger...</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dep-panel-history" style="display:none;">
+        <div class="card">
+          <div class="card-title depense">Historique Des Depenses</div>
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="depense">Date</th>
+                  <th class="depense">Categorie</th>
+                  <th class="depense">Description</th>
+                  <th class="depense">Montant</th>
+                </tr>
+              </thead>
+              <tbody id="depHistoryBody">
+                <tr><td colspan="4" class="empty">A charger...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVENDEURS -->
+    <div class="page" id="page-revendeurs">
+      <div class="section-title revendeur">Revendeurs</div>
+
+      <div style="display:flex;gap:10px;margin-bottom:18px;max-width:980px;flex-wrap:wrap;">
+        <button class="mode-btn active" id="rev-tab-create" onclick="switchRevendeurTab('create', this)">Nouvelle Consignation</button>
+        <button class="mode-btn" id="rev-tab-manage" onclick="switchRevendeurTab('manage', this)">Paiement / Retour</button>
+        <button class="mode-btn" id="rev-tab-history" onclick="switchRevendeurTab('history', this)">Historique Revendeur</button>
+      </div>
+
+      <div id="rev-panel-create">
+        <div class="section-title">Enregistrer Une Consignation</div>
+
+        <div class="card" style="padding:18px 18px 16px;">
+          <div class="form-grid" style="max-width:none;grid-template-columns:1fr 1.2fr;">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-input" id="rev-date">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Nom du revendeur</label>
+              <input type="text" class="form-input" id="rev-name" placeholder="Entre le nom du revendeur">
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:14px;padding:14px;background:linear-gradient(180deg,var(--surface2),rgba(212,175,55,0.04));">
+            <div class="search-wrap" style="margin-bottom:12px;">
+              <span></span>
+              <input type="text" id="rev-search" placeholder="Rechercher un produit..." oninput="filterRevProducts()">
+            </div>
+
+            <div style="display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,1fr);gap:14px;align-items:start;">
+              <div class="prod-grid" id="revProdGrid" style="max-height:460px;min-height:360px;">
+                <div class="empty" style="grid-column:1/-1">Chargement des produits...</div>
+              </div>
+
+              <div class="card" style="margin:0;padding:14px;background:rgba(255,255,255,0.72);border-color:rgba(212,175,55,0.25);backdrop-filter:blur(6px);">
+                <div class="card-title" style="margin-bottom:10px;">Panier de consignation</div>
+
+                <div id="revCartBody" style="min-height:220px;">
+                  <div class="empty">Ajoute des produits</div>
+                </div>
+
+                <div class="total-row" style="margin:12px 0 0;">
+                  <span class="total-lbl">Valeur totale</span>
+                  <span class="total-val" id="revTotal">0 Kz</span>
+                </div>
+
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                  <button class="form-submit" style="flex:1;" id="revSaveBtn" onclick="saveConsignation()">Enregistrer</button>
+                  <button class="filter-btn vider" onclick="clearRevCart()">Vider</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="rev-panel-manage" style="display:none;">
+        <div class="section-title">Paiement Et Retour</div>
+
+        <div class="card" style="padding:18px;">
+          <div class="form-grid" style="max-width:none;grid-template-columns:1.2fr 0.8fr;">
+            <div class="form-group">
+              <label class="form-label">Revendeur</label>
+              <select class="form-input" id="rev-manage-name" onchange="loadRevendeurConsignations()">
+                <option value="">Choisir un revendeur</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Date de l'action</label>
+              <input type="date" class="form-input" id="rev-action-date">
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:14px;padding:14px;background:linear-gradient(180deg,var(--surface2),rgba(212,175,55,0.04));">
+            <div class="card-title" style="margin-bottom:10px;">Consignations ouvertes</div>
+
+            <div id="rev-open-list" style="margin-top:6px;min-height:150px;">
+              <div class="empty">Choisis un revendeur pour afficher ses consignations en cours</div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:minmax(180px,260px) minmax(180px,1fr);gap:10px;margin-top:14px;align-items:end;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Action</label>
+                <select class="form-input" id="rev-action-type" onchange="updateRevActionPanel()">
+                  <option value="payment">Paiement</option>
+                  <option value="return">Retour marchandise</option>
+                </select>
+              </div>
+
+              <button class="form-submit" style="width:100%;" id="revActionConfirmBtn" onclick="confirmRevAction()">Confirmer</button>
+            </div>
+          </div>
+
+          <div id="rev-payment-panel" class="card" style="display:block;margin-top:14px;padding:14px;background:rgba(255,255,255,0.72);border-color:rgba(212,175,55,0.25);">
+            <div class="card-title" style="margin-bottom:10px;">Paiement des consignations selectionnees</div>
+
+            <div id="rev-payment-summary" style="margin-bottom:12px;">
+              <div class="empty">Selectionne une consignation.</div>
+            </div>
+
+            <div id="rev-pay-lines" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+            <button class="filter-btn" style="margin-top:10px;" onclick="addRevPayLine()">+ Ajouter moyen de paiement</button>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
+              <span class="rev" style="font-size:13px;font-weight:600;">Total a payer</span>
+              <span id="rev-payment-total" style="font-family:'Playfair Display',serif;font-size:22px;color:var(--blue);">0 Kz</span>
+            </div>
+          </div>
+
+          <div id="rev-return-panel" class="card" style="display:none;margin-top:14px;padding:14px;background:rgba(255,255,255,0.72);border-color:rgba(212,175,55,0.25);">
+            <div class="card-title" style="margin-bottom:10px;">Retour des consignations selectionnees</div>
+
+            <div id="rev-return-summary">
+              <div class="empty">Selectionne une consignation.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="rev-panel-history" style="display:none;">
+        <div class="section-title">Historique Revendeur</div>
+
+        <div class="card" style="padding:18px;">
+          <div class="form-grid" style="max-width:none;grid-template-columns:1.2fr 0.8fr 0.8fr auto;">
+            <div class="form-group">
+              <label class="form-label">Revendeur</label>
+              <input type="text" class="form-input" id="rev-history-name" list="revendeur-list" placeholder="Nom du revendeur">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">De</label>
+              <input type="date" class="form-input" id="rev-history-from">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">A</label>
+              <input type="date" class="form-input" id="rev-history-to">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">&nbsp;</label>
+              <button class="form-submit" style="width:100%;min-width:170px;" onclick="loadRevHistory()">Filtrer</button>
+            </div>
+          </div>
+
+          <datalist id="revendeur-list"></datalist>
+
+          <div style="overflow-x:auto;margin-top:10px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="rev">ID</th>
+                  <th class="rev">Date</th>
+                  <th class="rev">Revendeur</th>
+                  <th class="rev">Statut</th>
+                  <th class="rev">Articles</th>
+                  <th class="rev">Total</th>
+                  <th class="rev">Paiement</th>
+                  <th class="rev">Recu</th>
+                </tr>
+              </thead>
+              <tbody id="revHistoryBody">
+                <tr>
+                  <td colspan="8" class="empty">Filtre pour voir l'historique</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TRESORERIE -->
+    <div class="page" id="page-tresorerie">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+        <div class="section-title" style="margin:0;">Tresorerie</div>
+        <button class="filter-btn" onclick="loadTresorerie()">Actualiser</button>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns:repeat(3, minmax(0,1fr));">
+        <div class="kpi">
+          <div class="kpi-label">Solde Actuel</div>
+          <div class="kpi-val" id="tr-balance">-</div>
+          <div class="kpi-sub">argent disponible</div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-label">Entrées</div>
+          <div class="kpi-val" id="tr-in">-</div>
+          <div class="kpi-sub">periode filtree</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-label">Sorties</div>
+          <div class="kpi-val" id="tr-out">-</div>
+          <div class="kpi-sub">periode filtree</div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="card">
+          <div class="card-title">Nouveau Mouvement</div>
+          <div class="form-grid" style="max-width:none;">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-input" id="tre-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mouvement</label>
+              <select class="form-input" id="tre-mvt">
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saida</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Type</label>
+              <input type="text" class="form-input" id="tre-type" placeholder="Ex: Capital, Retrait, Ajuste...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Montant</label>
+              <input type="number" class="form-input" id="tre-montant" placeholder="0" min="0">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Description</label>
+              <input type="text" class="form-input" id="tre-desc" placeholder="Description du mouvement...">
+            </div>
+            <div class="form-group full">
+              <button class="form-submit" id="treBtn" onclick="saveTresorerie()">Registar Mouvement</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Filtres</div>
+          <div class="form-grid" style="max-width:none;">
+            <div class="form-group">
+              <label class="form-label">De</label>
+              <input type="date" class="form-input" id="tre-from">
+            </div>
+            <div class="form-group">
+              <label class="form-label">a</label>
+              <input type="date" class="form-input" id="tre-to">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Type contient</label>
+              <input type="text" class="form-input" id="tre-filter-type" placeholder="Ex: Vente, Depense, Achat...">
+            </div>
+            <div class="form-group full">
+              <button class="form-submit" style="width:100%;" onclick="loadTresorerie()">Appliquer les filtres</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Historique des Mouvements</div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Entrees</th>
+                <th>sorties</th>
+                <th>Solde</th>
+              </tr>
+            </thead>
+            <tbody id="tresoBody">
+              <tr><td colspan="6" class="empty">Chargement...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPTABILITE -->
+    <div class="page" id="page-comptabilite">
+      <div class="section-title">Contabilidade</div>
+      <div class="dash-filters" style="margin-bottom:18px;">
+        <div class="filter-group"><label class="form-label">De</label><input type="date" class="filter-input" id="acct-from"></div>
+        <div class="filter-group"><label class="form-label">A</label><input type="date" class="filter-input" id="acct-to"></div>
+        <div class="filter-group"><label class="form-label">Tipo</label><input type="text" class="filter-input" id="acct-type" placeholder="Venda, Compra, Despesa"></div>
+        <button class="filter-btn" onclick="loadComptabilite()">Aplicar</button>
+      </div>
+      <div class="kpi-grid" style="margin-bottom:18px;">
+        <div class="kpi"><div class="kpi-label">Vendas</div><div class="kpi-val" id="acct-sales">0</div><div class="kpi-sub" id="acct-sales-n">0 vendas</div></div>
+        <div class="kpi green"><div class="kpi-label">Lucro bruto</div><div class="kpi-val" id="acct-gross">0</div><div class="kpi-sub" id="acct-margin">Margem 0%</div></div>
+        <div class="kpi red"><div class="kpi-label">Despesas</div><div class="kpi-val" id="acct-expenses">0</div><div class="kpi-sub" id="acct-purchases">Compras 0</div></div>
+        <div class="kpi"><div class="kpi-label">Resultado liquido</div><div class="kpi-val" id="acct-net">0</div><div class="kpi-sub" id="acct-period">Periodo</div></div>
+      </div>
+      <div class="row2" style="margin-bottom:18px;">
+        <div class="card"><div class="card-title">Demonstracao de resultados</div><table class="data-table"><tbody id="acctIncomeBody"><tr><td class="empty">A carregar</td></tr></tbody></table></div>
+        <div class="card"><div class="card-title">Balanco simplificado</div><table class="data-table"><tbody id="acctBalanceBody"><tr><td class="empty">A carregar</td></tr></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Diario contabilistico</div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>Data</th><th>Tipo</th><th>Descricao</th><th>Debito</th><th>Credito</th><th>Fonte</th></tr></thead>
+            <tbody id="acctJournalBody"><tr><td colspan="6" class="empty">Clica em Aplicar</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- FORNECEDORES -->
+    <div class="page" id="page-forn">
+      <div class="section-title">Registar Fornecedor</div>
+      <div class="form-grid" style="max-width:600px;">
+        <div class="form-group full">
+          <label class="form-label">Nome</label>
+          <input type="text" list="list-forn" class="form-input" id="forn-nome" placeholder="Nome do fornecedor">
+          <datalist id="list-forn"><option value="Coca"></datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefone</label>
+          <input type="text" class="form-input" id="forn-tel" placeholder="+244...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pais / Origem</label>
+          <input type="text" class="form-input" id="forn-pais" placeholder="Ex: Angola, China...">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Nota</label>
+          <input type="text" class="form-input" id="forn-nota" placeholder="Nota opcional...">
+        </div>
+        <div class="form-group full">
+          <button class="form-submit" id="fornBtn" onclick="saveFornecedor()"> Registar Fornecedor</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<!-- SETUP WIZARD -->
+<div class="overlay" id="setupOverlay" style="display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:36px;width:460px;max-height:90vh;overflow-y:auto;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:40px;margin-bottom:8px;"></div>
+      <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#1a1a1a;">Bem-vindo ao POS</div>
+      <div style="font-size:13px;color:#888;margin-top:6px;">Configura a tua boutique em 1 minuto</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="form-group">
+        <label class="form-label" style="color:#555;">Nome da Boutique</label>
+        <input type="text" class="form-input" id="setup-name" placeholder="Ex: Dukson, Le Monsieur..." style="border-color:#ddd;color:#1a1a1a;background:#f9f9f9;">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:#555;">Slogan (opcional)</label>
+        <input type="text" class="form-input" id="setup-slogan" placeholder="Ex: Moda & Elegancia" style="border-color:#ddd;color:#1a1a1a;background:#f9f9f9;">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:#555;">Moeda</label>
+        <select class="form-input" id="setup-currency" style="border-color:#ddd;color:#1a1a1a;background:#f9f9f9;">
+          <option value="Kz"> Kwanza (Kz)</option>
+          <option value="FCFA"> Franc CFA (FCFA)</option>
+          <option value="USD"> Dollar (USD)</option>
+          <option value="EUR"> Euro (EUR)</option>
+          <option value="GBP"> Pound (GBP)</option>
+          <option value="XOF"> XOF</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:#555;">Modo de Stock</label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;" id="stock-opt-boutique" onclick="selectStockMode('boutique')">
+            <input type="radio" name="stockMode" value="boutique" checked style="margin-top:2px;accent-color:#0b3d91;">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1a1a;"> Stock Boutique uniquement</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">Les achats vont directement en Stock Boutique. Ideal si tu n'as pas de depot separe.</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;" id="stock-opt-armazem" onclick="selectStockMode('armazem')">
+            <input type="radio" name="stockMode" value="armazem" style="margin-top:2px;accent-color:#0b3d91;">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1a1a;"> Stock Boutique + Armazem</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">Les achats vont en Armazem, tu transferes vers la Boutique. Pour les boutiques avec depot separe.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="color:#555;">Cor Principal</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+          <div class="color-opt active" data-color="#0b3d91" style="background:#0b3d91;" onclick="selectColor(this,'#0b3d91','#071e4f')"></div>
+          <div class="color-opt" data-color="#2c7be5" style="background:#2c7be5;" onclick="selectColor(this,'#2c7be5','#5b9bd5')"></div>
+          <div class="color-opt" data-color="#e05c5c" style="background:#e05c5c;" onclick="selectColor(this,'#e05c5c','#e88080')"></div>
+          <div class="color-opt" data-color="#4caf7d" style="background:#4caf7d;" onclick="selectColor(this,'#4caf7d','#7dcca0')"></div>
+          <div class="color-opt" data-color="#7c3aed" style="background:#7c3aed;" onclick="selectColor(this,'#7c3aed','#a370f7')"></div>
+          <div class="color-opt" data-color="#e08c3a" style="background:#e08c3a;" onclick="selectColor(this,'#e08c3a','#f0b060')"></div>
+          <div class="color-opt" data-color="#1a1a2e" style="background:#1a1a2e;" onclick="selectColor(this,'#1a1a2e','#444466')"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:#555;">Tema</label>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="mode-btn active" id="theme-light" onclick="selectTheme('light',this)" style="flex:1;color:#333;border-color:#ddd;"> Claro</button>
+          <button class="mode-btn" id="theme-dark" onclick="selectTheme('dark',this)" style="flex:1;"> Escuro</button>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="finishSetup()" style="width:100%;margin-top:24px;padding:14px;background:linear-gradient(135deg,#0b3d91,#071e4f);border:none;border-radius:10px;color:#1a1a1a;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;">
+       Comecar a usar o POS
+    </button>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div class="overlay" id="receiptOverlay">
+  <div class="receipt-box" id="receiptBox">
+    <!-- Nom boutique - mis a jour par applyConfig() -->
+    <img id="r-logo-img" alt="Logo" style="display:none;max-width:100%;height:auto;margin:0 auto 8px auto;object-fit:contain;">
+    <div class="r-logo" id="r-logo">Azul Gestão</div>
+    <div class="r-slogan" id="r-slogan">O sistema de gestão que o seu negocio merece</div>
+    <!-- Adresse et telephone - affiches si remplis dans Definicoes -->
+    <div class="r-meta" id="r-address-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
+    <div class="r-meta" id="r-phone-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
+    <hr class="r-divider">
+    <!-- Infos vente - affichees selon les cases cochees dans Definicoes -->
+    <div class="r-meta" id="r-num-line">N Recibo: <b id="r-num"></b></div>
+    <div class="r-meta" id="r-date-line">Data: <b id="r-date"></b></div>
+    <div class="r-meta" id="r-client-line">Cliente: <b id="r-client"></b></div>
+    <div class="r-meta" id="r-pay-line">Pagamento: <b id="r-pay"></b></div>
+    <hr class="r-divider">
+    <table class="r-table">
+      <thead><tr><th>Produto</th><th>Qtd</th><th>Unit</th><th>Total</th></tr></thead>
+      <tbody id="r-items"></tbody>
+    </table>
+    <hr class="r-divider">
+    <div class="r-total" id="r-discount-line" style="display:none;font-size:13px;font-weight:700;"><span>DESCONTO</span><span id="r-discount"></span></div>
+    <div class="r-total"><span>TOTAL</span><span id="r-total"></span></div>
+    <!-- Message de pied de page personnalisable -->
+    <div class="r-thanks" id="r-thanks">Obrigado pela sua preferencia!</div>
+    <div class="r-actions">
+      <button class="r-print" onclick="printReceipt()">Imprimir</button>
+      <button class="r-close" onclick="closeReceipt()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="overlay" id="paymentOverlay">
+  <div class="payment-modal">
+    <div class="payment-modal-head">
+      <div class="payment-modal-title">Paiement</div>
+      <button class="payment-modal-close" onclick="closePaymentModal()">x</button>
+    </div>
+    <div class="payment-modal-grid">
+      <div class="payment-modal-card">
+        <div class="payment-modal-label">Data</div>
+        <div class="payment-modal-value" id="paymentModalDate">-</div>
+      </div>
+      <div class="payment-modal-card">
+        <div class="payment-modal-label">Cliente</div>
+        <div class="payment-modal-value" id="paymentModalClient">Anonimo</div>
+      </div>
+    </div>
+    <div class="payment-modal-card" style="margin-bottom:12px;">
+      <div class="payment-modal-label">Total</div>
+      <div class="payment-modal-value" id="paymentModalTotal" style="font-family:'Playfair Display',serif;font-size:28px;color:var(--blue);">0 Kz</div>
+    </div>
+    <div class="payment-type-wrap">
+      <button class="payment-type-btn active" id="payment-type-stock" onclick="selPaymentType('interno')">Interne</button>
+      <button class="payment-type-btn" id="payment-type-commande" onclick="selPaymentType('Externo')">Externe</button>
+    </div>
+    <div id="paymentModalLines" class="payment-modal-lines"></div>
+    <button class="payment-modal-add" onclick="addPaymentLine()">+ Ajouter moyen de paiement</button>
+    <div id="paymentModalStatus" class="payment-modal-status">Pago: 0 Kz / Total: 0 Kz</div>
+    <div class="progress-label" id="paymentProgressLabel">A registar venda...</div>
+    <div class="progress-wrap" id="paymentProgressWrap">
+      <div class="progress-bar" id="paymentProgressBar"></div>
+    </div>
+    <button class="confirm-btn" id="paymentConfirmBtn" onclick="confirmarVenda()">
+      Confirmar Venda
+    </button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="JS/core.js"></script>
+</body>
+</html>

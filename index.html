@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="CSS/login.css">
+  </head>
+  <body>
+    <div class="cont-login">
+      <h1 style="text-align: center;">Registo</h1>
+      <div class="cont-input-login">
+        <input type="text" placeholder="Nome" id="nom" autocomplete="name">
+        <input type="tel" placeholder="Telefone" id="numero" autocomplete="tel">
+        <input type="email" placeholder="Email opcional" id="email" autocomplete="email">
+        <input type="text" placeholder="Chave de licenca" id="license" autocomplete="off" oninput="formatLicenseInput(this)">
+      </div>
+      <div id="login-message" class="login-message"></div>
+      <button id="login-btn" onclick="login()">Ativar</button>
+    </div>
+  </body>
+ <script src="JS/login.js"></script>
+</html>
