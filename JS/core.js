@@ -3,12 +3,67 @@ var spreadsheetBindingReady = false;
 var BOUND_SPREADSHEET_ID = '';
 // ===== STATE =====
 var cart = [];
-var products = [];
 var revCart = [];
 var revPaymentLines = [{ method: 'Cash', montant: 0 }];
 var revOpenConsignations = [];
 var selectedPay = 'Cash';
 var lastReceiptData = null;
+
+var products = [];
+var productsLoading = false;
+
+function getAzulOrganizationId() {
+  var id = localStorage.getItem("azul_organization_id");
+
+  if (!id) {
+    window.location.href = "index.html";
+    return "";
+  }
+
+  return id;
+}
+
+function mapSupabaseProduct(row) {
+  row = row || {};
+
+  return {
+    id: row.id,
+    name: row.name || "",
+    price: Number(row.sale_price) || 0,
+    purchasePrice: Number(row.purchase_price) || 0,
+    stock: Number(row.stock_warehouse) || 0,
+    stockage: Number(row.stock_warehouse) || 0,
+    stockBoutique: Number(row.stock_shop) || 0,
+    minStock: Number(row.min_stock) || 0,
+    category: row.category || "",
+    supplier: row.supplier || "",
+    mainSupplier: row.supplier || "",
+    photo: "",
+    code: "",
+    variation: "",
+    variations: [],
+    entries: Number(row.stock_warehouse) + Number(row.stock_shop),
+    exits: 0
+  };
+}
+
+async function getProductsFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) return [];
+
+  var result = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return (result.data || []).map(mapSupabaseProduct);
+}
+
 
 // ===== INIT =====
 function switchRevendeurTab(tab, btn) {
