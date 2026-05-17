@@ -1,3 +1,11 @@
+document.addEventListener("DOMContentLoaded", function () {
+  var organizationId = localStorage.getItem("azul_organization_id");
+
+  if (organizationId) {
+    window.location.href = "core.html";
+  }
+});
+
 function showMessage(text, type) {
   var box = document.getElementById("login-message");
   box.textContent = text || "";
