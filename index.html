@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script>
+      if (localStorage.getItem("azul_organization_id")) {
+        window.location.replace("core.html");
+      }
+    </script>
     <base target="_top">
     <link rel="stylesheet" href="CSS/login.css">
   </head>
