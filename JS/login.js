@@ -1,82 +1,84 @@
 function showMessage(text, type) {
-  var box = document.getElementById('login-message');
-  box.textContent = text || '';
-  box.className = 'login-message' + (type === 'success' ? ' success' : '');
+  var box = document.getElementById("login-message");
+  box.textContent = text || "";
+  box.className = "login-message" + (type === "success" ? " success" : "");
 }
 
 function normalizeLicense(value) {
-  return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+  return String(value || "").trim().toUpperCase().replace(/\s+/g, "");
 }
 
 function formatLicenseInput(input) {
   input.value = normalizeLicense(input.value);
 }
 
-function login() {
-  var btn = document.getElementById('login-btn');
+async function login() {
+  var btn = document.getElementById("login-btn");
 
   var data = {
-    nom: document.getElementById('nom').value.trim(),
-    numero: document.getElementById('numero').value.trim(),
-    email: document.getElementById('email').value.trim(),
-    licence: normalizeLicense(document.getElementById('license').value),
-    statut: "active"
+    nom: document.getElementById("nom").value.trim(),
+    numero: document.getElementById("numero").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    licence: normalizeLicense(document.getElementById("license").value)
   };
 
   if (!data.nom || !data.numero || !data.licence) {
-    showMessage('Preenche nome, telefone e chave de licenca.');
+    showMessage("Preenche nome, telefone e chave de licenca.");
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = 'A verificar...';
-  showMessage('');
+  btn.textContent = "A verificar...";
+  showMessage("");
 
-  google.script.run
-    .withSuccessHandler(function(resultat) {
+  try {
+    var { data: organization, error } = await supabaseClient
+      .from("organizations")
+      .select("*")
+      .eq("license_key", data.licence)
+      .eq("status", "active")
+      .single();
 
-      if (resultat && resultat.ok === false) {
-        showMessage(resultat.message || 'Licenca invalida.');
-        btn.disabled = false;
-        btn.textContent = 'Ativar';
-        return;
-      }
-
-      // 🎉 UI succès joli
-      document.body.innerHTML = `
-        <div style="
-          height:100vh;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          flex-direction:column;
-          font-family:Arial,sans-serif;
-          text-align:center;
-        ">
-          <h1 style="color:#0b3d91;">✅ Licenca ativada</h1>
-          <p style="font-size:16px;">Bem-vindo ao Azul Gestao</p>
-          <p style="color:#777;">Abrindo sistema...</p>
-        </div>
-      `;
-
-      // ⏱️ délai + ouverture POS
-      setTimeout(function () {
-        google.script.host.close();
-
-        google.script.run
-          .withFailureHandler(function(e) {
-            alert("Erro ao abrir POS: " + e.message);
-          })
-          .abrirPOSApresActivation();
-
-      }, 1200);
-    })
-
-    .withFailureHandler(function(e) {
-      showMessage((e && e.message) ? e.message : 'Erro ao ativar licenca.');
+    if (error || !organization) {
+      showMessage("Licenca invalida ou inativa.");
       btn.disabled = false;
-      btn.textContent = 'Ativar';
-    })
+      btn.textContent = "Ativar";
+      return;
+    }
 
-    .saveUtilisateur(data.nom, data.numero, data.email, data.licence, data.statut);
+    var { error: profileError } = await supabaseClient
+      .from("profiles")
+      .insert({
+        organization_id: organization.id,
+        name: data.nom,
+        phone: data.numero,
+        email: data.email || null,
+        role: "owner"
+      });
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    localStorage.setItem("azul_organization_id", organization.id);
+    localStorage.setItem("azul_organization_name", organization.name);
+    localStorage.setItem("azul_user_name", data.nom);
+
+    document.body.innerHTML = `
+      <div style="font-family: Arial; text-align:center; padding:40px;">
+        <h1>Licenca ativada</h1>
+        <p>Bem-vindo ao Azul Gestao</p>
+        <p>Abrindo sistema...</p>
+      </div>
+    `;
+
+    setTimeout(function () {
+      window.location.href = "core.html";
+    }, 1200);
+
+  } catch (e) {
+    showMessage(e.message || "Erro ao ativar licenca.");
+    btn.disabled = false;
+    btn.textContent = "Ativar";
+  }
 }
