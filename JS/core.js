@@ -873,25 +873,35 @@ function setupVendaSearchFilter() {
   if (!input) return;
   input.oninput = filterProds;
 }
-function loadProducts(forceRefresh) {
+async function loadProducts(forceRefresh) {
   if (productsLoading) return;
-  var vendaPage = document.getElementById('page-venda');
-  var vendaActive = vendaPage && vendaPage.classList.contains('active');
+
+  var vendaPage = document.getElementById("page-venda");
+  var vendaActive = vendaPage && vendaPage.classList.contains("active");
+
   if (!forceRefresh && vendaActive && products && products.length) {
     filterProds();
     return;
   }
 
-  var btn = document.getElementById('refreshBtn');
-  if (btn) {
-    btn.disabled = true;
-    btn.style.opacity = '0.45';
-  }
-  if (!products || !products.length) setVendaProductsLoading(true);
-  else productsLoading = true;
+  var btn = document.getElementById("refreshBtn");
 
-  gsCall('getProducts', {}, function(data) {
+  try {
+    productsLoading = true;
+
+    if (btn) {
+      btn.disabled = true;
+      btn.style.opacity = "0.45";
+    }
+
+    if (!products || !products.length) {
+      setVendaProductsLoading(true);
+    }
+
+    var data = await getProductsFromSupabase();
+
     products = normalizeProductList(data);
+
     setVendaProductsLoading(false);
     filterProds();
     renderRevProducts(products);
@@ -901,13 +911,23 @@ function loadProducts(forceRefresh) {
     rendertransfertDatalist();
     renderProductProfileOptions();
     renderClientDatalist();
-    renderinventaire(data);
+    renderinventaire(products);
+
+  } catch (e) {
+    console.error("Erro Supabase produtos:", e);
+    setVendaProductsLoading(false);
+    toast("Erro ao carregar produtos: " + (e.message || e), "error");
+
+  } finally {
+    productsLoading = false;
+
     if (btn) {
       btn.disabled = false;
-      btn.style.opacity = '1';
+      btn.style.opacity = "1";
     }
-  });
+  }
 }
+
 //MOI-MEME
 function renderAchatProductDatalist() {
   var list = document.getElementById('prodList');
