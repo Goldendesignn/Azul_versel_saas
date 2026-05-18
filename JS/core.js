@@ -185,6 +185,19 @@ function getPaymentSummary(lines) {
     .join(" + ");
 }
 
+function groupCartQuantityByProduct(items) {
+  var grouped = {};
+
+  (items || []).forEach(function(item) {
+    var name = String(item.baseName || item.name || "").trim();
+    if (!name) return;
+
+    grouped[name] = (grouped[name] || 0) + (Number(item.qty) || 0);
+  });
+
+  return grouped;
+}
+
 async function saveSaleToSupabase(data) {
   var organizationId = getAzulOrganizationId();
 
@@ -205,23 +218,24 @@ async function saveSaleToSupabase(data) {
     throw new Error("Carrinho vazio.");
   }
 
-  for (var i = 0; i < items.length; i++) {
-    var cartItem = items[i];
-    var product = (products || []).find(function(p) {
-      return p.name === cartItem.name;
-    });
+ var qtyByProduct = groupCartQuantityByProduct(items);
 
-    if (!product) {
-      throw new Error("Produto nao encontrado: " + cartItem.name);
-    }
+Object.keys(qtyByProduct).forEach(function(productName) {
+  var product = (products || []).find(function(p) {
+    return p.name === productName;
+  });
 
-    var qty = Number(cartItem.qty) || 0;
-    var currentShop = Number(product.stockBoutique) || 0;
-
-    if (data.saleType !== "Externo" && currentShop < qty) {
-      throw new Error("Stock insuficiente para " + product.name + ". Disponivel: " + currentShop);
-    }
+  if (!product) {
+    throw new Error("Produto nao encontrado: " + productName);
   }
+
+  var qty = qtyByProduct[productName];
+  var currentShop = Number(product.stockBoutique) || 0;
+
+  if (data.saleType !== "Externo" && currentShop < qty) {
+    throw new Error("Stock insuficiente para " + product.name + ". Disponivel: " + currentShop);
+  }
+});
 
   var saleResult = await supabaseClient
     .from("sales")
@@ -267,18 +281,8 @@ async function saveSaleToSupabase(data) {
       variations: item.selectedVariations || []
     });
 
-    if (data.saleType !== "Externo") {
-      var newShopStock = Math.max(0, (Number(productRow.stockBoutique) || 0) - qtySold);
-
-      var stockResult = await supabaseClient
-        .from("products")
-        .update({
-          stock_shop: newShopStock
-        })
-        .eq("id", productRow.id);
-
-      if (stockResult.error) throw stockResult.error;
-    }
+   // Le stock est diminue plus bas une seule fois par produit,
+  // apres avoir additionne toutes les lignes du panier.
   }
 
   var itemsResult = await supabaseClient
@@ -286,6 +290,33 @@ async function saveSaleToSupabase(data) {
     .insert(saleItems);
 
   if (itemsResult.error) throw itemsResult.error;
+
+  if (data.saleType !== "Externo") {
+  var groupedStock = groupCartQuantityByProduct(items);
+
+  for (var stockName in groupedStock) {
+    var stockProduct = (products || []).find(function(p) {
+      return p.name === stockName;
+    });
+
+    if (!stockProduct) continue;
+
+    var newShopStock = Math.max(
+      0,
+      (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockName]) || 0)
+    );
+
+    var stockResult = await supabaseClient
+      .from("products")
+      .update({
+        stock_shop: newShopStock
+      })
+      .eq("id", stockProduct.id);
+
+    if (stockResult.error) throw stockResult.error;
+    }
+  }
+  
   await createClientDebtIfNeeded(sale, data, total);
   var cashIn = getCashInAmountFromPaymentLines(data.paymentLines || [], total);
   var creditAmount = getCreditAmountFromPaymentLines(data.paymentLines || [], total);
@@ -2414,6 +2445,19 @@ function getRevSelectionIds() {
     .filter(Boolean);
 }
 
+function groupRevCartQuantityByProduct(items) {
+  var grouped = {};
+
+  (items || []).forEach(function(item) {
+    var name = String(item.baseName || item.name || "").trim();
+    if (!name) return;
+
+    grouped[name] = (grouped[name] || 0) + (Number(item.qty) || 0);
+  });
+
+  return grouped;
+}
+
 async function createConsignmentInSupabase(data) {
   var organizationId = getAzulOrganizationId();
   var items = data.items || [];
@@ -2426,17 +2470,24 @@ async function createConsignmentInSupabase(data) {
     return sum + (Number(item.qty) || 0) * (Number(item.price) || 0);
   }, 0);
 
-  for (var i = 0; i < items.length; i++) {
-    var product = (products || []).find(function(p) { return p.name === items[i].baseName || p.name === items[i].name; });
-    if (!product) throw new Error("Produto nao encontrado: " + items[i].name);
+  var qtyByProduct = groupRevCartQuantityByProduct(items);
 
-    var qty = Number(items[i].qty) || 0;
-    var stock = Number(product.stockBoutique) || 0;
+Object.keys(qtyByProduct).forEach(function(productName) {
+  var product = (products || []).find(function(p) {
+    return p.name === productName;
+  });
 
-    if (stock < qty) {
-      throw new Error("Stock insuficiente para " + product.name + ". Disponivel: " + stock);
-    }
+  if (!product) {
+    throw new Error("Produto nao encontrado: " + productName);
   }
+
+  var qty = qtyByProduct[productName];
+  var stock = Number(product.stockBoutique) || 0;
+
+  if (stock < qty) {
+    throw new Error("Stock insuficiente para " + product.name + ". Disponivel: " + stock);
+  }
+});
 
   var consignmentResult = await supabaseClient
     .from("reseller_consignments")
@@ -2461,7 +2512,6 @@ async function createConsignmentInSupabase(data) {
     var item = items[j];
     var productRow = (products || []).find(function(p) { return p.name === item.baseName || p.name === item.name; });
     var qtyItem = Number(item.qty) || 0;
-    var currentShop = Number(productRow.stockBoutique) || 0;
 
     itemRows.push({
       organization_id: organizationId,
@@ -2475,12 +2525,8 @@ async function createConsignmentInSupabase(data) {
       variations: item.selectedVariations || []
     });
 
-    var stockResult = await supabaseClient
-      .from("products")
-      .update({ stock_shop: currentShop - qtyItem })
-      .eq("id", productRow.id);
-
-    if (stockResult.error) throw stockResult.error;
+    // Le stock est diminue plus bas une seule fois par produit,
+  // apres avoir additionne toutes les lignes de la consignation.
   }
 
   var itemsResult = await supabaseClient
@@ -2488,6 +2534,30 @@ async function createConsignmentInSupabase(data) {
     .insert(itemRows);
 
   if (itemsResult.error) throw itemsResult.error;
+
+  var groupedStock = groupRevCartQuantityByProduct(items);
+
+for (var stockName in groupedStock) {
+  var stockProduct = (products || []).find(function(p) {
+    return p.name === stockName;
+  });
+
+  if (!stockProduct) continue;
+
+  var newShopStock = Math.max(
+    0,
+    (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockName]) || 0)
+  );
+
+  var stockResult = await supabaseClient
+    .from("products")
+    .update({
+      stock_shop: newShopStock
+    })
+    .eq("id", stockProduct.id);
+
+  if (stockResult.error) throw stockResult.error;
+}
 
   return consignment;
 }
@@ -7871,4 +7941,11 @@ function togglePasswordVisibility(inputId, button) {
     input.type = "password";
     button.textContent = "👁";
   }
+}
+function renderFornNameDatalist() {
+  renderSupplierDatalists();
+}
+
+function renderFornPayDatalist() {
+  renderSupplierDatalists();
 }
