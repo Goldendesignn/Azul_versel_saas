@@ -1694,9 +1694,10 @@ function renderProds(list) {
       '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
         (out ? ' Esgotado' : 'Stock : ' + p.stockBoutique + ' un') +
       '</div>';
-   if (!out || selectedType === "Externo") {
-      div.onclick = function() { addToCart(p.name, p.stockBoutique); };
-    }
+  div.onclick = function() {
+      addToCart(p.name, p.stockBoutique);
+    };
+
     g.appendChild(div);
   });
 }
@@ -1848,9 +1849,7 @@ function renderRevProducts(list) {
       '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
         (out ? ' Esgotado' : 'Stock : ' + p.stockBoutique + ' un') +
       '</div>';
-   div.onclick = function() {
-      addToCart(p.name, p.stockBoutique);
-    };
+  if (!out) div.onclick = function() { addToRevCart(p.name, p.stockBoutique); };
     g.appendChild(div);
   });
 }
