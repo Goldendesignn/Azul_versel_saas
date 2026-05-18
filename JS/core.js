@@ -287,14 +287,149 @@ async function saveSaleToSupabase(data) {
     .insert(saleItems);
 
   if (itemsResult.error) throw itemsResult.error;
-
+  await createClientDebtIfNeeded(sale, data, total);
   return {
     sale: sale,
     receiptNo: receiptNo,
     total: total
   };
 }
+async function getClientDebtFromSupabase(clientName) {
+  var organizationId = getAzulOrganizationId();
 
+  var result = await supabaseClient
+    .from("client_debts")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("client_name", clientName)
+    .gt("remaining_amount", 0);
+
+  if (result.error) throw result.error;
+
+  return (result.data || []).reduce(function(sum, row) {
+    return sum + (Number(row.remaining_amount) || 0);
+  }, 0);
+}
+
+async function getClientFicheFromSupabase(clientName) {
+  var organizationId = getAzulOrganizationId();
+
+  var salesResult = await supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("client_name", clientName)
+    .order("sale_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (salesResult.error) throw salesResult.error;
+
+  var sales = salesResult.data || [];
+  var saleIds = sales.map(function(sale) { return sale.id; });
+
+  var items = [];
+
+  if (saleIds.length) {
+    var itemsResult = await supabaseClient
+      .from("sale_items")
+      .select("*")
+      .in("sale_id", saleIds);
+
+    if (itemsResult.error) throw itemsResult.error;
+
+    items = itemsResult.data || [];
+  }
+
+  var totalAchat = sales.reduce(function(sum, sale) {
+    return sum + (Number(sale.total) || 0);
+  }, 0);
+
+  var totalDette = await getClientDebtFromSupabase(clientName);
+
+  var saleById = {};
+  sales.forEach(function(sale) {
+    saleById[sale.id] = sale;
+  });
+
+  var historique = items.map(function(item) {
+    var sale = saleById[item.sale_id] || {};
+    return {
+      date: sale.sale_date || "",
+      prod: item.product_name || "",
+      qty: Number(item.quantity) || 0,
+      cash: 0,
+      cartao: 0,
+      express: 0,
+      credito: 0,
+      total: Number(item.total) || 0
+    };
+  });
+
+  return {
+    name: clientName,
+    totalAchat: totalAchat,
+    totalDette: totalDette,
+    transactions: sales.length,
+    historique: historique
+  };
+}
+
+async function registerClientPaymentInSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+  var clientName = String(data.client || "").trim();
+  var amount = Number(data.montant) || 0;
+
+  if (!clientName) throw new Error("Cliente obrigatorio.");
+  if (amount <= 0) throw new Error("Montante invalido.");
+
+  var paymentResult = await supabaseClient
+    .from("client_payments")
+    .insert({
+      organization_id: organizationId,
+      client_name: clientName,
+      amount: amount,
+      note: data.note || "",
+      payment_date: data.date || new Date().toISOString().split("T")[0]
+    });
+
+  if (paymentResult.error) throw paymentResult.error;
+
+  var debtsResult = await supabaseClient
+    .from("client_debts")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("client_name", clientName)
+    .gt("remaining_amount", 0)
+    .order("created_at", { ascending: true });
+
+  if (debtsResult.error) throw debtsResult.error;
+
+  var remainingPayment = amount;
+  var debts = debtsResult.data || [];
+
+  for (var i = 0; i < debts.length && remainingPayment > 0; i++) {
+    var debt = debts[i];
+    var currentRemaining = Number(debt.remaining_amount) || 0;
+    var currentPaid = Number(debt.paid_amount) || 0;
+    var applied = Math.min(currentRemaining, remainingPayment);
+    var newRemaining = currentRemaining - applied;
+
+    var updateResult = await supabaseClient
+      .from("client_debts")
+      .update({
+        paid_amount: currentPaid + applied,
+        remaining_amount: newRemaining,
+        status: newRemaining > 0 ? "open" : "paid"
+      })
+      .eq("id", debt.id);
+
+    if (updateResult.error) throw updateResult.error;
+
+    remainingPayment -= applied;
+  }
+
+  return true;
+}
 async function getSalesHistoryFromSupabase(params) {
   var organizationId = getAzulOrganizationId();
 
@@ -386,7 +521,46 @@ function normalizePaymentMethod(method) {
 
   return "Cash";
 }
+function getCreditAmountFromPaymentLines(lines, total) {
+  lines = lines || [];
+  var credit = 0;
 
+  lines.forEach(function(line) {
+    var method = String(line.method || "").toLowerCase();
+    if (method.indexOf("credit") >= 0 || method.indexOf("credito") >= 0) {
+      credit += Number(line.montant) || 0;
+    }
+  });
+
+  return Math.min(Number(total) || 0, credit);
+}
+
+async function createClientDebtIfNeeded(sale, data, total) {
+  var organizationId = getAzulOrganizationId();
+  var creditAmount = getCreditAmountFromPaymentLines(data.paymentLines || [], total);
+
+  if (creditAmount <= 0) return;
+
+  var clientName = String(data.clientName || "").trim();
+
+  if (!clientName || clientName.toLowerCase() === "anonimo") {
+    throw new Error("Venda a credito precisa de nome do cliente.");
+  }
+
+  var result = await supabaseClient
+    .from("client_debts")
+    .insert({
+      organization_id: organizationId,
+      sale_id: sale.id,
+      client_name: clientName,
+      total_amount: creditAmount,
+      paid_amount: 0,
+      remaining_amount: creditAmount,
+      status: "open"
+    });
+
+  if (result.error) throw result.error;
+}
 async function getDashboardDataFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
 
@@ -2931,6 +3105,14 @@ async function confirmarVenda() {
     return;
   }
 
+  var hasCredit = getCreditAmountFromPaymentLines(paymentLines, getCartTotalMobile()) > 0;
+  var clientName = document.getElementById("clientInput").value.trim();
+
+  if (hasCredit && !clientName) {
+    toast("Venda a credito precisa de nome do cliente.", "error");
+    return;
+  }
+
   var btn = document.getElementById("paymentConfirmBtn") || document.getElementById("confirmBtn");
 
   if (btn) {
@@ -2942,7 +3124,7 @@ async function confirmarVenda() {
   try {
     var result = await saveSaleToSupabase({
       saleDate: document.getElementById("vendaDate").value,
-      clientName: document.getElementById("clientInput").value.trim() || "Anonimo",
+      clientName: clientName || "Anonimo",
       saleType: selectedType,
       paymentLines: paymentLines,
       items: cart
@@ -5845,61 +6027,114 @@ function saveFornecedor() {
 // ===== FICHE CLIENT =====
 var clientDetailRequestSeq = 0;
 
-function loadClientDetail() {
-  var nom = (document.getElementById('cli-search').value || '').trim();
-  if (!nom) { toast('Entra um nome de cliente!', 'error'); return; }
-  var el = document.getElementById('cli-result');
-  var requestId = ++clientDetailRequestSeq;
+async function loadClientDetail() {
+  var nom = (document.getElementById("cli-search").value || "").trim();
+
+  if (!nom) {
+    toast("Entra um nome de cliente!", "error");
+    return;
+  }
+
+  var el = document.getElementById("cli-result");
   el.innerHTML = '<div class="empty">A carregar...</div>';
 
-  gsCall('getClientFicheData', nom, function(data) {
-    if (requestId !== clientDetailRequestSeq) return;
-    if (!data || !data.name) { el.innerHTML = '<div class="empty">Cliente nao encontrado</div>'; return; }
+  try {
+    var data = await getClientFicheFromSupabase(nom);
+
+    if (!data || !data.name) {
+      el.innerHTML = '<div class="empty">Cliente nao encontrado</div>';
+      return;
+    }
+
     var html = '<div class="card" style="margin-bottom:14px;">' +
-      '<div style="font-family:Playfair Display,serif;font-size:18px;margin-bottom:12px;">'+htmlSafeAcct(data.name)+'</div>' +
+      '<div style="font-family:Playfair Display,serif;font-size:18px;margin-bottom:12px;">' + escapeDepenseHtml(data.name) + '</div>' +
       '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
-        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;"><div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);">'+fmt(data.totalAchat || 0)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Total Compras</div></div>' +
-        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;"><div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);">'+fmt(data.totalDette || 0)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Divida</div></div>' +
-        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;"><div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);">'+(data.transactions || 0)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Transacoes</div></div>' +
+        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">' +
+          '<div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);">' + fmt(data.totalAchat || 0) + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Total Compras</div>' +
+        '</div>' +
+        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">' +
+          '<div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);">' + fmt(data.totalDette || 0) + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Divida</div>' +
+        '</div>' +
+        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">' +
+          '<div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);">' + (data.transactions || 0) + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Transacoes</div>' +
+        '</div>' +
       '</div></div>';
 
     if (data.historique && data.historique.length > 0) {
-      html += '<div class="card"><div class="card-title">Historico</div><table class="data-table"><thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Cash</th><th>Tpa</th><th>Express</th><th>Credito</th><th>Total</th></tr></thead><tbody>';
+      html += '<div class="card"><div class="card-title">Historico</div><div class="mobile-card-list" style="display:grid;">';
+
       data.historique.forEach(function(a) {
-        html += '<tr><td>'+htmlSafeAcct(a.date)+'</td><td>'+htmlSafeAcct(a.prod)+'</td><td>'+htmlSafeAcct(a.qty)+'</td><td>'+fmt(a.cash || 0)+'</td><td>'+fmt(a.cartao || 0)+'</td><td>'+fmt(a.express || 0)+'</td><td>'+fmt(a.credito || 0)+'</td><td style="color:var(--blue);font-weight:600">'+fmt(a.total || 0)+'</td></tr>';
+        html += '<div class="mobile-sale-card">' +
+          '<div class="mobile-card-top">' +
+            '<div>' +
+              '<div class="mobile-card-kicker">' + escapeDepenseHtml(a.date || "") + '</div>' +
+              '<div class="mobile-card-title">' + escapeDepenseHtml(a.prod || "") + '</div>' +
+              '<div class="mobile-card-sub">Qtd ' + (a.qty || 0) + '</div>' +
+            '</div>' +
+            '<div class="mobile-card-amount">' + fmt(a.total || 0) + '</div>' +
+          '</div>' +
+        '</div>';
       });
-      html += '</tbody></table></div>';
+
+      html += '</div></div>';
     } else {
       html += '<div class="card"><div class="empty">Nenhuma venda encontrada</div></div>';
     }
+
     el.innerHTML = html;
-  });
+
+  } catch (e) {
+    console.error("Erro fiche client:", e);
+    el.innerHTML = '<div class="empty">Erro ao carregar cliente</div>';
+    toast("Erro fiche client: " + (e.message || e), "error");
+  }
 }
 
-function savePagamentoClient() {
+async function savePagamentoClient() {
   var data = {
-    date:   document.getElementById('c-date').value,
-    client:   document.getElementById('c-client').value.trim(),
-    montant: parseFloat(document.getElementById('c-montant').value) || 0,
-    note:   document.getElementById('c-note').value.trim()
+    date: document.getElementById("c-date").value,
+    client: document.getElementById("c-client").value.trim(),
+    montant: parseFloat(document.getElementById("c-montant").value) || 0,
+    note: document.getElementById("c-note").value.trim()
   };
 
   if (!data.client || data.montant <= 0) {
-    toast('Preenche cliente e montant!', 'error'); return;
+    toast("Preenche cliente e montant!", "error");
+    return;
   }
 
-  var btn = document.getElementById('pg-cl-btn');
-    btn.disabled = true;
-    btn.textContent = 'A registar...';
-    btn.style.opacity = '0.6';
+  var btn = document.getElementById("pg-cl-btn");
 
-  gsCall('registarPagamentoClient', data, function() {
-    toast('Pagamento registado!', 'success');
-    document.getElementById('c-client').value = '';
-    document.getElementById('c-montant').value = '';
-    document.getElementById('c-note').value = '';
-    btn.disabled = false; btn.textContent = ' Registar Depense'; btn.style.opacity = '1';
-  });
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+    btn.style.opacity = "0.6";
+  }
+
+  try {
+    await registerClientPaymentInSupabase(data);
+
+    toast("Pagamento registado!", "success");
+
+    document.getElementById("c-client").value = "";
+    document.getElementById("c-montant").value = "";
+    document.getElementById("c-note").value = "";
+    document.getElementById("restePayClient").textContent = "0 kz";
+
+  } catch (e) {
+    console.error("Erro pagamento cliente:", e);
+    toast("Erro pagamento cliente: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = " Registar Pagamento";
+      btn.style.opacity = "1";
+    }
+  }
 }
 // =============================================================================================
 // ============== Affichage reste a payer pour dette client et fournisseur =====================
@@ -5915,27 +6150,22 @@ function updateResteAPayer(totalDu) {
   if (re) { re.textContent = new Intl.NumberFormat('pt-PT').format(reste)+' '+cur; re.style.color = reste>0?'var(--red)':'var(--green)'; }
 }
 
-function updateResteApayerClient() {
-  var cur = window._currency || 'Kz';
-  var client = (document.getElementById('c-client') || {}).value || '';
+async function updateResteApayerClient() {
+  var cur = window._currency || "Kz";
+  var client = (document.getElementById("c-client") || {}).value || "";
+  var el = document.getElementById("restePayClient");
 
-  google.script.run
-    .withSuccessHandler(function(result) {
-      var restePayClient = document.getElementById('restePayClient');
-      var reste = Number(result) || 0;
+  if (!el || !client.trim()) {
+    if (el) el.textContent = "0 " + cur;
+    return;
+  }
 
-      console.log("Voici le resultat " + result);
-
-      if (!restePayClient) {
-        return;
-      }
-
-      restePayClient.textContent = new Intl.NumberFormat('pt-PT').format(reste) + ' ' + cur;
-    })
-    .withFailureHandler(function(e) {
-      console.log("Erreur getClientDebt:", e.message);
-    })
-    .getClientDebt(client);
+  try {
+    var reste = await getClientDebtFromSupabase(client.trim());
+    el.textContent = new Intl.NumberFormat("pt-PT").format(reste) + " " + cur;
+  } catch (e) {
+    console.error("Erro getClientDebt:", e);
+  }
 }
 
 async function updateResteApayerFourn() {
