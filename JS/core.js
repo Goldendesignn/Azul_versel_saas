@@ -7806,7 +7806,7 @@ async function saveErpLockPassword() {
   var confirm = document.getElementById("erpLockPasswordConfirm").value.trim();
 
   if (pass.length < 4) {
-    toast("Le mot de passe doit avoir au moins 4 caractères.", "error");
+    toast"Le mot de passe doit avoir au moins 4 caracteres.", "error");
     return;
   }
 
@@ -7821,21 +7821,25 @@ async function saveErpLockPassword() {
   document.getElementById("erpLockPassword").value = "";
   document.getElementById("erpLockPasswordConfirm").value = "";
 
-  toast("Mot de passe de verrouillage enregistré.", "success");
+  toast("Mot de passe de verrouillage enregistre.", "success");
 }
 
 function lockErpNow() {
   var hash = localStorage.getItem(AZUL_LOCK_HASH_KEY);
 
   if (!hash) {
-    toast("Ajoute d'abord un mot de passe dans les paramètres.", "error");
+    toast("Ajoute d'abord un mot de passe dans les parametres.", "error");
     return;
   }
 
   localStorage.setItem(AZUL_LOCKED_KEY, "1");
+
+  setErpLockedVisualState(true);
   showErpLockScreen();
+  startErpLockWatcher();
 }
 function showErpLockScreen() {
+  setErpLockedVisualState(true);
   if (document.getElementById("erpLockOverlay")) return;
 
   document.body.style.overflow = "hidden";
@@ -7911,16 +7915,19 @@ async function unlockErp() {
 
   var overlay = document.getElementById("erpLockOverlay");
   if (overlay) overlay.remove();
-
-  document.body.style.overflow = "";
-
-  toast("ERP déverrouillé.", "success");
+  
+  setErpLockedVisualState(false);
+  stopErpLockWatcher();
+  
+  toast("ERP deverrouille.", "success");
 }
 function initErpLockSystem() {
   injectLockSettingsCard();
 
-  if (localStorage.getItem(AZUL_LOCKED_KEY) === "1") {
+  if (isErpLocked()) {
+    setErpLockedVisualState(true);
     showErpLockScreen();
+    startErpLockWatcher();
   }
 }
 
@@ -7952,4 +7959,41 @@ function renderFornPayDatalist() {
 async function migrateAccountingEntriesFromExistingData() {
   toast("Migration comptable deja terminee. Fonction desactivee pour eviter une relance accidentelle.", "error");
   return false;
+}
+
+var erpLockWatchTimer = null;
+
+function isErpLocked() {
+  return localStorage.getItem(AZUL_LOCKED_KEY) === "1";
+}
+
+function setErpLockedVisualState(locked) {
+  if (locked) {
+    document.documentElement.setAttribute("data-erp-locked", "1");
+    document.body.style.overflow = "hidden";
+  } else {
+    document.documentElement.removeAttribute("data-erp-locked");
+    document.body.style.overflow = "";
+  }
+}
+
+function startErpLockWatcher() {
+  if (erpLockWatchTimer) return;
+
+  erpLockWatchTimer = setInterval(function() {
+    if (!isErpLocked()) return;
+
+    setErpLockedVisualState(true);
+
+    if (!document.getElementById("erpLockOverlay")) {
+      showErpLockScreen();
+    }
+  }, 700);
+}
+
+function stopErpLockWatcher() {
+  if (erpLockWatchTimer) {
+    clearInterval(erpLockWatchTimer);
+    erpLockWatchTimer = null;
+  }
 }
