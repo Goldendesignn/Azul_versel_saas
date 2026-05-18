@@ -6145,14 +6145,44 @@ async function getTreasuryFromSupabase(params) {
   if (salesResult.error) throw salesResult.error;
 
   (salesResult.data || []).forEach(function(sale) {
-    entries.push({
-      date: sale.sale_date || "",
-      type: "Venda",
-      desc: "Venda " + (sale.receipt_no || ""),
-      income: Number(sale.total) || 0,
-      expense: 0,
-      created_at: sale.created_at || ""
-    });
+    var cashIn = getCashInAmountFromPaymentLines(sale.payment_lines || [], sale.total);
+
+    if (cashIn > 0) {
+      entries.push({
+        date: sale.sale_date || "",
+        type: "Venda",
+        desc: "Venda " + (sale.receipt_no || "") + " - valores recebidos",
+        income: cashIn,
+        expense: 0,
+        created_at: sale.created_at || ""
+      });
+    }
+  });
+
+  var purchasesQuery = supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) purchasesQuery = purchasesQuery.gte("created_at", from);
+  if (to) purchasesQuery = purchasesQuery.lte("created_at", to + "T23:59:59");
+
+  var purchasesResult = await purchasesQuery;
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  (purchasesResult.data || []).forEach(function(purchase) {
+    var paid = getPurchasePaidAmount(purchase);
+
+    if (paid > 0) {
+      entries.push({
+        date: String(purchase.created_at || "").slice(0, 10),
+        type: "Achat",
+        desc: "Achat fornecedor " + (purchase.supplier || ""),
+        income: 0,
+        expense: paid,
+        created_at: purchase.created_at || ""
+      });
+    }
   });
 
   var expensesQuery = supabaseClient
@@ -6257,7 +6287,23 @@ async function getTreasuryFromSupabase(params) {
   entries.sort(function(a, b) {
     var ak = String(a.date || "") + " " + String(a.created_at || "");
     var bk = String(b.date || "") + " " + String(b.created_at || "");
-    return bk.localeCompare(ak);
+    return ak.localeCompare(bk);
+  });
+
+  var running = 0;
+
+  entries = entries.map(function(row) {
+    running += (Number(row.income) || 0) - (Number(row.expense) || 0);
+
+    return {
+      date: row.date,
+      type: row.type,
+      desc: row.desc,
+      income: row.income,
+      expense: row.expense,
+      balance: running,
+      created_at: row.created_at
+    };
   });
 
   var totalIn = entries.reduce(function(sum, row) {
@@ -6269,20 +6315,11 @@ async function getTreasuryFromSupabase(params) {
   }, 0);
 
   var balance = totalIn - totalOut;
-  var running = balance;
 
-  entries = entries.map(function(row) {
-    var current = running;
-    running -= (Number(row.income) || 0) - (Number(row.expense) || 0);
-
-    return {
-      date: row.date,
-      type: row.type,
-      desc: row.desc,
-      income: row.income,
-      expense: row.expense,
-      balance: current
-    };
+  entries.sort(function(a, b) {
+    var ak = String(a.date || "") + " " + String(a.created_at || "");
+    var bk = String(b.date || "") + " " + String(b.created_at || "");
+    return bk.localeCompare(ak);
   });
 
   return {
@@ -6308,7 +6345,28 @@ function acctSet(id, value) {
 function acctAmountRow(label, amount, color) {
   return '<tr><td>' + htmlSafeAcct(label) + '</td><td style="text-align:right;font-weight:700;color:' + (color || 'var(--text)') + ';">' + fmt(amount || 0) + '</td></tr>';
 }
+function getCashInAmountFromPaymentLines(lines, fallbackTotal) {
+  lines = lines || [];
 
+  if (!Array.isArray(lines) || !lines.length) {
+    return Number(fallbackTotal) || 0;
+  }
+
+  return lines.reduce(function(sum, line) {
+    var method = String(line.method || "").toLowerCase();
+    var amount = Number(line.montant) || 0;
+
+    if (method.indexOf("credit") >= 0 || method.indexOf("credito") >= 0) {
+      return sum;
+    }
+
+    return sum + amount;
+  }, 0);
+}
+
+function getPurchasePaidAmount(row) {
+  return Number(row.paid_amount) || 0;
+}
 function loadComptabilite() {
   var body = document.getElementById('acctJournalBody');
   if (!body) return;
