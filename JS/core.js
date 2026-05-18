@@ -2640,25 +2640,75 @@ async function getConsignmentsByResellerFromSupabase(name) {
 
 async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) {
   var organizationId = getAzulOrganizationId();
-  var activeLines = (paymentLines || []).filter(function(p) { return Number(p.montant) > 0; });
-  var totalPaid = activeLines.reduce(function(sum, p) { return sum + (Number(p.montant) || 0); }, 0);
+
+  ids = ids || [];
+
+  if (!ids.length) {
+    throw new Error("Seleciona pelo menos uma consignacao.");
+  }
+
+  var activeLines = (paymentLines || []).filter(function(p) {
+    return Number(p.montant) > 0;
+  });
+
+  var totalPaid = activeLines.reduce(function(sum, p) {
+    return sum + (Number(p.montant) || 0);
+  }, 0);
+
+  if (totalPaid <= 0) {
+    throw new Error("Montante de pagamento invalido.");
+  }
+
   var paymentSummary = getRevPaymentSummary(activeLines);
   var recibo = "REV-" + Date.now();
 
-  for (var i = 0; i < ids.length; i++) {
-    var result = await supabaseClient
+  var consignmentsResult = await supabaseClient
+    .from("reseller_consignments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .in("id", ids)
+    .order("consignment_date", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (consignmentsResult.error) throw consignmentsResult.error;
+
+  var consignments = consignmentsResult.data || [];
+  var remainingPayment = totalPaid;
+
+  for (var i = 0; i < consignments.length && remainingPayment > 0; i++) {
+    var consignment = consignments[i];
+
+    var total = Number(consignment.total) || 0;
+    var alreadyPaid = Number(consignment.paid_amount) || 0;
+    var remainingDue = Math.max(0, total - alreadyPaid);
+
+    if (remainingDue <= 0) {
+      continue;
+    }
+
+    var applied = Math.min(remainingDue, remainingPayment);
+    var newPaid = alreadyPaid + applied;
+    var isFullyPaid = newPaid >= total - 0.01;
+
+    var updateResult = await supabaseClient
       .from("reseller_consignments")
       .update({
-        status: "paid",
-        paid_amount: totalPaid,
+        status: isFullyPaid ? "paid" : "open",
+        paid_amount: newPaid,
         payment_summary: paymentSummary,
         receipt_no: recibo,
-        closed_at: new Date().toISOString()
+        closed_at: isFullyPaid ? new Date().toISOString() : null
       })
       .eq("organization_id", organizationId)
-      .eq("id", ids[i]);
+      .eq("id", consignment.id);
 
-    if (result.error) throw result.error;
+    if (updateResult.error) throw updateResult.error;
+
+    remainingPayment -= applied;
+  }
+
+  if (remainingPayment > 0.01) {
+    toast("Pagamento maior que a divida selecionada. Sobra: " + fmt(remainingPayment), "error");
   }
 
   return true;
@@ -7154,171 +7204,116 @@ async function getComptabiliteFromSupabase(params) {
   var to = params.to || "";
   var typeFilter = String(params.type || "").trim().toLowerCase();
 
-  var salesQuery = supabaseClient
-    .from("sales")
+  var entriesQuery = supabaseClient
+    .from("accounting_entries")
     .select("*")
-    .eq("organization_id", organizationId);
+    .eq("organization_id", organizationId)
+    .order("entry_date", { ascending: false })
+    .order("created_at", { ascending: false });
 
-  if (from) salesQuery = salesQuery.gte("sale_date", from);
-  if (to) salesQuery = salesQuery.lte("sale_date", to);
+  if (from) entriesQuery = entriesQuery.gte("entry_date", from);
+  if (to) entriesQuery = entriesQuery.lte("entry_date", to);
 
-  var salesResult = await salesQuery;
-  if (salesResult.error) throw salesResult.error;
+  var entriesResult = await entriesQuery;
+  if (entriesResult.error) throw entriesResult.error;
 
-  var sales = salesResult.data || [];
-  var saleIds = sales.map(function(sale) { return sale.id; });
+  var entries = entriesResult.data || [];
 
-  var saleItems = [];
-
-  if (saleIds.length) {
-    var itemsResult = await supabaseClient
-      .from("sale_items")
-      .select("*")
-      .in("sale_id", saleIds);
-
-    if (itemsResult.error) throw itemsResult.error;
-    saleItems = itemsResult.data || [];
+  if (!entries.length) {
+    return {
+      resume: {
+        vendas: 0,
+        vendasCount: 0,
+        coutVendas: 0,
+        beneficeBrut: 0,
+        marge: 0,
+        depenses: 0,
+        achats: 0,
+        comprasCredito: 0,
+        pagamentosFornecedores: 0,
+        resultatNet: 0
+      },
+      bilan: {
+        tresorerie: 0,
+        stock: 0,
+        clientesAReceber: 0,
+        actifSimplifie: 0,
+        dividasFournisseurs: 0,
+        passivo: 0,
+        capitaisProprios: 0
+      },
+      period: {
+        from: from || "-",
+        to: to || "-"
+      },
+      journal: []
+    };
   }
 
-  var expensesQuery = supabaseClient
-    .from("expenses")
-    .select("*")
-    .eq("organization_id", organizationId);
+  var entryIds = entries.map(function(entry) {
+    return entry.id;
+  });
 
-  if (from) expensesQuery = expensesQuery.gte("expense_date", from);
-  if (to) expensesQuery = expensesQuery.lte("expense_date", to);
-
-  var expensesResult = await expensesQuery;
-  if (expensesResult.error) throw expensesResult.error;
-
-  var expenses = expensesResult.data || [];
-
-  var purchasesQuery = supabaseClient
-    .from("purchases")
-    .select("*")
-    .eq("organization_id", organizationId);
-
-  if (from) purchasesQuery = purchasesQuery.gte("created_at", from);
-  if (to) purchasesQuery = purchasesQuery.lte("created_at", to + "T23:59:59");
-
-  var purchasesResult = await purchasesQuery;
-  if (purchasesResult.error) throw purchasesResult.error;
-
-  var purchases = purchasesResult.data || [];
-
-  var productsResult = await supabaseClient
-    .from("products")
-    .select("*")
-    .eq("organization_id", organizationId);
-
-  if (productsResult.error) throw productsResult.error;
-
-  var products = productsResult.data || [];
-
-  var clientDebtsResult = await supabaseClient
-    .from("client_debts")
+  var linesResult = await supabaseClient
+    .from("accounting_lines")
     .select("*")
     .eq("organization_id", organizationId)
-    .gt("remaining_amount", 0);
+    .in("entry_id", entryIds);
 
-  if (clientDebtsResult.error) throw clientDebtsResult.error;
+  if (linesResult.error) throw linesResult.error;
 
-  var supplierDebtsResult = await supabaseClient
-    .from("purchases")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .gt("remaining_amount", 0);
+  var lines = linesResult.data || [];
 
-  if (supplierDebtsResult.error) throw supplierDebtsResult.error;
+  var entriesById = {};
+  entries.forEach(function(entry) {
+    entriesById[entry.id] = entry;
+  });
 
-  var vendas = sales.reduce(function(sum, sale) {
-    return sum + (Number(sale.total) || 0);
-  }, 0);
+  function sumAccount(code, side, sourceType) {
+    return lines.reduce(function(sum, line) {
+      var entry = entriesById[line.entry_id] || {};
 
-  var coutVendas = saleItems.reduce(function(sum, item) {
-    return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
-  }, 0);
+      if (String(line.account_code) !== String(code)) return sum;
+      if (sourceType && entry.source_type !== sourceType) return sum;
+
+      return sum + (Number(line[side]) || 0);
+    }, 0);
+  }
+
+  var vendas = sumAccount("71", "credit");
+  var coutVendas = sumAccount("61", "debit");
+  var depenses = sumAccount("62", "debit");
+
+  var achats = sumAccount("13", "debit", "purchase");
+  var comprasCredito = sumAccount("21", "credit", "purchase");
+  var pagamentosFornecedores = sumAccount("21", "debit", "supplier_payment");
+
+  var tresorerie = sumAccount("11", "debit") - sumAccount("11", "credit");
+  var stock = sumAccount("13", "debit") - sumAccount("13", "credit");
+  var clientesAReceber = sumAccount("12", "debit") - sumAccount("12", "credit");
+  var dividasFournisseurs = sumAccount("21", "credit") - sumAccount("21", "debit");
 
   var beneficeBrut = vendas - coutVendas;
-
-  var depenses = expenses.reduce(function(sum, row) {
-    return sum + (Number(row.amount) || 0);
-  }, 0);
-
-  var achats = purchases.reduce(function(sum, row) {
-    return sum + (Number(row.total) || 0);
-  }, 0);
-
-  var comprasCredito = purchases.reduce(function(sum, row) {
-    return sum + (Number(row.remaining_amount) || 0);
-  }, 0);
-
-  var pagamentosFornecedores = purchases.reduce(function(sum, row) {
-    return sum + (Number(row.paid_amount) || 0);
-  }, 0);
-
   var resultatNet = beneficeBrut - depenses;
-
   var marge = vendas > 0 ? (beneficeBrut / vendas) * 100 : 0;
 
-  var stockValue = products.reduce(function(sum, product) {
-    var qty = (Number(product.stock_shop) || 0) + (Number(product.stock_warehouse) || 0);
-    var cost = Number(product.purchase_price) || 0;
-    return sum + qty * cost;
-  }, 0);
-
-  var clientsARecevoir = (clientDebtsResult.data || []).reduce(function(sum, row) {
-    return sum + (Number(row.remaining_amount) || 0);
-  }, 0);
-
-  var dividasFournisseurs = (supplierDebtsResult.data || []).reduce(function(sum, row) {
-    return sum + (Number(row.remaining_amount) || 0);
-  }, 0);
-
-  var tresorerie = 0;
-
-  try {
-    var treasuryData = await getTreasuryFromSupabase({ from: from, to: to, type: "" });
-    tresorerie = Number(treasuryData.balance) || 0;
-  } catch (e) {
-    tresorerie = 0;
-  }
+  var vendasCount = entries.filter(function(entry) {
+    return entry.source_type === "sale";
+  }).length;
 
   var journal = [];
 
-  sales.forEach(function(sale) {
-    journal.push({
-      date: sale.sale_date || "",
-      type: "Venda",
-      desc: "Venda " + (sale.receipt_no || ""),
-      debito: Number(sale.total) || 0,
-      credito: 0,
-      source: "sales",
-      created_at: sale.created_at || ""
-    });
-  });
+  lines.forEach(function(line) {
+    var entry = entriesById[line.entry_id] || {};
 
-  expenses.forEach(function(row) {
     journal.push({
-      date: row.expense_date || "",
-      type: "Despesa",
-      desc: row.description || row.category || "",
-      debito: 0,
-      credito: Number(row.amount) || 0,
-      source: "expenses",
-      created_at: row.created_at || ""
-    });
-  });
-
-  purchases.forEach(function(row) {
-    journal.push({
-      date: String(row.created_at || "").slice(0, 10),
-      type: "Compra",
-      desc: "Compra fornecedor " + (row.supplier || ""),
-      debito: 0,
-      credito: Number(row.paid_amount) || 0,
-      source: "purchases",
-      created_at: row.created_at || ""
+      date: entry.entry_date || "",
+      type: line.account_code + " - " + (line.account_name || getAccountName(line.account_code)),
+      desc: entry.description || "",
+      debito: Number(line.debit) || 0,
+      credito: Number(line.credit) || 0,
+      source: entry.source_type || "",
+      created_at: entry.created_at || ""
     });
   });
 
@@ -7341,7 +7336,7 @@ async function getComptabiliteFromSupabase(params) {
   return {
     resume: {
       vendas: vendas,
-      vendasCount: sales.length,
+      vendasCount: vendasCount,
       coutVendas: coutVendas,
       beneficeBrut: beneficeBrut,
       marge: marge,
@@ -7353,12 +7348,12 @@ async function getComptabiliteFromSupabase(params) {
     },
     bilan: {
       tresorerie: tresorerie,
-      stock: stockValue,
-      clientesAReceber: clientsARecevoir,
-      actifSimplifie: tresorerie + stockValue + clientsARecevoir,
+      stock: stock,
+      clientesAReceber: clientesAReceber,
+      actifSimplifie: tresorerie + stock + clientesAReceber,
       dividasFournisseurs: dividasFournisseurs,
       passivo: dividasFournisseurs,
-      capitaisProprios: tresorerie + stockValue + clientsARecevoir - dividasFournisseurs
+      capitaisProprios: tresorerie + stock + clientesAReceber - dividasFournisseurs
     },
     period: {
       from: from || "-",
@@ -7948,4 +7943,143 @@ function renderFornNameDatalist() {
 
 function renderFornPayDatalist() {
   renderSupplierDatalists();
+}
+
+async function migrateAccountingEntriesFromExistingData() {
+  var organizationId = getAzulOrganizationId();
+
+  toast("Migration comptable en cours...", "success");
+
+  // 1. Ventes
+  var salesResult = await supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (salesResult.error) throw salesResult.error;
+
+  var sales = salesResult.data || [];
+  var saleIds = sales.map(function(sale) { return sale.id; });
+
+  var saleItems = [];
+
+  if (saleIds.length) {
+    var itemsResult = await supabaseClient
+      .from("sale_items")
+      .select("*")
+      .in("sale_id", saleIds);
+
+    if (itemsResult.error) throw itemsResult.error;
+    saleItems = itemsResult.data || [];
+  }
+
+  sales.forEach(async function(sale) {
+    var total = Number(sale.total) || 0;
+    var lines = Array.isArray(sale.payment_lines) ? sale.payment_lines : [];
+
+    var cashIn = getCashInAmountFromPaymentLines(lines, total);
+    var creditAmount = getCreditAmountFromPaymentLines(lines, total);
+
+    if (cashIn + creditAmount <= 0) {
+      cashIn = total;
+    }
+
+    var itemsOfSale = saleItems.filter(function(item) {
+      return item.sale_id === sale.id;
+    });
+
+    var costOfGoods = itemsOfSale.reduce(function(sum, item) {
+      return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
+    }, 0);
+
+    var accountingLines = [];
+
+    if (cashIn > 0) {
+      accountingLines.push({ account: "11", debit: cashIn, credit: 0 });
+    }
+
+    if (creditAmount > 0) {
+      accountingLines.push({ account: "12", debit: creditAmount, credit: 0 });
+    }
+
+    accountingLines.push({ account: "71", debit: 0, credit: total });
+
+    if (costOfGoods > 0) {
+      accountingLines.push({ account: "61", debit: costOfGoods, credit: 0 });
+      accountingLines.push({ account: "13", debit: 0, credit: costOfGoods });
+    }
+
+    await createAccountingEntry(
+      "sale",
+      sale.id,
+      sale.sale_date,
+      "Venda " + (sale.receipt_no || ""),
+      accountingLines
+    );
+  });
+
+  // 2. Achats
+  var purchasesResult = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  for (var i = 0; i < (purchasesResult.data || []).length; i++) {
+    var purchase = purchasesResult.data[i];
+
+    var totalPurchase = Number(purchase.total) || 0;
+    var paidAmount = Number(purchase.paid_amount) || 0;
+    var remainingAmount = Number(purchase.remaining_amount) || 0;
+
+    var purchaseLines = [
+      { account: "13", debit: totalPurchase, credit: 0 }
+    ];
+
+    if (paidAmount > 0) {
+      purchaseLines.push({ account: "11", debit: 0, credit: paidAmount });
+    }
+
+    if (remainingAmount > 0) {
+      purchaseLines.push({ account: "21", debit: 0, credit: remainingAmount });
+    }
+
+    await createAccountingEntry(
+      "purchase",
+      purchase.id,
+      String(purchase.created_at || "").slice(0, 10),
+      "Compra fornecedor " + (purchase.supplier || ""),
+      purchaseLines
+    );
+  }
+
+  // 3. Dépenses
+  var expensesResult = await supabaseClient
+    .from("expenses")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (expensesResult.error) throw expensesResult.error;
+
+  for (var j = 0; j < (expensesResult.data || []).length; j++) {
+    var expense = expensesResult.data[j];
+    var amount = Number(expense.amount) || 0;
+
+    if (amount <= 0) continue;
+
+    await createAccountingEntry(
+      "expense",
+      expense.id,
+      expense.expense_date,
+      "Depense - " + (expense.description || expense.category || ""),
+      [
+        { account: "62", debit: amount, credit: 0 },
+        { account: "11", debit: 0, credit: amount }
+      ]
+    );
+  }
+
+  toast("Migration comptable terminee.", "success");
+  loadComptabilite();
 }
