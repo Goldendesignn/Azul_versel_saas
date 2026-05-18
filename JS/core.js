@@ -639,7 +639,9 @@ async function savePurchaseToSupabase(data) {
   var supplier = String(data.forn || data.supplier || "").trim();
   var items = data.items || data.products || [];
   var isCredit = !!data.credit;
-  var paidAmount = Number(data.paidAmount || data.totalPaye || 0) || 0;
+  var totalPaidFromLines = (data.payments || []).reduce(function(sum, line) {
+    return sum + (Number(line.montant) || 0);
+  }, 0);
 
   if (!supplier) {
     throw new Error("Fornecedor obrigatorio.");
@@ -654,6 +656,14 @@ async function savePurchaseToSupabase(data) {
     var price = Number(item.pa || item.purchasePrice || item.purchase_price) || 0;
     return sum + qty * price;
   }, 0);
+  
+  var paidAmount = isCredit
+  ? Math.min(total, Number(data.paidAmount || totalPaidFromLines || 0) || 0)
+  : total;
+
+  var remainingAmount = isCredit
+    ? Math.max(0, total - paidAmount)
+    : 0;
 
   var purchaseResult = await supabaseClient
     .from("purchases")
@@ -662,8 +672,8 @@ async function savePurchaseToSupabase(data) {
       supplier: supplier,
       total: total,
       paid_amount: paidAmount,
-      remaining_amount: Math.max(0, total - paidAmount),
-      is_credit: isCredit
+      remaining_amount: remainingAmount,
+      is_credit: remainingAmount > 0
     })
     .select()
     .single();
@@ -678,19 +688,19 @@ async function savePurchaseToSupabase(data) {
   for (var i = 0; i < items.length; i++) {
     var savedProduct = await upsertProductFromPurchase(items[i], supplier);
 
-    purchaseItems.push({
-  purchase_id: purchase.id,
-  product_id: savedProduct.id,
-  product_name: savedProduct.name,
-  category: savedProduct.category || "",
-  code: savedProduct.code || "",
-  photo: savedProduct.photo || "",
-  variation: savedProduct.variation || "",
-  variations: savedProduct.variations || [],
-  purchase_price: Number(savedProduct.purchase_price) || 0,
-  sale_price: Number(savedProduct.sale_price) || 0,
-  quantity: Number(items[i].qty || items[i].quantity) || 0,
-  supplier: supplier
+  purchaseItems.push({
+    purchase_id: purchase.id,
+    product_id: savedProduct.id,
+    product_name: savedProduct.name,
+    category: savedProduct.category || "",
+    code: savedProduct.code || "",
+    photo: savedProduct.photo || "",
+    variation: savedProduct.variation || "",
+    variations: savedProduct.variations || [],
+    purchase_price: Number(savedProduct.purchase_price) || 0,
+    sale_price: Number(savedProduct.sale_price) || 0,
+    quantity: Number(items[i].qty || items[i].quantity) || 0,
+    supplier: supplier
   });
 
   }
@@ -3591,12 +3601,12 @@ async function saveAchat() {
   }
 
   try {
-    await savePurchaseToSupabase({
-      forn: supplier,
-      items: items,
-      credit: document.getElementById("a-credit").checked,
-      paidAmount: 0
-    });
+   await savePurchaseToSupabase({
+    forn: supplier,
+    items: items,
+    credit: document.getElementById("a-credit").checked,
+    payments: paiementLines || []
+  });
 
     toast("Achat registado!", "success");
 
@@ -3618,83 +3628,204 @@ async function saveAchat() {
     }
   }
 }
+async function getSupplierDebtFromSupabase(supplier) {
+  var organizationId = getAzulOrganizationId();
 
+  var result = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("supplier", supplier)
+    .gt("remaining_amount", 0);
 
+  if (result.error) throw result.error;
 
-// ===== PAGAMENTO FORNECEDOR =====
-function savePagamentoForn() {
-  var btn = document.getElementById('pg-forn-btn');
+  return (result.data || []).reduce(function(sum, row) {
+    return sum + (Number(row.remaining_amount) || 0);
+  }, 0);
+}
 
-  var data = {
-    date: document.getElementById('p-date').value,
-    forn: document.getElementById('p-forn').value.trim(),
-    montant: parseFloat(document.getElementById('p-montant').value) || 0,
-    note: document.getElementById('p-note').value.trim()
-  };
+async function registerSupplierPaymentInSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+  var supplier = String(data.forn || "").trim();
+  var amount = Number(data.montant) || 0;
 
-  if (!data.forn || data.montant <= 0) {
-    toast('Preenche fornecedor e montante!', 'error');
-    return;
+  if (!supplier) throw new Error("Fornecedor obrigatorio.");
+  if (amount <= 0) throw new Error("Montante invalido.");
+
+  var paymentResult = await supabaseClient
+    .from("supplier_payments")
+    .insert({
+      organization_id: organizationId,
+      supplier: supplier,
+      amount: amount,
+      note: data.note || "",
+      payment_date: data.date || new Date().toISOString().split("T")[0]
+    });
+
+  if (paymentResult.error) throw paymentResult.error;
+
+  var purchasesResult = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("supplier", supplier)
+    .gt("remaining_amount", 0)
+    .order("created_at", { ascending: true });
+
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  var remainingPayment = amount;
+  var purchases = purchasesResult.data || [];
+
+  for (var i = 0; i < purchases.length && remainingPayment > 0; i++) {
+    var purchase = purchases[i];
+    var currentRemaining = Number(purchase.remaining_amount) || 0;
+    var currentPaid = Number(purchase.paid_amount) || 0;
+    var applied = Math.min(currentRemaining, remainingPayment);
+
+    var updateResult = await supabaseClient
+      .from("purchases")
+      .update({
+        paid_amount: currentPaid + applied,
+        remaining_amount: currentRemaining - applied,
+        is_credit: currentRemaining - applied > 0
+      })
+      .eq("id", purchase.id);
+
+    if (updateResult.error) throw updateResult.error;
+
+    remainingPayment -= applied;
   }
 
-  btn.disabled = true;
-  btn.textContent = 'A registar...';
-  btn.style.opacity = '0.6';
+  return true;
+}
 
-  function bloquerbuttonpagamento (){
-    btn.disabled = false;
-    btn.textContent = 'Registar Pagamento';
-    btn.style.opacity = '1';
-    document.getElementById('restePayFourn').textContent = "0 kz";
-  }
+async function getResumoDettesFromSupabase() {
+  var organizationId = getAzulOrganizationId();
 
-  gsCall('registarPagamentoForn', data, function(res) {
-    toast('Pagamento registado!', 'success');
+  var result = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId);
 
-    document.getElementById('p-forn').value = '';
-    document.getElementById('p-montant').value = '';
-    document.getElementById('p-note').value = '';
+  if (result.error) throw result.error;
 
-    bloquerbuttonpagamento ();
-    renderFornPayDatalist();
-    loadResumoDettes();
+  var map = {};
 
-    
-  }, function(err) {
-    toast('Erro ao registar pagamento: ' + err, 'error');
+  (result.data || []).forEach(function(row) {
+    var supplier = row.supplier || "Fornecedor";
+    if (!map[supplier]) {
+      map[supplier] = {
+        forn: supplier,
+        totalCompras: 0,
+        totalPago: 0,
+        saldo: 0
+      };
+    }
 
-    btn.disabled = false;
-    btn.textContent = 'Registar Pagamento';
-    btn.style.opacity = '1';
+    map[supplier].totalCompras += Number(row.total) || 0;
+    map[supplier].totalPago += Number(row.paid_amount) || 0;
+    map[supplier].saldo += Number(row.remaining_amount) || 0;
+  });
+
+  return Object.keys(map).map(function(key) {
+    var row = map[key];
+    row.statut = row.saldo > 0 ? "En cours" : "Tout paye";
+    return row;
+  }).sort(function(a, b) {
+    return b.saldo - a.saldo;
   });
 }
 
+
+// ===== PAGAMENTO FORNECEDOR =====
+async function savePagamentoForn() {
+  var btn = document.getElementById("pg-forn-btn");
+
+  var data = {
+    date: document.getElementById("p-date").value,
+    forn: document.getElementById("p-forn").value.trim(),
+    montant: parseFloat(document.getElementById("p-montant").value) || 0,
+    note: document.getElementById("p-note").value.trim()
+  };
+
+  if (!data.forn || data.montant <= 0) {
+    toast("Preenche fornecedor e montante!", "error");
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+    btn.style.opacity = "0.6";
+  }
+
+  try {
+    await registerSupplierPaymentInSupabase(data);
+
+    toast("Pagamento registado!", "success");
+
+    document.getElementById("p-forn").value = "";
+    document.getElementById("p-montant").value = "";
+    document.getElementById("p-note").value = "";
+    document.getElementById("restePayFourn").textContent = "0 kz";
+
+    renderFornPayDatalist();
+    loadResumoDettes();
+
+  } catch (e) {
+    console.error("Erro pagamento fornecedor:", e);
+    toast("Erro ao registar pagamento: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = " Registar Pagamento";
+      btn.style.opacity = "1";
+    }
+  }
+}
+
 // ===== RESUMO DETTES =====
-function loadResumoDettes() {
-  var el = document.getElementById('resumo-dettes');
+async function loadResumoDettes() {
+  var el = document.getElementById("resumo-dettes");
+  if (!el) return;
+
   el.innerHTML = '<div class="empty">A carregar...</div>';
 
-  gsCall('getResumoDettes', {}, function(data) {
+  try {
+    var data = await getResumoDettesFromSupabase();
+
     if (!data || data.length === 0) {
       el.innerHTML = '<div class="empty">Sem dettes registadas</div>';
       return;
     }
-    var html = '<table class="data-table"><thead><tr>' +
-      '<th>Fornecedor</th><th>Total Compras</th><th>Total Pago</th><th>Saldo</th><th>Estatuto</th>' +
-      '</tr></thead><tbody>';
-    data.forEach(function(d) {
-      var saldoColor = d.saldo > 0 ? 'color:var(--red);font-weight:700;' : 'color:var(--green);font-weight:700;';
-      html += '<tr>' +
-        '<td style="font-weight:500">' + d.forn + '</td>' +
-        '<td>' + fmt(d.totalCompras) + '</td>' +
-        '<td>' + fmt(d.totalPago) + '</td>' +
-        '<td style="' + saldoColor + '">' + fmt(d.saldo) + '</td>' +
-        '<td><span class="tbadge ' + (d.saldo > 0 ? 'credito' : 'cash') + '">' + (d.statut || (d.saldo > 0 ? 'En cours' : 'Tout paye')) + '</span></td>' +
-        '</tr>';
-    });
-    html += '</tbody></table>';
-    el.innerHTML = html;
-  });
+
+    el.innerHTML = data.map(function(d) {
+      var saldoColor = d.saldo > 0 ? "var(--red)" : "var(--green)";
+
+      return '<div class="card" style="margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">' +
+          '<div>' +
+            '<div style="font-size:15px;font-weight:800;">' + escapeDepenseHtml(d.forn) + '</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Compras: ' + fmt(d.totalCompras) + '</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Pago: ' + fmt(d.totalPago) + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Saldo</div>' +
+            '<div style="font-size:18px;font-weight:900;color:' + saldoColor + ';">' + fmt(d.saldo) + '</div>' +
+            '<span class="tbadge ' + (d.saldo > 0 ? "credito" : "cash") + '">' + d.statut + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+  } catch (e) {
+    console.error("Erro resumo dettes:", e);
+    el.innerHTML = '<div class="empty">Erro ao carregar dettes</div>';
+    toast("Erro resumo dettes: " + (e.message || e), "error");
+  }
 }
 
 // ===== TRANSFERENCIA =====
@@ -5802,27 +5933,22 @@ function updateResteApayerClient() {
     .getClientDebt(client);
 }
 
-function updateResteApayerFourn() {
-  var cur = window._currency || 'Kz';
-  var fournisseur = (document.getElementById('p-forn') || {}).value || '';
+async function updateResteApayerFourn() {
+  var cur = window._currency || "Kz";
+  var fournisseur = (document.getElementById("p-forn") || {}).value || "";
+  var el = document.getElementById("restePayFourn");
 
-  google.script.run
-    .withSuccessHandler(function(result) {
-      var restePayFourn = document.getElementById('restePayFourn');
-      var reste = Number(result) || 0;
+  if (!el || !fournisseur.trim()) {
+    if (el) el.textContent = "0 " + cur;
+    return;
+  }
 
-      console.log("Voici le resultat " + result);
-
-      if (!restePayFourn) {
-        return;
-      }
-
-      restePayFourn.textContent = new Intl.NumberFormat('pt-PT').format(reste) + ' ' + cur;
-    })
-    .withFailureHandler(function(e) {
-      console.log("Erreur getFournDebt:", e.message);
-    })
-    .getFournDebt(fournisseur);
+  try {
+    var reste = await getSupplierDebtFromSupabase(fournisseur.trim());
+    el.textContent = new Intl.NumberFormat("pt-PT").format(reste) + " " + cur;
+  } catch (e) {
+    console.error("Erro getSupplierDebt:", e);
+  }
 }
 // ===== UTILS =====
 function fmt(n) {
