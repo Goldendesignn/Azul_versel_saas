@@ -1133,6 +1133,7 @@ function goTo(page, btn) {
   } catch (e) {
     toast('Erreur onglet: ' + (e && e.message ? e.message : e), 'error');
   }
+  injectLockSettingsCard();
 }
 window.goTo = goTo;
 
@@ -7655,3 +7656,147 @@ function toast(msg, type) {
     toastTimer = null;
   }, 3000);
 }
+
+var AZUL_LOCK_HASH_KEY = "azul_erp_lock_hash";
+var AZUL_LOCKED_KEY = "azul_erp_locked";
+
+async function azulHashPassword(password) {
+  var data = new TextEncoder().encode(password);
+  var hash = await crypto.subtle.digest("SHA-256", data);
+
+  return Array.from(new Uint8Array(hash))
+    .map(function(byte) {
+      return byte.toString(16).padStart(2, "0");
+    })
+    .join("");
+}
+
+function getSettingsPageElement() {
+  return document.getElementById("page-definicoes")
+    || document.getElementById("page-def")
+    || document.getElementById("page-settings")
+    || document.getElementById("page-config")
+    || document.getElementById("page-parametros");
+}
+
+function injectLockSettingsCard() {
+  var page = getSettingsPageElement();
+  if (!page || document.getElementById("erpLockSettingsCard")) return;
+
+  var card = document.createElement("div");
+  card.id = "erpLockSettingsCard";
+  card.className = "lock-settings-card";
+
+  card.innerHTML = `
+    <h3>Segurança do ERP</h3>
+
+    <div class="lock-settings-grid">
+      <input id="erpLockPassword" type="password" placeholder="Novo mot de passe">
+      <input id="erpLockPasswordConfirm" type="password" placeholder="Confirmar mot de passe">
+    </div>
+
+    <div class="lock-actions">
+      <button class="erp-lock-save" onclick="saveErpLockPassword()">Guardar mot de passe</button>
+      <button class="erp-lock-danger" onclick="lockErpNow()">Déconnexion / Verrouiller</button>
+    </div>
+  `;
+
+  page.appendChild(card);
+}
+
+async function saveErpLockPassword() {
+  var pass = document.getElementById("erpLockPassword").value.trim();
+  var confirm = document.getElementById("erpLockPasswordConfirm").value.trim();
+
+  if (pass.length < 4) {
+    toast("Le mot de passe doit avoir au moins 4 caractères.", "error");
+    return;
+  }
+
+  if (pass !== confirm) {
+    toast("Les mots de passe ne correspondent pas.", "error");
+    return;
+  }
+
+  var hash = await azulHashPassword(pass);
+  localStorage.setItem(AZUL_LOCK_HASH_KEY, hash);
+
+  document.getElementById("erpLockPassword").value = "";
+  document.getElementById("erpLockPasswordConfirm").value = "";
+
+  toast("Mot de passe de verrouillage enregistré.", "success");
+}
+
+function lockErpNow() {
+  var hash = localStorage.getItem(AZUL_LOCK_HASH_KEY);
+
+  if (!hash) {
+    toast("Ajoute d'abord un mot de passe dans les paramètres.", "error");
+    return;
+  }
+
+  localStorage.setItem(AZUL_LOCKED_KEY, "1");
+  showErpLockScreen();
+}
+
+function showErpLockScreen() {
+  if (document.getElementById("erpLockOverlay")) return;
+
+  var overlay = document.createElement("div");
+  overlay.id = "erpLockOverlay";
+  overlay.className = "erp-lock-overlay";
+
+  overlay.innerHTML = `
+    <div class="erp-lock-box">
+      <h2>ERP verrouillé</h2>
+      <p>Entre le mot de passe pour continuer.</p>
+
+      <input id="erpUnlockPassword" type="password" placeholder="Mot de passe">
+      <button onclick="unlockErp()">Déverrouiller</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  setTimeout(function() {
+    var input = document.getElementById("erpUnlockPassword");
+    if (input) input.focus();
+  }, 100);
+}
+
+async function unlockErp() {
+  var input = document.getElementById("erpUnlockPassword");
+  var pass = input.value.trim();
+
+  if (!pass) {
+    toast("Entre le mot de passe.", "error");
+    return;
+  }
+
+  var savedHash = localStorage.getItem(AZUL_LOCK_HASH_KEY);
+  var typedHash = await azulHashPassword(pass);
+
+  if (typedHash !== savedHash) {
+    toast("Mot de passe incorrect.", "error");
+    input.value = "";
+    input.focus();
+    return;
+  }
+
+  localStorage.removeItem(AZUL_LOCKED_KEY);
+
+  var overlay = document.getElementById("erpLockOverlay");
+  if (overlay) overlay.remove();
+
+  toast("ERP déverrouillé.", "success");
+}
+
+function initErpLockSystem() {
+  injectLockSettingsCard();
+
+  if (localStorage.getItem(AZUL_LOCKED_KEY) === "1") {
+    showErpLockScreen();
+  }
+}
+
+document.addEventListener("DOMContentLoaded", initErpLockSystem);
