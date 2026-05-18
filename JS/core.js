@@ -781,6 +781,7 @@ var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
 
 
 // ===== INIT =====
+
 function switchRevendeurTab(tab, btn) {
   ['create','manage','history'].forEach(function(name) {
     var panel = document.getElementById('rev-panel-' + name);
@@ -2394,7 +2395,303 @@ function updatePrice(i, val) {
   document.getElementById('cartTotal').textContent = fmt(total);
   updatePaymentStatus();
 }
+function generateConsignmentNo() {
+  var now = new Date();
+  return "CON-" +
+    String(now.getFullYear()).slice(-2) +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0") +
+    "-" +
+    String(now.getHours()).padStart(2, "0") +
+    String(now.getMinutes()).padStart(2, "0") +
+    String(now.getSeconds()).padStart(2, "0");
+}
 
+function getRevSelectionIds() {
+  return Array.prototype.slice.call(document.querySelectorAll(".rev-open-check:checked"))
+    .map(function(input) { return input.value; })
+    .filter(Boolean);
+}
+
+async function createConsignmentInSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+  var items = data.items || [];
+  var consignmentNo = generateConsignmentNo();
+
+  if (!data.revendeur) throw new Error("Revendeur obrigatorio.");
+  if (!items.length) throw new Error("Ajoute au moins un produit.");
+
+  var total = items.reduce(function(sum, item) {
+    return sum + (Number(item.qty) || 0) * (Number(item.price) || 0);
+  }, 0);
+
+  for (var i = 0; i < items.length; i++) {
+    var product = (products || []).find(function(p) { return p.name === items[i].baseName || p.name === items[i].name; });
+    if (!product) throw new Error("Produto nao encontrado: " + items[i].name);
+
+    var qty = Number(items[i].qty) || 0;
+    var stock = Number(product.stockBoutique) || 0;
+
+    if (stock < qty) {
+      throw new Error("Stock insuficiente para " + product.name + ". Disponivel: " + stock);
+    }
+  }
+
+  var consignmentResult = await supabaseClient
+    .from("reseller_consignments")
+    .insert({
+      organization_id: organizationId,
+      consignment_no: consignmentNo,
+      reseller_name: data.revendeur,
+      consignment_date: data.date || new Date().toISOString().split("T")[0],
+      status: "open",
+      total: total,
+      paid_amount: 0
+    })
+    .select()
+    .single();
+
+  if (consignmentResult.error) throw consignmentResult.error;
+
+  var consignment = consignmentResult.data;
+  var itemRows = [];
+
+  for (var j = 0; j < items.length; j++) {
+    var item = items[j];
+    var productRow = (products || []).find(function(p) { return p.name === item.baseName || p.name === item.name; });
+    var qtyItem = Number(item.qty) || 0;
+    var currentShop = Number(productRow.stockBoutique) || 0;
+
+    itemRows.push({
+      organization_id: organizationId,
+      consignment_id: consignment.id,
+      product_id: productRow.id,
+      product_name: item.name,
+      quantity: qtyItem,
+      unit_price: Number(item.price) || 0,
+      total: qtyItem * (Number(item.price) || 0),
+      variation: (item.selectedVariations || []).join(" | "),
+      variations: item.selectedVariations || []
+    });
+
+    var stockResult = await supabaseClient
+      .from("products")
+      .update({ stock_shop: currentShop - qtyItem })
+      .eq("id", productRow.id);
+
+    if (stockResult.error) throw stockResult.error;
+  }
+
+  var itemsResult = await supabaseClient
+    .from("reseller_consignment_items")
+    .insert(itemRows);
+
+  if (itemsResult.error) throw itemsResult.error;
+
+  return consignment;
+}
+
+async function getResellerNamesFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var result = await supabaseClient
+    .from("reseller_consignments")
+    .select("reseller_name")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
+  if (result.error) throw result.error;
+
+  var seen = {};
+  return (result.data || []).map(function(row) {
+    return String(row.reseller_name || "").trim();
+  }).filter(function(name) {
+    var key = name.toLowerCase();
+    if (!name || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+}
+
+async function getConsignmentsByResellerFromSupabase(name) {
+  var organizationId = getAzulOrganizationId();
+
+  var result = await supabaseClient
+    .from("reseller_consignments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("reseller_name", name)
+    .eq("status", "open")
+    .order("consignment_date", { ascending: false });
+
+  if (result.error) throw result.error;
+
+  var consignments = result.data || [];
+  if (!consignments.length) return [];
+
+  var ids = consignments.map(function(c) { return c.id; });
+
+  var itemsResult = await supabaseClient
+    .from("reseller_consignment_items")
+    .select("*")
+    .in("consignment_id", ids);
+
+  if (itemsResult.error) throw itemsResult.error;
+
+  var itemsByConsignment = {};
+  (itemsResult.data || []).forEach(function(item) {
+    if (!itemsByConsignment[item.consignment_id]) itemsByConsignment[item.consignment_id] = [];
+    itemsByConsignment[item.consignment_id].push(item);
+  });
+
+  return consignments.map(function(c) {
+    var items = itemsByConsignment[c.id] || [];
+    return {
+      id: c.id,
+      displayId: c.consignment_no,
+      date: c.consignment_date,
+      revendeur: c.reseller_name,
+      status: c.status,
+      total: Number(c.total) || 0,
+      qty: items.reduce(function(sum, item) { return sum + (Number(item.quantity) || 0); }, 0),
+      items: items.map(function(item) {
+        return {
+          prod: item.product_name,
+          name: item.product_name,
+          qty: Number(item.quantity) || 0,
+          total: Number(item.total) || 0,
+          product_id: item.product_id
+        };
+      })
+    };
+  });
+}
+
+async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) {
+  var organizationId = getAzulOrganizationId();
+  var activeLines = (paymentLines || []).filter(function(p) { return Number(p.montant) > 0; });
+  var totalPaid = activeLines.reduce(function(sum, p) { return sum + (Number(p.montant) || 0); }, 0);
+  var paymentSummary = getRevPaymentSummary(activeLines);
+  var recibo = "REV-" + Date.now();
+
+  for (var i = 0; i < ids.length; i++) {
+    var result = await supabaseClient
+      .from("reseller_consignments")
+      .update({
+        status: "paid",
+        paid_amount: totalPaid,
+        payment_summary: paymentSummary,
+        receipt_no: recibo,
+        closed_at: new Date().toISOString()
+      })
+      .eq("organization_id", organizationId)
+      .eq("id", ids[i]);
+
+    if (result.error) throw result.error;
+  }
+
+  return true;
+}
+
+async function returnSelectedConsignmentsInSupabase(ids) {
+  var organizationId = getAzulOrganizationId();
+
+  for (var i = 0; i < ids.length; i++) {
+    var itemsResult = await supabaseClient
+      .from("reseller_consignment_items")
+      .select("*")
+      .eq("consignment_id", ids[i]);
+
+    if (itemsResult.error) throw itemsResult.error;
+
+    for (var j = 0; j < (itemsResult.data || []).length; j++) {
+      var item = itemsResult.data[j];
+
+      var productResult = await supabaseClient
+        .from("products")
+        .select("*")
+        .eq("id", item.product_id)
+        .single();
+
+      if (productResult.error) throw productResult.error;
+
+      var currentShop = Number(productResult.data.stock_shop) || 0;
+
+      var stockResult = await supabaseClient
+        .from("products")
+        .update({ stock_shop: currentShop + (Number(item.quantity) || 0) })
+        .eq("id", item.product_id);
+
+      if (stockResult.error) throw stockResult.error;
+    }
+
+    var updateResult = await supabaseClient
+      .from("reseller_consignments")
+      .update({
+        status: "returned",
+        closed_at: new Date().toISOString()
+      })
+      .eq("organization_id", organizationId)
+      .eq("id", ids[i]);
+
+    if (updateResult.error) throw updateResult.error;
+  }
+
+  return true;
+}
+
+async function getResellerHistoryFromSupabase(filters) {
+  var organizationId = getAzulOrganizationId();
+
+  filters = filters || {};
+
+  var query = supabaseClient
+    .from("reseller_consignments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
+  if (filters.revendeur) query = query.eq("reseller_name", filters.revendeur);
+  if (filters.from) query = query.gte("consignment_date", filters.from);
+  if (filters.to) query = query.lte("consignment_date", filters.to);
+
+  var result = await query;
+  if (result.error) throw result.error;
+
+  var rows = result.data || [];
+  if (!rows.length) return [];
+
+  var ids = rows.map(function(row) { return row.id; });
+
+  var itemsResult = await supabaseClient
+    .from("reseller_consignment_items")
+    .select("*")
+    .in("consignment_id", ids);
+
+  if (itemsResult.error) throw itemsResult.error;
+
+  var itemsById = {};
+  (itemsResult.data || []).forEach(function(item) {
+    if (!itemsById[item.consignment_id]) itemsById[item.consignment_id] = [];
+    itemsById[item.consignment_id].push(item);
+  });
+
+  return rows.map(function(row) {
+    var items = itemsById[row.id] || [];
+    return {
+      id: row.consignment_no,
+      actionDate: row.consignment_date,
+      revendeur: row.reseller_name,
+      status: row.status,
+      itemsSummary: items.map(function(item) {
+        return item.product_name + " x" + item.quantity;
+      }).join(", "),
+      total: Number(row.total) || 0,
+      payment: row.payment_summary || "",
+      recibo: row.receipt_no || ""
+    };
+  });
+}
 function renderRevProducts(list) {
   var g = document.getElementById('revProdGrid');
   if (!g) return;
@@ -2427,7 +2724,7 @@ function renderRevProducts(list) {
       '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
         (out ? ' Esgotado' : 'Stock : ' + p.stockBoutique + ' un') +
       '</div>';
-  if (!out) div.onclick = function() { addToRevCart(p.name, p.stockBoutique); };
+  if (!out) {   div.onclick = function() { addToRevCart(p.name, p.stockBoutique); }; }
     g.appendChild(div);
   });
 }
@@ -2440,16 +2737,32 @@ function filterRevProducts() {
 }
 
 function addToRevCart(name, stock) {
-  var ex = revCart.find(function(i) { return i.name === name; });
-  if (ex) {
-    if (ex.qty >= stock) { toast('Stock insuficiente para consignation.', 'error'); return; }
-    ex.qty++;
-    renderRevCart();
+  var product = (products || []).find(function(p) { return p.name === name; }) || {};
+
+  var qtyAlreadyReserved = revCart.reduce(function(sum, item) {
+    return sum + (item.name === name ? (parseFloat(item.qty) || 0) : 0);
+  }, 0);
+
+  if (qtyAlreadyReserved >= stock) {
+    toast("Stock insuficiente para consignation.", "error");
     return;
   }
-  var product = (products || []).find(function(p) { return p.name === name; }) || {};
-  revCart.push({ name: name, price: 0, qty: 1, stock: stock, availableVariations: parseVariationList(product.variation || product.variations), selectedVariations: [] });
+
+  revCart.push({
+    name: name,
+    price: product.price || 0,
+    qty: 1,
+    stock: stock,
+    availableVariations: parseVariationList(product.variation || product.variations),
+    selectedVariations: []
+  });
+
   renderRevCart();
+
+  setTimeout(function() {
+    var input = document.getElementById("rev-price-" + (revCart.length - 1));
+    if (input) input.focus();
+  }, 50);
 }
 
 function renderRevCart() {
@@ -2492,10 +2805,27 @@ function renderRevCart() {
 }
 
 function chgRevQty(i, d) {
-  var next = revCart[i].qty + d;
-  if (next <= 0) { revCart.splice(i, 1); renderRevCart(); return; }
-  if (next > revCart[i].stock) { toast('Stock insuficiente pour ce produit.', 'error'); return; }
-  revCart[i].qty = next;
+  if (!revCart[i]) return;
+
+  var newQty = (parseFloat(revCart[i].qty) || 0) + d;
+
+  if (newQty <= 0) {
+    revCart.splice(i, 1);
+    renderRevCart();
+    return;
+  }
+
+  var productName = revCart[i].name;
+  var qtyOtherLines = revCart.reduce(function(sum, item, index) {
+    return sum + (index !== i && item.name === productName ? (parseFloat(item.qty) || 0) : 0);
+  }, 0);
+
+  if (qtyOtherLines + newQty > revCart[i].stock) {
+    toast("Stock insuficiente para consignation. Disponivel: " + revCart[i].stock, "error");
+    return;
+  }
+
+  revCart[i].qty = newQty;
   renderRevCart();
 }
 
@@ -2521,31 +2851,73 @@ function clearRevCart() {
   renderRevCart();
 }
 
-function saveConsignation() {
-  var revendeur = document.getElementById('rev-name').value.trim();
-  if (!revendeur) { toast('Entra o nome do revendeur!', 'error'); return; }
-  if (!revCart.length) { toast('Ajoute au moins un produit!', 'error'); return; }
-  var invalid = revCart.find(function(item) { return !item.price || item.price <= 0; });
-  if (invalid) { toast('Entra o prix pour ' + invalid.name, 'error'); return; }
+async function saveConsignation() {
+  var revendeur = document.getElementById("rev-name").value.trim();
 
-  var btn = document.getElementById('revSaveBtn');
-  btn.disabled = true;
-  btn.textContent = 'A registar...';
+  if (!revendeur) {
+    toast("Entra o nome do revendeur!", "error");
+    return;
+  }
 
-  gsCall('registarConsignacao', {
-    date: document.getElementById('rev-date').value,
-    revendeur: revendeur,
-    items: revCart.map(function(item) { return { name: getItemDisplayName(item), qty: item.qty, price: item.price }; })
-  }, function(res) {
-    toast('Consignation creee: ' + (res && res.id ? res.id : ''), 'success');
-    clearRevCart();
-    btn.disabled = false;
-    btn.textContent = getText('create_consignment_button');
-    loadProducts();
-    loadOpenConsignations();
-    document.getElementById('rev-detail-name').value = revendeur;
-    loadRevendeurDetail();
+  if (!revCart.length) {
+    toast("Ajoute au moins un produit!", "error");
+    return;
+  }
+
+  var invalid = revCart.find(function(item) {
+    return !item.price || item.price <= 0;
   });
+
+  if (invalid) {
+    toast("Entra o prix pour " + invalid.name, "error");
+    return;
+  }
+
+  var btn = document.getElementById("revSaveBtn");
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+  }
+
+  try {
+    var res = await createConsignmentInSupabase({
+      date: document.getElementById("rev-date").value,
+      revendeur: revendeur,
+      items: revCart.map(function(item) {
+        return {
+          baseName: item.name,
+          name: getItemDisplayName(item),
+          qty: item.qty,
+          price: item.price,
+          selectedVariations: item.selectedVariations || []
+        };
+      })
+    });
+
+    toast("Consignation creee: " + (res.consignment_no || ""), "success");
+
+    clearRevCart();
+
+    await loadProducts(true);
+    loadRevendeurNames();
+
+    document.getElementById("rev-manage-name").value = revendeur;
+    document.getElementById("rev-history-name").value = revendeur;
+
+    loadRevendeurConsignations();
+    loadRevHistory();
+
+  } catch (e) {
+    console.error("Erro consignation:", e);
+    toast("Erro consignation: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = getText("create_consignment_button");
+    }
+  }
 }
 
 function renderRevPayLines() {
@@ -2671,28 +3043,39 @@ function loadRevendeurDetail() {
     el.innerHTML = html;
   });
 }
-function loadRevendeurNames() {
-  var select = document.getElementById('rev-manage-name');
-  var dataList = document.getElementById('revendeur-list');
+async function loadRevendeurNames() {
+  var select = document.getElementById("rev-manage-name");
+  var dataList = document.getElementById("revendeur-list");
+
   if (!select || !dataList) return;
-  gsCall('getRevendeurNames', {}, function(list) {
-    list = Array.isArray(list) ? list : [];
+
+  try {
+    var list = await getResellerNamesFromSupabase();
+
     var current = select.value;
+
     select.innerHTML = '<option value="">Choisir un revendeur</option>';
-    dataList.innerHTML = '';
+    dataList.innerHTML = "";
+
     list.forEach(function(name) {
-      var opt = document.createElement('option');
+      var opt = document.createElement("option");
       opt.value = name;
       opt.textContent = name;
       select.appendChild(opt);
-      var dl = document.createElement('option');
+
+      var dl = document.createElement("option");
       dl.value = name;
       dataList.appendChild(dl);
     });
-    if (current && list.indexOf(current) >= 0) select.value = current;
-  });
-}
 
+    if (current && list.indexOf(current) >= 0) {
+      select.value = current;
+    }
+
+  } catch (e) {
+    console.error("Erro revendeur names:", e);
+  }
+}
 function saveConsignation() {
   var revendeur = document.getElementById('rev-name').value.trim();
   if (!revendeur) { toast('Entra o nome do revendeur!', 'error'); return; }
@@ -2728,51 +3111,68 @@ function loadOpenConsignations() {
   loadRevendeurNames();
 }
 
-function loadRevendeurConsignations() {
-  var name = (document.getElementById('rev-manage-name').value || '').trim();
-  var box = document.getElementById('rev-open-list');
+async function loadRevendeurConsignations() {
+  var name = (document.getElementById("rev-manage-name").value || "").trim();
+  var box = document.getElementById("rev-open-list");
+
   if (!box) return;
-  var payPanel = document.getElementById('rev-payment-panel');
-  var returnPanel = document.getElementById('rev-return-panel');
-  if (payPanel) payPanel.style.display = 'none';
-  if (returnPanel) returnPanel.style.display = 'none';
+
+  var payPanel = document.getElementById("rev-payment-panel");
+  var returnPanel = document.getElementById("rev-return-panel");
+
+  if (payPanel) payPanel.style.display = "none";
+  if (returnPanel) returnPanel.style.display = "none";
+
   if (!name) {
     revOpenConsignations = [];
-    box.innerHTML = '<div class="empty">'+getText('revendeurselcttext')+'</div>';
+    box.innerHTML = '<div class="empty">' + getText("revendeurselcttext") + "</div>";
     updateRevActionPanel([]);
     applyLanguage();
     return;
   }
-  box.innerHTML = '<div class="empty">'+getText('loading')+'</div>';
-  gsCall('getConsignationsByRevendeur', name, function(list) {
-    list = Array.isArray(list) ? list : [];
+
+  box.innerHTML = '<div class="empty">' + getText("loading") + "</div>";
+
+  try {
+    var list = await getConsignmentsByResellerFromSupabase(name);
+
     revOpenConsignations = list;
+
     if (!list.length) {
-      box.innerHTML = '<div class="empty">'+getText('no_open_consignment')+'</div>';
+      box.innerHTML = '<div class="empty">' + getText("no_open_consignment") + "</div>";
       updateRevActionPanel([]);
       return;
     }
-    var html = '';
+
+    var html = "";
+
     list.forEach(function(c) {
       html += '<label style="display:block;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;background:var(--surface2);">' +
         '<div style="display:flex;gap:10px;align-items:flex-start;">' +
           '<input type="checkbox" class="rev-open-check" value="' + c.id + '" onchange="updateRevActionPanel()" style="margin-top:3px;accent-color:var(--blue);">' +
           '<div style="flex:1;">' +
             '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">' +
-              '<div style="font-weight:600;">' + c.id + '</div>' +
-              '<div style="font-family:Playfair Display,serif;color:var(--blue);">' + fmt(c.total) + '</div>' +
-            '</div>' +
-            '<div style="font-size:12px;color:var(--muted);margin-top:3px;">' + c.date + '  ' + c.qty + ' un</div>' +
-            '<div style="font-size:12px;margin-top:6px;line-height:1.5;">' + (c.items || []).map(function(it) { return (it && typeof it === 'object') ? ((it.prod || it.name || '') + ' x' + (it.qty || 0)) : it; }).join(', ') + '</div>' +
-          '</div>' +
-        '</div>' +
-      '</label>';
+              '<div style="font-weight:600;">' + escapeDepenseHtml(c.displayId || c.id) + "</div>" +
+              '<div style="font-family:Playfair Display,serif;color:var(--blue);">' + fmt(c.total) + "</div>" +
+            "</div>" +
+            '<div style="font-size:12px;color:var(--muted);margin-top:3px;">' + escapeDepenseHtml(c.date || "") + "  " + c.qty + " un</div>" +
+            '<div style="font-size:12px;margin-top:6px;line-height:1.5;">' +
+              (c.items || []).map(function(it) { return escapeDepenseHtml((it.prod || it.name || "") + " x" + (it.qty || 0)); }).join(", ") +
+            "</div>" +
+          "</div>" +
+        "</div>" +
+      "</label>";
     });
-    box.innerHTML = html;
-    updateRevActionPanel(list);
-  });
-}
 
+    box.innerHTML = html;
+    updateRevActionPanel();
+
+  } catch (e) {
+    console.error("Erro consignations revendeur:", e);
+    box.innerHTML = '<div class="empty">Erro ao carregar consignations</div>';
+    toast("Erro consignations: " + (e.message || e), "error");
+  }
+}
 function getCheckedRevConsignationIds() {
   return Array.prototype.slice.call(document.querySelectorAll('.rev-open-check:checked')).map(function(el) {
     return el.value;
@@ -2837,10 +3237,49 @@ function updateRevActionPanel(list) {
   renderRevActionSummaries(list);
 }
 
-function confirmRevAction() {
-  var action = (document.getElementById('rev-action-type') || {}).value || 'payment';
-  if (action === 'return') confirmSelectedRevReturn();
-  else confirmSelectedRevPayments();
+async function confirmRevAction() {
+  var action = (document.getElementById("rev-action-type") || {}).value || "payment";
+  var ids = getRevSelectionIds();
+
+  if (!ids.length) {
+    toast("Selectionne une consignation.", "error");
+    return;
+  }
+
+  try {
+    if (action === "return") {
+      await returnSelectedConsignmentsInSupabase(ids);
+      toast("Marchandise retournee.", "success");
+    } else {
+      var active = revPaymentLines.filter(function(p) {
+        return (parseFloat(p.montant) || 0) > 0;
+      });
+
+      if (!active.length) {
+        toast("Ajoute un paiement.", "error");
+        return;
+      }
+
+      await paySelectedConsignmentsInSupabase(
+        ids,
+        active,
+        document.getElementById("rev-action-date").value
+      );
+
+      toast("Consignation payee avec succes!", "success");
+      revPaymentLines = [{ method: "Cash", montant: 0 }];
+      renderRevPayLines();
+    }
+
+    await loadProducts(true);
+    loadRevendeurConsignations();
+    loadRevHistory();
+    loadDashboard();
+
+  } catch (e) {
+    console.error("Erro action revendeur:", e);
+    toast("Erro revendeur: " + (e.message || e), "error");
+  }
 }
 
 function prepareRevPayment() {
@@ -2960,36 +3399,45 @@ function returnRevConsignation() {
   confirmSelectedRevReturn();
 }
 
-function loadRevHistory() {
-  var body = document.getElementById('revHistoryBody');
+async function loadRevHistory() {
+  var body = document.getElementById("revHistoryBody");
   if (!body) return;
+
   body.innerHTML = '<tr><td colspan="8" class="empty">A carregar...</td></tr>';
-  gsCall('getHistoriqueConsignations', {
-    revendeur: document.getElementById('rev-history-name').value.trim(),
-    from: document.getElementById('rev-history-from').value,
-    to: document.getElementById('rev-history-to').value
-  }, function(list) {
-    list = Array.isArray(list) ? list : [];
+
+  try {
+    var list = await getResellerHistoryFromSupabase({
+      revendeur: document.getElementById("rev-history-name").value.trim(),
+      from: document.getElementById("rev-history-from").value,
+      to: document.getElementById("rev-history-to").value
+    });
+
     if (!list.length) {
       body.innerHTML = '<tr><td colspan="8" class="empty">Nenhum historique encontrado</td></tr>';
       return;
     }
-    body.innerHTML = '';
-    list.forEach(function(row) {
-      body.innerHTML += '<tr>' +
-        '<td>' + row.id + '</td>' +
-        '<td>' + (row.actionDate || row.date || '') + '</td>' +
-        '<td>' + (row.revendeur || '') + '</td>' +
-        '<td>' + (row.status || '') + '</td>' +
-        '<td style="font-size:11px;line-height:1.4;">' + (row.itemsSummary || '') + '</td>' +
-        '<td style="color:var(--blue);font-weight:600;">' + fmt(row.total || 0) + '</td>' +
-        '<td>' + (row.payment || '-') + '</td>' +
-        '<td>' + (row.recibo || '-') + '</td>' +
-      '</tr>';
-    });
-  });
-}
 
+    body.innerHTML = "";
+
+    list.forEach(function(row) {
+      body.innerHTML += "<tr>" +
+        "<td>" + escapeDepenseHtml(row.id || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.actionDate || row.date || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.revendeur || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.status || "") + "</td>" +
+        '<td style="font-size:11px;line-height:1.4;">' + escapeDepenseHtml(row.itemsSummary || "") + "</td>" +
+        '<td style="color:var(--blue);font-weight:600;">' + fmt(row.total || 0) + "</td>" +
+        "<td>" + escapeDepenseHtml(row.payment || "-") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.recibo || "-") + "</td>" +
+      "</tr>";
+    });
+
+  } catch (e) {
+    console.error("Erro historique revendeur:", e);
+    body.innerHTML = '<tr><td colspan="8" class="empty">Erro ao carregar historique</td></tr>';
+    toast("Erro historique revendeur: " + (e.message || e), "error");
+  }
+}
 function loadRevendeurDetail() {
   loadRevHistory();
 }
