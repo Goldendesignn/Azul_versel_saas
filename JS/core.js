@@ -836,6 +836,7 @@ async function savePurchaseToSupabase(data) {
   var organizationId = getAzulOrganizationId();
 
   var supplier = String(data.forn || data.supplier || "").trim();
+  await upsertSupplierToSupabase({ name: supplier });
   var items = data.items || data.products || [];
   var isCredit = !!data.credit;
   var totalPaidFromLines = (data.payments || []).reduce(function(sum, line) {
@@ -1060,6 +1061,9 @@ function goTo(page, btn) {
     }
     if (page === 'achat' && typeof renderMobileAchatSummary === 'function') {
     renderMobileAchatSummary();
+    }
+    if (page === "forn" || page === "achat") {
+  renderSupplierDatalists();
     }
   } catch (e) {
     toast('Erreur onglet: ' + (e && e.message ? e.message : e), 'error');
@@ -1868,39 +1872,11 @@ function renderAchatProductDatalist() {
 
 //MOI-MEME
 function renderFornNameDatalist() {
-  var list = document.getElementById('list-forn');
-  if (!list) return;
-
-  // 1. récupérer les fournisseurs
-  var fournisseurs = (products || [])
-    .map(p => p.supplier)
-    .filter(f => f && f.trim() !== '');
-
-  // 2. enlever les doublons
-  var uniques = [...new Set(fournisseurs)];
-
-  // 3. générer les options
-  list.innerHTML = uniques.map(function(f) {
-    return '<option value="' + escapeDepenseHtml(f) + '"></option>';
-  }).join('');
+  renderSupplierDatalists();
 }
 //MOI-MEME
 function renderFornPayDatalist() {
-  var list = document.getElementById('list-pay-forn');
-  if (!list) return;
-
-  // 1. récupérer les fournisseurs
-  var fournisseurs = (products || [])
-    .map(p => p.supplier)
-    .filter(f => f && f.trim() !== '');
-
-  // 2. enlever les doublons
-  var uniques = [...new Set(fournisseurs)];
-
-  // 3. générer les options
-  list.innerHTML = uniques.map(function(f) {
-    return '<option value="' + escapeDepenseHtml(f) + '"></option>';
-  }).join('');
+  renderSupplierDatalists();
 }
 
 function fillFornecedorDatalists(names) {
@@ -6164,30 +6140,50 @@ function loadComptabilite() {
   });
 }
 // ===== FORNECEDORES =====
-function saveFornecedor() {
+async function saveFornecedor() {
   var data = {
-    nome: document.getElementById('forn-nome').value.trim(),
-    tel:  document.getElementById('forn-tel').value.trim(),
-    pais: document.getElementById('forn-pais').value.trim(),
-    nota: document.getElementById('forn-nota').value.trim()
+    nome: document.getElementById("forn-nome").value.trim(),
+    tel: document.getElementById("forn-tel").value.trim(),
+    pais: document.getElementById("forn-pais").value.trim(),
+    nota: document.getElementById("forn-nota").value.trim()
   };
-  if (!data.nome) { toast('Entra o nome do fornecedor!', 'error'); return; }
 
-  var btn = document.getElementById('fornBtn');
+  if (!data.nome) {
+    toast("Entra o nome do fornecedor!", "error");
+    return;
+  }
+
+  var btn = document.getElementById("fornBtn");
+
+  if (btn) {
     btn.disabled = true;
-    btn.textContent = 'A registar...';
-    btn.style.opacity = '0.6';
+    btn.textContent = "A registar...";
+    btn.style.opacity = "0.6";
+  }
 
-  gsCall('registarFornecedor', data, function() {
-    toast('Fornecedor registado!', 'success');
-    document.getElementById('forn-nome').value = '';
-    document.getElementById('forn-tel').value  = '';
-    document.getElementById('forn-pais').value = '';
-    document.getElementById('forn-nota').value = '';
-    renderFornNameDatalist();
-    renderFornPayDatalist();
-    btn.disabled = false; btn.textContent = ' Registar Fornecedor'; btn.style.opacity = '1';
-  });
+  try {
+    await upsertSupplierToSupabase(data);
+
+    toast("Fornecedor guardado!", "success");
+
+    document.getElementById("forn-nome").value = "";
+    document.getElementById("forn-tel").value = "";
+    document.getElementById("forn-pais").value = "";
+    document.getElementById("forn-nota").value = "";
+
+    await renderSupplierDatalists();
+
+  } catch (e) {
+    console.error("Erro fornecedor:", e);
+    toast("Erro fornecedor: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = " Registar Fornecedor";
+      btn.style.opacity = "1";
+    }
+  }
 }
 
 // ===== FICHE CLIENT =====
@@ -6402,6 +6398,87 @@ async function updateResteApayerFourn() {
     el.textContent = new Intl.NumberFormat("pt-PT").format(reste) + " " + cur;
   } catch (e) {
     console.error("Erro getSupplierDebt:", e);
+  }
+}
+async function upsertSupplierToSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+  var name = String(data.name || data.nome || data.forn || "").trim();
+
+  if (!name) throw new Error("Nome do fornecedor obrigatorio.");
+
+  var existing = await supabaseClient
+    .from("suppliers")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("name", name)
+    .maybeSingle();
+
+  if (existing.error) throw existing.error;
+
+  if (existing.data) {
+    var updateData = {
+      phone: data.phone || data.tel || existing.data.phone || "",
+      country: data.country || data.pais || existing.data.country || "",
+      note: data.note || data.nota || existing.data.note || ""
+    };
+
+    var updateResult = await supabaseClient
+      .from("suppliers")
+      .update(updateData)
+      .eq("id", existing.data.id)
+      .select()
+      .single();
+
+    if (updateResult.error) throw updateResult.error;
+    return updateResult.data;
+  }
+
+  var insertResult = await supabaseClient
+    .from("suppliers")
+    .insert({
+      organization_id: organizationId,
+      name: name,
+      phone: data.phone || data.tel || "",
+      country: data.country || data.pais || "",
+      note: data.note || data.nota || ""
+    })
+    .select()
+    .single();
+
+  if (insertResult.error) throw insertResult.error;
+  return insertResult.data;
+}
+
+async function getSuppliersFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var result = await supabaseClient
+    .from("suppliers")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("name", { ascending: true });
+
+  if (result.error) throw result.error;
+
+  return result.data || [];
+}
+
+async function renderSupplierDatalists() {
+  try {
+    var suppliers = await getSuppliersFromSupabase();
+
+    var html = suppliers.map(function(supplier) {
+      return '<option value="' + escapeDepenseHtml(supplier.name || "") + '"></option>';
+    }).join("");
+
+    ["list-forn", "list-pay-forn"].forEach(function(id) {
+      document.querySelectorAll("#" + id).forEach(function(list) {
+        list.innerHTML = html;
+      });
+    });
+
+  } catch (e) {
+    console.error("Erro fornecedores datalist:", e);
   }
 }
 // ===== UTILS =====
