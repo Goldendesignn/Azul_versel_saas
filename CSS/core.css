@@ -2465,3 +2465,8 @@ html, body {
     width: 100%;
   }
 }
+html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
+  pointer-events: none !important;
+  user-select: none !important;
+  filter: blur(2px);
+}
