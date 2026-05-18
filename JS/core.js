@@ -84,6 +84,143 @@ function switchRevendeurTab(tab, btn) {
     loadRevHistory();
   }
 }
+async function upsertProductFromPurchase(item, supplier) {
+  var organizationId = getAzulOrganizationId();
+
+  var productName = String(item.prod || item.name || "").trim();
+  var quantity = Number(item.qty || item.quantity) || 0;
+  var purchasePrice = Number(item.pa || item.purchasePrice || item.purchase_price) || 0;
+  var salePrice = Number(item.pv || item.price || item.sale_price) || 0;
+  var category = String(item.category || item.categorie || "").trim();
+
+  if (!productName || quantity <= 0) {
+    throw new Error("Produto ou quantidade invalida.");
+  }
+
+  var existingResult = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("name", productName)
+    .maybeSingle();
+
+  if (existingResult.error) {
+    throw existingResult.error;
+  }
+
+  if (existingResult.data) {
+    var currentWarehouse = Number(existingResult.data.stock_warehouse) || 0;
+
+    var updateResult = await supabaseClient
+      .from("products")
+      .update({
+        supplier: supplier || existingResult.data.supplier || "",
+        category: category || existingResult.data.category || "",
+        purchase_price: purchasePrice || Number(existingResult.data.purchase_price) || 0,
+        sale_price: salePrice || Number(existingResult.data.sale_price) || 0,
+        stock_warehouse: currentWarehouse + quantity
+      })
+      .eq("id", existingResult.data.id)
+      .select()
+      .single();
+
+    if (updateResult.error) {
+      throw updateResult.error;
+    }
+
+    return updateResult.data;
+  }
+
+  var insertResult = await supabaseClient
+    .from("products")
+    .insert({
+      organization_id: organizationId,
+      name: productName,
+      category: category,
+      supplier: supplier || "",
+      purchase_price: purchasePrice,
+      sale_price: salePrice,
+      stock_warehouse: quantity,
+      stock_shop: 0,
+      min_stock: 0
+    })
+    .select()
+    .single();
+
+  if (insertResult.error) {
+    throw insertResult.error;
+  }
+
+  return insertResult.data;
+}
+
+async function savePurchaseToSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+
+  var supplier = String(data.forn || data.supplier || "").trim();
+  var items = data.items || data.products || [];
+  var isCredit = !!data.credit;
+  var paidAmount = Number(data.paidAmount || data.totalPaye || 0) || 0;
+
+  if (!supplier) {
+    throw new Error("Fornecedor obrigatorio.");
+  }
+
+  if (!items.length) {
+    throw new Error("Adiciona pelo menos um produto.");
+  }
+
+  var total = items.reduce(function (sum, item) {
+    var qty = Number(item.qty || item.quantity) || 0;
+    var price = Number(item.pa || item.purchasePrice || item.purchase_price) || 0;
+    return sum + qty * price;
+  }, 0);
+
+  var purchaseResult = await supabaseClient
+    .from("purchases")
+    .insert({
+      organization_id: organizationId,
+      supplier: supplier,
+      total: total,
+      paid_amount: paidAmount,
+      remaining_amount: Math.max(0, total - paidAmount),
+      is_credit: isCredit
+    })
+    .select()
+    .single();
+
+  if (purchaseResult.error) {
+    throw purchaseResult.error;
+  }
+
+  var purchase = purchaseResult.data;
+  var purchaseItems = [];
+
+  for (var i = 0; i < items.length; i++) {
+    var savedProduct = await upsertProductFromPurchase(items[i], supplier);
+
+    purchaseItems.push({
+      purchase_id: purchase.id,
+      product_id: savedProduct.id,
+      product_name: savedProduct.name,
+      category: savedProduct.category || "",
+      purchase_price: Number(savedProduct.purchase_price) || 0,
+      sale_price: Number(savedProduct.sale_price) || 0,
+      quantity: Number(items[i].qty || items[i].quantity) || 0,
+      supplier: supplier
+    });
+  }
+
+  var itemsResult = await supabaseClient
+    .from("purchase_items")
+    .insert(purchaseItems);
+
+  if (itemsResult.error) {
+    throw itemsResult.error;
+  }
+
+  return purchase;
+}
 
 function safeRun(label, fn) {
   try {
@@ -2598,69 +2735,71 @@ function renderPaiementLines() {
   updateResteAPayer(totalDu);
 }
 
-function saveAchat() {
-  var forn = document.getElementById('a-forn').value.trim();
-  if (!forn) { toast('Entra o nome do fornecedor!', 'error'); return; }
+async function saveAchat() {
+  var supplier = document.getElementById("a-forn").value.trim();
 
-  var invalid = achatLines.find(function(l) { return !l.prod || l.qty<=0 || l.price<=0; });
-  if (invalid) { toast('Preenche todos os campos de cada produto!', 'error'); return; }
-
-  var isCredit = document.getElementById('a-credit').checked;
-  var totalDu  = achatLines.reduce(function(s,l) { return s+(l.qty||0)*(l.price||0); }, 0);
-  var totalPaye = paiementLines.reduce(function(s,p) { return s+(p.montant||0); }, 0);
-
-  if (isCredit && totalPaye > totalDu) {
-    toast('Le total des paiements depasse le total de la commande!', 'error'); return;
-  }
-
-  var btn = document.querySelector('[onclick="saveAchat()"]');
-  function unlockAchatButton() {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = ' Registar Achat';
-      btn.style.opacity = '1';
-    }
-  }
-
-  if (btn) { btn.disabled = true; btn.textContent = ' A registar...'; btn.style.opacity = '0.6'; }
-
-  var data = {
-    forn:      forn,
-    lines:     achatLines.map(function(l) { return {date:l.date, prod:l.prod, qty:l.qty, price:l.price, code:l.code, category:l.category, variation:(l.variations && l.variations.length ? l.variations.join(' | ') : l.variation), photo:l.photo, targetMargin:l.targetMargin}; }),
-    credit:    isCredit,
-    paiements: isCredit ? paiementLines.map(function(p) { return {date:p.date, montant:p.montant}; }) : [],
-    totalDu:   totalDu,
-    totalPaye: totalPaye
-  };
-
-  function onAchatSaved() {
-    toast('Achat registado com sucesso!', 'success');
-    achatLines    = [{ date: new Date().toISOString().split('T')[0], prod:'', code:'', category:'', variation:'', variations:[], photo:'', targetMargin:'', qty:0, price:0 }];
-    paiementLines = [];
-    document.getElementById('a-forn').value = '';
-    document.getElementById('a-credit').checked = false;
-    document.getElementById('a-credit-fields').style.display = 'none';
-    renderAchatLines();
-    loadProducts();
-    renderFornNameDatalist();
-    renderFornPayDatalist();
-    loadResumoDettes();
-    unlockAchatButton();
-  }
-
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler(onAchatSaved)
-      .withFailureHandler(function(e) {
-        unlockAchatButton();
-        toast('Erro: ' + (e && e.message ? e.message : e), 'error');
-      })
-      .registarAchatMultiple(data);
+  if (!supplier) {
+    toast("Entra o fornecedor!", "error");
     return;
   }
 
-  setTimeout(onAchatSaved, 200);
+  var rows = Array.prototype.slice.call(document.querySelectorAll("#achat-lines-body tr"));
+  var items = rows.map(function (row) {
+    return {
+      prod: (row.querySelector(".achat-prod") || {}).value || "",
+      category: (row.querySelector(".achat-cat") || {}).value || "",
+      qty: parseFloat((row.querySelector(".achat-qty") || {}).value) || 0,
+      pa: parseFloat((row.querySelector(".achat-pa") || {}).value) || 0,
+      pv: parseFloat((row.querySelector(".achat-pv") || {}).value) || 0
+    };
+  }).filter(function (item) {
+    return item.prod && item.qty > 0;
+  });
+
+  if (!items.length) {
+    toast("Adiciona pelo menos um produto valido.", "error");
+    return;
+  }
+
+  var btn = document.querySelector("#achat-panel-novo .form-submit");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+    btn.style.opacity = "0.6";
+  }
+
+  try {
+    await savePurchaseToSupabase({
+      forn: supplier,
+      items: items,
+      credit: document.getElementById("a-credit").checked,
+      paidAmount: 0
+    });
+
+    toast("Achat registado!", "success");
+
+    document.getElementById("a-forn").value = "";
+    document.getElementById("a-credit").checked = false;
+
+    if (typeof initAchatLines === "function") {
+      initAchatLines();
+    }
+
+    await loadProducts(true);
+
+  } catch (e) {
+    console.error("Erro Supabase achat:", e);
+    toast("Erro ao registar achat: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = " Registar Achat";
+      btn.style.opacity = "1";
+    }
+  }
 }
+
 
 // ===== PAGAMENTO FORNECEDOR =====
 function savePagamentoForn() {
