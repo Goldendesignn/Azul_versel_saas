@@ -2355,3 +2355,104 @@ html, body {
     flex-direction: column !important;
   }
 }
+.lock-settings-card {
+  max-width: 620px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #ded8cc;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.lock-settings-card h3 {
+  margin: 0 0 12px;
+  color: #002f87;
+}
+
+.lock-settings-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.lock-settings-grid input {
+  height: 42px;
+  border: 1px solid #d8d2c7;
+  border-radius: 6px;
+  padding: 0 12px;
+}
+
+.lock-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.lock-actions button,
+.erp-lock-btn {
+  height: 42px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.erp-lock-save {
+  background: #003b91;
+  color: #fff;
+}
+
+.erp-lock-danger {
+  background: #b91c1c;
+  color: #fff;
+}
+
+.erp-lock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(248, 246, 241, 0.96);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.erp-lock-box {
+  width: min(420px, 100%);
+  background: #fff;
+  border: 1px solid #ded8cc;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.18);
+}
+
+.erp-lock-box h2 {
+  margin: 0 0 6px;
+  color: #002f87;
+}
+
+.erp-lock-box p {
+  margin: 0 0 16px;
+  color: #777;
+}
+
+.erp-lock-box input {
+  width: 100%;
+  height: 46px;
+  border: 1px solid #d8d2c7;
+  border-radius: 7px;
+  padding: 0 12px;
+  margin-bottom: 12px;
+}
+
+.erp-lock-box button {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  border-radius: 7px;
+  background: #003b91;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
