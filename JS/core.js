@@ -6367,49 +6367,312 @@ function getCashInAmountFromPaymentLines(lines, fallbackTotal) {
 function getPurchasePaidAmount(row) {
   return Number(row.paid_amount) || 0;
 }
-function loadComptabilite() {
-  var body = document.getElementById('acctJournalBody');
+async function loadComptabilite() {
+  var body = document.getElementById("acctJournalBody");
   if (!body) return;
+
   body.innerHTML = '<tr><td colspan="6" class="empty">A carregar...</td></tr>';
-  var params = {from:(document.getElementById('acct-from')||{}).value||'', to:(document.getElementById('acct-to')||{}).value||'', type:((document.getElementById('acct-type')||{}).value||'').trim(), limit:200};
-  gsCall('getComptabiliteData', params, function(data) {
+
+  var params = {
+    from: (document.getElementById("acct-from") || {}).value || "",
+    to: (document.getElementById("acct-to") || {}).value || "",
+    type: ((document.getElementById("acct-type") || {}).value || "").trim(),
+    limit: 200
+  };
+
+  try {
+    var data = await getComptabiliteFromSupabase(params);
+
     data = data || {};
-    var r = data.resume || {}, b = data.bilan || {}, p = data.period || {};
-    acctSet('acct-sales', fmt(r.vendas || 0));
-    acctSet('acct-sales-n', (r.vendasCount || 0) + ' vendas');
-    acctSet('acct-gross', fmt(r.beneficeBrut || 0));
-    acctSet('acct-margin', 'Margem ' + ((r.marge || 0).toFixed ? (r.marge || 0).toFixed(1) : r.marge) + '%');
-    acctSet('acct-expenses', fmt(r.depenses || 0));
-    acctSet('acct-purchases', 'Compras ' + fmt(r.achats || 0) + ' | Credito ' + fmt(r.comprasCredito || 0));
-    acctSet('acct-net', fmt(r.resultatNet || 0));
-    acctSet('acct-period', (p.from || '-') + ' - ' + (p.to || '-'));
-    var income = document.getElementById('acctIncomeBody');
-    if (income) income.innerHTML =
-      acctAmountRow('Vendas', r.vendas, 'var(--green)') +
-      acctAmountRow('Custo das vendas', r.coutVendas, 'var(--red)') +
-      acctAmountRow('Lucro bruto', r.beneficeBrut, 'var(--blue)') +
-      acctAmountRow('Despesas operacionais', r.depenses, 'var(--red)') +
-      acctAmountRow('Resultado operacional', r.resultatNet, (r.resultatNet || 0) >= 0 ? 'var(--green)' : 'var(--red)') +
-      acctAmountRow('Compras de stock no periodo', r.achats, 'var(--text)') +
-      acctAmountRow('Compras a credito', r.comprasCredito, 'var(--red)') +
-      acctAmountRow('Pagamentos a fornecedores', r.pagamentosFornecedores, 'var(--red)');
-    var balance = document.getElementById('acctBalanceBody');
-    if (balance) balance.innerHTML =
-      acctAmountRow('Tesouraria', b.tresorerie, 'var(--blue)') +
-      acctAmountRow('Stock', b.stock, 'var(--text)') +
-      acctAmountRow('Clientes a receber', b.clientesAReceber, 'var(--blue)') +
-      acctAmountRow('Total do ativo', b.actifSimplifie, 'var(--green)') +
-      acctAmountRow('Dividas fornecedores', b.dividasFournisseurs, 'var(--red)') +
-      acctAmountRow('Total do passivo', b.passivo, 'var(--red)') +
-      acctAmountRow('Capital proprio simplificado', b.capitaisProprios, (b.capitaisProprios || 0) >= 0 ? 'var(--green)' : 'var(--red)');
-    if (!data.journal || !data.journal.length) { body.innerHTML = '<tr><td colspan="6" class="empty">Nenhum movimento encontrado</td></tr>'; return; }
-    body.innerHTML = '';
+
+    var r = data.resume || {};
+    var b = data.bilan || {};
+    var p = data.period || {};
+
+    acctSet("acct-sales", fmt(r.vendas || 0));
+    acctSet("acct-sales-n", (r.vendasCount || 0) + " vendas");
+    acctSet("acct-gross", fmt(r.beneficeBrut || 0));
+    acctSet("acct-margin", "Margem " + ((r.marge || 0).toFixed ? (r.marge || 0).toFixed(1) : r.marge) + "%");
+    acctSet("acct-expenses", fmt(r.depenses || 0));
+    acctSet("acct-purchases", "Compras " + fmt(r.achats || 0) + " | Credito " + fmt(r.comprasCredito || 0));
+    acctSet("acct-net", fmt(r.resultatNet || 0));
+    acctSet("acct-period", (p.from || "-") + " - " + (p.to || "-"));
+
+    var income = document.getElementById("acctIncomeBody");
+
+    if (income) {
+      income.innerHTML =
+        acctAmountRow("Vendas", r.vendas, "var(--green)") +
+        acctAmountRow("Custo das vendas", r.coutVendas, "var(--red)") +
+        acctAmountRow("Lucro bruto", r.beneficeBrut, "var(--blue)") +
+        acctAmountRow("Despesas operacionais", r.depenses, "var(--red)") +
+        acctAmountRow("Resultado operacional", r.resultatNet, (r.resultatNet || 0) >= 0 ? "var(--green)" : "var(--red)") +
+        acctAmountRow("Compras de stock no periodo", r.achats, "var(--text)") +
+        acctAmountRow("Compras a credito", r.comprasCredito, "var(--red)") +
+        acctAmountRow("Pagamentos a fornecedores", r.pagamentosFornecedores, "var(--red)");
+    }
+
+    var balance = document.getElementById("acctBalanceBody");
+
+    if (balance) {
+      balance.innerHTML =
+        acctAmountRow("Tesouraria", b.tresorerie, "var(--blue)") +
+        acctAmountRow("Stock", b.stock, "var(--text)") +
+        acctAmountRow("Clientes a receber", b.clientesAReceber, "var(--blue)") +
+        acctAmountRow("Total do ativo", b.actifSimplifie, "var(--green)") +
+        acctAmountRow("Dividas fornecedores", b.dividasFournisseurs, "var(--red)") +
+        acctAmountRow("Total do passivo", b.passivo, "var(--red)") +
+        acctAmountRow("Capital proprio simplificado", b.capitaisProprios, (b.capitaisProprios || 0) >= 0 ? "var(--green)" : "var(--red)");
+    }
+
+    if (!data.journal || !data.journal.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">Nenhum movimento encontrado</td></tr>';
+      return;
+    }
+
+    body.innerHTML = "";
+
     data.journal.forEach(function(row) {
       var debito = row.debito != null ? row.debito : row.entree;
       var credito = row.credito != null ? row.credito : row.sortie;
-      body.innerHTML += '<tr><td>' + htmlSafeAcct(row.date || '') + '</td><td>' + htmlSafeAcct(row.type || '') + '</td><td>' + htmlSafeAcct(row.desc || '') + '</td><td style="color:var(--green);font-weight:700;">' + ((debito || 0) ? fmt(debito) : '-') + '</td><td style="color:var(--red);font-weight:700;">' + ((credito || 0) ? fmt(credito) : '-') + '</td><td>' + htmlSafeAcct(row.source || '') + '</td></tr>';
+
+      body.innerHTML +=
+        "<tr>" +
+          "<td>" + htmlSafeAcct(row.date || "") + "</td>" +
+          "<td>" + htmlSafeAcct(row.type || "") + "</td>" +
+          "<td>" + htmlSafeAcct(row.desc || "") + "</td>" +
+          '<td style="color:var(--green);font-weight:700;">' + ((debito || 0) ? fmt(debito) : "-") + "</td>" +
+          '<td style="color:var(--red);font-weight:700;">' + ((credito || 0) ? fmt(credito) : "-") + "</td>" +
+          "<td>" + htmlSafeAcct(row.source || "") + "</td>" +
+        "</tr>";
+    });
+
+  } catch (e) {
+    console.error("Erro comptabilite:", e);
+    body.innerHTML = '<tr><td colspan="6" class="empty">Erro ao carregar comptabilite</td></tr>';
+    toast("Erro comptabilite: " + (e.message || e), "error");
+  }
+}
+async function getComptabiliteFromSupabase(params) {
+  var organizationId = getAzulOrganizationId();
+
+  params = params || {};
+  var from = params.from || "";
+  var to = params.to || "";
+  var typeFilter = String(params.type || "").trim().toLowerCase();
+
+  var salesQuery = supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) salesQuery = salesQuery.gte("sale_date", from);
+  if (to) salesQuery = salesQuery.lte("sale_date", to);
+
+  var salesResult = await salesQuery;
+  if (salesResult.error) throw salesResult.error;
+
+  var sales = salesResult.data || [];
+  var saleIds = sales.map(function(sale) { return sale.id; });
+
+  var saleItems = [];
+
+  if (saleIds.length) {
+    var itemsResult = await supabaseClient
+      .from("sale_items")
+      .select("*")
+      .in("sale_id", saleIds);
+
+    if (itemsResult.error) throw itemsResult.error;
+    saleItems = itemsResult.data || [];
+  }
+
+  var expensesQuery = supabaseClient
+    .from("expenses")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) expensesQuery = expensesQuery.gte("expense_date", from);
+  if (to) expensesQuery = expensesQuery.lte("expense_date", to);
+
+  var expensesResult = await expensesQuery;
+  if (expensesResult.error) throw expensesResult.error;
+
+  var expenses = expensesResult.data || [];
+
+  var purchasesQuery = supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) purchasesQuery = purchasesQuery.gte("created_at", from);
+  if (to) purchasesQuery = purchasesQuery.lte("created_at", to + "T23:59:59");
+
+  var purchasesResult = await purchasesQuery;
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  var purchases = purchasesResult.data || [];
+
+  var productsResult = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (productsResult.error) throw productsResult.error;
+
+  var products = productsResult.data || [];
+
+  var clientDebtsResult = await supabaseClient
+    .from("client_debts")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gt("remaining_amount", 0);
+
+  if (clientDebtsResult.error) throw clientDebtsResult.error;
+
+  var supplierDebtsResult = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gt("remaining_amount", 0);
+
+  if (supplierDebtsResult.error) throw supplierDebtsResult.error;
+
+  var vendas = sales.reduce(function(sum, sale) {
+    return sum + (Number(sale.total) || 0);
+  }, 0);
+
+  var coutVendas = saleItems.reduce(function(sum, item) {
+    return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
+  }, 0);
+
+  var beneficeBrut = vendas - coutVendas;
+
+  var depenses = expenses.reduce(function(sum, row) {
+    return sum + (Number(row.amount) || 0);
+  }, 0);
+
+  var achats = purchases.reduce(function(sum, row) {
+    return sum + (Number(row.total) || 0);
+  }, 0);
+
+  var comprasCredito = purchases.reduce(function(sum, row) {
+    return sum + (Number(row.remaining_amount) || 0);
+  }, 0);
+
+  var pagamentosFornecedores = purchases.reduce(function(sum, row) {
+    return sum + (Number(row.paid_amount) || 0);
+  }, 0);
+
+  var resultatNet = beneficeBrut - depenses;
+
+  var marge = vendas > 0 ? (beneficeBrut / vendas) * 100 : 0;
+
+  var stockValue = products.reduce(function(sum, product) {
+    var qty = (Number(product.stock_shop) || 0) + (Number(product.stock_warehouse) || 0);
+    var cost = Number(product.purchase_price) || 0;
+    return sum + qty * cost;
+  }, 0);
+
+  var clientsARecevoir = (clientDebtsResult.data || []).reduce(function(sum, row) {
+    return sum + (Number(row.remaining_amount) || 0);
+  }, 0);
+
+  var dividasFournisseurs = (supplierDebtsResult.data || []).reduce(function(sum, row) {
+    return sum + (Number(row.remaining_amount) || 0);
+  }, 0);
+
+  var tresorerie = 0;
+
+  try {
+    var treasuryData = await getTreasuryFromSupabase({ from: from, to: to, type: "" });
+    tresorerie = Number(treasuryData.balance) || 0;
+  } catch (e) {
+    tresorerie = 0;
+  }
+
+  var journal = [];
+
+  sales.forEach(function(sale) {
+    journal.push({
+      date: sale.sale_date || "",
+      type: "Venda",
+      desc: "Venda " + (sale.receipt_no || ""),
+      debito: Number(sale.total) || 0,
+      credito: 0,
+      source: "sales",
+      created_at: sale.created_at || ""
     });
   });
+
+  expenses.forEach(function(row) {
+    journal.push({
+      date: row.expense_date || "",
+      type: "Despesa",
+      desc: row.description || row.category || "",
+      debito: 0,
+      credito: Number(row.amount) || 0,
+      source: "expenses",
+      created_at: row.created_at || ""
+    });
+  });
+
+  purchases.forEach(function(row) {
+    journal.push({
+      date: String(row.created_at || "").slice(0, 10),
+      type: "Compra",
+      desc: "Compra fornecedor " + (row.supplier || ""),
+      debito: 0,
+      credito: Number(row.paid_amount) || 0,
+      source: "purchases",
+      created_at: row.created_at || ""
+    });
+  });
+
+  if (typeFilter) {
+    journal = journal.filter(function(row) {
+      return (
+        String(row.type || "").toLowerCase().indexOf(typeFilter) >= 0 ||
+        String(row.desc || "").toLowerCase().indexOf(typeFilter) >= 0 ||
+        String(row.source || "").toLowerCase().indexOf(typeFilter) >= 0
+      );
+    });
+  }
+
+  journal.sort(function(a, b) {
+    var ak = String(a.date || "") + " " + String(a.created_at || "");
+    var bk = String(b.date || "") + " " + String(b.created_at || "");
+    return bk.localeCompare(ak);
+  });
+
+  return {
+    resume: {
+      vendas: vendas,
+      vendasCount: sales.length,
+      coutVendas: coutVendas,
+      beneficeBrut: beneficeBrut,
+      marge: marge,
+      depenses: depenses,
+      achats: achats,
+      comprasCredito: comprasCredito,
+      pagamentosFornecedores: pagamentosFornecedores,
+      resultatNet: resultatNet
+    },
+    bilan: {
+      tresorerie: tresorerie,
+      stock: stockValue,
+      clientesAReceber: clientsARecevoir,
+      actifSimplifie: tresorerie + stockValue + clientsARecevoir,
+      dividasFournisseurs: dividasFournisseurs,
+      passivo: dividasFournisseurs,
+      capitaisProprios: tresorerie + stockValue + clientsARecevoir - dividasFournisseurs
+    },
+    period: {
+      from: from || "-",
+      to: to || "-"
+    },
+    journal: journal
+  };
 }
 // ===== FORNECEDORES =====
 async function saveFornecedor() {
