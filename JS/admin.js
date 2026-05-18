@@ -56,49 +56,28 @@ function htmlSafe(value) {
 async function createOrganization() {
   adminMsg("admin-form-msg", "");
 
-  var name = document.getElementById("org-name").value.trim();
-  var phone = document.getElementById("org-phone").value.trim();
-  var email = document.getElementById("org-email").value.trim();
-  var license = document.getElementById("org-license").value.trim().toUpperCase();
-  var status = document.getElementById("org-status").value;
+  var expires = document.getElementById("org-expires").value;
+  var notes = document.getElementById("org-notes").value.trim();
 
-  if (!name) {
-    adminMsg("admin-form-msg", "Nom client obligatoire.");
-    return;
-  }
-
-  if (!license) {
-    license = generateLicenseKey();
-    document.getElementById("org-license").value = license;
-  }
-
-  var result = await supabaseClient
-    .from("organizations")
-    .insert({
-      name: name,
-      phone: phone,
-      email: email || null,
-      license_key: license,
-      status: status
-    })
-    .select()
-    .single();
+  var result = await supabaseClient.rpc("admin_create_license", {
+    p_expires_at: expires ? expires + "T23:59:59" : null,
+    p_notes: notes || null
+  });
 
   if (result.error) {
     adminMsg("admin-form-msg", "Erreur: " + result.error.message);
     return;
   }
 
-  document.getElementById("org-name").value = "";
-  document.getElementById("org-phone").value = "";
-  document.getElementById("org-email").value = "";
-  document.getElementById("org-license").value = "";
-  document.getElementById("org-status").value = "active";
+  var org = result.data;
 
-  adminMsg("admin-form-msg", "Licence créée.");
+  document.getElementById("org-license").value = org.license_key || "";
+  document.getElementById("org-expires").value = "";
+  document.getElementById("org-notes").value = "";
+
+  adminMsg("admin-form-msg", "Licence générée: " + (org.license_key || ""));
   loadOrganizations();
 }
-
 async function loadOrganizations() {
   var list = document.getElementById("organizations-list");
   list.innerHTML = '<div class="empty">Chargement...</div>';
