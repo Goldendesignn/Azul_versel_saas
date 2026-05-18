@@ -849,6 +849,9 @@ function goTo(page, btn) {
       loadOpenConsignations();
       switchRevendeurTab('create', document.getElementById('rev-tab-create'));
     }
+    if (page === 'achat' && typeof renderMobileAchatSummary === 'function') {
+    renderMobileAchatSummary();
+    }
   } catch (e) {
     toast('Erreur onglet: ' + (e && e.message ? e.message : e), 'error');
   }
@@ -3405,7 +3408,71 @@ function renderAchatLines() {
 
   renderAchatTotals();
 }
+function ensureMobileAchatControls() {
+  var page = document.getElementById("page-achat");
+  if (!page) return;
 
+  if (!document.getElementById("mobileAchatAddBtn")) {
+    var addBtn = document.createElement("button");
+    addBtn.id = "mobileAchatAddBtn";
+    addBtn.className = "mobile-achat-add-btn";
+    addBtn.type = "button";
+    addBtn.textContent = "+";
+    addBtn.onclick = function() {
+      addAchatLine();
+      renderMobileAchatSummary();
+    };
+    page.appendChild(addBtn);
+  }
+
+  if (!document.getElementById("mobileAchatSummary")) {
+    var summary = document.createElement("div");
+    summary.id = "mobileAchatSummary";
+    summary.className = "mobile-achat-summary";
+    page.appendChild(summary);
+  }
+}
+
+function getAchatSummaryTotal() {
+  return (achatLines || []).reduce(function(sum, line) {
+    return sum + (Number(line.qty) || 0) * (Number(line.price) || 0);
+  }, 0);
+}
+
+function getAchatSummaryCount() {
+  return (achatLines || []).reduce(function(sum, line) {
+    return sum + (Number(line.qty) || 0);
+  }, 0);
+}
+
+function renderMobileAchatSummary() {
+  ensureMobileAchatControls();
+
+  var summary = document.getElementById("mobileAchatSummary");
+  if (!summary) return;
+
+  var achatPage = document.getElementById("page-achat");
+  var panelNovo = document.getElementById("achat-panel-novo");
+
+  var isVisible = achatPage &&
+    achatPage.classList.contains("active") &&
+    panelNovo &&
+    panelNovo.style.display !== "none";
+
+  if (!isVisible) {
+    summary.style.display = "none";
+    return;
+  }
+
+  summary.style.display = "";
+
+  summary.innerHTML =
+    '<div>' +
+      '<div class="mobile-achat-summary-title">' + getAchatSummaryCount() + ' itens no pedido</div>' +
+      '<div class="mobile-achat-summary-total">' + fmt(getAchatSummaryTotal()) + '</div>' +
+    '</div>' +
+    '<button class="mobile-achat-summary-btn" onclick="saveAchat()">Registar</button>';
+}
 function renderAchatTotals() {
   var cur = window._currency || 'Kz';
   var total = achatLines.reduce(function(s,l) { return s+(l.qty||0)*(l.price||0); }, 0);
@@ -3432,6 +3499,7 @@ function toggleCredit() {
   document.getElementById('a-credit-fields').style.display = checked ? 'block' : 'none';
   if (checked && paiementLines.length === 0) addPaiementLine();
   renderPaiementLines();
+  renderMobileAchatSummary();
 }
 
 function addPaiementLine() {
