@@ -3459,22 +3459,27 @@ function renderMobileAchatSummary() {
   ensureMobileAchatControls();
 
   var summary = document.getElementById("mobileAchatSummary");
-  if (!summary) return;
+  var addBtn = document.getElementById("mobileAchatAddBtn");
+
+  if (!summary || !addBtn) return;
 
   var achatPage = document.getElementById("page-achat");
   var panelNovo = document.getElementById("achat-panel-novo");
 
-  var isVisible = achatPage &&
+  var isVisible = window.innerWidth <= 820 &&
+    achatPage &&
     achatPage.classList.contains("active") &&
     panelNovo &&
     panelNovo.style.display !== "none";
 
   if (!isVisible) {
     summary.style.display = "none";
+    addBtn.style.display = "none";
     return;
   }
 
-  summary.style.display = "";
+  summary.style.display = "grid";
+  addBtn.style.display = "grid";
 
   summary.innerHTML =
     '<div>' +
