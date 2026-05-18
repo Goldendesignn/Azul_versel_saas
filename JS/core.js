@@ -7948,9 +7948,53 @@ function renderFornPayDatalist() {
 async function migrateAccountingEntriesFromExistingData() {
   var organizationId = getAzulOrganizationId();
 
+  function money(value) {
+    return Math.round(Number(value) || 0);
+  }
+
+  function buildBalancedSaleLines(sale, saleItems) {
+    var total = money(sale.total);
+    var lines = Array.isArray(sale.payment_lines) ? sale.payment_lines : [];
+
+    var cashIn = money(getCashInAmountFromPaymentLines(lines, total));
+    var creditAmount = money(getCreditAmountFromPaymentLines(lines, total));
+
+    var paidAndCredit = cashIn + creditAmount;
+
+    if (paidAndCredit <= 0) {
+      cashIn = total;
+    } else if (paidAndCredit !== total) {
+      cashIn += total - paidAndCredit;
+    }
+
+    var costOfGoods = money(
+      saleItems.reduce(function(sum, item) {
+        return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
+      }, 0)
+    );
+
+    var accountingLines = [];
+
+    if (cashIn > 0) {
+      accountingLines.push({ account: "11", debit: cashIn, credit: 0 });
+    }
+
+    if (creditAmount > 0) {
+      accountingLines.push({ account: "12", debit: creditAmount, credit: 0 });
+    }
+
+    accountingLines.push({ account: "71", debit: 0, credit: total });
+
+    if (costOfGoods > 0) {
+      accountingLines.push({ account: "61", debit: costOfGoods, credit: 0 });
+      accountingLines.push({ account: "13", debit: 0, credit: costOfGoods });
+    }
+
+    return accountingLines;
+  }
+
   toast("Migration comptable en cours...", "success");
 
-  // 1. Ventes
   var salesResult = await supabaseClient
     .from("sales")
     .select("*")
@@ -7973,52 +8017,22 @@ async function migrateAccountingEntriesFromExistingData() {
     saleItems = itemsResult.data || [];
   }
 
-  sales.forEach(async function(sale) {
-    var total = Number(sale.total) || 0;
-    var lines = Array.isArray(sale.payment_lines) ? sale.payment_lines : [];
-
-    var cashIn = getCashInAmountFromPaymentLines(lines, total);
-    var creditAmount = getCreditAmountFromPaymentLines(lines, total);
-
-    if (cashIn + creditAmount <= 0) {
-      cashIn = total;
-    }
+  for (var s = 0; s < sales.length; s++) {
+    var sale = sales[s];
 
     var itemsOfSale = saleItems.filter(function(item) {
       return item.sale_id === sale.id;
     });
-
-    var costOfGoods = itemsOfSale.reduce(function(sum, item) {
-      return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
-    }, 0);
-
-    var accountingLines = [];
-
-    if (cashIn > 0) {
-      accountingLines.push({ account: "11", debit: cashIn, credit: 0 });
-    }
-
-    if (creditAmount > 0) {
-      accountingLines.push({ account: "12", debit: creditAmount, credit: 0 });
-    }
-
-    accountingLines.push({ account: "71", debit: 0, credit: total });
-
-    if (costOfGoods > 0) {
-      accountingLines.push({ account: "61", debit: costOfGoods, credit: 0 });
-      accountingLines.push({ account: "13", debit: 0, credit: costOfGoods });
-    }
 
     await createAccountingEntry(
       "sale",
       sale.id,
       sale.sale_date,
       "Venda " + (sale.receipt_no || ""),
-      accountingLines
+      buildBalancedSaleLines(sale, itemsOfSale)
     );
-  });
+  }
 
-  // 2. Achats
   var purchasesResult = await supabaseClient
     .from("purchases")
     .select("*")
@@ -8026,12 +8040,16 @@ async function migrateAccountingEntriesFromExistingData() {
 
   if (purchasesResult.error) throw purchasesResult.error;
 
-  for (var i = 0; i < (purchasesResult.data || []).length; i++) {
-    var purchase = purchasesResult.data[i];
+  for (var p = 0; p < (purchasesResult.data || []).length; p++) {
+    var purchase = purchasesResult.data[p];
 
-    var totalPurchase = Number(purchase.total) || 0;
-    var paidAmount = Number(purchase.paid_amount) || 0;
-    var remainingAmount = Number(purchase.remaining_amount) || 0;
+    var totalPurchase = money(purchase.total);
+    var paidAmount = money(purchase.paid_amount);
+    var remainingAmount = money(purchase.remaining_amount);
+
+    if (paidAmount + remainingAmount !== totalPurchase) {
+      remainingAmount = Math.max(0, totalPurchase - paidAmount);
+    }
 
     var purchaseLines = [
       { account: "13", debit: totalPurchase, credit: 0 }
@@ -8054,7 +8072,6 @@ async function migrateAccountingEntriesFromExistingData() {
     );
   }
 
-  // 3. Dépenses
   var expensesResult = await supabaseClient
     .from("expenses")
     .select("*")
@@ -8062,9 +8079,9 @@ async function migrateAccountingEntriesFromExistingData() {
 
   if (expensesResult.error) throw expensesResult.error;
 
-  for (var j = 0; j < (expensesResult.data || []).length; j++) {
-    var expense = expensesResult.data[j];
-    var amount = Number(expense.amount) || 0;
+  for (var e = 0; e < (expensesResult.data || []).length; e++) {
+    var expense = expensesResult.data[e];
+    var amount = money(expense.amount);
 
     if (amount <= 0) continue;
 
