@@ -6040,58 +6040,50 @@ async function loadClientDetail() {
 
   try {
     var data = await getClientFicheFromSupabase(nom);
-
-    if (!data || !data.name) {
-      el.innerHTML = '<div class="empty">Cliente nao encontrado</div>';
-      return;
-    }
-
-    var initial = String(data.name || "?").trim().charAt(0).toUpperCase();
+    var initial = String(data.name || nom || "?").trim().charAt(0).toUpperCase();
 
     var html =
-      '<div class="client-profile">' +
-        '<div class="client-hero">' +
-          '<div class="client-hero-top">' +
-            '<div style="display:flex;gap:12px;align-items:center;">' +
-              '<div class="client-avatar">' + escapeDepenseHtml(initial) + '</div>' +
-              '<div>' +
-                '<div class="client-name">' + escapeDepenseHtml(data.name) + '</div>' +
-                '<div class="client-sub">Ficha do cliente</div>' +
-              '</div>' +
+      '<div class="az-client-profile">' +
+        '<div class="az-client-hero">' +
+          '<div class="az-client-head">' +
+            '<div class="az-client-avatar">' + escapeDepenseHtml(initial) + '</div>' +
+            '<div>' +
+              '<div class="az-client-name">' + escapeDepenseHtml(data.name || nom) + '</div>' +
+              '<div class="az-client-sub">Ficha do cliente</div>' +
             '</div>' +
           '</div>' +
 
-          '<div class="client-kpis">' +
-            '<div class="client-kpi">' +
-              '<div class="client-kpi-label">Total compras</div>' +
-              '<div class="client-kpi-value">' + fmt(data.totalAchat || 0) + '</div>' +
+          '<div class="az-client-kpis">' +
+            '<div class="az-client-kpi">' +
+              '<div class="az-client-kpi-label">Total compras</div>' +
+              '<div class="az-client-kpi-value">' + fmt(data.totalAchat || 0) + '</div>' +
             '</div>' +
-            '<div class="client-kpi">' +
-              '<div class="client-kpi-label">Divida</div>' +
-              '<div class="client-kpi-value danger">' + fmt(data.totalDette || 0) + '</div>' +
+            '<div class="az-client-kpi">' +
+              '<div class="az-client-kpi-label">Divida</div>' +
+              '<div class="az-client-kpi-value red">' + fmt(data.totalDette || 0) + '</div>' +
             '</div>' +
-            '<div class="client-kpi">' +
-              '<div class="client-kpi-label">Transacoes</div>' +
-              '<div class="client-kpi-value">' + (data.transactions || 0) + '</div>' +
+            '<div class="az-client-kpi">' +
+              '<div class="az-client-kpi-label">Transacoes</div>' +
+              '<div class="az-client-kpi-value">' + (data.transactions || 0) + '</div>' +
             '</div>' +
           '</div>' +
-        '</div>';
+        '</div>' +
 
-    html += '<div class="client-history">' +
-      '<div class="card-title">Historico</div>';
+        '<div class="az-client-history">' +
+          '<div class="card-title">Historico</div>';
 
     if (data.historique && data.historique.length > 0) {
-      html += '<div class="client-history-list">';
+      html += '<div class="az-client-history-list">';
 
       data.historique.forEach(function(a) {
         html +=
-          '<div class="client-history-item">' +
+          '<div class="az-client-history-item">' +
             '<div>' +
-              '<div class="client-history-date">' + escapeDepenseHtml(a.date || "") + '</div>' +
-              '<div class="client-history-prod">' + escapeDepenseHtml(a.prod || "") + '</div>' +
-              '<div class="client-history-sub">Quantidade: ' + (a.qty || 0) + '</div>' +
+              '<div class="az-client-history-date">' + escapeDepenseHtml(a.date || "") + '</div>' +
+              '<div class="az-client-history-prod">' + escapeDepenseHtml(a.prod || "") + '</div>' +
+              '<div class="az-client-history-sub">Quantidade: ' + (a.qty || 0) + '</div>' +
             '</div>' +
-            '<div class="client-history-total">' + fmt(a.total || 0) + '</div>' +
+            '<div class="az-client-history-total">' + fmt(a.total || 0) + '</div>' +
           '</div>';
       });
 
@@ -6110,7 +6102,6 @@ async function loadClientDetail() {
     toast("Erro fiche client: " + (e.message || e), "error");
   }
 }
-
 async function savePagamentoClient() {
   var data = {
     date: document.getElementById("c-date").value,
