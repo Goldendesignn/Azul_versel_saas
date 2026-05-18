@@ -295,6 +295,86 @@ async function saveSaleToSupabase(data) {
   };
 }
 
+async function getSalesHistoryFromSupabase(params) {
+  var organizationId = getAzulOrganizationId();
+
+  params = params || {};
+  var from = params.from || "";
+  var to = params.to || "";
+  var search = String(params.search || "").trim().toLowerCase();
+
+  var salesQuery = supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("sale_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (from) {
+    salesQuery = salesQuery.gte("sale_date", from);
+  }
+
+  if (to) {
+    salesQuery = salesQuery.lte("sale_date", to);
+  }
+
+  var salesResult = await salesQuery;
+
+  if (salesResult.error) {
+    throw salesResult.error;
+  }
+
+  var sales = salesResult.data || [];
+
+  if (!sales.length) {
+    return [];
+  }
+
+  var saleIds = sales.map(function(sale) {
+    return sale.id;
+  });
+
+  var itemsResult = await supabaseClient
+    .from("sale_items")
+    .select("*")
+    .in("sale_id", saleIds);
+
+  if (itemsResult.error) {
+    throw itemsResult.error;
+  }
+
+  var saleById = {};
+  sales.forEach(function(sale) {
+    saleById[sale.id] = sale;
+  });
+
+  var rows = (itemsResult.data || []).map(function(item) {
+    var sale = saleById[item.sale_id] || {};
+
+    return {
+      date: sale.sale_date || "",
+      prod: item.product_name || "",
+      client: sale.client_name || "Anonimo",
+      qty: Number(item.quantity) || 0,
+      punit: Number(item.unit_price) || 0,
+      total: Number(item.total) || 0,
+      pay: sale.payment_summary || "",
+      recibo: sale.receipt_no || "-"
+    };
+  });
+
+  if (search) {
+    rows = rows.filter(function(row) {
+      return (
+        String(row.prod || "").toLowerCase().indexOf(search) >= 0 ||
+        String(row.client || "").toLowerCase().indexOf(search) >= 0 ||
+        String(row.recibo || "").toLowerCase().indexOf(search) >= 0
+      );
+    });
+  }
+
+  return rows;
+}
 
 
 // ===== INIT =====
@@ -3181,37 +3261,56 @@ async function saveTransfer() {
 
 
 // ===== HISTORICO =====
-function loadHist() {
+async function loadHist() {
+  var tb = document.getElementById("histBody");
+  if (!tb) return;
+
+  tb.innerHTML = '<tr><td colspan="8" class="empty">A carregar...</td></tr>';
+
   var params = {
-    from:   document.getElementById('h-from').value,
-    to:     document.getElementById('h-to').value,
-    search: document.getElementById('h-search').value.toLowerCase()
+    from: document.getElementById("h-from").value,
+    to: document.getElementById("h-to").value,
+    search: document.getElementById("h-search").value.toLowerCase()
   };
 
-  gsCall('getVentes', params, function(data) {
-    var tb = document.getElementById('histBody');
+  try {
+    var data = await getSalesHistoryFromSupabase(params);
+
     if (!data || data.length === 0) {
       tb.innerHTML = '<tr><td colspan="8" class="empty">Nenhuma venda encontrada</td></tr>';
       return;
     }
-    tb.innerHTML = '';
+
+    tb.innerHTML = "";
+
     data.forEach(function(v) {
-      var payText = (v.pay || '').toLowerCase();
-      var payClass = payText.indexOf('+') >= 0 || payText.indexOf(':') >= 0 ? 'mixte' : payText.replace('a','a');
-      var tr = document.createElement('tr');
+      var payText = String(v.pay || "").toLowerCase();
+      var payClass = payText.indexOf("+") >= 0 || payText.indexOf(":") >= 0
+        ? "mixte"
+        : payText.replace("a", "a");
+
+      var tr = document.createElement("tr");
+
       tr.innerHTML =
-        '<td>' + v.date + '</td>' +
-        '<td>' + v.prod + '</td>' +
-        '<td>' + (v.client||'-') + '</td>' +
-        '<td>' + v.qty + '</td>' +
-        '<td>' + fmt(v.punit) + '</td>' +
-        '<td style="color:var(--blue);font-weight:600">' + fmt(v.total) + '</td>' +
-        '<td><span class="tbadge ' + payClass + '">' + v.pay + '</span></td>' +
-        '<td style="font-size:10px;color:var(--muted)">' + (v.recibo||'-') + '</td>';
+        "<td>" + escapeDepenseHtml(v.date || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(v.prod || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(v.client || "-") + "</td>" +
+        "<td>" + v.qty + "</td>" +
+        "<td>" + fmt(v.punit) + "</td>" +
+        '<td style="color:var(--blue);font-weight:600">' + fmt(v.total) + "</td>" +
+        '<td><span class="tbadge ' + payClass + '">' + escapeDepenseHtml(v.pay || "-") + "</span></td>" +
+        '<td style="font-size:10px;color:var(--muted)">' + escapeDepenseHtml(v.recibo || "-") + "</td>";
+
       tb.appendChild(tr);
     });
-  });
+
+  } catch (e) {
+    console.error("Erro historico vendas:", e);
+    tb.innerHTML = '<tr><td colspan="8" class="empty">Erro ao carregar historico</td></tr>';
+    toast("Erro historico vendas: " + (e.message || e), "error");
+  }
 }
+
 
 // ===== CONFIG SYSTEM =====
 var config = {
