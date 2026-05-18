@@ -325,21 +325,29 @@ Object.keys(qtyByProduct).forEach(function(productName) {
   }, 0);
   
   var saleLines = [];
-  
-  if (cashIn > 0) {
-    saleLines.push({ account: "11", debit: cashIn, credit: 0 });
-  }
-  
-  if (creditAmount > 0) {
-    saleLines.push({ account: "12", debit: creditAmount, credit: 0 });
-  }
-  
-  saleLines.push({ account: "71", debit: 0, credit: total });
-  
-  if (costOfGoods > 0) {
-    saleLines.push({ account: "61", debit: costOfGoods, credit: 0 });
+var isExternalSale = data.saleType === "Externo";
+
+if (cashIn > 0) {
+  saleLines.push({ account: "11", debit: cashIn, credit: 0 });
+}
+
+if (creditAmount > 0) {
+  saleLines.push({ account: "12", debit: creditAmount, credit: 0 });
+}
+
+saleLines.push({ account: "71", debit: 0, credit: total });
+
+if (costOfGoods > 0) {
+  saleLines.push({ account: "61", debit: costOfGoods, credit: 0 });
+
+  if (isExternalSale) {
+    // Vente externe: on paie directement le fournisseur.
+    saleLines.push({ account: "11", debit: 0, credit: costOfGoods });
+  } else {
+    // Vente interne: la marchandise sort du stock.
     saleLines.push({ account: "13", debit: 0, credit: costOfGoods });
   }
+}
 
 await createAccountingEntry(
   "sale",
@@ -2682,9 +2690,7 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
     var alreadyPaid = Number(consignment.paid_amount) || 0;
     var remainingDue = Math.max(0, total - alreadyPaid);
 
-    if (remainingDue <= 0) {
-      continue;
-    }
+    if (remainingDue <= 0) continue;
 
     var applied = Math.min(remainingDue, remainingPayment);
     var newPaid = alreadyPaid + applied;
@@ -2704,6 +2710,17 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
 
     if (updateResult.error) throw updateResult.error;
 
+    await createAccountingEntry(
+      "reseller_payment",
+      consignment.id,
+      actionDate || new Date().toISOString().split("T")[0],
+      "Pagamento revendedor " + (consignment.reseller_name || ""),
+      [
+        { account: "11", debit: applied, credit: 0 },
+        { account: "71", debit: 0, credit: applied }
+      ]
+    );
+
     remainingPayment -= applied;
   }
 
@@ -2713,7 +2730,6 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
 
   return true;
 }
-
 async function returnSelectedConsignmentsInSupabase(ids) {
   var organizationId = getAzulOrganizationId();
 
@@ -6805,10 +6821,31 @@ async function getTreasuryFromSupabase(params) {
   if (from) salesQuery = salesQuery.gte("sale_date", from);
   if (to) salesQuery = salesQuery.lte("sale_date", to);
 
-  var salesResult = await salesQuery;
-  if (salesResult.error) throw salesResult.error;
+ var salesResult = await salesQuery;
+if (salesResult.error) throw salesResult.error;
 
-  (salesResult.data || []).forEach(function(sale) {
+var salesRows = salesResult.data || [];
+var saleIds = salesRows.map(function(sale) {
+  return sale.id;
+});
+
+var saleItemsBySale = {};
+
+if (saleIds.length) {
+  var saleItemsResult = await supabaseClient
+    .from("sale_items")
+    .select("*")
+    .in("sale_id", saleIds);
+
+  if (saleItemsResult.error) throw saleItemsResult.error;
+
+  (saleItemsResult.data || []).forEach(function(item) {
+    if (!saleItemsBySale[item.sale_id]) saleItemsBySale[item.sale_id] = [];
+    saleItemsBySale[item.sale_id].push(item);
+  });
+}
+
+salesRows.forEach(function(sale) {
     var cashIn = getCashInAmountFromPaymentLines(sale.payment_lines || [], sale.total);
 
     if (cashIn > 0) {
@@ -6821,7 +6858,29 @@ async function getTreasuryFromSupabase(params) {
         created_at: sale.created_at || ""
       });
     }
+  var isExternal = String(sale.sale_type || "").toLowerCase() === "externo";
+
+if (isExternal) {
+  var externalItems = saleItemsBySale[sale.id] || [];
+
+  var supplierCost = externalItems.reduce(function(sum, item) {
+    return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
+  }, 0);
+
+  if (supplierCost > 0) {
+    entries.push({
+      date: sale.sale_date || "",
+      type: "Pagamento Fornecedor Externo",
+      desc: "Custo fornecedor da venda " + (sale.receipt_no || ""),
+      income: 0,
+      expense: supplierCost,
+      created_at: sale.created_at || ""
+    });
+  }
+}
   });
+
+  
 
   var purchasesQuery = supabaseClient
     .from("purchases")
