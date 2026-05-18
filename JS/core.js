@@ -7997,3 +7997,16 @@ function stopErpLockWatcher() {
     erpLockWatchTimer = null;
   }
 }
+
+// Correction finale: fournisseurs depuis Supabase, pas Google Sheet
+renderFornNameDatalist = function() {
+  renderSupplierDatalists();
+};
+
+renderFornPayDatalist = function() {
+  renderSupplierDatalists();
+};
+
+refreshFornecedorDatalists = function() {
+  renderSupplierDatalists();
+};
