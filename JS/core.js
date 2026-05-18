@@ -160,6 +160,138 @@ async function getStockArmazemFromSupabase() {
     };
   });
 }
+function generateReceiptNo() {
+  var now = new Date();
+  var y = String(now.getFullYear()).slice(-2);
+  var m = String(now.getMonth() + 1).padStart(2, "0");
+  var d = String(now.getDate()).padStart(2, "0");
+  var t = String(now.getHours()).padStart(2, "0") +
+    String(now.getMinutes()).padStart(2, "0") +
+    String(now.getSeconds()).padStart(2, "0");
+
+  return "AZ-" + y + m + d + "-" + t;
+}
+
+function getPaymentSummary(lines) {
+  lines = lines || [];
+  return lines
+    .filter(function(line) {
+      return line && Number(line.montant) > 0;
+    })
+    .map(function(line) {
+      return line.method + ": " + line.montant;
+    })
+    .join(" + ");
+}
+
+async function saveSaleToSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+
+  var items = data.items || [];
+  var receiptNo = generateReceiptNo();
+  var total = items.reduce(function(sum, item) {
+    return sum + (Number(item.price) || 0) * (Number(item.qty) || 0);
+  }, 0);
+
+  var profit = items.reduce(function(sum, item) {
+    var price = Number(item.price) || 0;
+    var purchasePrice = Number(item.purchasePrice) || 0;
+    var qty = Number(item.qty) || 0;
+    return sum + (price - purchasePrice) * qty;
+  }, 0);
+
+  if (!items.length) {
+    throw new Error("Carrinho vazio.");
+  }
+
+  for (var i = 0; i < items.length; i++) {
+    var cartItem = items[i];
+    var product = (products || []).find(function(p) {
+      return p.name === cartItem.name;
+    });
+
+    if (!product) {
+      throw new Error("Produto nao encontrado: " + cartItem.name);
+    }
+
+    var qty = Number(cartItem.qty) || 0;
+    var currentShop = Number(product.stockBoutique) || 0;
+
+    if (data.saleType !== "Externo" && currentShop < qty) {
+      throw new Error("Stock insuficiente para " + product.name + ". Disponivel: " + currentShop);
+    }
+  }
+
+  var saleResult = await supabaseClient
+    .from("sales")
+    .insert({
+      organization_id: organizationId,
+      receipt_no: receiptNo,
+      client_name: data.clientName || "Anonimo",
+      sale_date: data.saleDate || new Date().toISOString().split("T")[0],
+      sale_type: data.saleType || "interno",
+      total: total,
+      profit: profit,
+      payment_summary: getPaymentSummary(data.paymentLines || []),
+      payment_lines: data.paymentLines || []
+    })
+    .select()
+    .single();
+
+  if (saleResult.error) throw saleResult.error;
+
+  var sale = saleResult.data;
+  var saleItems = [];
+
+  for (var j = 0; j < items.length; j++) {
+    var item = items[j];
+    var productRow = (products || []).find(function(p) {
+      return p.name === item.name;
+    });
+
+    var qtySold = Number(item.qty) || 0;
+    var purchasePrice = Number(productRow.purchasePrice) || 0;
+    var unitPrice = Number(item.price) || 0;
+
+    saleItems.push({
+      sale_id: sale.id,
+      product_id: productRow.id,
+      product_name: item.name,
+      quantity: qtySold,
+      unit_price: unitPrice,
+      total: unitPrice * qtySold,
+      purchase_price: purchasePrice,
+      profit: (unitPrice - purchasePrice) * qtySold,
+      variation: (item.selectedVariations || []).join(" | "),
+      variations: item.selectedVariations || []
+    });
+
+    if (data.saleType !== "Externo") {
+      var newShopStock = Math.max(0, (Number(productRow.stockBoutique) || 0) - qtySold);
+
+      var stockResult = await supabaseClient
+        .from("products")
+        .update({
+          stock_shop: newShopStock
+        })
+        .eq("id", productRow.id);
+
+      if (stockResult.error) throw stockResult.error;
+    }
+  }
+
+  var itemsResult = await supabaseClient
+    .from("sale_items")
+    .insert(saleItems);
+
+  if (itemsResult.error) throw itemsResult.error;
+
+  return {
+    sale: sale,
+    receiptNo: receiptNo,
+    total: total
+  };
+}
 
 
 
@@ -2429,85 +2561,73 @@ function closePaymentModal() {
 }
 
 // ===== CONFIRMAR VENDA =====
-function confirmarVenda() {
-  var client = document.getElementById('clientInput').value.trim() || 'Anonimo';
-  if (cart.length === 0) { toast('Carrinho vazio!', 'error'); return; }
-  var missingPrice = cart.find(function(i) { return !i.price || i.price <= 0; });
-  if (missingPrice) { toast('Entra o preco de venda para: ' + missingPrice.name, 'error'); return; }
-  var cartTotalVal = getCartTotal();
-  var normalizedPayments = normalizePaymentLines(cartTotalVal);
-  if (!normalizedPayments) {
-    toast('Le total des paiements doit etre egal au total de la vente.', 'error');
-    updatePaymentStatus();
+async function confirmarVenda() {
+  if (!cart.length) {
+    toast("Carrinho vazio!", "error");
     return;
   }
 
-  // Block button immediately
-  var btn = document.getElementById('paymentConfirmBtn');
-  btn.disabled = true;
-  btn.textContent = ' A registar...';
+  var btn = document.getElementById("paymentConfirmBtn") || document.getElementById("confirmBtn");
 
-  // Show progress bar
-  var progressWrap = document.getElementById('paymentProgressWrap');
-  var progressBar = document.getElementById('paymentProgressBar');
-  var progressLabel = document.getElementById('paymentProgressLabel');
-  progressWrap.style.display = 'block';
-  progressLabel.style.display = 'block';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+    btn.style.opacity = "0.6";
+  }
 
-  // Animate progress bar
-  var progress = 0;
-  var interval = setInterval(function() {
-    progress += 3;
-    if (progress > 90) progress = 90; // stop at 90, complete on success
-    progressBar.style.width = progress + '%';
-  }, 80);
+  try {
+    var result = await saveSaleToSupabase({
+      saleDate: document.getElementById("vendaDate").value,
+      clientName: document.getElementById("clientInput").value.trim() || "Anonimo",
+      saleType: selectedType,
+      paymentLines: paymentLines,
+      items: cart
+    });
 
-  var now = new Date();
-  var vendaDateVal = document.getElementById('vendaDate').value;
-  var vendaDate = vendaDateVal ? new Date(vendaDateVal) : now;
-  var recibo = 'DUK-' + now.getFullYear().toString().slice(-2) +
-    String(now.getMonth()+1).padStart(2,'0') + '-' +
-    String(Math.floor(Math.random()*9000)+1000);
+    toast("Venda registada!", "success");
 
-  var data = {
-    date: vendaDate.toLocaleDateString('pt-PT'),
-    client: client,
-    items: cart.map(function(i) { return {name:getItemDisplayName(i), price:i.price, regularPrice:i.regularPrice || i.price, qty:i.qty}; }),
-    total: cartTotalVal,
-    pagamento: getPaymentSummary(normalizedPayments),
-    paymentLines: normalizedPayments.map(function(p) { return {method:p.method, montant:p.montant}; }),
-    statut: selectedType,
-    recibo: recibo
-  };
+    lastReceiptData = {
+      recibo: result.receiptNo,
+      date: document.getElementById("vendaDate").value,
+      client: document.getElementById("clientInput").value.trim() || "Anonimo",
+      pay: getPaymentSummary(paymentLines),
+      items: cart.map(function(item) {
+        return {
+          name: getItemDisplayName(item),
+          qty: item.qty,
+          price: item.price,
+          total: item.price * item.qty
+        };
+      }),
+      total: result.total
+    };
 
-  lastReceiptData = data;
+    if (typeof showReceipt === "function") {
+      showReceipt(lastReceiptData);
+    }
 
-  gsCall('registarVenda', data, function() {
-    // Complete progress bar
-    clearInterval(interval);
-    progressBar.style.width = '100%';
-    progressLabel.textContent = 'Venda registada!';
+    cart = [];
+    renderCart();
 
-    // Actualiser le stock IMMEDIATEMENT en arriere-plan
-    // sans attendre l'animation - comme ca le stock est deja
-    // a jour quand la prochaine vente commence
-    loadProducts();
-
-    setTimeout(function() {
-      progressWrap.style.display = 'none';
-      progressLabel.style.display = 'none';
-      progressBar.style.width = '0%';
-      progressLabel.textContent = 'A registar venda...';
-      btn.textContent = 'Confirmar Venda';
-      btn.disabled = false;
+    if (typeof closePaymentModal === "function") {
       closePaymentModal();
-      showReceipt(data);
-      clearCart();
-      initPaymentLines();
-    }, 600);
-    toast('Venda registada com sucesso!', 'success');
-  });
+    }
+
+    await loadProducts(true);
+
+  } catch (e) {
+    console.error("Erro venda:", e);
+    toast("Erro ao registar venda: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Confirmar Venda";
+      btn.style.opacity = "1";
+    }
+  }
 }
+
 
 // ===== RECEIPT =====
 function showReceipt(d) {
