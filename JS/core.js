@@ -7695,20 +7695,29 @@ function injectLockSettingsCard() {
   card.style.boxShadow = "0 8px 24px rgba(0,0,0,.05)";
 
   card.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
-      <div>
-        <h3 style="margin:0;color:#002f87;font-size:18px;">Segurança do ERP</h3>
-        <p style="margin:4px 0 0;color:#8a8177;font-size:13px;">
-          Defina um mot de passe para bloquear o acesso ao sistema.
-        </p>
-      </div>
-    </div>
+    <h3 style="margin:0 0 6px;color:#002f87;font-size:18px;">Segurança do ERP</h3>
+    <p style="margin:0 0 14px;color:#8a8177;font-size:13px;">
+      Defina um mot de passe para bloquear o acesso ao sistema.
+    </p>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <input id="erpLockPassword" type="password" placeholder="Novo mot de passe"
-        style="height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 12px;font-size:14px;">
-      <input id="erpLockPasswordConfirm" type="password" placeholder="Confirmar mot de passe"
-        style="height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 12px;font-size:14px;">
+      <div style="position:relative;">
+        <input id="erpLockPassword" type="password" placeholder="Novo mot de passe"
+          style="width:100%;height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 44px 0 12px;font-size:14px;">
+        <button type="button" onclick="togglePasswordVisibility('erpLockPassword', this)"
+          style="position:absolute;right:6px;top:5px;width:32px;height:32px;border:0;background:transparent;cursor:pointer;font-size:17px;">
+          👁
+        </button>
+      </div>
+
+      <div style="position:relative;">
+        <input id="erpLockPasswordConfirm" type="password" placeholder="Confirmar mot de passe"
+          style="width:100%;height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 44px 0 12px;font-size:14px;">
+        <button type="button" onclick="togglePasswordVisibility('erpLockPasswordConfirm', this)"
+          style="position:absolute;right:6px;top:5px;width:32px;height:32px;border:0;background:transparent;cursor:pointer;font-size:17px;">
+          👁
+        </button>
+      </div>
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -7761,21 +7770,48 @@ function lockErpNow() {
   localStorage.setItem(AZUL_LOCKED_KEY, "1");
   showErpLockScreen();
 }
-
 function showErpLockScreen() {
   if (document.getElementById("erpLockOverlay")) return;
 
+  document.body.style.overflow = "hidden";
+
   var overlay = document.createElement("div");
   overlay.id = "erpLockOverlay";
-  overlay.className = "erp-lock-overlay";
+
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.width = "100vw";
+  overlay.style.height = "100vh";
+  overlay.style.zIndex = "999999";
+  overlay.style.background = "linear-gradient(180deg, #f8f6f1 0%, #ece7db 100%)";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.padding = "20px";
 
   overlay.innerHTML = `
-    <div class="erp-lock-box">
-      <h2>ERP verrouillé</h2>
-      <p>Entre le mot de passe pour continuer.</p>
+    <div style="width:min(420px,100%);background:#fff;border-radius:22px;padding:28px 22px;box-shadow:0 24px 70px rgba(0,0,0,.22);text-align:center;">
+      <div style="width:72px;height:72px;margin:0 auto 16px;border-radius:22px;background:#003b91;color:#fff;display:grid;place-items:center;font-size:34px;">
+        🔒
+      </div>
 
-      <input id="erpUnlockPassword" type="password" placeholder="Mot de passe">
-      <button onclick="unlockErp()">Déverrouiller</button>
+      <h2 style="margin:0 0 6px;color:#002f87;font-size:24px;">ERP verrouillé</h2>
+      <p style="margin:0 0 20px;color:#777;font-size:14px;">Entre le mot de passe pour continuer.</p>
+
+      <div style="position:relative;margin-bottom:14px;">
+        <input id="erpUnlockPassword" type="password" placeholder="Mot de passe"
+          onkeydown="if(event.key === 'Enter') unlockErp()"
+          style="width:100%;height:50px;border:1px solid #d8d2c7;border-radius:12px;padding:0 48px 0 14px;font-size:16px;outline:none;">
+        <button type="button" onclick="togglePasswordVisibility('erpUnlockPassword', this)"
+          style="position:absolute;right:8px;top:8px;width:34px;height:34px;border:0;background:transparent;cursor:pointer;font-size:18px;">
+          👁
+        </button>
+      </div>
+
+      <button onclick="unlockErp()"
+        style="width:100%;height:50px;border:0;border-radius:12px;background:#003b91;color:#fff;font-weight:800;font-size:15px;cursor:pointer;">
+        Déverrouiller
+      </button>
     </div>
   `;
 
@@ -7789,7 +7825,7 @@ function showErpLockScreen() {
 
 async function unlockErp() {
   var input = document.getElementById("erpUnlockPassword");
-  var pass = input.value.trim();
+  var pass = input ? input.value.trim() : "";
 
   if (!pass) {
     toast("Entre le mot de passe.", "error");
@@ -7811,9 +7847,10 @@ async function unlockErp() {
   var overlay = document.getElementById("erpLockOverlay");
   if (overlay) overlay.remove();
 
+  document.body.style.overflow = "";
+
   toast("ERP déverrouillé.", "success");
 }
-
 function initErpLockSystem() {
   injectLockSettingsCard();
 
@@ -7823,3 +7860,15 @@ function initErpLockSystem() {
 }
 
 document.addEventListener("DOMContentLoaded", initErpLockSystem);
+function togglePasswordVisibility(inputId, button) {
+  var input = document.getElementById(inputId);
+  if (!input) return;
+
+  if (input.type === "password") {
+    input.type = "text";
+    button.textContent = "🙈";
+  } else {
+    input.type = "password";
+    button.textContent = "👁";
+  }
+}
