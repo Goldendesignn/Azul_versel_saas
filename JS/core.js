@@ -1023,7 +1023,7 @@ function goTo(page, btn) {
     if (page === 'depenses') initDepensesPage();
     if (page === 'historique') loadHist();
     if (page === 'forn') loadProducts();
-    //if (page === 'clientes') renderClientDatalist();
+    if (page === 'clientes') renderClientDatalist();
     if (page === 'tresorerie') loadTresorerie();
     if (page === 'comptabilite') loadComptabilite();
     if (page === 'revendeurs') {
@@ -6027,6 +6027,47 @@ function saveFornecedor() {
 // ===== FICHE CLIENT =====
 var clientDetailRequestSeq = 0;
 
+async function getClientNamesFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var result = await supabaseClient
+    .from("sales")
+    .select("client_name")
+    .eq("organization_id", organizationId)
+    .not("client_name", "is", null)
+    .order("created_at", { ascending: false });
+
+  if (result.error) throw result.error;
+
+  var seen = {};
+  return (result.data || [])
+    .map(function(row) {
+      return String(row.client_name || "").trim();
+    })
+    .filter(function(name) {
+      if (!name || name.toLowerCase() === "anonimo") return false;
+      var key = name.toLowerCase();
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+}
+
+async function renderClientDatalist() {
+  try {
+    var names = await getClientNamesFromSupabase();
+    var html = names.map(function(name) {
+      return '<option value="' + escapeDepenseHtml(name) + '"></option>';
+    }).join("");
+
+    document.querySelectorAll("#list-client").forEach(function(list) {
+      list.innerHTML = html;
+    });
+  } catch (e) {
+    console.error("Erro lista clientes:", e);
+  }
+}
+
 async function loadClientDetail() {
   var nom = (document.getElementById("cli-search").value || "").trim();
 
@@ -6043,47 +6084,50 @@ async function loadClientDetail() {
     var initial = String(data.name || nom || "?").trim().charAt(0).toUpperCase();
 
     var html =
-      '<div class="az-client-profile">' +
-        '<div class="az-client-hero">' +
-          '<div class="az-client-head">' +
-            '<div class="az-client-avatar">' + escapeDepenseHtml(initial) + '</div>' +
+      '<div style="display:grid;gap:16px;">' +
+
+        '<div style="background:#fff;border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 12px 30px rgba(0,0,0,.06);">' +
+          '<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">' +
+            '<div style="width:56px;height:56px;border-radius:16px;background:rgba(91,155,213,.14);color:var(--blue);display:grid;place-items:center;font-size:24px;font-weight:900;">' +
+              escapeDepenseHtml(initial) +
+            '</div>' +
             '<div>' +
-              '<div class="az-client-name">' + escapeDepenseHtml(data.name || nom) + '</div>' +
-              '<div class="az-client-sub">Ficha do cliente</div>' +
+              '<div style="font-family:Playfair Display,serif;font-size:25px;font-weight:800;">' + escapeDepenseHtml(data.name || nom) + '</div>' +
+              '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Ficha do cliente</div>' +
             '</div>' +
           '</div>' +
 
-          '<div class="az-client-kpis">' +
-            '<div class="az-client-kpi">' +
-              '<div class="az-client-kpi-label">Total compras</div>' +
-              '<div class="az-client-kpi-value">' + fmt(data.totalAchat || 0) + '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">' +
+            '<div style="background:var(--surface2);border-radius:14px;padding:14px;">' +
+              '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Total compras</div>' +
+              '<div style="margin-top:6px;font-family:Playfair Display,serif;font-size:22px;font-weight:900;color:var(--blue);">' + fmt(data.totalAchat || 0) + '</div>' +
             '</div>' +
-            '<div class="az-client-kpi">' +
-              '<div class="az-client-kpi-label">Divida</div>' +
-              '<div class="az-client-kpi-value red">' + fmt(data.totalDette || 0) + '</div>' +
+            '<div style="background:var(--surface2);border-radius:14px;padding:14px;">' +
+              '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Divida</div>' +
+              '<div style="margin-top:6px;font-family:Playfair Display,serif;font-size:22px;font-weight:900;color:var(--red);">' + fmt(data.totalDette || 0) + '</div>' +
             '</div>' +
-            '<div class="az-client-kpi">' +
-              '<div class="az-client-kpi-label">Transacoes</div>' +
-              '<div class="az-client-kpi-value">' + (data.transactions || 0) + '</div>' +
+            '<div style="background:var(--surface2);border-radius:14px;padding:14px;">' +
+              '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Transacoes</div>' +
+              '<div style="margin-top:6px;font-family:Playfair Display,serif;font-size:22px;font-weight:900;color:var(--blue);">' + (data.transactions || 0) + '</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
 
-        '<div class="az-client-history">' +
+        '<div style="background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 12px 30px rgba(0,0,0,.04);">' +
           '<div class="card-title">Historico</div>';
 
     if (data.historique && data.historique.length > 0) {
-      html += '<div class="az-client-history-list">';
+      html += '<div style="display:grid;gap:10px;">';
 
       data.historique.forEach(function(a) {
         html +=
-          '<div class="az-client-history-item">' +
+          '<div style="display:flex;justify-content:space-between;gap:12px;padding:12px;border-radius:14px;background:var(--surface2);">' +
             '<div>' +
-              '<div class="az-client-history-date">' + escapeDepenseHtml(a.date || "") + '</div>' +
-              '<div class="az-client-history-prod">' + escapeDepenseHtml(a.prod || "") + '</div>' +
-              '<div class="az-client-history-sub">Quantidade: ' + (a.qty || 0) + '</div>' +
+              '<div style="font-size:11px;color:var(--orange);font-weight:800;">' + escapeDepenseHtml(a.date || "") + '</div>' +
+              '<div style="margin-top:3px;font-size:14px;font-weight:800;">' + escapeDepenseHtml(a.prod || "") + '</div>' +
+              '<div style="margin-top:3px;font-size:12px;color:var(--muted);">Quantidade: ' + (a.qty || 0) + '</div>' +
             '</div>' +
-            '<div class="az-client-history-total">' + fmt(a.total || 0) + '</div>' +
+            '<div style="font-size:15px;font-weight:900;color:var(--blue);white-space:nowrap;">' + fmt(a.total || 0) + '</div>' +
           '</div>';
       });
 
