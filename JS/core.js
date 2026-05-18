@@ -348,39 +348,7 @@ if (costOfGoods > 0) {
     saleLines.push({ account: "13", debit: 0, credit: costOfGoods });
   }
 }
-var itemsResult = await supabaseClient
-  .from("reseller_consignment_items")
-  .select("*")
-  .eq("consignment_id", consignment.id);
 
-if (itemsResult.error) throw itemsResult.error;
-
-var consignmentItems = itemsResult.data || [];
-
-var productIds = consignmentItems
-  .map(function(item) { return item.product_id; })
-  .filter(Boolean);
-
-var productCostMap = {};
-
-if (productIds.length) {
-  var productsResult = await supabaseClient
-    .from("products")
-    .select("id, purchase_price")
-    .in("id", productIds);
-
-  if (productsResult.error) throw productsResult.error;
-
-  (productsResult.data || []).forEach(function(product) {
-    productCostMap[product.id] = Number(product.purchase_price) || 0;
-  });
-}
-
-var costOfGoods = consignmentItems.reduce(function(sum, item) {
-  var qty = Number(item.quantity) || 0;
-  var purchasePrice = productCostMap[item.product_id] || 0;
-  return sum + (qty * purchasePrice);
-}, 0);
 await createAccountingEntry(
   "sale",
   sale.id,
@@ -2742,6 +2710,40 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
 
     if (updateResult.error) throw updateResult.error;
 
+    var resellerItemsResult = await supabaseClient
+  .from("reseller_consignment_items")
+  .select("*")
+  .eq("consignment_id", consignment.id);
+
+if (resellerItemsResult.error) throw resellerItemsResult.error;
+
+var consignmentItems = resellerItemsResult.data || [];
+
+var productIds = consignmentItems
+  .map(function(item) { return item.product_id; })
+  .filter(Boolean);
+
+var productCostMap = {};
+
+if (productIds.length) {
+  var productsResult = await supabaseClient
+    .from("products")
+    .select("id, purchase_price")
+    .in("id", productIds);
+
+  if (productsResult.error) throw productsResult.error;
+
+  (productsResult.data || []).forEach(function(product) {
+    productCostMap[product.id] = Number(product.purchase_price) || 0;
+  });
+}
+
+var costOfGoods = consignmentItems.reduce(function(sum, item) {
+  var qty = Number(item.quantity) || 0;
+  var purchasePrice = productCostMap[item.product_id] || 0;
+  return sum + (qty * purchasePrice);
+}, 0);
+    
    var accountingLines = [
   { account: "11", debit: applied, credit: 0 },
   { account: "71", debit: 0, credit: applied }
@@ -7997,7 +7999,7 @@ function showErpLockScreen() {
 
       <button onclick="unlockErp()"
         style="width:100%;height:50px;border:0;border-radius:12px;background:#003b91;color:#fff;font-weight:800;font-size:15px;cursor:pointer;">
-        Déverrouiller
+        Deverrouiller
       </button>
     </div>
   `;
