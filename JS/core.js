@@ -6014,70 +6014,284 @@ async function saveDepense() {
 }
 // Enregistrement par cle de license
 
-function saveTresorerie() {
+async function saveTresorerie() {
   var data = {
-    date: document.getElementById('tre-date').value,
-    mouvement: document.getElementById('tre-mvt').value,
-    tipo: document.getElementById('tre-type').value.trim(),
-    desc: document.getElementById('tre-desc').value.trim(),
-    montant: parseFloat(document.getElementById('tre-montant').value) || 0
+    date: document.getElementById("tre-date").value,
+    mouvement: document.getElementById("tre-mvt").value,
+    tipo: document.getElementById("tre-type").value.trim(),
+    desc: document.getElementById("tre-desc").value.trim(),
+    montant: parseFloat(document.getElementById("tre-montant").value) || 0
   };
 
-  if (data.montant <= 0) { toast('Entra um montant valide!', 'error'); return; }
+  if (data.montant <= 0) {
+    toast("Entra um montant valide!", "error");
+    return;
+  }
 
-  var btn = document.getElementById('treBtn');
-  btn.disabled = true;
-  btn.textContent = 'A registar...';
-  btn.style.opacity = '0.6';
+  var btn = document.getElementById("treBtn");
 
-  gsCall('registarTresorerie', data, function() {
-    toast('Mouvement de tresorerie registado!', 'success');
-    document.getElementById('tre-type').value = '';
-    document.getElementById('tre-desc').value = '';
-    document.getElementById('tre-montant').value = '';
-    btn.disabled = false;
-    btn.textContent = 'Registar Mouvement';
-    btn.style.opacity = '1';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+    btn.style.opacity = "0.6";
+  }
+
+  try {
+    await saveTreasuryManualEntryToSupabase(data);
+
+    toast("Mouvement de tresorerie registado!", "success");
+
+    document.getElementById("tre-type").value = "";
+    document.getElementById("tre-desc").value = "";
+    document.getElementById("tre-montant").value = "";
+
     loadTresorerie();
-  });
+
+  } catch (e) {
+    console.error("Erro tresorerie:", e);
+    toast("Erro tresorerie: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Registar Mouvement";
+      btn.style.opacity = "1";
+    }
+  }
 }
 
-function loadTresorerie() {
-  var body = document.getElementById('tresoBody');
+async function loadTresorerie() {
+  var body = document.getElementById("tresoBody");
   if (!body) return;
 
   body.innerHTML = '<tr><td colspan="6" class="empty">A carregar...</td></tr>';
 
   var params = {
-    from: document.getElementById('tre-from').value,
-    to: document.getElementById('tre-to').value,
-    type: document.getElementById('tre-filter-type').value.trim(),
+    from: document.getElementById("tre-from").value,
+    to: document.getElementById("tre-to").value,
+    type: document.getElementById("tre-filter-type").value.trim(),
     limit: 100
   };
 
-  gsCall('getTresorerie', params, function(data) {
+  try {
+    var data = await getTreasuryFromSupabase(params);
+
     data = data || {};
-    document.getElementById('tr-balance').textContent = fmt(data.balance || 0);
-    document.getElementById('tr-in').textContent = fmt(data.totalIn || 0);
-    document.getElementById('tr-out').textContent = fmt(data.totalOut || 0);
+
+    document.getElementById("tr-balance").textContent = fmt(data.balance || 0);
+    document.getElementById("tr-in").textContent = fmt(data.totalIn || 0);
+    document.getElementById("tr-out").textContent = fmt(data.totalOut || 0);
 
     if (!data.entries || data.entries.length === 0) {
       body.innerHTML = '<tr><td colspan="6" class="empty">Nenhum movimento encontrado</td></tr>';
       return;
     }
 
-    body.innerHTML = '';
+    body.innerHTML = "";
+
     data.entries.forEach(function(row) {
-      body.innerHTML += '<tr>' +
-        '<td>' + row.date + '</td>' +
-        '<td>' + (row.type || '') + '</td>' +
-        '<td>' + (row.desc || '') + '</td>' +
-        '<td style="color:var(--green);font-weight:600;">' + ((row.income || 0) ? fmt(row.income) : '-') + '</td>' +
-        '<td style="color:var(--red);font-weight:600;">' + ((row.expense || 0) ? fmt(row.expense) : '-') + '</td>' +
-        '<td style="font-weight:700;color:var(--blue);">' + fmt(row.balance || 0) + '</td>' +
-        '</tr>';
+      body.innerHTML += "<tr>" +
+        "<td>" + escapeDepenseHtml(row.date || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.type || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.desc || "") + "</td>" +
+        '<td style="color:var(--green);font-weight:600;">' + ((row.income || 0) ? fmt(row.income) : "-") + "</td>" +
+        '<td style="color:var(--red);font-weight:600;">' + ((row.expense || 0) ? fmt(row.expense) : "-") + "</td>" +
+        '<td style="font-weight:700;color:var(--blue);">' + fmt(row.balance || 0) + "</td>" +
+      "</tr>";
+    });
+
+  } catch (e) {
+    console.error("Erro tresorerie:", e);
+    body.innerHTML = '<tr><td colspan="6" class="empty">Erro ao carregar tresorerie</td></tr>';
+    toast("Erro tresorerie: " + (e.message || e), "error");
+  }
+}
+async function saveTreasuryManualEntryToSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+
+  var result = await supabaseClient
+    .from("treasury_entries")
+    .insert({
+      organization_id: organizationId,
+      entry_date: data.date || new Date().toISOString().split("T")[0],
+      movement: data.mouvement || "entrada",
+      type: data.tipo || "",
+      description: data.desc || "",
+      amount: Number(data.montant) || 0
+    });
+
+  if (result.error) throw result.error;
+}
+
+async function getTreasuryFromSupabase(params) {
+  var organizationId = getAzulOrganizationId();
+
+  params = params || {};
+  var from = params.from || "";
+  var to = params.to || "";
+  var typeFilter = String(params.type || "").trim().toLowerCase();
+
+  var entries = [];
+
+  var salesQuery = supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) salesQuery = salesQuery.gte("sale_date", from);
+  if (to) salesQuery = salesQuery.lte("sale_date", to);
+
+  var salesResult = await salesQuery;
+  if (salesResult.error) throw salesResult.error;
+
+  (salesResult.data || []).forEach(function(sale) {
+    entries.push({
+      date: sale.sale_date || "",
+      type: "Venda",
+      desc: "Venda " + (sale.receipt_no || ""),
+      income: Number(sale.total) || 0,
+      expense: 0,
+      created_at: sale.created_at || ""
     });
   });
+
+  var expensesQuery = supabaseClient
+    .from("expenses")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) expensesQuery = expensesQuery.gte("expense_date", from);
+  if (to) expensesQuery = expensesQuery.lte("expense_date", to);
+
+  var expensesResult = await expensesQuery;
+  if (expensesResult.error) throw expensesResult.error;
+
+  (expensesResult.data || []).forEach(function(expense) {
+    entries.push({
+      date: expense.expense_date || "",
+      type: "Depense",
+      desc: expense.description || expense.category || "",
+      income: 0,
+      expense: Number(expense.amount) || 0,
+      created_at: expense.created_at || ""
+    });
+  });
+
+  var clientPayQuery = supabaseClient
+    .from("client_payments")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) clientPayQuery = clientPayQuery.gte("payment_date", from);
+  if (to) clientPayQuery = clientPayQuery.lte("payment_date", to);
+
+  var clientPayResult = await clientPayQuery;
+  if (clientPayResult.error) throw clientPayResult.error;
+
+  (clientPayResult.data || []).forEach(function(pay) {
+    entries.push({
+      date: pay.payment_date || "",
+      type: "Pagamento Cliente",
+      desc: (pay.client_name || "") + (pay.note ? " - " + pay.note : ""),
+      income: Number(pay.amount) || 0,
+      expense: 0,
+      created_at: pay.created_at || ""
+    });
+  });
+
+  var supplierPayQuery = supabaseClient
+    .from("supplier_payments")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) supplierPayQuery = supplierPayQuery.gte("payment_date", from);
+  if (to) supplierPayQuery = supplierPayQuery.lte("payment_date", to);
+
+  var supplierPayResult = await supplierPayQuery;
+  if (supplierPayResult.error) throw supplierPayResult.error;
+
+  (supplierPayResult.data || []).forEach(function(pay) {
+    entries.push({
+      date: pay.payment_date || "",
+      type: "Pagamento Fornecedor",
+      desc: (pay.supplier || "") + (pay.note ? " - " + pay.note : ""),
+      income: 0,
+      expense: Number(pay.amount) || 0,
+      created_at: pay.created_at || ""
+    });
+  });
+
+  var manualQuery = supabaseClient
+    .from("treasury_entries")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) manualQuery = manualQuery.gte("entry_date", from);
+  if (to) manualQuery = manualQuery.lte("entry_date", to);
+
+  var manualResult = await manualQuery;
+  if (manualResult.error) throw manualResult.error;
+
+  (manualResult.data || []).forEach(function(row) {
+    var isIncome = row.movement === "entrada";
+
+    entries.push({
+      date: row.entry_date || "",
+      type: row.type || "Manual",
+      desc: row.description || "",
+      income: isIncome ? Number(row.amount) || 0 : 0,
+      expense: isIncome ? 0 : Number(row.amount) || 0,
+      created_at: row.created_at || ""
+    });
+  });
+
+  if (typeFilter) {
+    entries = entries.filter(function(row) {
+      return (
+        String(row.type || "").toLowerCase().indexOf(typeFilter) >= 0 ||
+        String(row.desc || "").toLowerCase().indexOf(typeFilter) >= 0
+      );
+    });
+  }
+
+  entries.sort(function(a, b) {
+    var ak = String(a.date || "") + " " + String(a.created_at || "");
+    var bk = String(b.date || "") + " " + String(b.created_at || "");
+    return bk.localeCompare(ak);
+  });
+
+  var totalIn = entries.reduce(function(sum, row) {
+    return sum + (Number(row.income) || 0);
+  }, 0);
+
+  var totalOut = entries.reduce(function(sum, row) {
+    return sum + (Number(row.expense) || 0);
+  }, 0);
+
+  var balance = totalIn - totalOut;
+  var running = balance;
+
+  entries = entries.map(function(row) {
+    var current = running;
+    running -= (Number(row.income) || 0) - (Number(row.expense) || 0);
+
+    return {
+      date: row.date,
+      type: row.type,
+      desc: row.desc,
+      income: row.income,
+      expense: row.expense,
+      balance: current
+    };
+  });
+
+  return {
+    balance: balance,
+    totalIn: totalIn,
+    totalOut: totalOut,
+    count: entries.length,
+    entries: entries
+  };
 }
 
 function htmlSafeAcct(value) {
