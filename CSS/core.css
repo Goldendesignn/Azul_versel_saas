@@ -1876,4 +1876,167 @@ html, body {
     border-radius: 999px;
     background: #32bfb3;
    
+/* ===== MOBILE PURCHASE EXPERIENCE ===== */
 
+.mobile-achat-summary,
+.mobile-achat-add-btn {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  #page-achat {
+    padding-bottom: 92px;
+  }
+
+  #achat-panel-novo > .section-title {
+    font-size: 24px;
+    margin-bottom: 14px;
+  }
+
+  #achat-panel-novo > .form-group {
+    max-width: none !important;
+  }
+
+  #achat-panel-novo > div[style*="margin:-6px"] {
+    display: none;
+  }
+
+  #achat-panel-novo > button[onclick="addAchatLine()"] {
+    display: none;
+  }
+
+  #achat-panel-novo > button.form-submit {
+    display: none;
+  }
+
+  #achat-total-global {
+    font-size: 22px !important;
+  }
+
+  #achat-panel-novo > div[style*="display:flex;justify-content:space-between"] {
+    display: none !important;
+  }
+
+  .mobile-achat-add-btn {
+    position: fixed;
+    right: 18px;
+    bottom: 88px;
+    z-index: 122;
+    width: 58px;
+    height: 58px;
+    border: none;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    font-size: 30px;
+    font-weight: 800;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+    display: grid;
+    place-items: center;
+  }
+
+  .mobile-achat-summary {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 121;
+    min-height: 74px;
+    background: #006b5f;
+    color: #fff;
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    box-shadow: 0 -10px 28px rgba(0,0,0,0.16);
+  }
+
+  .mobile-achat-summary-title {
+    font-size: 12px;
+    opacity: .82;
+  }
+
+  .mobile-achat-summary-total {
+    margin-top: 2px;
+    font-size: 20px;
+    font-weight: 900;
+  }
+
+  .mobile-achat-summary-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 13px 16px;
+    background: #fff;
+    color: #006b5f;
+    font-weight: 900;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .achat-lines-table tbody tr {
+    overflow: hidden;
+  }
+
+  .achat-photo-preview,
+  .achat-photo-placeholder {
+    height: 160px;
+    border-radius: 16px;
+  }
+
+  .achat-photo-placeholder {
+    background: linear-gradient(180deg, #f7f7f7, #ececec);
+  }
+
+  .achat-field-stack {
+    margin-top: 4px;
+  }
+
+  .achat-cell-input {
+    border-radius: 14px;
+    min-height: 48px;
+    background: #fff;
+  }
+
+  .achat-price-row {
+    grid-template-columns: 92px 1fr;
+  }
+
+  .achat-total-cell {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .achat-total-cell h4 {
+    margin: 0;
+  }
+
+  #a-credit-fields {
+    max-width: none !important;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 14px;
+  }
+
+  #paiements-table,
+  #paiements-table tbody,
+  #paiements-table tr,
+  #paiements-table td,
+  #paiements-table th {
+    display: block;
+    width: 100%;
+  }
+
+  #paiements-table thead {
+    display: none;
+  }
+
+  #paiements-table tr {
+    background: var(--surface2);
+    border-radius: 14px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+}
