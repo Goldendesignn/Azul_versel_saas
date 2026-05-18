@@ -810,8 +810,19 @@ function cleanupLegacyCartFooter() {
 }
 
 // ===== NAVIGATION =====
+function openMobileMenu() {
+  document.body.classList.add("mobile-nav-open");
+}
+
+function closeMobileMenu() {
+  document.body.classList.remove("mobile-nav-open");
+}
+
 function goTo(page, btn) {
+  closeMobileMenu();
+
   var target = document.getElementById('page-' + page);
+
   if (!target) {
     toast('Page introuvable: ' + page, 'error');
     return;
