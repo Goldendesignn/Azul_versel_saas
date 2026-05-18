@@ -2712,7 +2712,7 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
 
     await createAccountingEntry(
       "reseller_payment",
-      consignment.id,
+      generateLocalUuid(),  
       actionDate || new Date().toISOString().split("T")[0],
       "Pagamento revendedor " + (consignment.reseller_name || ""),
       [
@@ -2730,6 +2730,16 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
 
   return true;
 }
+function generateLocalUuid() {
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0;
+    var v = c === "x" ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 async function returnSelectedConsignmentsInSupabase(ids) {
   var organizationId = getAzulOrganizationId();
 
@@ -3755,13 +3765,21 @@ async function confirmarVenda() {
     return;
   }
 
-  var hasCredit = getCreditAmountFromPaymentLines(paymentLines, getCartTotalMobile()) > 0;
-  var clientName = document.getElementById("clientInput").value.trim();
+ var totalVenda = getCartTotal();
+var finalPaymentLines = normalizePaymentLines(totalVenda);
 
-  if (hasCredit && !clientName) {
-    toast("Venda a credito precisa de nome do cliente.", "error");
-    return;
-  }
+if (!finalPaymentLines) {
+  toast("O total dos pagamentos deve ser igual ao total da venda.", "error");
+  return;
+}
+
+var hasCredit = getCreditAmountFromPaymentLines(finalPaymentLines, totalVenda) > 0;
+var clientName = document.getElementById("clientInput").value.trim();
+
+if (hasCredit && !clientName) {
+  toast("Venda a credito precisa de nome do cliente.", "error");
+  return;
+}
 
   var btn = document.getElementById("paymentConfirmBtn") || document.getElementById("confirmBtn");
 
@@ -3776,7 +3794,7 @@ async function confirmarVenda() {
       saleDate: document.getElementById("vendaDate").value,
       clientName: clientName || "Anonimo",
       saleType: selectedType,
-      paymentLines: paymentLines,
+      paymentLines: finalPaymentLines,
       items: cart
     });
 
@@ -7865,7 +7883,7 @@ async function saveErpLockPassword() {
   var confirm = document.getElementById("erpLockPasswordConfirm").value.trim();
 
   if (pass.length < 4) {
-    toast"Le mot de passe doit avoir au moins 4 caracteres.", "error");
+    toast("Le mot de passe doit avoir au moins 4 caracteres.", "error");
     return;
   }
 
@@ -7920,10 +7938,10 @@ function showErpLockScreen() {
   overlay.innerHTML = `
     <div style="width:min(420px,100%);background:#fff;border-radius:22px;padding:28px 22px;box-shadow:0 24px 70px rgba(0,0,0,.22);text-align:center;">
       <div style="width:72px;height:72px;margin:0 auto 16px;border-radius:22px;background:#003b91;color:#fff;display:grid;place-items:center;font-size:34px;">
-        🔒
+        &#128274;
       </div>
 
-      <h2 style="margin:0 0 6px;color:#002f87;font-size:24px;">ERP verrouillé</h2>
+      <h2 style="margin:0 0 6px;color:#002f87;font-size:24px;">ERP verrouille</h2>
       <p style="margin:0 0 20px;color:#777;font-size:14px;">Entre le mot de passe pour continuer.</p>
 
       <div style="position:relative;margin-bottom:14px;">
@@ -7932,7 +7950,7 @@ function showErpLockScreen() {
           style="width:100%;height:50px;border:1px solid #d8d2c7;border-radius:12px;padding:0 48px 0 14px;font-size:16px;outline:none;">
         <button type="button" onclick="togglePasswordVisibility('erpUnlockPassword', this)"
           style="position:absolute;right:8px;top:8px;width:34px;height:34px;border:0;background:transparent;cursor:pointer;font-size:18px;">
-          👁
+          &#128065;
         </button>
       </div>
 
