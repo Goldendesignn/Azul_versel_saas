@@ -13,9 +13,18 @@
 
   <!-- HEADER -->
   <div class="header">
+    <button class="mobile-menu-btn" onclick="openMobileMenu()" aria-label="Abrir menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  
     <div class="logo">Azul Gestão</div>
     <div class="date-txt" id="dateTxt"></div>
   </div>
+
+  <div class="mobile-nav-backdrop" id="mobileNavBackdrop" onclick="closeMobileMenu()"></div>
+
 
   <!-- NAV -->
   <div class="nav">
