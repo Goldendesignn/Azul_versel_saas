@@ -2040,3 +2040,23 @@ html, body {
     margin-bottom: 10px;
   }
 }
+
+/* Fix: cacher les contrôles achat mobile sur desktop */
+#mobileAchatAddBtn,
+#mobileAchatSummary {
+  display: none !important;
+}
+
+@media (max-width: 820px) {
+  #mobileAchatAddBtn {
+    display: grid !important;
+  }
+
+  #mobileAchatSummary {
+    display: grid !important;
+  }
+
+  #mobileAchatSummary[style*="display: none"] {
+    display: none !important;
+  }
+}
