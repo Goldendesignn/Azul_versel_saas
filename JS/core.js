@@ -26,6 +26,10 @@ function getAzulOrganizationId() {
 function mapSupabaseProduct(row) {
   row = row || {};
 
+  var variations = Array.isArray(row.variations)
+    ? row.variations
+    : parseVariationList(row.variation || "");
+
   return {
     id: row.id,
     name: row.name || "",
@@ -38,14 +42,15 @@ function mapSupabaseProduct(row) {
     category: row.category || "",
     supplier: row.supplier || "",
     mainSupplier: row.supplier || "",
-    photo: "",
-    code: "",
-    variation: "",
-    variations: [],
+    photo: row.photo || "",
+    code: row.code || "",
+    variation: row.variation || variations.join(" | "),
+    variations: variations,
     entries: Number(row.stock_warehouse) + Number(row.stock_shop),
     exits: 0
   };
 }
+
 
 async function getProductsFromSupabase() {
   var organizationId = getAzulOrganizationId();
@@ -89,9 +94,13 @@ async function upsertProductFromPurchase(item, supplier) {
 
   var productName = String(item.prod || item.name || "").trim();
   var quantity = Number(item.qty || item.quantity) || 0;
-  var purchasePrice = Number(item.pa || item.purchasePrice || item.purchase_price) || 0;
-  var salePrice = Number(item.pv || item.price || item.sale_price) || 0;
+  var purchasePrice = Number(item.pa || item.purchasePrice || item.purchase_price || item.price) || 0;
+  var salePrice = Number(item.pv || item.salePrice || item.sale_price || item.targetMargin) || 0;
   var category = String(item.category || item.categorie || "").trim();
+  var code = String(item.code || "").trim();
+  var photo = String(item.photo || "").trim();
+  var variations = parseVariationList(item.variations || item.variation || "");
+  var variation = variations.join(" | ");
 
   if (!productName || quantity <= 0) {
     throw new Error("Produto ou quantidade invalida.");
@@ -116,6 +125,10 @@ async function upsertProductFromPurchase(item, supplier) {
       .update({
         supplier: supplier || existingResult.data.supplier || "",
         category: category || existingResult.data.category || "",
+        code: code || existingResult.data.code || "",
+        photo: photo || existingResult.data.photo || "",
+        variation: variation || existingResult.data.variation || "",
+        variations: variations.length ? variations : existingResult.data.variations || [],
         purchase_price: purchasePrice || Number(existingResult.data.purchase_price) || 0,
         sale_price: salePrice || Number(existingResult.data.sale_price) || 0,
         stock_warehouse: currentWarehouse + quantity
@@ -124,10 +137,7 @@ async function upsertProductFromPurchase(item, supplier) {
       .select()
       .single();
 
-    if (updateResult.error) {
-      throw updateResult.error;
-    }
-
+    if (updateResult.error) throw updateResult.error;
     return updateResult.data;
   }
 
@@ -138,6 +148,10 @@ async function upsertProductFromPurchase(item, supplier) {
       name: productName,
       category: category,
       supplier: supplier || "",
+      code: code,
+      photo: photo,
+      variation: variation,
+      variations: variations,
       purchase_price: purchasePrice,
       sale_price: salePrice,
       stock_warehouse: quantity,
@@ -147,12 +161,10 @@ async function upsertProductFromPurchase(item, supplier) {
     .select()
     .single();
 
-  if (insertResult.error) {
-    throw insertResult.error;
-  }
-
+  if (insertResult.error) throw insertResult.error;
   return insertResult.data;
 }
+
 
 async function savePurchaseToSupabase(data) {
   var organizationId = getAzulOrganizationId();
@@ -200,15 +212,20 @@ async function savePurchaseToSupabase(data) {
     var savedProduct = await upsertProductFromPurchase(items[i], supplier);
 
     purchaseItems.push({
-      purchase_id: purchase.id,
-      product_id: savedProduct.id,
-      product_name: savedProduct.name,
-      category: savedProduct.category || "",
-      purchase_price: Number(savedProduct.purchase_price) || 0,
-      sale_price: Number(savedProduct.sale_price) || 0,
-      quantity: Number(items[i].qty || items[i].quantity) || 0,
-      supplier: supplier
-    });
+  purchase_id: purchase.id,
+  product_id: savedProduct.id,
+  product_name: savedProduct.name,
+  category: savedProduct.category || "",
+  code: savedProduct.code || "",
+  photo: savedProduct.photo || "",
+  variation: savedProduct.variation || "",
+  variations: savedProduct.variations || [],
+  purchase_price: Number(savedProduct.purchase_price) || 0,
+  sale_price: Number(savedProduct.sale_price) || 0,
+  quantity: Number(items[i].qty || items[i].quantity) || 0,
+  supplier: supplier
+  });
+
   }
 
   var itemsResult = await supabaseClient
@@ -2743,14 +2760,17 @@ async function saveAchat() {
     return;
   }
 
-  var rows = Array.prototype.slice.call(document.querySelectorAll("#achat-lines-body tr"));
-  var items = rows.map(function (row) {
+  var items = (achatLines || []).map(function (line) {
     return {
-      prod: (row.querySelector(".achat-prod") || {}).value || "",
-      category: (row.querySelector(".achat-cat") || {}).value || "",
-      qty: parseFloat((row.querySelector(".achat-qty") || {}).value) || 0,
-      pa: parseFloat((row.querySelector(".achat-pa") || {}).value) || 0,
-      pv: parseFloat((row.querySelector(".achat-pv") || {}).value) || 0
+      prod: line.prod || "",
+      code: line.code || "",
+      category: line.category || "",
+      variation: line.variation || "",
+      variations: line.variations || parseVariationList(line.variation || ""),
+      photo: line.photo || "",
+      qty: Number(line.qty) || 0,
+      pa: Number(line.price) || 0,
+      pv: Number(line.targetMargin) || 0
     };
   }).filter(function (item) {
     return item.prod && item.qty > 0;
@@ -2781,10 +2801,7 @@ async function saveAchat() {
     document.getElementById("a-forn").value = "";
     document.getElementById("a-credit").checked = false;
 
-    if (typeof initAchatLines === "function") {
-      initAchatLines();
-    }
-
+    initAchatLines();
     await loadProducts(true);
 
   } catch (e) {
@@ -2799,6 +2816,7 @@ async function saveAchat() {
     }
   }
 }
+
 
 
 // ===== PAGAMENTO FORNECEDOR =====
