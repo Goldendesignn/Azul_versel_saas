@@ -6046,43 +6046,61 @@ async function loadClientDetail() {
       return;
     }
 
-    var html = '<div class="card" style="margin-bottom:14px;">' +
-      '<div style="font-family:Playfair Display,serif;font-size:18px;margin-bottom:12px;">' + escapeDepenseHtml(data.name) + '</div>' +
-      '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
-        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">' +
-          '<div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);">' + fmt(data.totalAchat || 0) + '</div>' +
-          '<div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Total Compras</div>' +
-        '</div>' +
-        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">' +
-          '<div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);">' + fmt(data.totalDette || 0) + '</div>' +
-          '<div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Divida</div>' +
-        '</div>' +
-        '<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">' +
-          '<div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);">' + (data.transactions || 0) + '</div>' +
-          '<div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;">Transacoes</div>' +
-        '</div>' +
-      '</div></div>';
+    var initial = String(data.name || "?").trim().charAt(0).toUpperCase();
 
-    if (data.historique && data.historique.length > 0) {
-      html += '<div class="card"><div class="card-title">Historico</div><div class="mobile-card-list" style="display:grid;">';
-
-      data.historique.forEach(function(a) {
-        html += '<div class="mobile-sale-card">' +
-          '<div class="mobile-card-top">' +
-            '<div>' +
-              '<div class="mobile-card-kicker">' + escapeDepenseHtml(a.date || "") + '</div>' +
-              '<div class="mobile-card-title">' + escapeDepenseHtml(a.prod || "") + '</div>' +
-              '<div class="mobile-card-sub">Qtd ' + (a.qty || 0) + '</div>' +
+    var html =
+      '<div class="client-profile">' +
+        '<div class="client-hero">' +
+          '<div class="client-hero-top">' +
+            '<div style="display:flex;gap:12px;align-items:center;">' +
+              '<div class="client-avatar">' + escapeDepenseHtml(initial) + '</div>' +
+              '<div>' +
+                '<div class="client-name">' + escapeDepenseHtml(data.name) + '</div>' +
+                '<div class="client-sub">Ficha do cliente</div>' +
+              '</div>' +
             '</div>' +
-            '<div class="mobile-card-amount">' + fmt(a.total || 0) + '</div>' +
+          '</div>' +
+
+          '<div class="client-kpis">' +
+            '<div class="client-kpi">' +
+              '<div class="client-kpi-label">Total compras</div>' +
+              '<div class="client-kpi-value">' + fmt(data.totalAchat || 0) + '</div>' +
+            '</div>' +
+            '<div class="client-kpi">' +
+              '<div class="client-kpi-label">Divida</div>' +
+              '<div class="client-kpi-value danger">' + fmt(data.totalDette || 0) + '</div>' +
+            '</div>' +
+            '<div class="client-kpi">' +
+              '<div class="client-kpi-label">Transacoes</div>' +
+              '<div class="client-kpi-value">' + (data.transactions || 0) + '</div>' +
+            '</div>' +
           '</div>' +
         '</div>';
+
+    html += '<div class="client-history">' +
+      '<div class="card-title">Historico</div>';
+
+    if (data.historique && data.historique.length > 0) {
+      html += '<div class="client-history-list">';
+
+      data.historique.forEach(function(a) {
+        html +=
+          '<div class="client-history-item">' +
+            '<div>' +
+              '<div class="client-history-date">' + escapeDepenseHtml(a.date || "") + '</div>' +
+              '<div class="client-history-prod">' + escapeDepenseHtml(a.prod || "") + '</div>' +
+              '<div class="client-history-sub">Quantidade: ' + (a.qty || 0) + '</div>' +
+            '</div>' +
+            '<div class="client-history-total">' + fmt(a.total || 0) + '</div>' +
+          '</div>';
       });
 
-      html += '</div></div>';
+      html += '</div>';
     } else {
-      html += '<div class="card"><div class="empty">Nenhuma venda encontrada</div></div>';
+      html += '<div class="empty">Nenhuma venda encontrada</div>';
     }
+
+    html += '</div></div>';
 
     el.innerHTML = html;
 
