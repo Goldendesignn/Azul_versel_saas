@@ -2223,3 +2223,135 @@ html, body {
     font-size: 18px;
   }
 }
+/* ===== AZ CLIENT FICHE CLEAN DESIGN ===== */
+
+.az-client-profile {
+  display: grid !important;
+  gap: 16px !important;
+}
+
+.az-client-hero {
+  background: #fff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+  padding: 18px !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.06) !important;
+}
+
+.az-client-head {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin-bottom: 16px !important;
+}
+
+.az-client-avatar {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+  background: rgba(91,155,213,0.14) !important;
+  color: var(--blue) !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 24px !important;
+  font-weight: 900 !important;
+}
+
+.az-client-name {
+  font-family: "Playfair Display", serif !important;
+  font-size: 25px !important;
+  font-weight: 800 !important;
+}
+
+.az-client-sub {
+  font-size: 12px !important;
+  color: var(--muted) !important;
+  margin-top: 4px !important;
+}
+
+.az-client-kpis {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 12px !important;
+}
+
+.az-client-kpi {
+  background: var(--surface2) !important;
+  border-radius: 14px !important;
+  padding: 14px !important;
+}
+
+.az-client-kpi-label {
+  font-size: 10px !important;
+  color: var(--muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+}
+
+.az-client-kpi-value {
+  margin-top: 6px !important;
+  font-family: "Playfair Display", serif !important;
+  font-size: 22px !important;
+  font-weight: 900 !important;
+  color: var(--blue) !important;
+}
+
+.az-client-kpi-value.red {
+  color: var(--red) !important;
+}
+
+.az-client-history {
+  background: #fff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+  padding: 16px !important;
+}
+
+.az-client-history-list {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+.az-client-history-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  border-radius: 14px !important;
+  background: var(--surface2) !important;
+}
+
+.az-client-history-date {
+  font-size: 11px !important;
+  color: var(--orange) !important;
+  font-weight: 800 !important;
+}
+
+.az-client-history-prod {
+  margin-top: 3px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+.az-client-history-sub {
+  margin-top: 3px !important;
+  font-size: 12px !important;
+  color: var(--muted) !important;
+}
+
+.az-client-history-total {
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  color: var(--blue) !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 820px) {
+  .az-client-kpis {
+    grid-template-columns: 1fr !important;
+  }
+
+  .az-client-history-item {
+    flex-direction: column !important;
+  }
+}
