@@ -8,6 +8,8 @@ var revPaymentLines = [{ method: 'Cash', montant: 0 }];
 var revOpenConsignations = [];
 var selectedPay = 'Cash';
 var lastReceiptData = null;
+var selectedType = 'interno';
+var selectedPay = 'Cash';
 
 var products = [];
 var productsLoading = false;
@@ -1692,7 +1694,7 @@ function renderProds(list) {
       '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
         (out ? ' Esgotado' : 'Stock : ' + p.stockBoutique + ' un') +
       '</div>';
-    if (!out) {
+   if (!out || selectedType === "Externo") {
       div.onclick = function() { addToCart(p.name, p.stockBoutique); };
     }
     g.appendChild(div);
@@ -2547,8 +2549,37 @@ function selPaymentType(type) {
 
 function selType(btn, type) {
   selectedType = type;
-  syncPaymentTypeButtons();
+
+  document.querySelectorAll(".pay-btn").forEach(function(button) {
+    button.classList.remove("active");
+    button.style.borderColor = "";
+    button.style.color = "";
+    button.style.background = "";
+  });
+
+  if (btn) {
+    btn.classList.add("active");
+    btn.style.borderColor = "var(--blue)";
+    btn.style.color = "var(--blue)";
+    btn.style.background = "rgba(201,168,76,0.1)";
+  }
+
+  renderProds(products);
+  renderCart();
 }
+
+function selPaymentType(type) {
+  selectedType = type;
+
+  var stockBtn = document.getElementById("payment-type-stock");
+  var commandeBtn = document.getElementById("payment-type-commande");
+
+  if (stockBtn) stockBtn.classList.toggle("active", type === "interno");
+  if (commandeBtn) commandeBtn.classList.toggle("active", type === "Externo");
+
+  renderCart();
+}
+
 
 function openPaymentModal() {
   if (cart.length === 0) { toast('Carrinho vazio!', 'error'); return; }
