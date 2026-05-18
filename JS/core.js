@@ -68,6 +68,99 @@ async function getProductsFromSupabase() {
 
   return (result.data || []).map(mapSupabaseProduct);
 }
+async function transferProductToShop(productName, quantity) {
+  var organizationId = getAzulOrganizationId();
+  productName = String(productName || "").trim();
+  quantity = Number(quantity) || 0;
+
+  if (!productName) throw new Error("Produto obrigatorio.");
+  if (quantity <= 0) throw new Error("Quantidade invalida.");
+
+  var productResult = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("name", productName)
+    .maybeSingle();
+
+  if (productResult.error) throw productResult.error;
+  if (!productResult.data) throw new Error("Produto nao encontrado.");
+
+  var product = productResult.data;
+  var warehouse = Number(product.stock_warehouse) || 0;
+  var shop = Number(product.stock_shop) || 0;
+
+  if (warehouse < quantity) {
+    throw new Error("Stock armazem insuficiente. Disponivel: " + warehouse);
+  }
+
+  var updateResult = await supabaseClient
+    .from("products")
+    .update({
+      stock_warehouse: warehouse - quantity,
+      stock_shop: shop + quantity
+    })
+    .eq("id", product.id);
+
+  if (updateResult.error) throw updateResult.error;
+
+  return true;
+}
+
+async function transferAllProductsToShop() {
+  var organizationId = getAzulOrganizationId();
+
+  var productsResult = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gt("stock_warehouse", 0);
+
+  if (productsResult.error) throw productsResult.error;
+
+  var rows = productsResult.data || [];
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var warehouse = Number(row.stock_warehouse) || 0;
+    var shop = Number(row.stock_shop) || 0;
+
+    if (warehouse <= 0) continue;
+
+    var updateResult = await supabaseClient
+      .from("products")
+      .update({
+        stock_warehouse: 0,
+        stock_shop: shop + warehouse
+      })
+      .eq("id", row.id);
+
+    if (updateResult.error) throw updateResult.error;
+  }
+
+  return rows.length;
+}
+
+async function getStockArmazemFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var result = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gt("stock_warehouse", 0)
+    .order("name", { ascending: true });
+
+  if (result.error) throw result.error;
+
+  return (result.data || []).map(function(row) {
+    return {
+      name: row.name,
+      qty: Number(row.stock_warehouse) || 0
+    };
+  });
+}
+
 
 
 // ===== INIT =====
@@ -2896,25 +2989,51 @@ function loadResumoDettes() {
 }
 
 // ===== TRANSFERENCIA =====
-function saveTransfer() {
+async function saveTransfer() {
   var data = {
-    date: document.getElementById('t-date').value,
-    prod: document.getElementById('t-prod').value.trim(),
-    qty:  parseInt(document.getElementById('t-qty').value) || 0,
-    obs:  document.getElementById('t-obs').value.trim()
+    date: document.getElementById("t-date").value,
+    prod: document.getElementById("t-prod").value.trim(),
+    qty: parseInt(document.getElementById("t-qty").value, 10) || 0,
+    obs: document.getElementById("t-obs").value.trim()
   };
 
   if (!data.prod || data.qty <= 0) {
-    toast('Preenche produto e quantidade!', 'error'); return;
+    toast("Preenche produto e quantidade!", "error");
+    return;
   }
 
-  gsCall('registarTransferencia', data, function() {
-    toast(' Transferencia registada!', 'success');
-    document.getElementById('t-prod').value = '';
-    document.getElementById('t-qty').value = '';
-    document.getElementById('t-obs').value = '';
-  });
+  var btn = document.querySelector("#transferSingle .form-submit");
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A transferir...";
+    btn.style.opacity = "0.6";
+  }
+
+  try {
+    await transferProductToShop(data.prod, data.qty);
+
+    toast("Transferencia registada!", "success");
+
+    document.getElementById("t-prod").value = "";
+    document.getElementById("t-qty").value = "";
+    document.getElementById("t-obs").value = "";
+
+    await loadProducts(true);
+
+  } catch (e) {
+    console.error("Erro transferencia:", e);
+    toast("Erro ao transferir: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = " Registar Transferencia";
+      btn.style.opacity = "1";
+    }
+  }
 }
+
 
 // ===== HISTORICO =====
 function loadHist() {
@@ -4275,46 +4394,75 @@ function switchMode(mode, btn) {
 
 var stockArmazem = [];
 
-function carregarStockArmazem() {
-  gsCall('getStockArmazem', {}, function(data) {
-    stockArmazem = data || [];
-    var el = document.getElementById('tudo-preview');
+async function carregarStockArmazem() {
+  var el = document.getElementById("tudo-preview");
+  var btn = document.getElementById("btnTudoBoutique");
+
+  if (!el) return;
+
+  el.innerHTML = '<div class="empty">A carregar stock...</div>';
+
+  try {
+    stockArmazem = await getStockArmazemFromSupabase();
+
     if (!stockArmazem.length) {
-      el.innerHTML = '<div class="empty"> Armazem vazio - nada a transferir</div>';
-      document.getElementById('btnTudoBoutique').disabled = true;
+      el.innerHTML = '<div class="empty">Armazem vazio - nada a transferir</div>';
+      if (btn) btn.disabled = true;
       return;
     }
-    var html = '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">' + stockArmazem.length + ' produtos a transferir</div>';
+
+    var html = '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">' +
+      stockArmazem.length + ' produtos a transferir</div>';
+
     stockArmazem.forEach(function(p) {
-      html += '<div class="tudo-item"><span class="ti-name">' + p.name + '</span><span class="ti-qty">' + p.qty + ' un</span></div>';
+      html += '<div class="tudo-item"><span class="ti-name">' +
+        escapeDepenseHtml(p.name || "") +
+        '</span><span class="ti-qty">' +
+        p.qty +
+        ' un</span></div>';
     });
+
     el.innerHTML = html;
-    document.getElementById('btnTudoBoutique').disabled = false;
-  });
+    if (btn) btn.disabled = false;
+
+  } catch (e) {
+    console.error("Erro stock armazem:", e);
+    el.innerHTML = '<div class="empty">Erro ao carregar stock</div>';
+    toast("Erro stock armazem: " + (e.message || e), "error");
+  }
 }
 
-function transferirTudoBoutique() {
-  gsCall('getStockArmazem', {}, function(data) {
-    stockArmazem = data || [];
-    if (!stockArmazem.length) { toast('Nenhum stock no armazem!', 'error'); return; }
+async function transferirTudoBoutique() {
+  var btn = document.getElementById("btnTudoBoutique");
 
-    // Bloquer immediatement le bouton
-    var btn = document.getElementById('btnTudoBoutique');
+  if (btn) {
     btn.disabled = true;
-    btn.textContent = ' A transferir...';
+    btn.textContent = "A transferir...";
+  }
 
-    var today = new Date().toISOString().split('T')[0];
-    var data = { items: stockArmazem, date: today };
+  try {
+    var count = await transferAllProductsToShop();
 
-    gsCall('transferirTudo', data, function(res) {
-      btn.textContent = ' Transferido!';
-      document.getElementById('tudo-preview').innerHTML = '<div class="empty"> Transferencia concluida! Recarrega o stock para confirmar.</div>';
-      stockArmazem = [];
-      toast(' Todo o stock transferido para a Boutique!', 'success');
-      alert(res);
-    });
-  });
+    stockArmazem = [];
+    document.getElementById("tudo-preview").innerHTML =
+      '<div class="empty">Transferencia concluida! Todo o stock foi enviado para Boutique.</div>';
+
+    toast(count + " produtos transferidos para Boutique!", "success");
+
+    await loadProducts(true);
+
+  } catch (e) {
+    console.error("Erro transferencia total:", e);
+    toast("Erro ao transferir tudo: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = " Transferir Tudo";
+    }
+  }
 }
+
 
 // ===== EDIT MODE =====
 var editModeInterval = null;
