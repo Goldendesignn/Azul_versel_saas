@@ -2456,3 +2456,12 @@ html, body {
   font-weight: 700;
   cursor: pointer;
 }
+@media (max-width: 720px) {
+  #erpLockSettingsCard > div:nth-child(2) {
+    grid-template-columns: 1fr !important;
+  }
+
+  #erpLockSettingsCard button {
+    width: 100%;
+  }
+}
