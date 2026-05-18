@@ -1380,4 +1380,224 @@ html, body {
     flex-direction: column;
   }
 }
+/* ===== MOBILE APP STYLE: cards instead of tables ===== */
+
+.mobile-card-list {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  #vente-panel-historico .data-table,
+  #stock .data-table {
+    display: none;
+  }
+
+  .mobile-card-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-sale-card,
+  .mobile-stock-card {
+    background: #fff;
+    border: 1px solid rgba(224, 224, 224, 0.85);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.05);
+  }
+
+  .mobile-card-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .mobile-card-kicker {
+    font-size: 10px;
+    color: var(--orange);
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+
+  .mobile-card-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.25;
+  }
+
+  .mobile-card-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .mobile-card-amount {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .mobile-card-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(76,175,125,0.12);
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .mobile-stock-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .mobile-stock-box {
+    background: var(--surface2);
+    border-radius: 12px;
+    padding: 9px 8px;
+  }
+
+  .mobile-stock-label {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .6px;
+  }
+
+  .mobile-stock-value {
+    margin-top: 3px;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--blue);
+  }
+
+  /* Cart + payment bottom sheet, like reference 2 */
+  .payment-modal {
+    width: 100%;
+    max-width: none;
+    max-height: 92dvh;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 24px 24px 0 0;
+    padding: 18px;
+  }
+
+  .payment-type-wrap {
+    background: var(--surface2);
+    padding: 5px;
+    border-radius: 14px;
+  }
+
+  .payment-type-btn {
+    border-radius: 11px;
+  }
+
+  .payment-line {
+    grid-template-columns: 1fr 1fr 28px;
+    background: var(--surface2);
+    border-radius: 14px;
+    padding: 8px;
+  }
+
+  .payment-modal-add,
+  .confirm-btn {
+    border-radius: 16px;
+    min-height: 52px;
+  }
+
+  /* Purchase mobile: rows become cards */
+  .achat-lines-wrap {
+    border: none;
+    padding: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .achat-lines-table {
+    min-width: 0;
+    width: 100%;
+    border-spacing: 0;
+  }
+
+  .achat-lines-table,
+  .achat-lines-table tbody,
+  .achat-lines-table tr,
+  .achat-lines-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .achat-lines-table tbody tr {
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: #fff;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+  }
+
+  .achat-lines-table tbody td {
+    border: none !important;
+    padding: 6px 0;
+  }
+
+  .achat-photo-cell,
+  .achat-date-product-cell,
+  .achat-price-stack,
+  .achat-variation-box,
+  .achat-variation-box input,
+  .achat-file-btn {
+    width: 100%;
+  }
+
+  .achat-photo-preview,
+  .achat-photo-placeholder,
+  .achat-photo-picker {
+    width: 100%;
+    height: 170px;
+  }
+
+  .achat-field-stack,
+  .achat-variation-stack,
+  .achat-price-stack {
+    width: 100%;
+  }
+
+  .achat-cell-input,
+  .achat-cell-input.prod,
+  .achat-cell-input.price,
+  .achat-cell-input.qty {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .achat-price-row,
+  .achat-mini-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .achat-total-cell {
+    text-align: left;
+    background: var(--surface2);
+    border-radius: 14px;
+    padding: 10px !important;
+    margin-top: 6px;
+  }
+
+  .achat-remove-btn {
+    width: 100%;
+    height: 42px;
+  }
+}
 
