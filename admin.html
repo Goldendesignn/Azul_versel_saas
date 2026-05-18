@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt">
-<head>
+<head> 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Azul Admin</title>
@@ -30,31 +30,18 @@
 
       <section class="admin-grid">
         <div class="admin-card">
-          <h2>Nouveau client</h2>
-
-          <label>Nom boutique / client</label>
-          <input id="org-name" type="text" placeholder="Ex: Boutique Golden">
-
-          <label>Téléphone</label>
-          <input id="org-phone" type="text" placeholder="Téléphone">
-
-          <label>Email</label>
-          <input id="org-email" type="email" placeholder="Email">
-
-          <label>Clé licence</label>
-          <div class="license-row">
-            <input id="org-license" type="text" placeholder="AZUL-XXXX-XXXX-XXXX">
-            <button onclick="fillGeneratedLicense()">Générer</button>
-          </div>
-
-          <label>Statut</label>
-          <select id="org-status">
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="suspended">Suspendue</option>
-          </select>
-
-          <button class="primary-btn" onclick="createOrganization()">Créer licence</button>
+          <h2>Nouvelle licence</h2>
+          
+          <label>Expiration</label>
+          <input id="org-expires" type="date">
+          
+          <label>Notes</label>
+          <input id="org-notes" type="text" placeholder="Ex: paiement WhatsApp, client X...">
+          
+          <label>Clé générée</label>
+          <input id="org-license" type="text" placeholder="La clé apparaîtra ici" disabled>
+          
+          <button class="primary-btn" onclick="createOrganization()">Générer licence</button>
           <div id="admin-form-msg" class="admin-msg"></div>
         </div>
 
