@@ -1,4 +1,3 @@
-
 var spreadsheetBindingReady = false;
 var BOUND_SPREADSHEET_ID = '';
 // ===== STATE =====
@@ -288,6 +287,36 @@ async function saveSaleToSupabase(data) {
 
   if (itemsResult.error) throw itemsResult.error;
   await createClientDebtIfNeeded(sale, data, total);
+  var cashIn = getCashInAmountFromPaymentLines(data.paymentLines || [], total);
+  var creditAmount = getCreditAmountFromPaymentLines(data.paymentLines || [], total);
+  var costOfGoods = saleItems.reduce(function(sum, item) {
+    return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
+  }, 0);
+  
+  var saleLines = [];
+  
+  if (cashIn > 0) {
+    saleLines.push({ account: "11", debit: cashIn, credit: 0 });
+  }
+  
+  if (creditAmount > 0) {
+    saleLines.push({ account: "12", debit: creditAmount, credit: 0 });
+  }
+  
+  saleLines.push({ account: "71", debit: 0, credit: total });
+  
+  if (costOfGoods > 0) {
+    saleLines.push({ account: "61", debit: costOfGoods, credit: 0 });
+    saleLines.push({ account: "13", debit: 0, credit: costOfGoods });
+  }
+
+await createAccountingEntry(
+  "sale",
+  sale.id,
+  sale.sale_date,
+  "Venda " + sale.receipt_no,
+  saleLines
+);
   return {
     sale: sale,
     receiptNo: receiptNo,
@@ -390,9 +419,23 @@ async function registerClientPaymentInSupabase(data) {
       amount: amount,
       note: data.note || "",
       payment_date: data.date || new Date().toISOString().split("T")[0]
+    .select()
+    .single();
     });
 
   if (paymentResult.error) throw paymentResult.error;
+  var payment = paymentResult.data;
+
+  await createAccountingEntry(
+    "client_payment",
+    payment.id,
+    payment.payment_date,
+    "Pagamento cliente " + payment.client_name,
+    [
+      { account: "11", debit: Number(payment.amount) || 0, credit: 0 },
+      { account: "12", debit: 0, credit: Number(payment.amount) || 0 }
+    ]
+  );
 
   var debtsResult = await supabaseClient
     .from("client_debts")
@@ -430,6 +473,7 @@ async function registerClientPaymentInSupabase(data) {
 
   return true;
 }
+
 async function getSalesHistoryFromSupabase(params) {
   var organizationId = getAzulOrganizationId();
 
@@ -908,6 +952,26 @@ async function savePurchaseToSupabase(data) {
   var itemsResult = await supabaseClient
     .from("purchase_items")
     .insert(purchaseItems);
+  
+  var purchaseLinesAccounting = [
+    { account: "13", debit: total, credit: 0 }
+  ];
+  
+  if (paidAmount > 0) {
+    purchaseLinesAccounting.push({ account: "11", debit: 0, credit: paidAmount });
+  }
+  
+  if (remainingAmount > 0) {
+    purchaseLinesAccounting.push({ account: "21", debit: 0, credit: remainingAmount });
+  }
+  
+  await createAccountingEntry(
+    "purchase",
+    purchase.id,
+    String(purchase.created_at || "").slice(0, 10),
+    "Compra fornecedor " + supplier,
+    purchaseLinesAccounting
+  );
 
   if (itemsResult.error) {
     throw itemsResult.error;
@@ -3849,9 +3913,24 @@ async function registerSupplierPaymentInSupabase(data) {
       amount: amount,
       note: data.note || "",
       payment_date: data.date || new Date().toISOString().split("T")[0]
+      .select()
+      .single();
     });
 
   if (paymentResult.error) throw paymentResult.error;
+
+  var payment = paymentResult.data;
+
+  await createAccountingEntry(
+    "supplier_payment",
+    payment.id,
+    payment.payment_date,
+    "Pagamento fornecedor " + payment.supplier,
+    [
+      { account: "21", debit: Number(payment.amount) || 0, credit: 0 },
+      { account: "11", debit: 0, credit: Number(payment.amount) || 0 }
+    ]
+    );
 
   var purchasesResult = await supabaseClient
     .from("purchases")
@@ -5821,9 +5900,13 @@ async function saveExpenseToSupabase(data) {
       category: data.tipo || data.category || "Autre",
       description: data.desc || "",
       amount: Number(data.montant) || 0
-    });
+    })
+    .select()
+    .single();
 
   if (result.error) throw result.error;
+
+  return result.data;
 }
 
 async function getExpensesFromSupabase(filters) {
@@ -5968,6 +6051,7 @@ function initDepensesPage() {
   var defaultBtn = document.getElementById('dep-tab-new');
   if (defaultBtn) switchDepenseTab('new', defaultBtn);
 }
+
 async function saveDepense() {
   var data = {
     date: document.getElementById("dep-date").value,
@@ -5990,7 +6074,18 @@ async function saveDepense() {
   }
 
   try {
-    await saveExpenseToSupabase(data);
+    var expense = await saveExpenseToSupabase(data);
+
+    await createAccountingEntry(
+      "expense",
+      expense.id,
+      expense.expense_date,
+      "Depense - " + expense.description,
+      [
+        { account: "62", debit: Number(expense.amount) || 0, credit: 0 },
+        { account: "11", debit: 0, credit: Number(expense.amount) || 0 }
+      ]
+    );
 
     toast("Depense registada!", "success");
 
@@ -6366,6 +6461,85 @@ function getCashInAmountFromPaymentLines(lines, fallbackTotal) {
 
 function getPurchasePaidAmount(row) {
   return Number(row.paid_amount) || 0;
+}
+function getAccountName(code) {
+  var map = {
+    "11": "Caixa / Banco",
+    "12": "Clientes",
+    "13": "Stock",
+    "21": "Fornecedores",
+    "31": "Capital proprio",
+    "61": "Custo das mercadorias vendidas",
+    "62": "Despesas operacionais",
+    "71": "Vendas"
+  };
+
+  return map[code] || code;
+}
+
+async function createAccountingEntry(sourceType, sourceId, entryDate, description, lines) {
+  var organizationId = getAzulOrganizationId();
+
+  var totalDebit = lines.reduce(function(sum, line) {
+    return sum + (Number(line.debit) || 0);
+  }, 0);
+
+  var totalCredit = lines.reduce(function(sum, line) {
+    return sum + (Number(line.credit) || 0);
+  }, 0);
+
+  if (Math.round(totalDebit) !== Math.round(totalCredit)) {
+    throw new Error("Ecriture comptable desequilibree: debit " + totalDebit + " / credit " + totalCredit);
+  }
+
+  var existing = await supabaseClient
+    .from("accounting_entries")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("source_type", sourceType)
+    .eq("source_id", sourceId)
+    .maybeSingle();
+
+  if (existing.error) throw existing.error;
+
+  if (existing.data) {
+    return existing.data;
+  }
+
+  var entryResult = await supabaseClient
+    .from("accounting_entries")
+    .insert({
+      organization_id: organizationId,
+      source_type: sourceType,
+      source_id: sourceId,
+      entry_date: entryDate || new Date().toISOString().split("T")[0],
+      description: description || ""
+    })
+    .select()
+    .single();
+
+  if (entryResult.error) throw entryResult.error;
+
+  var entry = entryResult.data;
+
+  var lineRows = lines.map(function(line) {
+    return {
+      organization_id: organizationId,
+      entry_id: entry.id,
+      account_code: line.account,
+      account_name: getAccountName(line.account),
+      debit: Number(line.debit) || 0,
+      credit: Number(line.credit) || 0
+    };
+  });
+
+  var linesResult = await supabaseClient
+    .from("accounting_lines")
+    .insert(lineRows);
+
+  if (linesResult.error) throw linesResult.error;
+
+  return entry;
 }
 async function loadComptabilite() {
   var body = document.getElementById("acctJournalBody");
