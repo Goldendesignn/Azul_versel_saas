@@ -376,6 +376,166 @@ async function getSalesHistoryFromSupabase(params) {
   return rows;
 }
 
+function normalizePaymentMethod(method) {
+  method = String(method || "").toLowerCase();
+
+  if (method.indexOf("cash") >= 0) return "Cash";
+  if (method.indexOf("express") >= 0) return "Express";
+  if (method.indexOf("cart") >= 0 || method.indexOf("tpa") >= 0) return "Cartao";
+  if (method.indexOf("credit") >= 0 || method.indexOf("credito") >= 0) return "Credito";
+
+  return "Cash";
+}
+
+async function getDashboardDataFromSupabase(filters) {
+  var organizationId = getAzulOrganizationId();
+
+  filters = filters || {};
+  var from = filters.from || "";
+  var to = filters.to || "";
+  var prodFilter = String(filters.prod || "").trim().toLowerCase();
+  var fornFilter = String(filters.forn || "").trim().toLowerCase();
+
+  var salesQuery = supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (from) salesQuery = salesQuery.gte("sale_date", from);
+  if (to) salesQuery = salesQuery.lte("sale_date", to);
+
+  var salesResult = await salesQuery;
+  if (salesResult.error) throw salesResult.error;
+
+  var sales = salesResult.data || [];
+  var saleIds = sales.map(function(sale) { return sale.id; });
+
+  var items = [];
+
+  if (saleIds.length) {
+    var itemsResult = await supabaseClient
+      .from("sale_items")
+      .select("*")
+      .in("sale_id", saleIds);
+
+    if (itemsResult.error) throw itemsResult.error;
+
+    items = itemsResult.data || [];
+  }
+
+  var productsResult = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("organization_id", organizationId);
+
+  if (productsResult.error) throw productsResult.error;
+
+  var productRows = productsResult.data || [];
+  var productByName = {};
+
+  productRows.forEach(function(product) {
+    productByName[String(product.name || "").toLowerCase()] = product;
+  });
+
+  if (prodFilter) {
+    items = items.filter(function(item) {
+      return String(item.product_name || "").toLowerCase().indexOf(prodFilter) >= 0;
+    });
+  }
+
+  if (fornFilter) {
+    items = items.filter(function(item) {
+      var product = productByName[String(item.product_name || "").toLowerCase()] || {};
+      return String(product.supplier || "").toLowerCase().indexOf(fornFilter) >= 0;
+    });
+  }
+
+  var allowedSaleIds = {};
+  items.forEach(function(item) {
+    allowedSaleIds[item.sale_id] = true;
+  });
+
+  if (prodFilter || fornFilter) {
+    sales = sales.filter(function(sale) {
+      return allowedSaleIds[sale.id];
+    });
+  }
+
+  var totalVendas = sales.reduce(function(sum, sale) {
+    return sum + (Number(sale.total) || 0);
+  }, 0);
+
+  var totalLucro = items.reduce(function(sum, item) {
+    return sum + (Number(item.profit) || 0);
+  }, 0);
+
+  var topMap = {};
+  items.forEach(function(item) {
+    var name = item.product_name || "Produto";
+    if (!topMap[name]) {
+      topMap[name] = { name: name, qty: 0, total: 0 };
+    }
+
+    topMap[name].qty += Number(item.quantity) || 0;
+    topMap[name].total += Number(item.total) || 0;
+  });
+
+  var topProdutos = Object.keys(topMap)
+    .map(function(name) { return topMap[name]; })
+    .sort(function(a, b) { return b.total - a.total; })
+    .slice(0, 5);
+
+  var pagamentos = {
+    Cash: 0,
+    Express: 0,
+    Cartao: 0,
+    Credito: 0
+  };
+
+  sales.forEach(function(sale) {
+    var lines = sale.payment_lines || [];
+
+    if (Array.isArray(lines) && lines.length) {
+      lines.forEach(function(line) {
+        var method = normalizePaymentMethod(line.method);
+        pagamentos[method] = (pagamentos[method] || 0) + (Number(line.montant) || 0);
+      });
+    } else {
+      pagamentos.Cash += Number(sale.total) || 0;
+    }
+  });
+
+  var stockAlertas = productRows
+    .map(function(product) {
+      var stock = Number(product.stock_shop) || 0;
+      var min = Number(product.min_stock) || 3;
+
+      if (stock > min) return null;
+
+      return {
+        name: product.name || "Produto",
+        stock: stock,
+        level: stock <= 0 ? "critical" : "warning"
+      };
+    })
+    .filter(function(item) { return !!item; })
+    .slice(0, 8);
+
+  return {
+    vendasHoje: totalVendas,
+    vendasHojeCount: sales.length,
+    lucroMes: totalLucro,
+    alertas: stockAlertas.length,
+    topProdutos: topProdutos,
+    pagamentos: pagamentos,
+    stockAlertas: stockAlertas,
+
+    totalDepenses: 0,
+    depensesCount: 0,
+    depenses: []
+  };
+}
+
 
 // ===== INIT =====
 function switchRevendeurTab(tab, btn) {
@@ -1045,7 +1205,7 @@ function renderDashboardData(d) {
     d.topProdutos.forEach(function(p, i) {
       el.innerHTML += '<div class="top-item">' +
         '<div class="top-rank ' + (i===0?'first':'') + '">' + (i+1) + '</div>' +
-        '<div class="top-name">' + p.name + '</div>' +
+        '<div class="top-name">' + escapeDepenseHtml(p.name || '') + '</div>' +
         '<div class="top-total">' + fmt(p.total) + '</div>' +
         '</div>';
     });
@@ -1067,7 +1227,7 @@ function renderDashboardData(d) {
     al.innerHTML = '';
     d.stockAlertas.forEach(function(a) {
       al.innerHTML += '<div class="alert-row ' + a.level + '">' +
-        '<span>' + a.name + '</span>' +
+        '<span>' + escapeDepenseHtml(a.name || '') + '</span>' +
         '<span class="badge ' + a.level + '">' + a.stock + ' un</span>' +
         '</div>';
     });
@@ -1207,65 +1367,54 @@ function printDashboardTicket() {
   setTimeout(function() { w.print(); }, 350);
 }
 
-function loadDashboard() {
+async function loadDashboard() {
   var filters;
+
   try {
     filters = getDashFilters();
     lastDashboardFilters = filters;
   } catch (e) {
-    toast('Erro filtro: ' + (e && e.message ? e.message : e), 'error');
+    toast("Erro filtro: " + (e && e.message ? e.message : e), "error");
     return;
   }
 
   dashboardRequestSeq++;
   var requestId = dashboardRequestSeq;
+
   if (dashboardLoadingTimer) clearTimeout(dashboardLoadingTimer);
+
   setDashboardFilterLoading(true);
+
   dashboardLoadingTimer = setTimeout(function() {
     if (requestId !== dashboardRequestSeq) return;
     setDashboardFilterLoading(false);
-    toast('Dashboard demorou demasiado para responder.', 'error');
+    toast("Dashboard demorou demasiado para responder.", "error");
   }, 10000);
 
-  function finishDashboardRequest(handler) {
-    return function(payload) {
-      if (requestId !== dashboardRequestSeq) return;
-      if (dashboardLoadingTimer) {
-        clearTimeout(dashboardLoadingTimer);
-        dashboardLoadingTimer = null;
-      }
-      handler(payload);
-    };
-  }
+  try {
+    var data = await getDashboardDataFromSupabase(filters);
 
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler(finishDashboardRequest(function(d) {
-        try {
-          renderDashboardData(d || { pagamentos: {}, topProdutos: [], stockAlertas: [], depenses: [] });
-          applyLanguage();
-        } catch (e) {
-          toast('Erro dashboard: ' + (e && e.message ? e.message : e), 'error');
-        } finally {
-          setDashboardFilterLoading(false);
-        }
-      }))
-      .withFailureHandler(finishDashboardRequest(function(e) {
-        toast('Erro: ' + (e && e.message ? e.message : e), 'error');
-        setDashboardFilterLoading(false);
-      }))
-      .getDashboardData(filters);
-  } else {
-    setTimeout(finishDashboardRequest(function() {
-      try {
-        renderDashboardData(mockData('getDashboardData'));
-        applyLanguage();
-      } finally {
-        setDashboardFilterLoading(false);
-      }
-    }), 200);
+    if (requestId !== dashboardRequestSeq) return;
+
+    if (dashboardLoadingTimer) {
+      clearTimeout(dashboardLoadingTimer);
+      dashboardLoadingTimer = null;
+    }
+
+    renderDashboardData(data);
+    applyLanguage();
+
+  } catch (e) {
+    console.error("Erro dashboard:", e);
+    toast("Erro dashboard: " + (e.message || e), "error");
+
+  } finally {
+    if (requestId === dashboardRequestSeq) {
+      setDashboardFilterLoading(false);
+    }
   }
 }
+
 // ===== PRODUCTS =====
 // ===== PRODUCTS =====
 var productsLoading = false;
