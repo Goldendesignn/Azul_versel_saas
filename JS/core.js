@@ -7771,7 +7771,7 @@ function injectLockSettingsCard() {
           style="width:100%;height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 44px 0 12px;font-size:14px;">
         <button type="button" onclick="togglePasswordVisibility('erpLockPassword', this)"
           style="position:absolute;right:6px;top:5px;width:32px;height:32px;border:0;background:transparent;cursor:pointer;font-size:17px;">
-          👁
+         &#128065;
         </button>
       </div>
 
@@ -7780,7 +7780,7 @@ function injectLockSettingsCard() {
           style="width:100%;height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 44px 0 12px;font-size:14px;">
         <button type="button" onclick="togglePasswordVisibility('erpLockPasswordConfirm', this)"
           style="position:absolute;right:6px;top:5px;width:32px;height:32px;border:0;background:transparent;cursor:pointer;font-size:17px;">
-          👁
+         &#128065;
         </button>
       </div>
     </div>
@@ -7925,18 +7925,22 @@ function initErpLockSystem() {
 }
 
 document.addEventListener("DOMContentLoaded", initErpLockSystem);
+
 function togglePasswordVisibility(inputId, button) {
   var input = document.getElementById(inputId);
-  if (!input) return;
+  if (!input || !button) return;
 
   if (input.type === "password") {
     input.type = "text";
-    button.textContent = "🙈";
+    button.innerHTML = "&#128584;";
+    button.setAttribute("aria-label", "Masquer le mot de passe");
   } else {
     input.type = "password";
-    button.textContent = "👁";
+    button.innerHTML = "&#128065;";
+    button.setAttribute("aria-label", "Afficher le mot de passe");
   }
 }
+
 function renderFornNameDatalist() {
   renderSupplierDatalists();
 }
