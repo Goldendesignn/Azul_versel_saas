@@ -694,7 +694,32 @@ async function getDashboardDataFromSupabase(filters) {
     })
     .filter(function(item) { return !!item; })
     .slice(0, 8);
+  var expenseQuery = supabaseClient
+  .from("expenses")
+  .select("*")
+  .eq("organization_id", organizationId)
+  .order("expense_date", { ascending: false })
+  .order("created_at", { ascending: false });
 
+if (from) expenseQuery = expenseQuery.gte("expense_date", from);
+if (to) expenseQuery = expenseQuery.lte("expense_date", to);
+
+var expenseResult = await expenseQuery;
+if (expenseResult.error) throw expenseResult.error;
+
+var expenseRows = expenseResult.data || [];
+
+var totalDepenses = expenseRows.reduce(function(sum, row) {
+  return sum + (Number(row.amount) || 0);
+}, 0);
+
+var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
+  return {
+    date: row.expense_date || "",
+    desc: row.description || row.category || "",
+    valor: Number(row.amount) || 0
+  };
+});
   return {
     vendasHoje: totalVendas,
     vendasHojeCount: sales.length,
@@ -704,9 +729,9 @@ async function getDashboardDataFromSupabase(filters) {
     pagamentos: pagamentos,
     stockAlertas: stockAlertas,
 
-    totalDepenses: 0,
-    depensesCount: 0,
-    depenses: []
+   totalDepenses: totalDepenses,
+  depensesCount: expenseRows.length,
+  depenses: latestDepenses
   };
 }
 
@@ -5809,20 +5834,139 @@ function renderDepenseDashboard(data) {
   renderDepenseCategoryChart(data.byCategory || []);
   renderDepenseDayChart(data.byDay || []);
 }
+async function saveExpenseToSupabase(data) {
+  var organizationId = getAzulOrganizationId();
 
-function loadDepenseInsights() {
-  var filters = getDepenseFilters();
-  setDepenseLoading(true);
-  gsCall('getDepenseDashboard', filters, function(data) {
-    try {
-      renderDepenseDashboard(data || {});
-    } finally {
-      setDepenseLoading(false);
+  var result = await supabaseClient
+    .from("expenses")
+    .insert({
+      organization_id: organizationId,
+      expense_date: data.date || new Date().toISOString().split("T")[0],
+      category: data.tipo || data.category || "Autre",
+      description: data.desc || "",
+      amount: Number(data.montant) || 0
+    });
+
+  if (result.error) throw result.error;
+}
+
+async function getExpensesFromSupabase(filters) {
+  var organizationId = getAzulOrganizationId();
+
+  filters = filters || {};
+
+  var query = supabaseClient
+    .from("expenses")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("expense_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (filters.from) query = query.gte("expense_date", filters.from);
+  if (filters.to) query = query.lte("expense_date", filters.to);
+  if (filters.category) query = query.eq("category", filters.category);
+
+  var result = await query;
+
+  if (result.error) throw result.error;
+
+  return result.data || [];
+}
+
+async function getDepenseDashboardFromSupabase(filters) {
+  var rows = await getExpensesFromSupabase(filters);
+
+  var total = rows.reduce(function(sum, row) {
+    return sum + (Number(row.amount) || 0);
+  }, 0);
+
+  var count = rows.length;
+  var average = count ? total / count : 0;
+  var max = 0;
+  var maxCategory = "Categorie";
+  var today = new Date().toISOString().split("T")[0];
+  var todayTotal = 0;
+
+  var byCategoryMap = {};
+  var byDayMap = {};
+
+  rows.forEach(function(row) {
+    var amount = Number(row.amount) || 0;
+    var category = row.category || "Autre";
+    var date = row.expense_date || "";
+
+    if (amount > max) {
+      max = amount;
+      maxCategory = category;
     }
+
+    if (date === today) {
+      todayTotal += amount;
+    }
+
+    byCategoryMap[category] = (byCategoryMap[category] || 0) + amount;
+    byDayMap[date] = (byDayMap[date] || 0) + amount;
   });
-  gsCall('getHistoriqueDepenses', filters, function(rows) {
-    renderDepenseHistory(rows || []);
+
+  var byCategory = Object.keys(byCategoryMap).map(function(category) {
+    return {
+      category: category,
+      total: byCategoryMap[category]
+    };
+  }).sort(function(a, b) {
+    return b.total - a.total;
   });
+
+  var byDay = Object.keys(byDayMap).map(function(date) {
+    return {
+      date: date,
+      total: byDayMap[date]
+    };
+  }).sort(function(a, b) {
+    return a.date.localeCompare(b.date);
+  });
+
+  return {
+    total: total,
+    count: count,
+    average: average,
+    max: max,
+    maxCategory: maxCategory,
+    todayTotal: todayTotal,
+    byCategory: byCategory,
+    byDay: byDay
+  };
+}
+
+function mapExpensesToHistoryRows(rows) {
+  return (rows || []).map(function(row) {
+    return {
+      date: row.expense_date || "",
+      category: row.category || "",
+      description: row.description || "",
+      amount: Number(row.amount) || 0
+    };
+  });
+}
+async function loadDepenseInsights() {
+  var filters = getDepenseFilters();
+
+  setDepenseLoading(true);
+
+  try {
+    var dashboard = await getDepenseDashboardFromSupabase(filters);
+    renderDepenseDashboard(dashboard || {});
+
+    var rows = await getExpensesFromSupabase(filters);
+    renderDepenseHistory(mapExpensesToHistoryRows(rows));
+
+  } catch (e) {
+    console.error("Erro depenses:", e);
+    toast("Erro depenses: " + (e.message || e), "error");
+
+  } finally {
+    setDepenseLoading(false);
+  }
 }
 
 function switchDepenseTab(tab, btn) {
@@ -5848,27 +5992,49 @@ function initDepensesPage() {
   var defaultBtn = document.getElementById('dep-tab-new');
   if (defaultBtn) switchDepenseTab('new', defaultBtn);
 }
-function saveDepense() {
+async function saveDepense() {
   var data = {
-    date:    document.getElementById('dep-date').value,
-    tipo:    document.getElementById('dep-tipo').value,
-    desc:    document.getElementById('dep-desc').value.trim(),
-    montant: parseFloat(document.getElementById('dep-montant').value) || 0
+    date: document.getElementById("dep-date").value,
+    tipo: document.getElementById("dep-tipo").value,
+    desc: document.getElementById("dep-desc").value.trim(),
+    montant: parseFloat(document.getElementById("dep-montant").value) || 0
   };
-  if (!data.desc || data.montant <= 0) { toast('Preenche descricao e montant!', 'error'); return; }
 
-  var btn = document.getElementById('depBtn');
+  if (!data.desc || data.montant <= 0) {
+    toast("Preenche descricao e montant!", "error");
+    return;
+  }
+
+  var btn = document.getElementById("depBtn");
+
+  if (btn) {
     btn.disabled = true;
-    btn.textContent = 'A registar...';
-    btn.style.opacity = '0.6';
-  
-  gsCall('registarDepense', data, function() {
-    toast('Depense registada!', 'success');
-    document.getElementById('dep-desc').value    = '';
-    document.getElementById('dep-montant').value = '';
+    btn.textContent = "A registar...";
+    btn.style.opacity = "0.6";
+  }
+
+  try {
+    await saveExpenseToSupabase(data);
+
+    toast("Depense registada!", "success");
+
+    document.getElementById("dep-desc").value = "";
+    document.getElementById("dep-montant").value = "";
+
     loadDepenseInsights();
-    btn.disabled = false; btn.textContent = ' Registar Depense'; btn.style.opacity = '1';
-  });
+    loadDashboard();
+
+  } catch (e) {
+    console.error("Erro depense:", e);
+    toast("Erro depense: " + (e.message || e), "error");
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = " Registar Depense";
+      btn.style.opacity = "1";
+    }
+  }
 }
 // Enregistrement par cle de license
 
