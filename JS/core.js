@@ -419,9 +419,9 @@ async function registerClientPaymentInSupabase(data) {
       amount: amount,
       note: data.note || "",
       payment_date: data.date || new Date().toISOString().split("T")[0]
+    })
     .select()
     .single();
-    });
 
   if (paymentResult.error) throw paymentResult.error;
   var payment = paymentResult.data;
@@ -3913,9 +3913,9 @@ async function registerSupplierPaymentInSupabase(data) {
       amount: amount,
       note: data.note || "",
       payment_date: data.date || new Date().toISOString().split("T")[0]
-      .select()
-      .single();
-    });
+    })
+     .select()
+     .single();
 
   if (paymentResult.error) throw paymentResult.error;
 
