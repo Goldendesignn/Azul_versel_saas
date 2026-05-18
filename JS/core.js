@@ -1222,20 +1222,22 @@ function normalizeProductList(list) {
     if (seen[key]) return null;
     seen[key] = true;
     var normalized = {
-      name: name,
-      price: parseFloat(product.price) || 0,
-      stock: parseFloat(product.stock) || 0,
-      stockBoutique: parseFloat(product.stockBoutique) || 0,
-      photo: String(product.photo || ''),
-      category: String(product.category || ''),
-      code: String(product.code || ''),
-      variation: String(product.variation || ''),
-      variations: parseVariationList(product.variations || product.variation || ''),
-      purchasePrice: parseFloat(product.purchasePrice) || parseFloat(product.price) || 0,
-      targetMargin: parseFloat(product.targetMargin) || 0,
-      mainSupplier: String(product.mainSupplier || product.supplier || ''),
-      supplier: String(product.supplier || product.mainSupplier || '')
-    };
+     var normalized = {
+        id: product.id || "",
+        name: name,
+        price: parseFloat(product.price) || 0,
+        stock: parseFloat(product.stock) || 0,
+        stockBoutique: parseFloat(product.stockBoutique) || 0,
+        photo: String(product.photo || ''),
+        category: String(product.category || ''),
+        code: String(product.code || ''),
+        variation: String(product.variation || ''),
+        variations: parseVariationList(product.variations || product.variation || ''),
+        purchasePrice: parseFloat(product.purchasePrice) || parseFloat(product.price) || 0,
+        targetMargin: parseFloat(product.targetMargin) || 0,
+        mainSupplier: String(product.mainSupplier || product.supplier || ''),
+        supplier: String(product.supplier || product.mainSupplier || '')
+      };
     normalized._searchText = buildProductSearchText(normalized);
     return normalized;
   }).filter(function(product) {
