@@ -2068,6 +2068,7 @@ function renderCart() {
     document.getElementById('cartTotal').textContent = '0 Kz';
     cleanupLegacyCartFooter();
     updatePaymentStatus();
+    renderMobileCartBar();
     return;
   }
   el.innerHTML = '';
@@ -2105,6 +2106,7 @@ function renderCart() {
   document.getElementById('confirmBtn').textContent = getText('payment');
   cleanupLegacyCartFooter();
   updatePaymentStatus();
+  renderMobileCartBar();
 }
 
 function chgQty(i, d) {
@@ -2976,6 +2978,176 @@ async function confirmarVenda() {
     }
   }
 }
+function getCartTotalMobile() {
+  return (cart || []).reduce(function(sum, item) {
+    return sum + (Number(item.price) || 0) * (Number(item.qty) || 0);
+  }, 0);
+}
+
+function getCartCountMobile() {
+  return (cart || []).reduce(function(sum, item) {
+    return sum + (Number(item.qty) || 0);
+  }, 0);
+}
+
+function ensureMobileCartUI() {
+  if (!document.getElementById("mobileCartBar")) {
+    var bar = document.createElement("div");
+    bar.id = "mobileCartBar";
+    bar.className = "mobile-cart-bar";
+    bar.onclick = openMobileCart;
+    document.body.appendChild(bar);
+  }
+
+  if (!document.getElementById("mobileCartPage")) {
+    var page = document.createElement("div");
+    page.id = "mobileCartPage";
+    page.className = "mobile-cart-page";
+    document.body.appendChild(page);
+  }
+}
+
+function renderMobileCartBar() {
+  ensureMobileCartUI();
+
+  var bar = document.getElementById("mobileCartBar");
+  var vendaPage = document.getElementById("page-venda");
+  var isVenda = vendaPage && vendaPage.classList.contains("active");
+
+  if (!bar) return;
+
+  if (!isVenda || !cart || !cart.length) {
+    bar.classList.remove("show");
+    return;
+  }
+
+  bar.classList.add("show");
+  bar.innerHTML =
+    '<div class="mobile-cart-bar-title">Ver Carrinho</div>' +
+    '<div class="mobile-cart-bar-meta">' +
+      '<span>' + getCartCountMobile() + ' produtos</span>' +
+      '<span>' + fmt(getCartTotalMobile()) + '</span>' +
+    '</div>';
+}
+
+function openMobileCart() {
+  ensureMobileCartUI();
+
+  if (!paymentLines || !paymentLines.length) {
+    paymentLines = [{ method: "Cash", montant: getCartTotalMobile() }];
+  }
+
+  document.body.classList.add("mobile-cart-open");
+  renderMobileCartPage();
+}
+
+function closeMobileCart() {
+  document.body.classList.remove("mobile-cart-open");
+}
+
+function setMobileSaleType(type) {
+  selectedType = type;
+  renderMobileCartPage();
+}
+
+function updateMobilePaymentLine(index, field, value) {
+  paymentLines[index] = paymentLines[index] || { method: "Cash", montant: 0 };
+
+  if (field === "montant") {
+    paymentLines[index][field] = Number(value) || 0;
+  } else {
+    paymentLines[index][field] = value;
+  }
+
+  renderMobileCartPage();
+}
+
+function addMobilePaymentLine() {
+  paymentLines.push({ method: "Cash", montant: 0 });
+  renderMobileCartPage();
+}
+
+function removeMobilePaymentLine(index) {
+  paymentLines.splice(index, 1);
+
+  if (!paymentLines.length) {
+    paymentLines.push({ method: "Cash", montant: 0 });
+  }
+
+  renderMobileCartPage();
+}
+
+function renderMobileCartPage() {
+  ensureMobileCartUI();
+
+  var page = document.getElementById("mobileCartPage");
+  if (!page) return;
+
+  var total = getCartTotalMobile();
+
+  var itemsHtml = !cart.length
+    ? '<div class="empty">Carrinho vazio</div>'
+    : cart.map(function(item, index) {
+        var product = (products || []).find(function(p) { return p.name === item.name; }) || {};
+        var img = product.photo || "";
+
+        return '<div class="mobile-cart-item">' +
+          '<div class="mobile-cart-item-main">' +
+            '<img class="mobile-cart-img" src="' + img + '" alt="">' +
+            '<div>' +
+              '<div class="mobile-cart-name">' + escapeDepenseHtml(getItemDisplayName(item)) + '</div>' +
+              '<div class="mobile-cart-sub">Stock boutique: ' + (item.stock || 0) + ' un</div>' +
+              '<div class="mobile-cart-price">' + fmt(item.price || 0) + '</div>' +
+              '<div class="mobile-cart-sub">Total ' + fmt((item.price || 0) * (item.qty || 0)) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="mobile-cart-actions">' +
+            '<button class="mobile-cart-delete" onclick="removeItem(' + index + '); renderMobileCartPage(); event.stopPropagation();">×</button>' +
+            '<div class="mobile-cart-qty">' +
+              '<button onclick="chgQty(' + index + ', -1); renderMobileCartPage(); event.stopPropagation();">−</button>' +
+              '<span>' + item.qty + '</span>' +
+              '<button onclick="chgQty(' + index + ', 1); renderMobileCartPage(); event.stopPropagation();">+</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join("");
+
+  var paymentHtml = (paymentLines || []).map(function(line, index) {
+    return '<div class="mobile-pay-line">' +
+      '<select onchange="updateMobilePaymentLine(' + index + ', \'method\', this.value)">' +
+        '<option value="Cash" ' + (line.method === "Cash" ? "selected" : "") + '>Cash</option>' +
+        '<option value="Express" ' + (line.method === "Express" ? "selected" : "") + '>Express</option>' +
+        '<option value="Cartao" ' + (line.method === "Cartao" ? "selected" : "") + '>Cartao</option>' +
+        '<option value="Credito" ' + (line.method === "Credito" ? "selected" : "") + '>Credito</option>' +
+      '</select>' +
+      '<input type="number" value="' + (line.montant || 0) + '" oninput="updateMobilePaymentLine(' + index + ', \'montant\', this.value)">' +
+      '<button onclick="removeMobilePaymentLine(' + index + ')">×</button>' +
+    '</div>';
+  }).join("");
+
+  page.innerHTML =
+    '<div class="mobile-cart-head">' +
+      '<button class="mobile-cart-back" onclick="closeMobileCart()">‹</button>' +
+      '<div class="mobile-cart-title">Carrinho</div>' +
+      '<button class="mobile-cart-clear" onclick="clearCart(); renderMobileCartPage(); renderMobileCartBar();">Limpar</button>' +
+    '</div>' +
+    '<div class="mobile-cart-body">' +
+      itemsHtml +
+      '<div class="mobile-payment-card">' +
+        '<div class="mobile-payment-type">' +
+          '<button class="' + (selectedType !== "Externo" ? "active" : "") + '" onclick="setMobileSaleType(\'interno\')">Interne</button>' +
+          '<button class="' + (selectedType === "Externo" ? "active" : "") + '" onclick="setMobileSaleType(\'Externo\')">Externe</button>' +
+        '</div>' +
+        paymentHtml +
+        '<button class="mobile-add-pay" onclick="addMobilePaymentLine()">+ Ajouter moyen de paiement</button>' +
+      '</div>' +
+      '<div class="mobile-total-card">' +
+        '<div class="mobile-total-row"><span>Produtos (' + getCartCountMobile() + ')</span><b>' + fmt(total) + '</b></div>' +
+        '<div class="mobile-total-row"><strong>Total</strong><strong style="color:#32bfb3">' + fmt(total) + '</strong></div>' +
+      '</div>' +
+      '<button class="mobile-checkout-btn" onclick="confirmarVenda(); setTimeout(function(){ renderMobileCartPage(); renderMobileCartBar(); if(!cart.length) closeMobileCart(); }, 700);">Finalizar Compra</button>' +
+    '</div>';
+}
 
 
 // ===== RECEIPT =====
@@ -3510,6 +3682,7 @@ async function loadHist() {
   if (!tb) return;
 
   tb.innerHTML = '<tr><td colspan="8" class="empty">A carregar...</td></tr>';
+  renderMobileSalesHistory([]);
 
   var params = {
     from: document.getElementById("h-from").value,
@@ -3519,8 +3692,8 @@ async function loadHist() {
 
   try {
     var data = await getSalesHistoryFromSupabase(params);
+
     renderMobileSalesHistory(data);
-    renderMobileSalesHistory([]);
 
     if (!data || data.length === 0) {
       tb.innerHTML = '<tr><td colspan="8" class="empty">Nenhuma venda encontrada</td></tr>';
@@ -3553,9 +3726,11 @@ async function loadHist() {
   } catch (e) {
     console.error("Erro historico vendas:", e);
     tb.innerHTML = '<tr><td colspan="8" class="empty">Erro ao carregar historico</td></tr>';
+    renderMobileSalesHistory([]);
     toast("Erro historico vendas: " + (e.message || e), "error");
   }
 }
+
 
 
 // ===== CONFIG SYSTEM =====
