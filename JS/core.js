@@ -1712,23 +1712,27 @@ function filterProds() {
 }
 // ===== CART =====
 function addToCart(name, stock) {
-  var isCommande = selectedType === 'Externo';
-  var qtyInCart = cart.reduce(function(sum, item) {
-    return sum + (item.name === name ? (parseFloat(item.qty) || 0) : 0);
-  }, 0);
-  if (!isCommande && qtyInCart >= stock) {
-    toast('Stock insuficiente! Max: ' + stock + ' un. Muda para Commande para ultrapassar.', 'error');
-    return;
-  }
   var product = (products || []).find(function(p) { return p.name === name; }) || {};
   var salePrice = parseFloat(product.salePrice || product.price) || 0;
-  cart.push({name:name, price:salePrice, regularPrice:salePrice, qty:1, stock:stock, availableVariations:parseVariationList(product.variation || product.variations), selectedVariations:[]});
+
+  cart.push({
+    name: name,
+    price: salePrice,
+    regularPrice: salePrice,
+    qty: 1,
+    stock: stock,
+    availableVariations: parseVariationList(product.variation || product.variations),
+    selectedVariations: []
+  });
+
   renderCart();
+
   setTimeout(function() {
-    var inputs = document.querySelectorAll('.ci-price-input');
-    if (inputs.length) inputs[inputs.length-1].focus();
+    var inputs = document.querySelectorAll(".ci-price-input");
+    if (inputs.length) inputs[inputs.length - 1].focus();
   }, 50);
 }
+
 
 function renderCart() {
   var el = document.getElementById('cartBody');
@@ -1781,29 +1785,16 @@ function renderCart() {
 function chgQty(i, d) {
   var newQty = cart[i].qty + d;
 
-  // Si on diminue en dessous de 1 -> supprime du panier
   if (newQty <= 0) {
     cart.splice(i, 1);
     renderCart();
     return;
   }
 
-  // En mode Stock uniquement : bloquer si on depasse le stock boutique
-  if (selectedType !== 'Externo') {
-    var qtyOtherLines = cart.reduce(function(sum, item, index) {
-      return sum + (index !== i && item.name === cart[i].name ? (parseFloat(item.qty) || 0) : 0);
-    }, 0);
-    if (qtyOtherLines + newQty > cart[i].stock) {
-    // Ne pas changer la quantite, afficher alerte
-      toast('Stock insuffisant! Max disponible: ' + cart[i].stock + ' un. Muda para "Commande" para ultrapassar.', 'error');
-      return; //  on ne touche pas a cart[i].qty
-    }
-  }
-
-  // Tout va bien -> applique le changement
   cart[i].qty = newQty;
   renderCart();
 }
+
 
 function removeItem(i) { cart.splice(i, 1); renderCart(); }
 
