@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azul Admin</title>
+  <link rel="stylesheet" href="CSS/admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <section id="admin-login" class="admin-login-card">
+      <h1>Azul Admin</h1>
+      <p>Entre le code admin pour continuer.</p>
+
+      <input id="admin-code" type="password" placeholder="Code admin">
+      <button onclick="unlockAdmin()">Entrer</button>
+
+      <div id="admin-login-msg" class="admin-msg"></div>
+    </section>
+
+    <section id="admin-panel" class="admin-panel" style="display:none;">
+      <header class="admin-header">
+        <div>
+          <h1>Gestion des licences</h1>
+          <p>Créer, désactiver et réactiver les accès clients.</p>
+        </div>
+
+        <button class="danger-btn" onclick="logoutAdmin()">Déconnexion</button>
+      </header>
+
+      <section class="admin-grid">
+        <div class="admin-card">
+          <h2>Nouveau client</h2>
+
+          <label>Nom boutique / client</label>
+          <input id="org-name" type="text" placeholder="Ex: Boutique Golden">
+
+          <label>Téléphone</label>
+          <input id="org-phone" type="text" placeholder="Téléphone">
+
+          <label>Email</label>
+          <input id="org-email" type="email" placeholder="Email">
+
+          <label>Clé licence</label>
+          <div class="license-row">
+            <input id="org-license" type="text" placeholder="AZUL-XXXX-XXXX-XXXX">
+            <button onclick="fillGeneratedLicense()">Générer</button>
+          </div>
+
+          <label>Statut</label>
+          <select id="org-status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="suspended">Suspendue</option>
+          </select>
+
+          <button class="primary-btn" onclick="createOrganization()">Créer licence</button>
+          <div id="admin-form-msg" class="admin-msg"></div>
+        </div>
+
+        <div class="admin-card">
+          <div class="list-head">
+            <h2>Clients</h2>
+            <button onclick="loadOrganizations()">Actualiser</button>
+          </div>
+
+          <input id="admin-search" type="text" placeholder="Rechercher..." oninput="renderOrganizations()">
+
+          <div id="organizations-list" class="org-list">
+            <div class="empty">Chargement...</div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="JS/supabase.js"></script>
+  <script src="JS/admin.js"></script>
+</body>
+</html>
