@@ -854,6 +854,90 @@ function goTo(page, btn) {
   }
 }
 window.goTo = goTo;
+
+function ensureMobileList(afterTableBodyId, listId) {
+  var existing = document.getElementById(listId);
+  if (existing) return existing;
+
+  var body = document.getElementById(afterTableBodyId);
+  if (!body) return null;
+
+  var table = body.closest("table");
+  if (!table) return null;
+
+  var list = document.createElement("div");
+  list.id = listId;
+  list.className = "mobile-card-list";
+
+  table.parentNode.insertBefore(list, table.nextSibling);
+  return list;
+}
+
+function renderMobileSalesHistory(rows) {
+  var list = ensureMobileList("histBody", "mobileHistList");
+  if (!list) return;
+
+  rows = rows || [];
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhuma venda encontrada</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(v) {
+    return '<div class="mobile-sale-card">' +
+      '<div class="mobile-card-top">' +
+        '<div>' +
+          '<div class="mobile-card-kicker">Sale #' + escapeDepenseHtml(v.recibo || '-') + '</div>' +
+          '<div class="mobile-card-title">' + escapeDepenseHtml(v.prod || '') + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(v.client || 'Anonimo') + ' • Qtd ' + (v.qty || 0) + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(v.date || '') + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div class="mobile-card-amount">' + fmt(v.total || 0) + '</div>' +
+          '<div class="mobile-card-pill">' + escapeDepenseHtml(v.pay || 'Pago') + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderMobileInventory(rows) {
+  var list = ensureMobileList("Inventaires", "mobileInventoryList");
+  if (!list) return;
+
+  rows = rows || [];
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Aucun produit trouvé</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(product) {
+    var stockBoutique = Number(product.stockBoutique) || 0;
+    var stockage = Number(product.stockage) || 0;
+    var price = Number(product.price) || 0;
+    var total = stockBoutique + stockage;
+    var valeur = total * price;
+
+    return '<div class="mobile-stock-card">' +
+      '<div class="mobile-card-top">' +
+        '<div>' +
+          '<div class="mobile-card-kicker">' + escapeDepenseHtml(product.mainSupplier || 'Stock') + '</div>' +
+          '<div class="mobile-card-title">' + escapeDepenseHtml(product.name || '') + '</div>' +
+          '<div class="mobile-card-sub">Prix: ' + fmt(price) + '</div>' +
+        '</div>' +
+        '<div class="mobile-card-amount">' + fmt(valeur) + '</div>' +
+      '</div>' +
+      '<div class="mobile-stock-grid">' +
+        '<div class="mobile-stock-box"><div class="mobile-stock-label">Boutique</div><div class="mobile-stock-value">' + stockBoutique + '</div></div>' +
+        '<div class="mobile-stock-box"><div class="mobile-stock-label">Magasin</div><div class="mobile-stock-value">' + stockage + '</div></div>' +
+        '<div class="mobile-stock-box"><div class="mobile-stock-label">Total</div><div class="mobile-stock-value">' + total + '</div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
 // ===== GOOGLE SHEETS BRIDGE =====
 var pendingActionButton = null;
 var activeActionLoaders = 0;
@@ -3435,6 +3519,8 @@ async function loadHist() {
 
   try {
     var data = await getSalesHistoryFromSupabase(params);
+    renderMobileSalesHistory(data);
+    renderMobileSalesHistory([]);
 
     if (!data || data.length === 0) {
       tb.innerHTML = '<tr><td colspan="8" class="empty">Nenhuma venda encontrada</td></tr>';
@@ -5073,6 +5159,7 @@ function renderinventaire(products) {
   if (!body) return;
 
   products = products || [];
+  renderMobileInventory(products);
 
   var valeurtotal = 0;
   var valeurTotalBoutique = 0;
