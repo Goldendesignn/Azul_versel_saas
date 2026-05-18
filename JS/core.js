@@ -7685,19 +7685,42 @@ function injectLockSettingsCard() {
 
   var card = document.createElement("div");
   card.id = "erpLockSettingsCard";
-  card.className = "lock-settings-card";
+
+  card.style.maxWidth = "700px";
+  card.style.margin = "18px 0 30px";
+  card.style.padding = "18px";
+  card.style.border = "1px solid #ded8cc";
+  card.style.borderRadius = "10px";
+  card.style.background = "#fff";
+  card.style.boxShadow = "0 8px 24px rgba(0,0,0,.05)";
 
   card.innerHTML = `
-    <h3>Segurança do ERP</h3>
-
-    <div class="lock-settings-grid">
-      <input id="erpLockPassword" type="password" placeholder="Novo mot de passe">
-      <input id="erpLockPasswordConfirm" type="password" placeholder="Confirmar mot de passe">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+      <div>
+        <h3 style="margin:0;color:#002f87;font-size:18px;">Segurança do ERP</h3>
+        <p style="margin:4px 0 0;color:#8a8177;font-size:13px;">
+          Defina um mot de passe para bloquear o acesso ao sistema.
+        </p>
+      </div>
     </div>
 
-    <div class="lock-actions">
-      <button class="erp-lock-save" onclick="saveErpLockPassword()">Guardar mot de passe</button>
-      <button class="erp-lock-danger" onclick="lockErpNow()">Déconnexion / Verrouiller</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <input id="erpLockPassword" type="password" placeholder="Novo mot de passe"
+        style="height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 12px;font-size:14px;">
+      <input id="erpLockPasswordConfirm" type="password" placeholder="Confirmar mot de passe"
+        style="height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 12px;font-size:14px;">
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button onclick="saveErpLockPassword()"
+        style="height:42px;border:0;border-radius:7px;padding:0 16px;background:#003b91;color:#fff;font-weight:700;cursor:pointer;">
+        Guardar mot de passe
+      </button>
+
+      <button onclick="lockErpNow()"
+        style="height:42px;border:0;border-radius:7px;padding:0 16px;background:#b91c1c;color:#fff;font-weight:700;cursor:pointer;">
+        Déconnexion / Verrouiller
+      </button>
     </div>
   `;
 
