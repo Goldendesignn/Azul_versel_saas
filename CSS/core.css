@@ -1868,13 +1868,20 @@ html, body {
     font-size: 22px;
   }
 
-  .mobile-checkout-btn {
+    .mobile-checkout-btn {
     width: 100%;
     min-height: 56px;
     margin-top: 14px;
     border: none;
     border-radius: 999px;
     background: #32bfb3;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 900;
+  }
+}
+
+/* ===== MOBILE PURCHASE EXPERIENCE ===== */
    
 /* ===== MOBILE PURCHASE EXPERIENCE ===== */
 
