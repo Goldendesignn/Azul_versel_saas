@@ -7959,9 +7959,9 @@ var purchaseImportRows = [];
 
 function downloadPurchaseCsvTemplate() {
   var csv =
-    "date;supplier;designation;quantity;unit_price;total_amount;category;code;variation;photo;sale_price\n" +
-    "2026-05-19;Fornecedor Test;Tshirt Gucci;10;15000;150000;Roupa;TSH-001;M | Preto;;27000\n" +
-    "2026-05-19;Fornecedor Test;Blazer Classico;5;27000;135000;Roupa;BLA-001;L | Branco;;45000\n";
+    "date;supplier;designation;quantity;unit_price;total_amount;category;code;variation;photo;sale_price;payment_status;paid_amount\n" +
+    "2026-05-19;Fornecedor Test;Tshirt Gucci;10;15000;150000;Roupa;TSH-001;M | Preto;;27000;paid;\n" +
+    "2026-05-19;Fornecedor Test;Blazer Classico;5;27000;135000;Roupa;BLA-001;L | Branco;;45000;credit;50000\n";
 
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   var url = URL.createObjectURL(blob);
@@ -8106,6 +8106,8 @@ function mapPurchaseImportRow(row, index) {
     variation: String(row.variation || "").trim(),
     photo: String(row.photo || "").trim(),
     salePrice: parseImportNumber(row.sale_price),
+    paymentStatus: String(row.payment_status || "paid").trim().toLowerCase(),
+    paidAmount: parseImportNumber(row.paid_amount),
     valid: true,
     error: ""
   };
@@ -8156,7 +8158,7 @@ function renderPurchaseImportPreview() {
 
   if (!purchaseImportRows.length) {
     summary.textContent = "Aucun fichier selectionne.";
-    body.innerHTML = '<tr><td colspan="9" class="empty">Le preview apparait ici</td></tr>';
+    body.innerHTML = '<tr><td colspan="10" class="empty">Le preview apparait ici</td></tr>';
     return;
   }
 
@@ -8183,6 +8185,7 @@ function renderPurchaseImportPreview() {
       '<td>' + escapeDepenseHtml(row.category) + '</td>' +
       '<td>' + escapeDepenseHtml(row.code) + '</td>' +
       '<td>' + escapeDepenseHtml(row.variation) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.paymentStatus === "credit" ? "Credit" : "Paye") + '</td>' +
     '</tr>';
   }).join("");
 }
@@ -8212,14 +8215,17 @@ async function importPurchaseCsvRows() {
   var groups = {};
 
   purchaseImportRows.forEach(function(row) {
-    var key = row.date + "||" + row.supplier;
+    var key = row.date + "||" + row.supplier + "||" + row.paymentStatus;
 
     if (!groups[key]) {
       groups[key] = {
         date: row.date,
         supplier: row.supplier,
+        paymentStatus: row.paymentStatus,
+        paidAmount: 0,
         items: []
       };
+      groups[key].paidAmount += Number(row.paidAmount) || 0;
     }
 
     groups[key].items.push({
@@ -8251,7 +8257,8 @@ async function importPurchaseCsvRows() {
         forn: group.supplier,
         purchaseDate: group.date,
         items: group.items,
-        credit: false,
+        credit: group.paymentStatus === "credit",
+        paidAmount: group.paymentStatus === "credit" ? group.paidAmount : 0,
         payments: []
       });
 
