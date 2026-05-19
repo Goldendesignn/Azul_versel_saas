@@ -8849,6 +8849,574 @@ async function importPurchaseCsvRows() {
     }
   }
 }
+var saleImportRows = [];
+var saleImportRunning = false;
+
+function downloadSaleCsvTemplate() {
+  var csv =
+    "date;designation;quantity;unit_price;cash;express;card;credit;total_amount;purchase_price;profit;origin;seller;client;receipt_no\n" +
+    "2026-05-19;Tshirt Gucci;2;15000;30000;0;0;0;30000;8000;14000;interno;Moussa;Joao Silva;\n" +
+    "2026-05-19;Blazer Classico;1;45000;0;45000;0;0;45000;27000;18000;Externo;Moussa;Anonimo;\n" +
+    "2026-05-19;Jeans Azul;1;12000;0;0;0;12000;12000;7000;5000;interno;Moussa;Carlos;\n";
+
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+
+  a.href = url;
+  a.download = "azul_sales_import_template.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+}
+
+function normalizeSaleOrigin(value) {
+  var raw = String(value || "").trim().toLowerCase();
+
+  if (!raw) return "interno";
+  if (raw === "externo" || raw === "externa" || raw === "commande" || raw === "external") return "Externo";
+
+  return "interno";
+}
+
+function buildSalePaymentLines(row) {
+  var lines = [];
+
+  if (row.cash > 0) lines.push({ method: "Cash", montant: row.cash });
+  if (row.express > 0) lines.push({ method: "Express", montant: row.express });
+  if (row.card > 0) lines.push({ method: "Cartao", montant: row.card });
+  if (row.credit > 0) lines.push({ method: "Credito", montant: row.credit });
+
+  if (!lines.length && row.totalAmount > 0) {
+    lines.push({ method: "Cash", montant: row.totalAmount });
+  }
+
+  return lines;
+}
+
+function getSaleImportPaymentTotal(row) {
+  return (Number(row.cash) || 0) +
+    (Number(row.express) || 0) +
+    (Number(row.card) || 0) +
+    (Number(row.credit) || 0);
+}
+
+function mapSaleImportRow(row, index) {
+  var qty = parseImportNumber(row.quantity);
+  var unitPrice = parseImportNumber(row.unit_price);
+  var totalAmount = parseImportNumber(row.total_amount);
+
+  if (!totalAmount && qty && unitPrice) {
+    totalAmount = qty * unitPrice;
+  }
+
+  if (!unitPrice && totalAmount && qty) {
+    unitPrice = totalAmount / qty;
+  }
+
+  return {
+    line: index + 2,
+    date: normalizeImportDate(row.date),
+    designation: String(row.designation || "").trim(),
+    quantity: qty,
+    unitPrice: unitPrice,
+    cash: parseImportNumber(row.cash),
+    express: parseImportNumber(row.express),
+    card: parseImportNumber(row.card),
+    credit: parseImportNumber(row.credit),
+    totalAmount: totalAmount,
+    purchasePrice: parseImportNumber(row.purchase_price),
+    profit: parseImportNumber(row.profit),
+    origin: normalizeSaleOrigin(row.origin),
+    seller: String(row.seller || "").trim(),
+    client: String(row.client || "Anonimo").trim() || "Anonimo",
+    receiptNo: String(row.receipt_no || "").trim(),
+    valid: true,
+    error: ""
+  };
+}
+
+function validateSaleImportRow(row) {
+  if (!row.designation) return "Designation obligatoire";
+  if (!row.quantity || row.quantity <= 0) return "Quantite invalide";
+  if (!row.unitPrice || row.unitPrice <= 0) return "Prix unitaire invalide";
+  if (!row.totalAmount || row.totalAmount <= 0) return "Montant total invalide";
+
+  var payTotal = getSaleImportPaymentTotal(row);
+
+  if (Math.abs(payTotal - row.totalAmount) > 0.01) {
+    return "Paiements differents du total";
+  }
+
+  if (row.credit > 0 && (!row.client || row.client === "Anonimo")) {
+    return "Credit exige un nom client";
+  }
+
+  return "";
+}
+
+function handleSaleCsvFile(event) {
+  var file = event.target.files && event.target.files[0];
+
+  if (!file) return;
+
+  var reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      var rawRows = parseCsvText(e.target.result || "");
+
+      saleImportRows = rawRows.map(function(row, index) {
+        var mapped = mapSaleImportRow(row, index);
+        mapped.error = validateSaleImportRow(mapped);
+        mapped.valid = !mapped.error;
+        return mapped;
+      });
+
+      renderSaleImportPreview();
+    } catch (err) {
+      saleImportRows = [];
+      renderSaleImportPreview();
+      toast("Erreur CSV ventes: " + (err.message || err), "error");
+    }
+  };
+
+  reader.readAsText(file, "UTF-8");
+}
+
+function renderSaleImportPreview() {
+  var body = document.getElementById("sale-import-preview");
+  var summary = document.getElementById("sale-import-summary");
+
+  if (!body || !summary) return;
+
+  if (!saleImportRows.length) {
+    summary.textContent = "Aucun fichier selectionne.";
+    body.innerHTML = '<tr><td colspan="12" class="empty">Le preview des ventes apparait ici</td></tr>';
+    return;
+  }
+
+  var validRows = saleImportRows.filter(function(row) { return row.valid; });
+  var invalidRows = saleImportRows.filter(function(row) { return !row.valid; });
+  var total = validRows.reduce(function(sum, row) {
+    return sum + row.totalAmount;
+  }, 0);
+
+  summary.innerHTML =
+    '<strong>' + validRows.length + '</strong> ventes valides | ' +
+    '<strong>' + invalidRows.length + '</strong> erreurs | Total: <strong>' + fmt(total) + '</strong>';
+
+  body.innerHTML = saleImportRows.slice(0, 100).map(function(row) {
+    var bg = row.valid ? "" : ' style="background:rgba(224,92,92,0.08);"';
+
+    return '<tr' + bg + '>' +
+      '<td>' + escapeDepenseHtml(row.date) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.designation || row.error) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.quantity) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.unitPrice) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.cash) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.express) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.card) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.credit) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.totalAmount) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.origin) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.client) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.receiptNo || "Auto") + '</td>' +
+    '</tr>';
+  }).join("");
+}
+
+function getSaleImportProductKey(row) {
+  return normalizeImportText(row.designation);
+}
+
+async function fetchSaleImportProducts(rows) {
+  var organizationId = getAzulOrganizationId();
+  var names = [];
+
+  rows.forEach(function(row) {
+    if (row.designation && names.indexOf(row.designation) === -1) {
+      names.push(row.designation);
+    }
+  });
+
+  var byName = {};
+
+  for (var i = 0; i < chunkImportArray(names, 80).length; i++) {
+    var chunk = chunkImportArray(names, 80)[i];
+
+    if (!chunk.length) continue;
+
+    var result = await supabaseClient
+      .from("products")
+      .select("id,name,purchase_price,sale_price,stock_shop,stock_warehouse,supplier,variation,variations")
+      .eq("organization_id", organizationId)
+      .in("name", chunk)
+      .order("created_at", { ascending: false });
+
+    if (result.error) throw result.error;
+
+    (result.data || []).forEach(function(product) {
+      var key = normalizeImportText(product.name);
+
+      if (!byName[key]) {
+        byName[key] = product;
+      }
+    });
+  }
+
+  return byName;
+}
+
+async function createSaleImportAccountingBatch(sales) {
+  var organizationId = getAzulOrganizationId();
+  var entryRows = [];
+
+  sales.forEach(function(item) {
+    entryRows.push({
+      organization_id: organizationId,
+      source_type: "sale",
+      source_id: item.sale.id,
+      entry_date: item.sale.sale_date,
+      description: "Import venda " + item.sale.receipt_no
+    });
+  });
+
+  if (!entryRows.length) return;
+
+  var insertedEntries = [];
+
+  for (var i = 0; i < chunkImportArray(entryRows, 300).length; i++) {
+    var chunk = chunkImportArray(entryRows, 300)[i];
+
+    var entryResult = await supabaseClient
+      .from("accounting_entries")
+      .insert(chunk)
+      .select("id,source_id");
+
+    if (entryResult.error) throw entryResult.error;
+
+    insertedEntries = insertedEntries.concat(entryResult.data || []);
+  }
+
+  var entryBySourceId = {};
+  insertedEntries.forEach(function(entry) {
+    entryBySourceId[String(entry.source_id)] = entry;
+  });
+
+  var lineRows = [];
+
+  sales.forEach(function(item) {
+    var entry = entryBySourceId[String(item.sale.id)];
+    if (!entry) return;
+
+    var row = item.row;
+    var total = Number(row.totalAmount) || 0;
+    var cost = (Number(row.purchasePrice) || 0) * (Number(row.quantity) || 0);
+    var cashIn = (Number(row.cash) || 0) + (Number(row.express) || 0) + (Number(row.card) || 0);
+    var credit = Number(row.credit) || 0;
+
+    if (cashIn > 0) {
+      lineRows.push({
+        organization_id: organizationId,
+        entry_id: entry.id,
+        account_code: "11",
+        account_name: getAccountName("11"),
+        debit: cashIn,
+        credit: 0
+      });
+    }
+
+    if (credit > 0) {
+      lineRows.push({
+        organization_id: organizationId,
+        entry_id: entry.id,
+        account_code: "12",
+        account_name: getAccountName("12"),
+        debit: credit,
+        credit: 0
+      });
+    }
+
+    lineRows.push({
+      organization_id: organizationId,
+      entry_id: entry.id,
+      account_code: "71",
+      account_name: getAccountName("71"),
+      debit: 0,
+      credit: total
+    });
+
+    if (cost > 0) {
+      lineRows.push({
+        organization_id: organizationId,
+        entry_id: entry.id,
+        account_code: "61",
+        account_name: getAccountName("61"),
+        debit: cost,
+        credit: 0
+      });
+
+      lineRows.push({
+        organization_id: organizationId,
+        entry_id: entry.id,
+        account_code: row.origin === "Externo" ? "11" : "13",
+        account_name: getAccountName(row.origin === "Externo" ? "11" : "13"),
+        debit: 0,
+        credit: cost
+      });
+    }
+  });
+
+  for (var j = 0; j < chunkImportArray(lineRows, 500).length; j++) {
+    var lineChunk = chunkImportArray(lineRows, 500)[j];
+
+    if (!lineChunk.length) continue;
+
+    var lineResult = await supabaseClient
+      .from("accounting_lines")
+      .insert(lineChunk);
+
+    if (lineResult.error) throw lineResult.error;
+  }
+}
+
+async function createSaleImportClientDebts(sales) {
+  var organizationId = getAzulOrganizationId();
+  var debtRows = [];
+
+  sales.forEach(function(item) {
+    var credit = Number(item.row.credit) || 0;
+
+    if (credit <= 0) return;
+
+    debtRows.push({
+      organization_id: organizationId,
+      client_name: item.row.client,
+      sale_id: item.sale.id,
+      total_amount: credit,
+      paid_amount: 0,
+      remaining_amount: credit,
+      debt_date: item.row.date,
+      note: "Import venda " + item.sale.receipt_no
+    });
+  });
+
+  for (var i = 0; i < chunkImportArray(debtRows, 300).length; i++) {
+    var chunk = chunkImportArray(debtRows, 300)[i];
+
+    if (!chunk.length) continue;
+
+    var result = await supabaseClient
+      .from("client_debts")
+      .insert(chunk);
+
+    if (result.error) throw result.error;
+  }
+}
+
+async function saveSaleImportBatchToSupabase(rows) {
+  var organizationId = getAzulOrganizationId();
+  var validRows = (rows || []).filter(function(row) {
+    return row && row.valid;
+  });
+
+  if (!validRows.length) {
+    throw new Error("Aucune vente valide a importer.");
+  }
+
+  var productsByName = await fetchSaleImportProducts(validRows);
+  var receiptSeed = Date.now();
+
+  var saleRows = validRows.map(function(row, index) {
+    var receiptNo = row.receiptNo || ("AZ-IMP-" + receiptSeed + "-" + String(index + 1).padStart(4, "0"));
+    var paymentLines = buildSalePaymentLines(row);
+
+    return {
+      organization_id: organizationId,
+      receipt_no: receiptNo,
+      client_name: row.client || "Anonimo",
+      sale_date: row.date,
+      sale_type: row.origin,
+      total: row.totalAmount,
+      profit: row.profit || ((row.unitPrice - row.purchasePrice) * row.quantity),
+      payment_summary: getPaymentSummary(paymentLines),
+      payment_lines: paymentLines
+    };
+  });
+
+  var insertedSales = [];
+
+  for (var s = 0; s < chunkImportArray(saleRows, 300).length; s++) {
+    var saleChunk = chunkImportArray(saleRows, 300)[s];
+
+    var saleResult = await supabaseClient
+      .from("sales")
+      .insert(saleChunk)
+      .select("id,receipt_no,sale_date,total");
+
+    if (saleResult.error) throw saleResult.error;
+
+    insertedSales = insertedSales.concat(saleResult.data || []);
+  }
+
+  var saleItems = [];
+  var stockChanges = {};
+
+  validRows.forEach(function(row, index) {
+    var sale = insertedSales[index];
+    var product = productsByName[getSaleImportProductKey(row)] || {};
+    var purchasePrice = row.purchasePrice || Number(product.purchase_price) || 0;
+
+    saleItems.push({
+      sale_id: sale.id,
+      product_id: product.id || null,
+      product_name: row.designation,
+      quantity: row.quantity,
+      unit_price: row.unitPrice,
+      total: row.totalAmount,
+      purchase_price: purchasePrice,
+      profit: row.profit || ((row.unitPrice - purchasePrice) * row.quantity),
+      variation: product.variation || "",
+      variations: product.variations || []
+    });
+
+    row.purchasePrice = purchasePrice;
+
+    if (row.origin !== "Externo" && product.id) {
+      if (!stockChanges[product.id]) {
+        stockChanges[product.id] = {
+          product: product,
+          qty: 0
+        };
+      }
+
+      stockChanges[product.id].qty += Number(row.quantity) || 0;
+    }
+  });
+
+  for (var i = 0; i < chunkImportArray(saleItems, 500).length; i++) {
+    var itemChunk = chunkImportArray(saleItems, 500)[i];
+
+    var itemResult = await supabaseClient
+      .from("sale_items")
+      .insert(itemChunk);
+
+    if (itemResult.error) throw itemResult.error;
+  }
+
+  var stockRows = Object.keys(stockChanges).map(function(productId) {
+    var entry = stockChanges[productId];
+
+    return {
+      id: productId,
+      stock_shop: Math.max(0, (Number(entry.product.stock_shop) || 0) - entry.qty)
+    };
+  });
+
+  for (var st = 0; st < chunkImportArray(stockRows, 200).length; st++) {
+    var stockChunk = chunkImportArray(stockRows, 200)[st];
+
+    if (!stockChunk.length) continue;
+
+    var stockResult = await supabaseClient
+      .from("products")
+      .upsert(stockChunk, { onConflict: "id" });
+
+    if (stockResult.error) throw stockResult.error;
+  }
+
+  var saleLinks = insertedSales.map(function(sale, index) {
+    return {
+      sale: sale,
+      row: validRows[index]
+    };
+  });
+
+  await createSaleImportClientDebts(saleLinks);
+  await createSaleImportAccountingBatch(saleLinks);
+
+  return {
+    sales: insertedSales.length,
+    items: saleItems.length
+  };
+}
+
+async function importSaleCsvRows() {
+  var log = document.getElementById("sale-import-log");
+
+  if (saleImportRunning) {
+    toast("Importation ventes deja en cours...", "error");
+    return;
+  }
+
+  if (!saleImportRows.length) {
+    toast("Choisis d'abord un fichier ventes.", "error");
+    return;
+  }
+
+  var invalidRows = saleImportRows.filter(function(row) {
+    return !row.valid;
+  });
+
+  if (invalidRows.length) {
+    toast("Corrige les ventes invalides avant l'import.", "error");
+
+    if (log) {
+      log.innerHTML = invalidRows.map(function(row) {
+        return "Ligne " + row.line + ": " + row.error;
+      }).join("<br>");
+    }
+
+    return;
+  }
+
+  saleImportRunning = true;
+
+  var btn = document.querySelector('button[onclick="importSaleCsvRows()"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Importation...";
+    btn.style.opacity = "0.65";
+  }
+
+  try {
+    if (log) log.innerHTML = "Importation ventes en cours...";
+
+    var result = await saveSaleImportBatchToSupabase(saleImportRows);
+
+    toast("Import ventes termine: " + result.sales + " ventes.", "success");
+
+    saleImportRows = [];
+    renderSaleImportPreview();
+
+    var fileInput = document.getElementById("sale-import-file");
+    if (fileInput) fileInput.value = "";
+
+    products = [];
+
+    if (log) {
+      log.innerHTML = "Import ventes termine: " + result.sales + " ventes, " + result.items + " lignes.";
+    }
+  } catch (e) {
+    console.error("Erreur import ventes:", e);
+    toast("Erreur import ventes: " + (e.message || e), "error");
+
+    if (log) {
+      log.innerHTML = "Erreur: " + escapeDepenseHtml(e.message || e);
+    }
+  } finally {
+    saleImportRunning = false;
+
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Importer ventes";
+      btn.style.opacity = "1";
+    }
+  }
+}
 // ===== UTILS =====
 function fmt(n) {
   if (n === undefined || n === null || n === '') return '-';
