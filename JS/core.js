@@ -23,7 +23,58 @@ function getAzulOrganizationId() {
 
   return id;
 }
+function clearAzulSession() {
+  localStorage.removeItem("azul_organization_id");
+  localStorage.removeItem("azul_organization_name");
+  localStorage.removeItem("azul_user_name");
+  localStorage.removeItem("azul_license_key");
+  localStorage.removeItem("azul_plan");
+}
 
+function getCoreLicenseErrorMessage(error) {
+  var msg = String(error && error.message ? error.message : error || "");
+
+  if (msg.indexOf("LICENCA_INATIVA") >= 0) {
+    return "Licence désactivée. Contacte l'administrateur.";
+  }
+
+  if (msg.indexOf("LICENCA_EXPIRADA") >= 0) {
+    return "Licence expirée. Renouvelle ton abonnement.";
+  }
+
+  if (msg.indexOf("ORGANIZATION_NOT_FOUND") >= 0) {
+    return "Licence introuvable.";
+  }
+
+  return "Licence invalide.";
+}
+
+async function verifyCurrentLicense() {
+  var organizationId = localStorage.getItem("azul_organization_id");
+
+  if (!organizationId) {
+    window.location.replace("index.html");
+    return false;
+  }
+
+  var result = await supabaseClient.rpc("check_license_status", {
+    p_organization_id: organizationId
+  });
+
+  if (result.error) {
+    alert(getCoreLicenseErrorMessage(result.error));
+    clearAzulSession();
+    window.location.replace("index.html");
+    return false;
+  }
+
+  var organization = result.data;
+
+  localStorage.setItem("azul_organization_name", organization.name || "");
+  localStorage.setItem("azul_plan", organization.plan || "starter");
+
+  return true;
+}
 function mapSupabaseProduct(row) {
   row = row || {};
 
@@ -1065,7 +1116,9 @@ function ensureSpreadsheetBinding(done) {
     })
     .getSpreadsheetBinding();
 }
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  var licenseOk = await verifyCurrentLicense();
+  if (!licenseOk) return;
   var now = new Date();
   document.getElementById('dateTxt').textContent =
     now.toLocaleDateString('pt-PT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
