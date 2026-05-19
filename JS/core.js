@@ -9466,17 +9466,319 @@ async function importSaleCsvRows() {
     }
   }
 }
+var expenseImportRows = [];
+var expenseImportRunning = false;
+
+function downloadExpenseCsvTemplate() {
+  var csv =
+    "date,category,description,amount\n" +
+    "2026-05-20,Transport,Taxi livraison,5000\n" +
+    "2026-05-20,Loyer,Loyer boutique,150000\n" +
+    "2026-05-20,Electricite,Facture energie,35000\n";
+
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+
+  a.href = url;
+  a.download = "azul_expenses_import_template.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+}
+
+function mapExpenseImportRow(row, index) {
+  return {
+    line: index + 2,
+    date: normalizeImportDate(row.date),
+    category: String(row.category || "Autre").trim() || "Autre",
+    description: String(row.description || "").trim(),
+    amount: parseImportNumber(row.amount),
+    valid: true,
+    error: ""
+  };
+}
+
+function validateExpenseImportRow(row) {
+  if (!row.category) return "Categorie obligatoire";
+  if (!row.description) return "Description obligatoire";
+  if (!row.amount || row.amount <= 0) return "Montant invalide";
+  return "";
+}
+
+function handleExpenseCsvFile(event) {
+  var file = event.target.files && event.target.files[0];
+
+  if (!file) return;
+
+  var reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      var rawRows = parseCsvText(e.target.result || "", ["date", "category", "description", "amount"]);
+
+      expenseImportRows = rawRows.map(function(row, index) {
+        var mapped = mapExpenseImportRow(row, index);
+        mapped.error = validateExpenseImportRow(mapped);
+        mapped.valid = !mapped.error;
+        return mapped;
+      });
+
+      renderExpenseImportPreview();
+    } catch (err) {
+      expenseImportRows = [];
+      renderExpenseImportPreview();
+      toast("Erreur CSV depenses: " + (err.message || err), "error");
+    }
+  };
+
+  reader.readAsText(file, "UTF-8");
+}
+
+function renderExpenseImportPreview() {
+  var body = document.getElementById("expense-import-preview");
+  var summary = document.getElementById("expense-import-summary");
+
+  if (!body || !summary) return;
+
+  if (!expenseImportRows.length) {
+    summary.textContent = "Aucun fichier selectionne.";
+    body.innerHTML = '<tr><td colspan="4" class="empty">Le preview des depenses apparait ici</td></tr>';
+    return;
+  }
+
+  var validRows = expenseImportRows.filter(function(row) { return row.valid; });
+  var invalidRows = expenseImportRows.filter(function(row) { return !row.valid; });
+  var total = validRows.reduce(function(sum, row) {
+    return sum + row.amount;
+  }, 0);
+
+  summary.innerHTML =
+    '<strong>' + validRows.length + '</strong> depenses valides | ' +
+    '<strong>' + invalidRows.length + '</strong> erreurs | Total: <strong>' + fmt(total) + '</strong>';
+
+  body.innerHTML = expenseImportRows.slice(0, 100).map(function(row) {
+    var bg = row.valid ? "" : ' style="background:rgba(224,92,92,0.08);"';
+
+    return '<tr' + bg + '>' +
+      '<td>' + escapeDepenseHtml(row.date) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.category || row.error) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.description) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.amount) + '</td>' +
+    '</tr>';
+  }).join("");
+}
+
+async function createExpenseImportAccountingBatch(expenses) {
+  var organizationId = getAzulOrganizationId();
+  var entryRows = (expenses || []).map(function(expense) {
+    return {
+      organization_id: organizationId,
+      source_type: "expense",
+      source_id: expense.id,
+      entry_date: expense.expense_date,
+      description: "Depense - " + (expense.description || expense.category || "")
+    };
+  });
+
+  if (!entryRows.length) return;
+
+  var insertedEntries = [];
+
+  for (var i = 0; i < chunkImportArray(entryRows, 300).length; i++) {
+    var chunk = chunkImportArray(entryRows, 300)[i];
+
+    var entryResult = await supabaseClient
+      .from("accounting_entries")
+      .insert(chunk)
+      .select("id,source_id");
+
+    if (entryResult.error) throw entryResult.error;
+
+    insertedEntries = insertedEntries.concat(entryResult.data || []);
+  }
+
+  var expenseById = {};
+  expenses.forEach(function(expense) {
+    expenseById[String(expense.id)] = expense;
+  });
+
+  var lineRows = [];
+
+  insertedEntries.forEach(function(entry) {
+    var expense = expenseById[String(entry.source_id)];
+    if (!expense) return;
+
+    var amount = Number(expense.amount) || 0;
+    if (amount <= 0) return;
+
+    lineRows.push({
+      organization_id: organizationId,
+      entry_id: entry.id,
+      account_code: "62",
+      account_name: getAccountName("62"),
+      debit: amount,
+      credit: 0
+    });
+
+    lineRows.push({
+      organization_id: organizationId,
+      entry_id: entry.id,
+      account_code: "11",
+      account_name: getAccountName("11"),
+      debit: 0,
+      credit: amount
+    });
+  });
+
+  for (var j = 0; j < chunkImportArray(lineRows, 500).length; j++) {
+    var lineChunk = chunkImportArray(lineRows, 500)[j];
+
+    if (!lineChunk.length) continue;
+
+    var lineResult = await supabaseClient
+      .from("accounting_lines")
+      .insert(lineChunk);
+
+    if (lineResult.error) throw lineResult.error;
+  }
+}
+
+async function saveExpenseImportBatchToSupabase(rows) {
+  var organizationId = getAzulOrganizationId();
+  var validRows = (rows || []).filter(function(row) {
+    return row && row.valid;
+  });
+
+  if (!validRows.length) {
+    throw new Error("Aucune depense valide a importer.");
+  }
+
+  var expenseRows = validRows.map(function(row) {
+    return {
+      organization_id: organizationId,
+      expense_date: row.date,
+      category: row.category,
+      description: row.description,
+      amount: row.amount
+    };
+  });
+
+  var insertedExpenses = [];
+
+  for (var i = 0; i < chunkImportArray(expenseRows, 500).length; i++) {
+    var chunk = chunkImportArray(expenseRows, 500)[i];
+
+    var result = await supabaseClient
+      .from("expenses")
+      .insert(chunk)
+      .select("id,expense_date,category,description,amount");
+
+    if (result.error) throw result.error;
+
+    insertedExpenses = insertedExpenses.concat(result.data || []);
+  }
+
+  await createExpenseImportAccountingBatch(insertedExpenses);
+
+  return {
+    expenses: insertedExpenses.length
+  };
+}
+
+async function importExpenseCsvRows() {
+  var log = document.getElementById("expense-import-log");
+
+  if (expenseImportRunning) {
+    toast("Importation depenses deja en cours...", "error");
+    return;
+  }
+
+  if (!expenseImportRows.length) {
+    toast("Choisis d'abord un fichier depenses.", "error");
+    return;
+  }
+
+  var invalidRows = expenseImportRows.filter(function(row) {
+    return !row.valid;
+  });
+
+  if (invalidRows.length) {
+    toast("Corrige les depenses invalides avant l'import.", "error");
+
+    if (log) {
+      log.innerHTML = invalidRows.map(function(row) {
+        return "Ligne " + row.line + ": " + row.error;
+      }).join("<br>");
+    }
+
+    return;
+  }
+
+  expenseImportRunning = true;
+
+  var btn = document.querySelector('button[onclick="importExpenseCsvRows()"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Importation...";
+    btn.style.opacity = "0.65";
+  }
+
+  try {
+    if (log) log.innerHTML = "Importation depenses en cours...";
+
+    var result = await saveExpenseImportBatchToSupabase(expenseImportRows);
+
+    toast("Import depenses termine: " + result.expenses + " depenses.", "success");
+
+    expenseImportRows = [];
+    renderExpenseImportPreview();
+
+    var fileInput = document.getElementById("expense-import-file");
+    if (fileInput) fileInput.value = "";
+
+    loadDashboard();
+    loadDepenseInsights();
+
+    if (log) {
+      log.innerHTML = "Import depenses termine: " + result.expenses + " depenses.";
+    }
+  } catch (e) {
+    console.error("Erreur import depenses:", e);
+    toast("Erreur import depenses: " + (e.message || e), "error");
+
+    if (log) {
+      log.innerHTML = "Erreur: " + escapeDepenseHtml(e.message || e);
+    }
+  } finally {
+    expenseImportRunning = false;
+
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Importer depenses";
+      btn.style.opacity = "1";
+    }
+  }
+}
 function switchImportTab(tab) {
-  var purchasePanel = document.getElementById("import-panel-purchases");
-  var salePanel = document.getElementById("import-panel-sales");
-  var purchaseTab = document.getElementById("import-tab-purchases");
-  var saleTab = document.getElementById("import-tab-sales");
+  var panels = {
+    purchases: document.getElementById("import-panel-purchases"),
+    sales: document.getElementById("import-panel-sales"),
+    expenses: document.getElementById("import-panel-expenses")
+  };
 
-  if (purchasePanel) purchasePanel.style.display = tab === "purchases" ? "block" : "none";
-  if (salePanel) salePanel.style.display = tab === "sales" ? "block" : "none";
+  var tabs = {
+    purchases: document.getElementById("import-tab-purchases"),
+    sales: document.getElementById("import-tab-sales"),
+    expenses: document.getElementById("import-tab-expenses")
+  };
 
-  if (purchaseTab) purchaseTab.classList.toggle("active", tab === "purchases");
-  if (saleTab) saleTab.classList.toggle("active", tab === "sales");
+  Object.keys(panels).forEach(function(key) {
+    if (panels[key]) panels[key].style.display = key === tab ? "block" : "none";
+    if (tabs[key]) tabs[key].classList.toggle("active", key === tab);
+  });
 }
 // ===== UTILS =====
 function fmt(n) {
