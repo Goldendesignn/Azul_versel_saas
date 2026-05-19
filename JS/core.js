@@ -9464,7 +9464,6 @@ async function importSaleCsvRows() {
 function switchImportTab(tab) {
   var purchasePanel = document.getElementById("import-panel-purchases");
   var salePanel = document.getElementById("import-panel-sales");
-
   var purchaseTab = document.getElementById("import-tab-purchases");
   var saleTab = document.getElementById("import-tab-sales");
 
