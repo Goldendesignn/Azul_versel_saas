@@ -30,7 +30,75 @@ function clearAzulSession() {
   localStorage.removeItem("azul_license_key");
   localStorage.removeItem("azul_plan");
 }
+function getOrCreateDeviceId() {
+  var key = "azul_device_id";
+  var deviceId = localStorage.getItem(key);
 
+  if (!deviceId) {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      deviceId = crypto.randomUUID();
+    } else {
+      deviceId = "device-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    }
+
+    localStorage.setItem(key, deviceId);
+  }
+
+  return deviceId;
+}
+
+function getDeviceName() {
+  var ua = navigator.userAgent || "";
+
+  if (/Android/i.test(ua)) return "Android";
+  if (/iPhone|iPad/i.test(ua)) return "iPhone/iPad";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Mac/i.test(ua)) return "Mac";
+  return "Navigateur";
+}
+
+function getDeviceAccessMessage(message, activeDevices, deviceLimit) {
+  if (message === "DEVICE_LIMIT_REACHED") {
+    return "Limite d'appareils atteinte: " + activeDevices + "/" + deviceLimit + ". Contacte l'administrateur.";
+  }
+
+  if (message === "LICENCA_INATIVA") {
+    return "Licence desactivee. Contacte l'administrateur.";
+  }
+
+  if (message === "LICENCA_EXPIRADA") {
+    return "Licence expiree. Renouvelle ton abonnement.";
+  }
+
+  return "Acces refuse.";
+}
+
+async function verifyDeviceAccess(organizationId) {
+  var result = await supabaseClient.rpc("register_device_access", {
+    p_organization_id: organizationId,
+    p_device_id: getOrCreateDeviceId(),
+    p_device_name: getDeviceName()
+  });
+
+  if (result.error) {
+    alert("Erreur controle appareil: " + result.error.message);
+    return false;
+  }
+
+  var row = Array.isArray(result.data) ? result.data[0] : result.data;
+
+  if (!row || !row.allowed) {
+    alert(getDeviceAccessMessage(
+      row ? row.message : "",
+      row ? row.active_devices : 0,
+      row ? row.device_limit : 0
+    ));
+
+    return false;
+  }
+
+  return true;
+}
 function getCoreLicenseErrorMessage(error) {
   var msg = String(error && error.message ? error.message : error || "");
 
@@ -70,6 +138,14 @@ async function verifyCurrentLicense() {
 
   var organization = result.data;
 
+  var deviceOk = await verifyDeviceAccess(organization.id);
+
+  if (!deviceOk) {
+    clearAzulSession();
+    window.location.replace("index.html");
+    return false;
+  }
+  
   localStorage.setItem("azul_organization_name", organization.name || "");
   localStorage.setItem("azul_plan", organization.plan || "starter");
 
