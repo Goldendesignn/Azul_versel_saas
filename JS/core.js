@@ -9461,6 +9461,19 @@ async function importSaleCsvRows() {
     }
   }
 }
+function switchImportTab(tab) {
+  var purchasePanel = document.getElementById("import-panel-purchases");
+  var salePanel = document.getElementById("import-panel-sales");
+
+  var purchaseTab = document.getElementById("import-tab-purchases");
+  var saleTab = document.getElementById("import-tab-sales");
+
+  if (purchasePanel) purchasePanel.style.display = tab === "purchases" ? "block" : "none";
+  if (salePanel) salePanel.style.display = tab === "sales" ? "block" : "none";
+
+  if (purchaseTab) purchaseTab.classList.toggle("active", tab === "purchases");
+  if (saleTab) saleTab.classList.toggle("active", tab === "sales");
+}
 // ===== UTILS =====
 function fmt(n) {
   if (n === undefined || n === null || n === '') return '-';
