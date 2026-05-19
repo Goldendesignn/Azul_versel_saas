@@ -9247,25 +9247,26 @@ async function saveSaleImportBatchToSupabase(rows) {
   }
 
   var productsByName = await fetchSaleImportProducts(validRows);
-var receiptSeed = Date.now();
+  var receiptSeed = Date.now();
 
-var requestedReceipts = validRows.map(function(row) {
-  return row.receiptNo;
-}).filter(function(receipt) {
-  return String(receipt || "").trim();
-});
+  var requestedReceipts = validRows.map(function(row) {
+    return row.receiptNo;
+  }).filter(function(receipt) {
+    return String(receipt || "").trim();
+  });
 
-var existingReceipts = await getExistingSaleReceipts(requestedReceipts);
-var usedReceipts = {};
+  var existingReceipts = await getExistingSaleReceipts(requestedReceipts);
+  var usedReceipts = {};
 
-var saleRows = validRows.map(function(row, index) {
-  var receiptNo = String(row.receiptNo || "").trim();
+  var saleRows = validRows.map(function(row, index) {
+    var receiptNo = String(row.receiptNo || "").trim();
 
-  if (!receiptNo || existingReceipts[receiptNo] || usedReceipts[receiptNo]) {
-    receiptNo = "AZ-IMP-" + receiptSeed + "-" + String(index + 1).padStart(4, "0");
-  }
+    if (!receiptNo || existingReceipts[receiptNo] || usedReceipts[receiptNo]) {
+      receiptNo = "AZ-IMP-" + receiptSeed + "-" + String(index + 1).padStart(4, "0");
+    }
 
-  usedReceipts[receiptNo] = true;
+    usedReceipts[receiptNo] = true;
+
     var paymentLines = buildSalePaymentLines(row);
 
     return {
@@ -9283,16 +9284,17 @@ var saleRows = validRows.map(function(row, index) {
 
   var insertedSales = [];
 
-   for (var st = 0; st < stockRows.length; st++) {
-    var stockResult = await supabaseClient
-      .from("products")
-      .update({
-        stock_shop: stockRows[st].stock_shop
-      })
-      .eq("id", stockRows[st].id)
-      .eq("organization_id", organizationId);
+  for (var s = 0; s < chunkImportArray(saleRows, 300).length; s++) {
+    var saleChunk = chunkImportArray(saleRows, 300)[s];
 
-    if (stockResult.error) throw stockResult.error;
+    var saleResult = await supabaseClient
+      .from("sales")
+      .insert(saleChunk)
+      .select("id,receipt_no,sale_date,total");
+
+    if (saleResult.error) throw saleResult.error;
+
+    insertedSales = insertedSales.concat(saleResult.data || []);
   }
 
   var saleItems = [];
@@ -9300,6 +9302,11 @@ var saleRows = validRows.map(function(row, index) {
 
   validRows.forEach(function(row, index) {
     var sale = insertedSales[index];
+
+    if (!sale) {
+      throw new Error("Vente importee introuvable a la ligne " + row.line);
+    }
+
     var product = productsByName[getSaleImportProductKey(row)] || {};
     var purchasePrice = row.purchasePrice || Number(product.purchase_price) || 0;
 
@@ -9349,14 +9356,14 @@ var saleRows = validRows.map(function(row, index) {
     };
   });
 
-  for (var st = 0; st < chunkImportArray(stockRows, 200).length; st++) {
-    var stockChunk = chunkImportArray(stockRows, 200)[st];
-
-    if (!stockChunk.length) continue;
-
+  for (var st = 0; st < stockRows.length; st++) {
     var stockResult = await supabaseClient
       .from("products")
-      .upsert(stockChunk, { onConflict: "id" });
+      .update({
+        stock_shop: stockRows[st].stock_shop
+      })
+      .eq("id", stockRows[st].id)
+      .eq("organization_id", organizationId);
 
     if (stockResult.error) throw stockResult.error;
   }
