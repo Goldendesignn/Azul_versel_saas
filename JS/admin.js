@@ -1,4 +1,3 @@
-var ADMIN_CODE = "9059";
 var organizationsCache = [];
 
 function adminMsg(id, text) {
@@ -6,20 +5,30 @@ function adminMsg(id, text) {
   if (el) el.textContent = text || "";
 }
 
-function unlockAdmin() {
-  var code = document.getElementById("admin-code").value.trim();
+async function loginAdmin() {
+  var email = document.getElementById("admin-email").value.trim();
+  var password = document.getElementById("admin-password").value.trim();
 
-  if (code !== ADMIN_CODE) {
-    adminMsg("admin-login-msg", "Code admin incorrect.");
+  if (!email || !password) {
+    adminMsg("admin-login-msg", "Entre email et mot de passe.");
     return;
   }
 
-  sessionStorage.setItem("azul_admin_unlocked", "1");
+  var result = await supabaseClient.auth.signInWithPassword({
+    email: email,
+    password: password
+  });
+
+  if (result.error) {
+    adminMsg("admin-login-msg", "Accès refusé.");
+    return;
+  }
+
   showAdminPanel();
 }
 
-function logoutAdmin() {
-  sessionStorage.removeItem("azul_admin_unlocked");
+async function logoutAdmin() {
+  await supabaseClient.auth.signOut();
   location.reload();
 }
 
@@ -170,8 +179,10 @@ async function copyLicense(key) {
   }
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-  if (sessionStorage.getItem("azul_admin_unlocked") === "1") {
+document.addEventListener("DOMContentLoaded", async function() {
+  var result = await supabaseClient.auth.getSession();
+
+  if (result.data && result.data.session) {
     showAdminPanel();
   }
 });
