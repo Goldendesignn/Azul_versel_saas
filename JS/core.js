@@ -701,21 +701,14 @@ async function getSalesHistoryFromSupabase(params) {
     return sale.id;
   });
 
-  var itemsResult = await supabaseClient
-    .from("sale_items")
-    .select("*")
-    .in("sale_id", saleIds);
-
-  if (itemsResult.error) {
-    throw itemsResult.error;
-  }
+  var saleItems = await fetchSaleItemsBySaleIds(saleIds);
 
   var saleById = {};
   sales.forEach(function(sale) {
     saleById[sale.id] = sale;
   });
 
-  var rows = (itemsResult.data || []).map(function(item) {
+  var rows = saleItems.map(function(item) {
     var sale = saleById[item.sale_id] || {};
 
     return {
@@ -819,14 +812,7 @@ async function getDashboardDataFromSupabase(filters) {
   var items = [];
 
   if (saleIds.length) {
-    var itemsResult = await supabaseClient
-      .from("sale_items")
-      .select("*")
-      .in("sale_id", saleIds);
-
-    if (itemsResult.error) throw itemsResult.error;
-
-    items = itemsResult.data || [];
+       items = await fetchSaleItemsBySaleIds(saleIds);
   }
 
   var productsResult = await supabaseClient
@@ -7094,14 +7080,9 @@ var saleIds = salesRows.map(function(sale) {
 var saleItemsBySale = {};
 
 if (saleIds.length) {
-  var saleItemsResult = await supabaseClient
-    .from("sale_items")
-    .select("*")
-    .in("sale_id", saleIds);
+    var saleItems = await fetchSaleItemsBySaleIds(saleIds);
 
-  if (saleItemsResult.error) throw saleItemsResult.error;
-
-  (saleItemsResult.data || []).forEach(function(item) {
+  saleItems.forEach(function(item) {
     if (!saleItemsBySale[item.sale_id]) saleItemsBySale[item.sale_id] = [];
     saleItemsBySale[item.sale_id].push(item);
   });
@@ -8307,6 +8288,28 @@ function chunkImportArray(list, size) {
   }
 
   return chunks;
+}
+
+async function fetchSaleItemsBySaleIds(saleIds) {
+  var allItems = [];
+  var ids = (saleIds || []).filter(Boolean);
+
+  for (var i = 0; i < chunkImportArray(ids, 80).length; i++) {
+    var chunk = chunkImportArray(ids, 80)[i];
+
+    if (!chunk.length) continue;
+
+    var result = await supabaseClient
+      .from("sale_items")
+      .select("*")
+      .in("sale_id", chunk);
+
+    if (result.error) throw result.error;
+
+    allItems = allItems.concat(result.data || []);
+  }
+
+  return allItems;
 }
 
 function normalizeImportText(value) {
