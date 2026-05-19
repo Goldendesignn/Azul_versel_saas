@@ -8406,7 +8406,7 @@ async function createImportPurchaseAccountingBatch(purchaseGroupList) {
     var entryResult = await supabaseClient
       .from("accounting_entries")
       .insert(chunk)
-      .select("*");
+      .select("id,source_id");
 
     if (entryResult.error) throw entryResult.error;
 
@@ -8578,23 +8578,10 @@ async function savePurchaseImportBatchToSupabase(rows) {
     if (!updateChunk.length) continue;
 
     var updateResult = await supabaseClient
-      .from("products")
-      .upsert(updateChunk)
-      .select("*");
+  .from("products")
+  .upsert(updateChunk, { onConflict: "id" });
 
-    if (updateResult.error) throw updateResult.error;
-
-    (updateResult.data || []).forEach(function(product) {
-      var key = getPurchaseImportProductKey({
-        code: product.code || "",
-        designation: product.name || "",
-        variation: product.variation || "",
-        unitPrice: Number(product.purchase_price) || 0,
-        salePrice: Number(product.sale_price) || 0
-      });
-
-      productIdByKey[key] = product.id;
-    });
+  if (updateResult.error) throw updateResult.error;
   }
 
   for (var p = 0; p < chunkImportArray(insertProducts, 200).length; p++) {
@@ -8605,7 +8592,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
     var insertResult = await supabaseClient
       .from("products")
       .insert(insertChunk)
-      .select("*");
+      .select("id,name,code,variation,purchase_price,sale_price");
 
     if (insertResult.error) throw insertResult.error;
 
@@ -8672,7 +8659,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
     var purchaseResult = await supabaseClient
       .from("purchases")
       .insert(purchaseChunk)
-      .select("*");
+      .select("id,supplier,total,paid_amount,remaining_amount,created_at");
 
     if (purchaseResult.error) throw purchaseResult.error;
 
@@ -8785,7 +8772,7 @@ async function importPurchaseCsvRows() {
     var fileInput = document.getElementById("purchase-import-file");
     if (fileInput) fileInput.value = "";
 
-    await loadProducts(true);
+    products = [];
 
     if (log) {
       log.innerHTML =
