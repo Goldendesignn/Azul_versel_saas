@@ -2810,3 +2810,34 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     width: 100%;
   }
 }
+.import-tabs {
+  display: flex;
+  gap: 10px;
+  max-width: 520px;
+}
+
+.import-tab {
+  flex: 1;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.import-tab.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+@media (max-width: 820px) {
+  .import-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
