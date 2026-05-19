@@ -1077,15 +1077,16 @@ async function savePurchaseToSupabase(data) {
     : 0;
 
   var purchaseResult = await supabaseClient
-    .from("purchases")
-    .insert({
-      organization_id: organizationId,
-      supplier: supplier,
-      total: total,
-      paid_amount: paidAmount,
-      remaining_amount: remainingAmount,
-      is_credit: remainingAmount > 0
-    })
+   .from("purchases")
+  .insert({
+    organization_id: organizationId,
+    supplier: supplier,
+    total: total,
+    paid_amount: paidAmount,
+    remaining_amount: remainingAmount,
+    is_credit: remainingAmount > 0,
+    created_at: data.purchaseDate ? data.purchaseDate + "T12:00:00" : undefined
+  })
     .select()
     .single();
 
@@ -7951,6 +7952,332 @@ async function renderSupplierDatalists() {
 
   } catch (e) {
     console.error("Erro fornecedores datalist:", e);
+  }
+}
+
+var purchaseImportRows = [];
+
+function downloadPurchaseCsvTemplate() {
+  var csv =
+    "date;supplier;designation;quantity;unit_price;total_amount;category;code;variation;photo;sale_price\n" +
+    "2026-05-19;Fornecedor Test;Tshirt Gucci;10;15000;150000;Roupa;TSH-001;M | Preto;;27000\n" +
+    "2026-05-19;Fornecedor Test;Blazer Classico;5;27000;135000;Roupa;BLA-001;L | Branco;;45000\n";
+
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+
+  a.href = url;
+  a.download = "azul_purchase_import_template.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+}
+
+function detectCsvDelimiter(firstLine) {
+  var semicolon = (firstLine.match(/;/g) || []).length;
+  var comma = (firstLine.match(/,/g) || []).length;
+  var tab = (firstLine.match(/\t/g) || []).length;
+
+  if (semicolon >= comma && semicolon >= tab) return ";";
+  if (tab >= comma) return "\t";
+  return ",";
+}
+
+function parseCsvLine(line, delimiter) {
+  var values = [];
+  var current = "";
+  var insideQuotes = false;
+
+  for (var i = 0; i < line.length; i++) {
+    var char = line[i];
+    var nextChar = line[i + 1];
+
+    if (char === '"' && insideQuotes && nextChar === '"') {
+      current += '"';
+      i++;
+      continue;
+    }
+
+    if (char === '"') {
+      insideQuotes = !insideQuotes;
+      continue;
+    }
+
+    if (char === delimiter && !insideQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function normalizeCsvHeader(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^\w]/g, "");
+}
+
+function parseCsvText(text) {
+  var lines = String(text || "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .filter(function(line) {
+      return line.trim();
+    });
+
+  if (lines.length < 2) {
+    throw new Error("Le fichier CSV est vide ou sans donnees.");
+  }
+
+  var delimiter = detectCsvDelimiter(lines[0]);
+  var headers = parseCsvLine(lines[0], delimiter).map(normalizeCsvHeader);
+
+  return lines.slice(1).map(function(line) {
+    var values = parseCsvLine(line, delimiter);
+    var row = {};
+
+    headers.forEach(function(header, index) {
+      row[header] = values[index] || "";
+    });
+
+    return row;
+  });
+}
+
+function parseImportNumber(value) {
+  var clean = String(value || "")
+    .replace(/\s/g, "")
+    .replace(/Kz/gi, "")
+    .replace(/AOA/gi, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  return Number(clean) || 0;
+}
+
+function normalizeImportDate(value) {
+  var raw = String(value || "").trim();
+
+  if (!raw) {
+    return new Date().toISOString().split("T")[0];
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  var match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) {
+    return match[3] + "-" + String(match[2]).padStart(2, "0") + "-" + String(match[1]).padStart(2, "0");
+  }
+
+  return new Date().toISOString().split("T")[0];
+}
+
+function mapPurchaseImportRow(row, index) {
+  var qty = parseImportNumber(row.quantity);
+  var unitPrice = parseImportNumber(row.unit_price);
+  var totalAmount = parseImportNumber(row.total_amount);
+
+  if (!unitPrice && totalAmount && qty) {
+    unitPrice = totalAmount / qty;
+  }
+
+  return {
+    line: index + 2,
+    date: normalizeImportDate(row.date),
+    supplier: String(row.supplier || "").trim(),
+    designation: String(row.designation || "").trim(),
+    quantity: qty,
+    unitPrice: unitPrice,
+    totalAmount: totalAmount || qty * unitPrice,
+    category: String(row.category || "").trim(),
+    code: String(row.code || "").trim(),
+    variation: String(row.variation || "").trim(),
+    photo: String(row.photo || "").trim(),
+    salePrice: parseImportNumber(row.sale_price),
+    valid: true,
+    error: ""
+  };
+}
+
+function validatePurchaseImportRow(row) {
+  if (!row.supplier) return "Fournisseur obligatoire";
+  if (!row.designation) return "Designation obligatoire";
+  if (!row.quantity || row.quantity <= 0) return "Quantite invalide";
+  if (!row.unitPrice || row.unitPrice <= 0) return "Prix unitaire invalide";
+  return "";
+}
+
+function handlePurchaseCsvFile(event) {
+  var file = event.target.files && event.target.files[0];
+
+  if (!file) return;
+
+  var reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      var rawRows = parseCsvText(e.target.result || "");
+
+      purchaseImportRows = rawRows.map(function(row, index) {
+        var mapped = mapPurchaseImportRow(row, index);
+        mapped.error = validatePurchaseImportRow(mapped);
+        mapped.valid = !mapped.error;
+        return mapped;
+      });
+
+      renderPurchaseImportPreview();
+    } catch (err) {
+      purchaseImportRows = [];
+      renderPurchaseImportPreview();
+      toast("Erreur CSV: " + (err.message || err), "error");
+    }
+  };
+
+  reader.readAsText(file, "UTF-8");
+}
+
+function renderPurchaseImportPreview() {
+  var body = document.getElementById("purchase-import-preview");
+  var summary = document.getElementById("purchase-import-summary");
+
+  if (!body || !summary) return;
+
+  if (!purchaseImportRows.length) {
+    summary.textContent = "Aucun fichier selectionne.";
+    body.innerHTML = '<tr><td colspan="9" class="empty">Le preview apparait ici</td></tr>';
+    return;
+  }
+
+  var validRows = purchaseImportRows.filter(function(row) { return row.valid; });
+  var invalidRows = purchaseImportRows.filter(function(row) { return !row.valid; });
+  var total = validRows.reduce(function(sum, row) {
+    return sum + row.quantity * row.unitPrice;
+  }, 0);
+
+  summary.innerHTML =
+    '<strong>' + validRows.length + '</strong> lignes valides | ' +
+    '<strong>' + invalidRows.length + '</strong> erreurs | Total: <strong>' + fmt(total) + '</strong>';
+
+  body.innerHTML = purchaseImportRows.slice(0, 80).map(function(row) {
+    var bg = row.valid ? "" : ' style="background:rgba(224,92,92,0.08);"';
+
+    return '<tr' + bg + '>' +
+      '<td>' + escapeDepenseHtml(row.date) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.supplier) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.designation || row.error) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.quantity) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.unitPrice) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.salePrice) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.category) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.code) + '</td>' +
+      '<td>' + escapeDepenseHtml(row.variation) + '</td>' +
+    '</tr>';
+  }).join("");
+}
+
+async function importPurchaseCsvRows() {
+  var log = document.getElementById("purchase-import-log");
+
+  if (!purchaseImportRows.length) {
+    toast("Choisis d'abord un fichier CSV.", "error");
+    return;
+  }
+
+  var invalidRows = purchaseImportRows.filter(function(row) {
+    return !row.valid;
+  });
+
+  if (invalidRows.length) {
+    toast("Corrige les lignes invalides avant l'import.", "error");
+    if (log) {
+      log.innerHTML = invalidRows.map(function(row) {
+        return "Ligne " + row.line + ": " + row.error;
+      }).join("<br>");
+    }
+    return;
+  }
+
+  var groups = {};
+
+  purchaseImportRows.forEach(function(row) {
+    var key = row.date + "||" + row.supplier;
+
+    if (!groups[key]) {
+      groups[key] = {
+        date: row.date,
+        supplier: row.supplier,
+        items: []
+      };
+    }
+
+    groups[key].items.push({
+      prod: row.designation,
+      code: row.code,
+      category: row.category,
+      variation: row.variation,
+      variations: parseVariationList(row.variation),
+      photo: row.photo,
+      qty: row.quantity,
+      pa: row.unitPrice,
+      pv: row.salePrice
+    });
+  });
+
+  var groupList = Object.keys(groups).map(function(key) {
+    return groups[key];
+  });
+
+  var imported = 0;
+
+  try {
+    if (log) log.innerHTML = "Importation en cours...";
+
+    for (var i = 0; i < groupList.length; i++) {
+      var group = groupList[i];
+
+      await savePurchaseToSupabase({
+        forn: group.supplier,
+        purchaseDate: group.date,
+        items: group.items,
+        credit: false,
+        payments: []
+      });
+
+      imported += group.items.length;
+    }
+
+    toast("Import termine: " + imported + " produits importes.", "success");
+
+    purchaseImportRows = [];
+    renderPurchaseImportPreview();
+
+    var fileInput = document.getElementById("purchase-import-file");
+    if (fileInput) fileInput.value = "";
+
+    await loadProducts(true);
+
+    if (log) {
+      log.innerHTML = "Import termine avec succes: " + imported + " produits.";
+    }
+  } catch (e) {
+    console.error("Erreur import achats:", e);
+    toast("Erreur import: " + (e.message || e), "error");
+
+    if (log) {
+      log.innerHTML = "Erreur: " + escapeDepenseHtml(e.message || e);
+    }
   }
 }
 // ===== UTILS =====
