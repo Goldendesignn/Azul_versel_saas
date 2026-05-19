@@ -9218,6 +9218,35 @@ async function createSaleImportClientDebts(sales) {
   }
 }
 
+async function getExistingSaleReceipts(receiptNos) {
+  var organizationId = getAzulOrganizationId();
+  var existing = {};
+
+  receiptNos = (receiptNos || []).filter(function(receipt) {
+    return String(receipt || "").trim();
+  });
+
+  for (var i = 0; i < chunkImportArray(receiptNos, 100).length; i++) {
+    var chunk = chunkImportArray(receiptNos, 100)[i];
+
+    if (!chunk.length) continue;
+
+    var result = await supabaseClient
+      .from("sales")
+      .select("receipt_no")
+      .eq("organization_id", organizationId)
+      .in("receipt_no", chunk);
+
+    if (result.error) throw result.error;
+
+    (result.data || []).forEach(function(row) {
+      existing[String(row.receipt_no || "").trim()] = true;
+    });
+  }
+
+  return existing;
+}
+
 async function saveSaleImportBatchToSupabase(rows) {
   var organizationId = getAzulOrganizationId();
   var validRows = (rows || []).filter(function(row) {
@@ -9229,10 +9258,25 @@ async function saveSaleImportBatchToSupabase(rows) {
   }
 
   var productsByName = await fetchSaleImportProducts(validRows);
-  var receiptSeed = Date.now();
+var receiptSeed = Date.now();
 
-  var saleRows = validRows.map(function(row, index) {
-    var receiptNo = row.receiptNo || ("AZ-IMP-" + receiptSeed + "-" + String(index + 1).padStart(4, "0"));
+var requestedReceipts = validRows.map(function(row) {
+  return row.receiptNo;
+}).filter(function(receipt) {
+  return String(receipt || "").trim();
+});
+
+var existingReceipts = await getExistingSaleReceipts(requestedReceipts);
+var usedReceipts = {};
+
+var saleRows = validRows.map(function(row, index) {
+  var receiptNo = String(row.receiptNo || "").trim();
+
+  if (!receiptNo || existingReceipts[receiptNo] || usedReceipts[receiptNo]) {
+    receiptNo = "AZ-IMP-" + receiptSeed + "-" + String(index + 1).padStart(4, "0");
+  }
+
+  usedReceipts[receiptNo] = true;
     var paymentLines = buildSalePaymentLines(row);
 
     return {
