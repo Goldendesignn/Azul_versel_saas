@@ -147,8 +147,10 @@ function renderOrganizations() {
         </div>
 
         <div class="org-actions">
-          <button onclick="copyLicense('${htmlSafe(org.license_key || "")}')">Copier licence</button>
+          <button onclick="copyLicense('${htmlSafe(org.current_license_key || "")}')">Copier licence</button>
+           <button onclick="createRenewalLicense('${org.id}')">Renouveler</button>
           <button onclick="changeOrganizationStatus('${org.id}', '${nextStatus}')">${actionText}</button>
+          
         </div>
       </div>
     `;
@@ -179,7 +181,21 @@ async function copyLicense(key) {
     prompt("Copie la licence:", key);
   }
 }
+async function createRenewalLicense(organizationId) {
+  var result = await supabaseClient.rpc("admin_create_renewal_license", {
+    p_organization_id: organizationId,
+    p_expires_at: null,
+    p_notes: "Renouvellement"
+  });
 
+  if (result.error) {
+    alert("Erreur: " + result.error.message);
+    return;
+  }
+
+  alert("Nouvelle licence: " + result.data.license_key);
+  loadOrganizations();
+}
 document.addEventListener("DOMContentLoaded", async function() {
   var result = await supabaseClient.auth.getSession();
 
