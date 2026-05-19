@@ -2244,10 +2244,10 @@ html, body {
   gap: 14px !important;
   margin-bottom: 16px !important;
 }
-
+  
 .az-client-avatar {
   width: 56px !important;
-  height: 56px !important;
+  height: 56px !important;  
   border-radius: 16px !important;
   background: rgba(91,155,213,0.14) !important;
   color: var(--blue) !important;
@@ -2588,5 +2588,218 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   .import-summary {
     align-items: flex-start;
     line-height: 1.5;
+  }
+}
+/* ===== CLEAN IMPORT PAGE ===== */
+
+#page-import {
+  background: var(--bg);
+}
+
+.import-shell {
+  max-width: 1160px;
+  display: grid;
+  gap: 16px;
+}
+
+.import-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.import-eyebrow {
+  color: var(--orange);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.import-hero h2,
+.import-panel h3,
+.import-preview-head h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Playfair Display", serif;
+  font-weight: 800;
+}
+
+.import-hero h2 {
+  font-size: 28px;
+}
+
+.import-hero p,
+.import-panel p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 680px;
+}
+
+.import-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.import-panel,
+.import-preview-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.import-panel-head,
+.import-preview-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.import-primary-btn,
+.import-file-btn,
+.import-submit-btn,
+.import-ghost-btn {
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.import-primary-btn,
+.import-submit-btn {
+  border: 0;
+  background: var(--blue);
+  color: #fff;
+}
+
+.import-file-btn {
+  width: 100%;
+  border: 1px dashed var(--blue);
+  background: rgba(91, 155, 213, .1);
+  color: var(--blue);
+}
+
+.import-ghost-btn {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.import-native-file {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+}
+
+.import-columns {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.import-summary {
+  margin-top: 12px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(76, 175, 125, .1);
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.import-preview-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.import-preview-head {
+  align-items: center;
+  padding: 18px;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.import-table-wrap {
+  overflow-x: auto;
+}
+
+.import-table {
+  margin: 0;
+  min-width: 980px;
+}
+
+.import-log {
+  padding: 0 18px 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 820px) {
+  .import-shell {
+    gap: 12px;
+  }
+
+  .import-hero,
+  .import-grid,
+  .import-preview-head {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .import-hero {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .import-hero h2 {
+    font-size: 24px;
+  }
+
+  .import-grid {
+    gap: 12px;
+  }
+
+  .import-panel,
+  .import-preview-card {
+    border-radius: 14px;
+  }
+
+  .import-primary-btn,
+  .import-file-btn,
+  .import-submit-btn,
+  .import-ghost-btn {
+    width: 100%;
   }
 }
