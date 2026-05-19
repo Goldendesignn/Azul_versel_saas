@@ -3100,7 +3100,11 @@ function renderRevProducts(list) {
       '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
         (out ? ' Esgotado' : 'Stock : ' + p.stockBoutique + ' un') +
       '</div>';
-  if (!out) {   div.onclick = function() { addToRevCart(p.name, p.stockBoutique); }; }
+  if (!out) {
+    div.onclick = function() {
+      addToRevCart(p.id, p.stockBoutique);
+    };
+  }
     g.appendChild(div);
   });
 }
@@ -3112,21 +3116,29 @@ function filterRevProducts() {
   }));
 }
 
-function addToRevCart(name, stock) {
-  var product = (products || []).find(function(p) { return p.name === name; }) || {};
+function addToRevCart(productIdOrName, stock) {
+  var product = (products || []).find(function(p) {
+    return String(p.id) === String(productIdOrName);
+  }) || (products || []).find(function(p) {
+    return p.name === productIdOrName;
+  }) || {};
 
   var qtyAlreadyReserved = revCart.reduce(function(sum, item) {
-    return sum + (item.name === name ? (parseFloat(item.qty) || 0) : 0);
+    return sum + (String(item.productId) === String(product.id) ? (parseFloat(item.qty) || 0) : 0);
   }, 0);
 
   if (qtyAlreadyReserved >= stock) {
-    toast("Stock insuficiente para consignation.", "error");
+    toast("Stock insuffisant pour consignation.", "error");
     return;
   }
 
   revCart.push({
-    name: name,
-    price: product.price || 0,
+    productId: product.id || "",
+    name: product.name || String(productIdOrName || ""),
+    baseName: product.name || String(productIdOrName || ""),
+    supplier: product.supplier || product.mainSupplier || "",
+    purchasePrice: parseFloat(product.purchasePrice) || 0,
+    price: product.price || product.salePrice || 0,
     qty: 1,
     stock: stock,
     availableVariations: parseVariationList(product.variation || product.variations),
