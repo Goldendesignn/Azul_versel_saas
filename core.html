@@ -677,151 +677,163 @@
       </div>
       <button type="button" class="import-ghost-btn" onclick="goTo('settings', null)">Retour parametres</button>
     </div>
-
-    <div class="import-grid">
-      <div class="import-panel">
-        <div class="import-panel-head">
-          <div>
-            <h3>Modele CSV</h3>
-            <p>Utilise toujours ce fichier pour eviter les erreurs de colonnes.</p>
+   <div class="import-tabs">
+    <button type="button" class="import-tab active" id="import-tab-purchases" onclick="switchImportTab('purchases')">
+      Achats
+    </button>
+    <button type="button" class="import-tab" id="import-tab-sales" onclick="switchImportTab('sales')">
+      Ventes
+    </button>
+  </div>
+    <div id="import-panel-purchases">
+      
+        <div class="import-grid">
+          <div class="import-panel">
+            <div class="import-panel-head">
+              <div>
+                <h3>Modele CSV</h3>
+                <p>Utilise toujours ce fichier pour eviter les erreurs de colonnes.</p>
+              </div>
+            </div>
+    
+            <button type="button" class="import-primary-btn" onclick="downloadPurchaseCsvTemplate()">
+              Telecharger modele CSV
+            </button>
+    
+            <div class="import-columns">
+              date, supplier, designation, quantity, unit_price, total_amount, category, code, variation, photo, sale_price, payment_status, paid_amount
+            </div>
+          </div>
+    
+          <div class="import-panel">
+            <div class="import-panel-head">
+              <div>
+                <h3>Fichier a importer</h3>
+                <p>Choisis ton CSV rempli, puis verifie l'apercu avant importation.</p>
+              </div>
+            </div>
+    
+            <input class="import-native-file" type="file" id="purchase-import-file" accept=".csv,text/csv" onchange="handlePurchaseCsvFile(event)">
+            <label class="import-file-btn" for="purchase-import-file">
+              Choisir fichier CSV
+            </label>
+    
+            <div id="purchase-import-summary" class="import-summary">
+              Aucun fichier selectionne.
+            </div>
           </div>
         </div>
-
-        <button type="button" class="import-primary-btn" onclick="downloadPurchaseCsvTemplate()">
-          Telecharger modele CSV
-        </button>
-
-        <div class="import-columns">
-          date, supplier, designation, quantity, unit_price, total_amount, category, code, variation, photo, sale_price, payment_status, paid_amount
-        </div>
-      </div>
-
-      <div class="import-panel">
-        <div class="import-panel-head">
-          <div>
-            <h3>Fichier a importer</h3>
-            <p>Choisis ton CSV rempli, puis verifie l'apercu avant importation.</p>
+    
+        <div class="import-preview-card">
+          <div class="import-preview-head">
+            <div>
+              <div class="import-eyebrow">Apercu</div>
+              <h3>Produits detectes</h3>
+            </div>
+            <button type="button" class="import-submit-btn" onclick="importPurchaseCsvRows()">
+              Importer achats
+            </button>
           </div>
-        </div>
-
-        <input class="import-native-file" type="file" id="purchase-import-file" accept=".csv,text/csv" onchange="handlePurchaseCsvFile(event)">
-        <label class="import-file-btn" for="purchase-import-file">
-          Choisir fichier CSV
-        </label>
-
-        <div id="purchase-import-summary" class="import-summary">
-          Aucun fichier selectionne.
-        </div>
+    
+          <div class="import-table-wrap">
+            <table class="data-table import-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Fournisseur</th>
+                  <th>Designation</th>
+                  <th>Qtd</th>
+                  <th>P. achat</th>
+                  <th>P. vente</th>
+                  <th>Categorie</th>
+                  <th>Code</th>
+                  <th>Variation</th> 
+                  <th>Paiement</th>
+                </tr>
+              </thead>
+              <tbody id="purchase-import-preview">
+                <tr><td colspan="10" class="empty">Le preview apparait ici</td></tr>
+              </tbody>
+            </table>
+          </div>
+    
+          <div id="purchase-import-log" class="import-log"></div>
       </div>
-    </div>
-
-    <div class="import-preview-card">
-      <div class="import-preview-head">
-        <div>
-          <div class="import-eyebrow">Apercu</div>
-          <h3>Produits detectes</h3>
-        </div>
-        <button type="button" class="import-submit-btn" onclick="importPurchaseCsvRows()">
-          Importer achats
-        </button>
-      </div>
-
-      <div class="import-table-wrap">
-        <table class="data-table import-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Fournisseur</th>
-              <th>Designation</th>
-              <th>Qtd</th>
-              <th>P. achat</th>
-              <th>P. vente</th>
-              <th>Categorie</th>
-              <th>Code</th>
-              <th>Variation</th> 
-              <th>Paiement</th>
-            </tr>
-          </thead>
-          <tbody id="purchase-import-preview">
-            <tr><td colspan="10" class="empty">Le preview apparait ici</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div id="purchase-import-log" class="import-log"></div>
+      <div id="import-panel-sales" style="display:none;">
       <div class="import-grid" style="margin-top:16px;">
-  <div class="import-panel">
-    <div class="import-panel-head">
-      <div>
-        <h3>Modele CSV ventes</h3>
-        <p>Utilise ce fichier pour importer les anciennes ventes.</p>
+        <div class="import-panel">
+          <div class="import-panel-head">
+            <div>
+              <h3>Modele CSV ventes</h3>
+              <p>Utilise ce fichier pour importer les anciennes ventes.</p>
+            </div>
+          </div>
+      
+          <button type="button" class="import-primary-btn" onclick="downloadSaleCsvTemplate()">
+            Telecharger modele ventes
+          </button>
+      
+          <div class="import-columns">
+            date, designation, quantity, unit_price, cash, express, card, credit, total_amount, purchase_price, profit, origin, seller, client, receipt_no
+          </div>
+        </div>
+      
+        <div class="import-panel">
+          <div class="import-panel-head">
+            <div>
+              <h3>Fichier ventes</h3>
+              <p>Si le numero de recu est vide, il sera genere automatiquement.</p>
+            </div>
+          </div>
+      
+          <input class="import-native-file" type="file" id="sale-import-file" accept=".csv,text/csv" onchange="handleSaleCsvFile(event)">
+          <label class="import-file-btn" for="sale-import-file">
+            Choisir fichier ventes
+          </label>
+      
+          <div id="sale-import-summary" class="import-summary">
+            Aucun fichier selectionne.
+          </div>
+        </div>
       </div>
-    </div>
-
-    <button type="button" class="import-primary-btn" onclick="downloadSaleCsvTemplate()">
-      Telecharger modele ventes
-    </button>
-
-    <div class="import-columns">
-      date, designation, quantity, unit_price, cash, express, card, credit, total_amount, purchase_price, profit, origin, seller, client, receipt_no
-    </div>
-  </div>
-
-  <div class="import-panel">
-    <div class="import-panel-head">
-      <div>
-        <h3>Fichier ventes</h3>
-        <p>Si le numero de recu est vide, il sera genere automatiquement.</p>
-      </div>
-    </div>
-
-    <input class="import-native-file" type="file" id="sale-import-file" accept=".csv,text/csv" onchange="handleSaleCsvFile(event)">
-    <label class="import-file-btn" for="sale-import-file">
-      Choisir fichier ventes
-    </label>
-
-    <div id="sale-import-summary" class="import-summary">
-      Aucun fichier selectionne.
-    </div>
-  </div>
+      
+      <div class="import-preview-card" style="margin-top:16px;">
+        <div class="import-preview-head">
+          <div>
+            <div class="import-eyebrow">Apercu ventes</div>
+            <h3>Ventes detectees</h3>
+          </div>
+          <button type="button" class="import-submit-btn" onclick="importSaleCsvRows()">
+            Importer ventes
+          </button>
+        </div>
+      
+        <div class="import-table-wrap">
+          <table class="data-table import-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Designation</th>
+                <th>Qtd</th>
+                <th>P. vente</th>
+                <th>Cash</th>
+                <th>Express</th>
+                <th>Cartao</th>
+                <th>Credito</th>
+                <th>Total</th>
+                <th>Origine</th>
+                <th>Client</th>
+                <th>Recu</th>
+              </tr>
+            </thead>
+            <tbody id="sale-import-preview">
+              <tr><td colspan="12" class="empty">Le preview des ventes apparait ici</td></tr>
+            </tbody>
+          </table>
+        </div>
+      
+        <div id="sale-import-log" class="import-log"></div>
 </div>
-
-<div class="import-preview-card" style="margin-top:16px;">
-  <div class="import-preview-head">
-    <div>
-      <div class="import-eyebrow">Apercu ventes</div>
-      <h3>Ventes detectees</h3>
-    </div>
-    <button type="button" class="import-submit-btn" onclick="importSaleCsvRows()">
-      Importer ventes
-    </button>
-  </div>
-
-  <div class="import-table-wrap">
-    <table class="data-table import-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Designation</th>
-          <th>Qtd</th>
-          <th>P. vente</th>
-          <th>Cash</th>
-          <th>Express</th>
-          <th>Cartao</th>
-          <th>Credito</th>
-          <th>Total</th>
-          <th>Origine</th>
-          <th>Client</th>
-          <th>Recu</th>
-        </tr>
-      </thead>
-      <tbody id="sale-import-preview">
-        <tr><td colspan="12" class="empty">Le preview des ventes apparait ici</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div id="sale-import-log" class="import-log"></div>
 </div>
     </div>
   </div>
