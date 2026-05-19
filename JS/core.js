@@ -983,39 +983,58 @@ async function upsertProductFromPurchase(item, supplier) {
     throw new Error("Produto ou quantidade invalida.");
   }
 
-  var existingResult = await supabaseClient
+  var existingQuery = supabaseClient
     .from("products")
     .select("*")
-    .eq("organization_id", organizationId)
-    .eq("name", productName)
-    .maybeSingle();
+    .eq("organization_id", organizationId);
+
+  if (code) {
+    existingQuery = existingQuery.eq("code", code);
+  } else {
+    existingQuery = existingQuery
+      .eq("name", productName)
+      .eq("variation", variation)
+      .eq("purchase_price", purchasePrice)
+      .eq("sale_price", salePrice);
+  }
+
+  var existingResult = await existingQuery
+    .order("created_at", { ascending: false })
+    .limit(1);
 
   if (existingResult.error) {
     throw existingResult.error;
   }
 
-  if (existingResult.data) {
-    var currentWarehouse = Number(existingResult.data.stock_warehouse) || 0;
+  var existingProduct = existingResult.data && existingResult.data.length
+    ? existingResult.data[0]
+    : null;
+
+  if (existingProduct) {
+    var currentWarehouse = Number(existingProduct.stock_warehouse) || 0;
 
     var updateResult = await supabaseClient
       .from("products")
       .update({
-        supplier: supplier || existingResult.data.supplier || "",
-        category: category || existingResult.data.category || "",
-        code: code || existingResult.data.code || "",
-        photo: photo || existingResult.data.photo || "",
-        variation: variation || existingResult.data.variation || "",
-        variations: variations.length ? variations : existingResult.data.variations || [],
-        purchase_price: purchasePrice || Number(existingResult.data.purchase_price) || 0,
-        sale_price: salePrice || Number(existingResult.data.sale_price) || 0,
+        supplier: supplier || existingProduct.supplier || "",
+        category: category || existingProduct.category || "",
+        code: code || existingProduct.code || "",
+        photo: photo || existingProduct.photo || "",
+        variation: variation || existingProduct.variation || "",
+        variations: variations.length ? variations : existingProduct.variations || [],
+        purchase_price: purchasePrice || Number(existingProduct.purchase_price) || 0,
+        sale_price: salePrice || Number(existingProduct.sale_price) || 0,
         stock_warehouse: currentWarehouse + quantity
       })
-      .eq("id", existingResult.data.id)
+      .eq("id", existingProduct.id)
       .select()
-      .single();
+      .limit(1);
 
     if (updateResult.error) throw updateResult.error;
-    return updateResult.data;
+
+    return updateResult.data && updateResult.data.length
+      ? updateResult.data[0]
+      : existingProduct;
   }
 
   var insertResult = await supabaseClient
@@ -1036,10 +1055,15 @@ async function upsertProductFromPurchase(item, supplier) {
       min_stock: 0
     })
     .select()
-    .single();
+    .limit(1);
 
   if (insertResult.error) throw insertResult.error;
-  return insertResult.data;
+
+  if (!insertResult.data || !insertResult.data.length) {
+    throw new Error("Produto inserido, mas nao retornado pelo Supabase. Verifica a policy SELECT da tabela products.");
+  }
+
+  return insertResult.data[0];
 }
 
 
@@ -7884,26 +7908,34 @@ async function upsertSupplierToSupabase(data) {
     .select("*")
     .eq("organization_id", organizationId)
     .eq("name", name)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
 
   if (existing.error) throw existing.error;
 
-  if (existing.data) {
+  var existingSupplier = existing.data && existing.data.length
+    ? existing.data[0]
+    : null;
+
+  if (existingSupplier) {
     var updateData = {
-      phone: data.phone || data.tel || existing.data.phone || "",
-      country: data.country || data.pais || existing.data.country || "",
-      note: data.note || data.nota || existing.data.note || ""
+      phone: data.phone || data.tel || existingSupplier.phone || "",
+      country: data.country || data.pais || existingSupplier.country || "",
+      note: data.note || data.nota || existingSupplier.note || ""
     };
 
     var updateResult = await supabaseClient
       .from("suppliers")
       .update(updateData)
-      .eq("id", existing.data.id)
+      .eq("id", existingSupplier.id)
       .select()
-      .single();
+      .limit(1);
 
     if (updateResult.error) throw updateResult.error;
-    return updateResult.data;
+
+    return updateResult.data && updateResult.data.length
+      ? updateResult.data[0]
+      : existingSupplier;
   }
 
   var insertResult = await supabaseClient
@@ -7916,12 +7948,14 @@ async function upsertSupplierToSupabase(data) {
       note: data.note || data.nota || ""
     })
     .select()
-    .single();
+    .limit(1);
 
   if (insertResult.error) throw insertResult.error;
-  return insertResult.data;
-}
 
+  return insertResult.data && insertResult.data.length
+    ? insertResult.data[0]
+    : { name: name };
+}
 async function getSuppliersFromSupabase() {
   var organizationId = getAzulOrganizationId();
 
