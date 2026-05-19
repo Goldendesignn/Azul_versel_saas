@@ -8100,15 +8100,23 @@ function parseCsvText(text) {
 
 function parseImportNumber(value) {
   var clean = String(value || "")
-    .replace(/\s/g, "")
     .replace(/Kz/gi, "")
     .replace(/AOA/gi, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
+    .replace(/[^\d,.-]/g, "")
+    .trim();
+
+  if (!clean) return 0;
+
+  if (clean.indexOf(",") >= 0 && clean.indexOf(".") >= 0) {
+    clean = clean.replace(/\./g, "").replace(",", ".");
+  } else if (clean.indexOf(",") >= 0) {
+    clean = clean.replace(",", ".");
+  } else {
+    clean = clean.replace(/\.(?=\d{3}(\D|$))/g, "");
+  }
 
   return Number(clean) || 0;
 }
-
 function normalizeImportDate(value) {
   var raw = String(value || "").trim();
 
