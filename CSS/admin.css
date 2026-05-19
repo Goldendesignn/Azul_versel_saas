@@ -208,3 +208,163 @@ button {
     flex-direction: column;
   }
 }
+/* ===== ADMIN RESPONSIVE PRO ===== */
+
+.admin-panel {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.org-item {
+  overflow: hidden;
+}
+
+.org-meta strong {
+  word-break: break-all;
+}
+
+.org-actions button {
+  min-width: 120px;
+}
+
+@media (max-width: 900px) {
+  body {
+    background: #f7f5ef;
+  }
+
+  .admin-shell {
+    padding: 12px;
+  }
+
+  .admin-login-card {
+    margin: 42px auto;
+    border-radius: 14px;
+    padding: 22px;
+  }
+
+  .admin-login-card h1 {
+    font-size: 24px;
+  }
+
+  .admin-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(247, 245, 239, 0.96);
+    backdrop-filter: blur(10px);
+    padding: 12px 0;
+    margin-bottom: 12px;
+  }
+
+  .admin-header h1 {
+    font-size: 22px;
+  }
+
+  .admin-header p {
+    margin: 6px 0 0;
+    font-size: 13px;
+  }
+
+  .admin-header .danger-btn {
+    width: 100%;
+  }
+
+  .admin-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .admin-card {
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .admin-card h2 {
+    font-size: 18px;
+  }
+
+  input,
+  select,
+  button {
+    height: 46px;
+    font-size: 15px;
+  }
+
+  .list-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .list-head button {
+    width: 100%;
+  }
+
+  .org-list {
+    gap: 12px;
+  }
+
+  .org-item {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .org-top {
+    gap: 12px;
+  }
+
+  .org-name {
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  .org-meta {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .status {
+    width: fit-content;
+  }
+
+  .org-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .org-actions button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-shell {
+    padding: 10px;
+  }
+
+  .admin-login-card,
+  .admin-card,
+  .org-item {
+    border-radius: 12px;
+  }
+
+  .admin-header h1 {
+    font-size: 20px;
+  }
+
+  .admin-card {
+    padding: 14px;
+  }
+
+  .org-meta {
+    font-size: 12.5px;
+  }
+
+  input,
+  select,
+  button {
+    height: 44px;
+  }
+}
