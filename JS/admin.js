@@ -158,10 +158,10 @@ function renderOrganizations() {
 }
 
 async function changeOrganizationStatus(id, status) {
-  var result = await supabaseClient
-    .from("organizations")
-    .update({ status: status })
-    .eq("id", id);
+  var result = await supabaseClient.rpc("admin_set_organization_status", {
+    p_organization_id: id,
+    p_status: status
+  });
 
   if (result.error) {
     alert("Erreur: " + result.error.message);
