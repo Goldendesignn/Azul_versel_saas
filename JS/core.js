@@ -312,26 +312,6 @@ function getPaymentSummary(lines) {
     .join(" + ");
 }
 
-function getCartProductKey(item) {
-  if (item && item.productId) return String(item.productId);
-  return String(item && (item.baseName || item.name) || "").trim();
-}
-
-function findProductForCartItem(item) {
-  if (!item) return null;
-
-  if (item.productId) {
-    var byId = (products || []).find(function(product) {
-      return String(product.id) === String(item.productId);
-    });
-    if (byId) return byId;
-  }
-
-  return (products || []).find(function(product) {
-    return product.name === item.name || product.name === item.baseName;
-  }) || null;
-}
-
 function groupCartQuantityByProduct(items) {
   var grouped = {};
 
@@ -472,7 +452,7 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
 
     var newShopStock = Math.max(
       0,
-      (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockName]) || 0)
+      (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockKey]) || 0)
     );
 
     var stockResult = await supabaseClient
