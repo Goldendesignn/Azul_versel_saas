@@ -8242,12 +8242,434 @@ function renderPurchaseImportPreview() {
   }).join("");
 }
 
+function chunkImportArray(list, size) {
+  var chunks = [];
+
+  for (var i = 0; i < list.length; i += size) {
+    chunks.push(list.slice(i, i + size));
+  }
+
+  return chunks;
+}
+
+function normalizeImportText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getPurchaseImportProductKey(data) {
+  var code = normalizeImportText(data.code);
+
+  if (code) {
+    return "code:" + code;
+  }
+
+  return [
+    "product",
+    normalizeImportText(data.designation || data.name),
+    normalizeImportText(data.variation),
+    Number(data.unitPrice || data.purchasePrice || 0) || 0,
+    Number(data.salePrice || 0) || 0
+  ].join("||");
+}
+
+async function fetchImportProducts(productNames, productCodes) {
+  var organizationId = getAzulOrganizationId();
+  var productsByKey = {};
+
+  async function addRows(result) {
+    if (result.error) throw result.error;
+
+    (result.data || []).forEach(function(product) {
+      var key = getPurchaseImportProductKey({
+        code: product.code || "",
+        designation: product.name || "",
+        variation: product.variation || "",
+        unitPrice: Number(product.purchase_price) || 0,
+        salePrice: Number(product.sale_price) || 0
+      });
+
+      if (!productsByKey[key]) {
+        productsByKey[key] = product;
+      }
+    });
+  }
+
+  for (var c = 0; c < chunkImportArray(productCodes, 80).length; c++) {
+    var codeChunk = chunkImportArray(productCodes, 80)[c];
+
+    if (!codeChunk.length) continue;
+
+    await addRows(await supabaseClient
+      .from("products")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .in("code", codeChunk)
+      .order("created_at", { ascending: false }));
+  }
+
+  for (var n = 0; n < chunkImportArray(productNames, 80).length; n++) {
+    var nameChunk = chunkImportArray(productNames, 80)[n];
+
+    if (!nameChunk.length) continue;
+
+    await addRows(await supabaseClient
+      .from("products")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .in("name", nameChunk)
+      .order("created_at", { ascending: false }));
+  }
+
+  return productsByKey;
+}
+
+async function ensureImportSuppliers(rows) {
+  var organizationId = getAzulOrganizationId();
+  var supplierNames = [];
+
+  rows.forEach(function(row) {
+    if (row.supplier && supplierNames.indexOf(row.supplier) === -1) {
+      supplierNames.push(row.supplier);
+    }
+  });
+
+  if (!supplierNames.length) return;
+
+  var existingNames = {};
+
+  for (var i = 0; i < chunkImportArray(supplierNames, 80).length; i++) {
+    var chunk = chunkImportArray(supplierNames, 80)[i];
+
+    var existing = await supabaseClient
+      .from("suppliers")
+      .select("name")
+      .eq("organization_id", organizationId)
+      .in("name", chunk);
+
+    if (existing.error) throw existing.error;
+
+    (existing.data || []).forEach(function(row) {
+      existingNames[normalizeImportText(row.name)] = true;
+    });
+  }
+
+  var toInsert = supplierNames
+    .filter(function(name) {
+      return !existingNames[normalizeImportText(name)];
+    })
+    .map(function(name) {
+      return {
+        organization_id: organizationId,
+        name: name,
+        phone: "",
+        country: "",
+        note: ""
+      };
+    });
+
+  for (var j = 0; j < chunkImportArray(toInsert, 200).length; j++) {
+    var insertChunk = chunkImportArray(toInsert, 200)[j];
+
+    if (!insertChunk.length) continue;
+
+    var insertResult = await supabaseClient
+      .from("suppliers")
+      .insert(insertChunk);
+
+    if (insertResult.error) throw insertResult.error;
+  }
+}
+
+async function savePurchaseImportBatchToSupabase(rows) {
+  var organizationId = getAzulOrganizationId();
+  var validRows = (rows || []).filter(function(row) {
+    return row && row.valid;
+  });
+
+  if (!validRows.length) {
+    throw new Error("Aucune ligne valide a importer.");
+  }
+
+  await ensureImportSuppliers(validRows);
+
+  var productNames = [];
+  var productCodes = [];
+
+  validRows.forEach(function(row) {
+    if (row.designation && productNames.indexOf(row.designation) === -1) {
+      productNames.push(row.designation);
+    }
+
+    if (row.code && productCodes.indexOf(row.code) === -1) {
+      productCodes.push(row.code);
+    }
+  });
+
+  var existingProducts = await fetchImportProducts(productNames, productCodes);
+  var productGroups = {};
+
+  validRows.forEach(function(row) {
+    var key = getPurchaseImportProductKey(row);
+
+    if (!productGroups[key]) {
+      productGroups[key] = {
+        key: key,
+        name: row.designation,
+        supplier: row.supplier,
+        category: row.category,
+        code: row.code,
+        photo: row.photo,
+        variation: row.variation,
+        variations: parseVariationList(row.variation),
+        purchasePrice: row.unitPrice,
+        salePrice: row.salePrice,
+        quantity: 0
+      };
+    }
+
+    productGroups[key].quantity += Number(row.quantity) || 0;
+  });
+
+  var productIdByKey = {};
+  var updateProducts = [];
+  var insertProducts = [];
+
+  Object.keys(productGroups).forEach(function(key) {
+    var group = productGroups[key];
+    var existing = existingProducts[key];
+
+    if (existing) {
+      productIdByKey[key] = existing.id;
+
+      updateProducts.push({
+        id: existing.id,
+        organization_id: organizationId,
+        name: existing.name || group.name,
+        supplier: group.supplier || existing.supplier || "",
+        category: group.category || existing.category || "",
+        code: group.code || existing.code || "",
+        photo: group.photo || existing.photo || "",
+        variation: group.variation || existing.variation || "",
+        variations: group.variations.length ? group.variations : existing.variations || [],
+        purchase_price: group.purchasePrice || Number(existing.purchase_price) || 0,
+        sale_price: group.salePrice || Number(existing.sale_price) || 0,
+        stock_warehouse: (Number(existing.stock_warehouse) || 0) + group.quantity,
+        stock_shop: Number(existing.stock_shop) || 0,
+        min_stock: Number(existing.min_stock) || 0
+      });
+    } else {
+      insertProducts.push({
+        organization_id: organizationId,
+        name: group.name,
+        supplier: group.supplier || "",
+        category: group.category || "",
+        code: group.code || "",
+        photo: group.photo || "",
+        variation: group.variation || "",
+        variations: group.variations || [],
+        purchase_price: group.purchasePrice || 0,
+        sale_price: group.salePrice || 0,
+        stock_warehouse: group.quantity,
+        stock_shop: 0,
+        min_stock: 0
+      });
+    }
+  });
+
+  for (var u = 0; u < chunkImportArray(updateProducts, 200).length; u++) {
+    var updateChunk = chunkImportArray(updateProducts, 200)[u];
+
+    if (!updateChunk.length) continue;
+
+    var updateResult = await supabaseClient
+      .from("products")
+      .upsert(updateChunk)
+      .select("*");
+
+    if (updateResult.error) throw updateResult.error;
+
+    (updateResult.data || []).forEach(function(product) {
+      var key = getPurchaseImportProductKey({
+        code: product.code || "",
+        designation: product.name || "",
+        variation: product.variation || "",
+        unitPrice: Number(product.purchase_price) || 0,
+        salePrice: Number(product.sale_price) || 0
+      });
+
+      productIdByKey[key] = product.id;
+    });
+  }
+
+  for (var p = 0; p < chunkImportArray(insertProducts, 200).length; p++) {
+    var insertChunk = chunkImportArray(insertProducts, 200)[p];
+
+    if (!insertChunk.length) continue;
+
+    var insertResult = await supabaseClient
+      .from("products")
+      .insert(insertChunk)
+      .select("*");
+
+    if (insertResult.error) throw insertResult.error;
+
+    (insertResult.data || []).forEach(function(product) {
+      var key = getPurchaseImportProductKey({
+        code: product.code || "",
+        designation: product.name || "",
+        variation: product.variation || "",
+        unitPrice: Number(product.purchase_price) || 0,
+        salePrice: Number(product.sale_price) || 0
+      });
+
+      productIdByKey[key] = product.id;
+    });
+  }
+
+  var purchaseGroups = {};
+
+  validRows.forEach(function(row) {
+    var groupKey = row.date + "||" + row.supplier + "||" + row.paymentStatus;
+
+    if (!purchaseGroups[groupKey]) {
+      purchaseGroups[groupKey] = {
+        key: groupKey,
+        date: row.date,
+        supplier: row.supplier,
+        paymentStatus: row.paymentStatus,
+        paidAmount: 0,
+        total: 0,
+        rows: []
+      };
+    }
+
+    purchaseGroups[groupKey].paidAmount += Number(row.paidAmount) || 0;
+    purchaseGroups[groupKey].total += (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0);
+    purchaseGroups[groupKey].rows.push(row);
+  });
+
+  var purchaseGroupList = Object.keys(purchaseGroups).map(function(key) {
+    return purchaseGroups[key];
+  });
+
+  var purchaseRows = purchaseGroupList.map(function(group) {
+    var isCredit = group.paymentStatus === "credit";
+    var paidAmount = isCredit ? Math.min(group.total, group.paidAmount || 0) : group.total;
+    var remainingAmount = isCredit ? Math.max(0, group.total - paidAmount) : 0;
+
+    return {
+      organization_id: organizationId,
+      supplier: group.supplier,
+      total: group.total,
+      paid_amount: paidAmount,
+      remaining_amount: remainingAmount,
+      is_credit: remainingAmount > 0,
+      created_at: group.date ? group.date + "T12:00:00" : undefined
+    };
+  });
+
+  var insertedPurchases = [];
+
+  for (var pr = 0; pr < chunkImportArray(purchaseRows, 200).length; pr++) {
+    var purchaseChunk = chunkImportArray(purchaseRows, 200)[pr];
+
+    var purchaseResult = await supabaseClient
+      .from("purchases")
+      .insert(purchaseChunk)
+      .select("*");
+
+    if (purchaseResult.error) throw purchaseResult.error;
+
+    insertedPurchases = insertedPurchases.concat(purchaseResult.data || []);
+  }
+
+  var purchaseItems = [];
+
+  purchaseGroupList.forEach(function(group, index) {
+    var purchase = insertedPurchases[index];
+
+    if (!purchase) return;
+
+    group.purchase = purchase;
+
+    group.rows.forEach(function(row) {
+      var productKey = getPurchaseImportProductKey(row);
+      var productId = productIdByKey[productKey];
+
+      if (!productId) {
+        throw new Error("Produit non trouve apres import: " + row.designation);
+      }
+
+      purchaseItems.push({
+        purchase_id: purchase.id,
+        product_id: productId,
+        product_name: row.designation,
+        category: row.category || "",
+        code: row.code || "",
+        photo: row.photo || "",
+        variation: row.variation || "",
+        variations: parseVariationList(row.variation),
+        purchase_price: row.unitPrice || 0,
+        sale_price: row.salePrice || 0,
+        quantity: row.quantity || 0,
+        supplier: row.supplier
+      });
+    });
+  });
+
+  for (var pi = 0; pi < chunkImportArray(purchaseItems, 300).length; pi++) {
+    var itemChunk = chunkImportArray(purchaseItems, 300)[pi];
+
+    var itemResult = await supabaseClient
+      .from("purchase_items")
+      .insert(itemChunk);
+
+    if (itemResult.error) throw itemResult.error;
+  }
+
+  for (var ac = 0; ac < purchaseGroupList.length; ac++) {
+    var accountingGroup = purchaseGroupList[ac];
+
+    if (!accountingGroup.purchase) continue;
+
+    var total = Number(accountingGroup.purchase.total) || 0;
+    var paid = Number(accountingGroup.purchase.paid_amount) || 0;
+    var remaining = Number(accountingGroup.purchase.remaining_amount) || 0;
+
+    var lines = [
+      { account: "13", debit: total, credit: 0 }
+    ];
+
+    if (paid > 0) {
+      lines.push({ account: "11", debit: 0, credit: paid });
+    }
+
+    if (remaining > 0) {
+      lines.push({ account: "21", debit: 0, credit: remaining });
+    }
+
+    await createAccountingEntry(
+      "purchase",
+      accountingGroup.purchase.id,
+      String(accountingGroup.purchase.created_at || "").slice(0, 10),
+      "Import achat fournisseur " + accountingGroup.supplier,
+      lines
+    );
+  }
+
+  return {
+    products: Object.keys(productGroups).length,
+    purchases: insertedPurchases.length,
+    items: purchaseItems.length
+  };
+}
+
 async function importPurchaseCsvRows() {
   var log = document.getElementById("purchase-import-log");
-  
+
   if (purchaseImportRunning) {
-  toast("Importation deja en cours...", "error");
-  return;
+    toast("Importation deja en cours...", "error");
+    return;
   }
 
   if (!purchaseImportRows.length) {
@@ -8261,50 +8683,17 @@ async function importPurchaseCsvRows() {
 
   if (invalidRows.length) {
     toast("Corrige les lignes invalides avant l'import.", "error");
+
     if (log) {
       log.innerHTML = invalidRows.map(function(row) {
         return "Ligne " + row.line + ": " + row.error;
       }).join("<br>");
     }
+
     return;
   }
 
-  var groups = {};
-
-  purchaseImportRows.forEach(function(row) {
-    var key = row.date + "||" + row.supplier + "||" + row.paymentStatus;
-
-    if (!groups[key]) {
-      groups[key] = {
-        date: row.date,
-        supplier: row.supplier,
-        paymentStatus: row.paymentStatus,
-        paidAmount: 0,
-        items: []
-      };
-      groups[key].paidAmount += Number(row.paidAmount) || 0;
-    }
-
-    groups[key].items.push({
-      prod: row.designation,
-      code: row.code,
-      category: row.category,
-      variation: row.variation,
-      variations: parseVariationList(row.variation),
-      photo: row.photo,
-      qty: row.quantity,
-      pa: row.unitPrice,
-      pv: row.salePrice
-    });
-  });
-
-  var groupList = Object.keys(groups).map(function(key) {
-    return groups[key];
-  });
-
-  var imported = 0;
-
-    purchaseImportRunning = true;
+  purchaseImportRunning = true;
 
   var importBtn = document.querySelector(".import-submit-btn");
   if (importBtn) {
@@ -8312,26 +8701,15 @@ async function importPurchaseCsvRows() {
     importBtn.textContent = "Importation...";
     importBtn.style.opacity = "0.65";
   }
-  
+
   try {
-    if (log) log.innerHTML = "Importation en cours...";
-
-    for (var i = 0; i < groupList.length; i++) {
-      var group = groupList[i];
-
-      await savePurchaseToSupabase({
-        forn: group.supplier,
-        purchaseDate: group.date,
-        items: group.items,
-        credit: group.paymentStatus === "credit",
-        paidAmount: group.paymentStatus === "credit" ? group.paidAmount : 0,
-        payments: []
-      });
-
-      imported += group.items.length;
+    if (log) {
+      log.innerHTML = "Importation rapide en cours...";
     }
 
-    toast("Import termine: " + imported + " produits importes.", "success");
+    var result = await savePurchaseImportBatchToSupabase(purchaseImportRows);
+
+    toast("Import termine: " + result.items + " lignes importees.", "success");
 
     purchaseImportRows = [];
     renderPurchaseImportPreview();
@@ -8342,9 +8720,13 @@ async function importPurchaseCsvRows() {
     await loadProducts(true);
 
     if (log) {
-      log.innerHTML = "Import termine avec succes: " + imported + " produits.";
+      log.innerHTML =
+        "Import termine avec succes: " +
+        result.items + " lignes, " +
+        result.products + " produits, " +
+        result.purchases + " achats.";
     }
-    } catch (e) {
+  } catch (e) {
     console.error("Erreur import achats:", e);
     toast("Erreur import: " + (e.message || e), "error");
 
