@@ -684,6 +684,9 @@
     <button type="button" class="import-tab" id="import-tab-sales" onclick="switchImportTab('sales')">
       Ventes
     </button>
+    <button type="button" class="import-tab" id="import-tab-expenses" onclick="switchImportTab('expenses')">
+      Depenses
+    </button>
   </div>
     <div id="import-panel-purchases">
       
@@ -837,6 +840,74 @@
         <div id="sale-import-log" class="import-log"></div>
     </div>
 </div>
+          <div id="import-panel-expenses" style="display:none;">
+        <div class="import-grid" style="margin-top:16px;">
+          <div class="import-panel">
+            <div class="import-panel-head">
+              <div>
+                <h3>Modele CSV depenses</h3>
+                <p>Utilise ce fichier pour importer les anciennes depenses.</p>
+              </div>
+            </div>
+
+            <button type="button" class="import-primary-btn" onclick="downloadExpenseCsvTemplate()">
+              Telecharger modele depenses
+            </button>
+
+            <div class="import-columns">
+              date, category, description, amount
+            </div>
+          </div>
+
+          <div class="import-panel">
+            <div class="import-panel-head">
+              <div>
+                <h3>Fichier depenses</h3>
+                <p>Choisis ton CSV rempli, puis verifie l'apercu avant importation.</p>
+              </div>
+            </div>
+
+            <input class="import-native-file" type="file" id="expense-import-file" accept=".csv,text/csv" onchange="handleExpenseCsvFile(event)">
+            <label class="import-file-btn" for="expense-import-file">
+              Choisir fichier depenses
+            </label>
+
+            <div id="expense-import-summary" class="import-summary">
+              Aucun fichier selectionne.
+            </div>
+          </div>
+        </div>
+
+        <div class="import-preview-card" style="margin-top:16px;">
+          <div class="import-preview-head">
+            <div>
+              <div class="import-eyebrow">Apercu depenses</div>
+              <h3>Depenses detectees</h3>
+            </div>
+            <button type="button" class="import-submit-btn" onclick="importExpenseCsvRows()">
+              Importer depenses
+            </button>
+          </div>
+
+          <div class="import-table-wrap">
+            <table class="data-table import-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Categorie</th>
+                  <th>Description</th>
+                  <th>Montant</th>
+                </tr>
+              </thead>
+              <tbody id="expense-import-preview">
+                <tr><td colspan="4" class="empty">Le preview des depenses apparait ici</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="expense-import-log" class="import-log"></div>
+        </div>
+      </div>
     </div>
   </div>
     
