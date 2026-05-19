@@ -312,14 +312,34 @@ function getPaymentSummary(lines) {
     .join(" + ");
 }
 
+function getCartProductKey(item) {
+  if (item && item.productId) return String(item.productId);
+  return String(item && (item.baseName || item.name) || "").trim();
+}
+
+function findProductForCartItem(item) {
+  if (!item) return null;
+
+  if (item.productId) {
+    var byId = (products || []).find(function(product) {
+      return String(product.id) === String(item.productId);
+    });
+    if (byId) return byId;
+  }
+
+  return (products || []).find(function(product) {
+    return product.name === item.name || product.name === item.baseName;
+  }) || null;
+}
+
 function groupCartQuantityByProduct(items) {
   var grouped = {};
 
   (items || []).forEach(function(item) {
-    var name = String(item.baseName || item.name || "").trim();
-    if (!name) return;
+    var key = getCartProductKey(item);
+    if (!key) return;
 
-    grouped[name] = (grouped[name] || 0) + (Number(item.qty) || 0);
+    grouped[key] = (grouped[key] || 0) + (Number(item.qty) || 0);
   });
 
   return grouped;
@@ -334,12 +354,13 @@ async function saveSaleToSupabase(data) {
     return sum + (Number(item.price) || 0) * (Number(item.qty) || 0);
   }, 0);
 
-  var profit = items.reduce(function(sum, item) {
-    var price = Number(item.price) || 0;
-    var purchasePrice = Number(item.purchasePrice) || 0;
-    var qty = Number(item.qty) || 0;
-    return sum + (price - purchasePrice) * qty;
-  }, 0);
+var profit = items.reduce(function(sum, item) {
+  var product = findProductForCartItem(item) || {};
+  var price = Number(item.price) || 0;
+  var purchasePrice = Number(item.purchasePrice || product.purchasePrice) || 0;
+  var qty = Number(item.qty) || 0;
+  return sum + (price - purchasePrice) * qty;
+}, 0);
 
   if (!items.length) {
     throw new Error("Carrinho vazio.");
@@ -347,16 +368,16 @@ async function saveSaleToSupabase(data) {
 
  var qtyByProduct = groupCartQuantityByProduct(items);
 
-Object.keys(qtyByProduct).forEach(function(productName) {
+Object.keys(qtyByProduct).forEach(function(productKey) {
   var product = (products || []).find(function(p) {
-    return p.name === productName;
+    return String(p.id) === String(productKey) || p.name === productKey;
   });
 
   if (!product) {
-    throw new Error("Produto nao encontrado: " + productName);
+    throw new Error("Produto nao encontrado: " + productKey);
   }
 
-  var qty = qtyByProduct[productName];
+  var qty = qtyByProduct[productKey];
   var currentShop = Number(product.stockBoutique) || 0;
 
   if (data.saleType !== "Externo" && currentShop < qty) {
@@ -387,9 +408,11 @@ Object.keys(qtyByProduct).forEach(function(productName) {
 
   for (var j = 0; j < items.length; j++) {
     var item = items[j];
-    var productRow = (products || []).find(function(p) {
-      return p.name === item.name;
-    });
+    var productRow = findProductForCartItem(item);
+
+    if (!productRow) {
+      throw new Error("Produto nao encontrado: " + item.name);
+    }
 
     var qtySold = Number(item.qty) || 0;
     var purchasePrice = Number(productRow.purchasePrice) || 0;
@@ -421,12 +444,12 @@ Object.keys(qtyByProduct).forEach(function(productName) {
   if (data.saleType !== "Externo") {
   var groupedStock = groupCartQuantityByProduct(items);
 
-  for (var stockName in groupedStock) {
-    var stockProduct = (products || []).find(function(p) {
-      return p.name === stockName;
-    });
+  for (var stockKey in groupedStock) {
+  var stockProduct = (products || []).find(function(p) {
+    return String(p.id) === String(stockKey) || p.name === stockKey;
+  });
 
-    if (!stockProduct) continue;
+  if (!stockProduct) continue;
 
     var newShopStock = Math.max(
       0,
@@ -2466,8 +2489,8 @@ function renderProds(list) {
         (out ? ' Esgotado' : 'Stock : ' + p.stockBoutique + ' un') +
       '</div>';
   div.onclick = function() {
-      addToCart(p.name, p.stockBoutique);
-    };
+  addToCart(p.id, p.stockBoutique);
+  };
 
     g.appendChild(div);
   });
@@ -2483,12 +2506,21 @@ function filterProds() {
   renderProds(list);
 }
 // ===== CART =====
-function addToCart(name, stock) {
-  var product = (products || []).find(function(p) { return p.name === name; }) || {};
+function addToCart(productIdOrName, stock) {
+  var product = (products || []).find(function(p) {
+    return String(p.id) === String(productIdOrName);
+  }) || (products || []).find(function(p) {
+    return p.name === productIdOrName;
+  }) || {};
+
   var salePrice = parseFloat(product.salePrice || product.price) || 0;
 
   cart.push({
-    name: name,
+    productId: product.id || "",
+    name: product.name || String(productIdOrName || ""),
+    baseName: product.name || String(productIdOrName || ""),
+    supplier: product.supplier || product.mainSupplier || "",
+    purchasePrice: parseFloat(product.purchasePrice) || 0,
     price: salePrice,
     regularPrice: salePrice,
     qty: 1,
@@ -2708,7 +2740,7 @@ for (var stockName in groupedStock) {
 
   var newShopStock = Math.max(
     0,
-    (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockName]) || 0)
+    (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockKey]) || 0)
   );
 
   var stockResult = await supabaseClient
