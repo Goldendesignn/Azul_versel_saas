@@ -91,10 +91,7 @@ async function loadOrganizations() {
   var list = document.getElementById("organizations-list");
   list.innerHTML = '<div class="empty">Chargement...</div>';
 
-  var result = await supabaseClient
-    .from("organizations")
-    .select("*")
-    .order("created_at", { ascending: false });
+  var result = await supabaseClient.rpc("admin_list_clients");
 
   if (result.error) {
     list.innerHTML = '<div class="empty">Erreur: ' + htmlSafe(result.error.message) + '</div>';
@@ -104,20 +101,20 @@ async function loadOrganizations() {
   organizationsCache = result.data || [];
   renderOrganizations();
 }
-
 function renderOrganizations() {
   var list = document.getElementById("organizations-list");
   var q = (document.getElementById("admin-search").value || "").toLowerCase();
 
-  var rows = organizationsCache.filter(function(org) {
-    return [
-      org.name,
-      org.phone,
-      org.email,
-      org.license_key,
-      org.status
-    ].join(" ").toLowerCase().indexOf(q) >= 0;
-  });
+ var rows = organizationsCache.filter(function(org) {
+  return [
+    org.name,
+    org.phone,
+    org.email,
+    org.current_license_key,
+    org.current_license_status,
+    org.status
+  ].join(" ").toLowerCase().indexOf(q) >= 0;
+});
 
   if (!rows.length) {
     list.innerHTML = '<div class="empty">Aucun client trouvé.</div>';
@@ -135,7 +132,11 @@ function renderOrganizations() {
           <div>
             <div class="org-name">${htmlSafe(org.name || "Client")}</div>
             <div class="org-meta">
-              Licence: <strong>${htmlSafe(org.license_key || "-")}</strong><br>
+             Licence: <strong>${htmlSafe(org.current_license_key || "-")}</strong><br>
+              Statut licence: ${htmlSafe(org.current_license_status || "-")}<br>
+              Plan: ${htmlSafe(org.plan || "starter")}<br>
+              Expiration: ${htmlSafe(org.expires_at ? String(org.expires_at).slice(0, 10) : "Sans expiration")}<br>
+              Activations: ${htmlSafe(org.activation_count || 0)} / ${htmlSafe(org.activation_limit || 1)}<br>
               Téléphone: ${htmlSafe(org.phone || "-")}<br>
               Email: ${htmlSafe(org.email || "-")}<br>
               Créé: ${htmlSafe(String(org.created_at || "").slice(0, 10))}
