@@ -9283,17 +9283,16 @@ var saleRows = validRows.map(function(row, index) {
 
   var insertedSales = [];
 
-  for (var s = 0; s < chunkImportArray(saleRows, 300).length; s++) {
-    var saleChunk = chunkImportArray(saleRows, 300)[s];
+   for (var st = 0; st < stockRows.length; st++) {
+    var stockResult = await supabaseClient
+      .from("products")
+      .update({
+        stock_shop: stockRows[st].stock_shop
+      })
+      .eq("id", stockRows[st].id)
+      .eq("organization_id", organizationId);
 
-    var saleResult = await supabaseClient
-      .from("sales")
-      .insert(saleChunk)
-      .select("id,receipt_no,sale_date,total");
-
-    if (saleResult.error) throw saleResult.error;
-
-    insertedSales = insertedSales.concat(saleResult.data || []);
+    if (stockResult.error) throw stockResult.error;
   }
 
   var saleItems = [];
