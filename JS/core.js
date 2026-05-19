@@ -8043,6 +8043,15 @@ function parseCsvText(text) {
   var delimiter = detectCsvDelimiter(lines[0]);
   var headers = parseCsvLine(lines[0], delimiter).map(normalizeCsvHeader);
 
+  var requiredHeaders = ["supplier", "designation", "quantity", "unit_price"];
+  var missingHeaders = requiredHeaders.filter(function(header) {
+    return headers.indexOf(header) === -1;
+  });
+
+  if (missingHeaders.length) {
+    throw new Error("Colonnes manquantes: " + missingHeaders.join(", "));
+  }
+
   return lines.slice(1).map(function(line) {
     var values = parseCsvLine(line, delimiter);
     var row = {};
