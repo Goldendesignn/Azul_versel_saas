@@ -132,13 +132,14 @@ function renderOrganizations() {
           <div>
             <div class="org-name">${htmlSafe(org.name || "Client")}</div>
             <div class="org-meta">
-             Licence: <strong>${htmlSafe(org.current_license_key || "-")}</strong><br>
+              Licence: <strong>${htmlSafe(org.current_license_key || "-")}</strong><br>
               Statut licence: ${htmlSafe(org.current_license_status || "-")}<br>
               Plan: ${htmlSafe(org.plan || "starter")}<br>
               Expiration: ${htmlSafe(org.expires_at ? String(org.expires_at).slice(0, 10) : "Sans expiration")}<br>
               Activations: ${htmlSafe(org.activation_count || 0)} / ${htmlSafe(org.activation_limit || 1)}<br>
               Téléphone: ${htmlSafe(org.phone || "-")}<br>
               Email: ${htmlSafe(org.email || "-")}<br>
+              Appareils: ${htmlSafe(org.active_devices || 0)} / ${htmlSafe(org.device_limit || 1)}<br>
               Créé: ${htmlSafe(String(org.created_at || "").slice(0, 10))}
             </div>
           </div>
@@ -148,8 +149,9 @@ function renderOrganizations() {
 
         <div class="org-actions">
           <button onclick="copyLicense('${htmlSafe(org.current_license_key || "")}')">Copier licence</button>
-           <button onclick="createRenewalLicense('${org.id}')">Renouveler</button>
+          <button onclick="createRenewalLicense('${org.id}')">Renouveler</button>
           <button onclick="changeOrganizationStatus('${org.id}', '${nextStatus}')">${actionText}</button>
+          <button onclick="changeDeviceLimit('${org.id}')">Appareils</button>
           
         </div>
       </div>
@@ -196,6 +198,32 @@ async function createRenewalLicense(organizationId) {
   alert("Nouvelle licence: " + result.data.license_key);
   loadOrganizations();
 }
+
+async function changeDeviceLimit(organizationId) {
+  var value = prompt("Nombre d'appareils autorises:");
+
+  if (!value) return;
+
+  var limit = parseInt(value, 10);
+
+  if (!limit || limit < 1) {
+    alert("Limite invalide.");
+    return;
+  }
+
+  var result = await supabaseClient.rpc("admin_set_device_limit", {
+    p_organization_id: organizationId,
+    p_device_limit: limit
+  });
+
+  if (result.error) {
+    alert("Erreur: " + result.error.message);
+    return;
+  }
+
+  loadOrganizations();
+}
+
 document.addEventListener("DOMContentLoaded", async function() {
   var result = await supabaseClient.auth.getSession();
 
