@@ -2604,7 +2604,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
 }
 
 .import-shell {
-  max-width: 1160px;
+  max-width: 100%;
   display: grid;
   gap: 16px;
 }
