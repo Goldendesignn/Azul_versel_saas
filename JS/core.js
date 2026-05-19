@@ -8380,6 +8380,102 @@ async function ensureImportSuppliers(rows) {
   }
 }
 
+async function createImportPurchaseAccountingBatch(purchaseGroupList) {
+  var organizationId = getAzulOrganizationId();
+  var entryRows = [];
+
+  purchaseGroupList.forEach(function(group) {
+    if (!group.purchase) return;
+
+    entryRows.push({
+      organization_id: organizationId,
+      source_type: "purchase",
+      source_id: group.purchase.id,
+      entry_date: String(group.purchase.created_at || "").slice(0, 10),
+      description: "Import achat fournisseur " + group.supplier
+    });
+  });
+
+  if (!entryRows.length) return;
+
+  var insertedEntries = [];
+
+  for (var i = 0; i < chunkImportArray(entryRows, 300).length; i++) {
+    var chunk = chunkImportArray(entryRows, 300)[i];
+
+    var entryResult = await supabaseClient
+      .from("accounting_entries")
+      .insert(chunk)
+      .select("*");
+
+    if (entryResult.error) throw entryResult.error;
+
+    insertedEntries = insertedEntries.concat(entryResult.data || []);
+  }
+
+  var entryBySourceId = {};
+
+  insertedEntries.forEach(function(entry) {
+    entryBySourceId[String(entry.source_id)] = entry;
+  });
+
+  var lineRows = [];
+
+  purchaseGroupList.forEach(function(group) {
+    if (!group.purchase) return;
+
+    var entry = entryBySourceId[String(group.purchase.id)];
+    if (!entry) return;
+
+    var total = Number(group.purchase.total) || 0;
+    var paid = Number(group.purchase.paid_amount) || 0;
+    var remaining = Number(group.purchase.remaining_amount) || 0;
+
+    lineRows.push({
+      organization_id: organizationId,
+      entry_id: entry.id,
+      account_code: "13",
+      account_name: getAccountName("13"),
+      debit: total,
+      credit: 0
+    });
+
+    if (paid > 0) {
+      lineRows.push({
+        organization_id: organizationId,
+        entry_id: entry.id,
+        account_code: "11",
+        account_name: getAccountName("11"),
+        debit: 0,
+        credit: paid
+      });
+    }
+
+    if (remaining > 0) {
+      lineRows.push({
+        organization_id: organizationId,
+        entry_id: entry.id,
+        account_code: "21",
+        account_name: getAccountName("21"),
+        debit: 0,
+        credit: remaining
+      });
+    }
+  });
+
+  for (var j = 0; j < chunkImportArray(lineRows, 500).length; j++) {
+    var lineChunk = chunkImportArray(lineRows, 500)[j];
+
+    if (!lineChunk.length) continue;
+
+    var lineResult = await supabaseClient
+      .from("accounting_lines")
+      .insert(lineChunk);
+
+    if (lineResult.error) throw lineResult.error;
+  }
+}
+
 async function savePurchaseImportBatchToSupabase(rows) {
   var organizationId = getAzulOrganizationId();
   var validRows = (rows || []).filter(function(row) {
@@ -8627,35 +8723,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
     if (itemResult.error) throw itemResult.error;
   }
 
-  for (var ac = 0; ac < purchaseGroupList.length; ac++) {
-    var accountingGroup = purchaseGroupList[ac];
-
-    if (!accountingGroup.purchase) continue;
-
-    var total = Number(accountingGroup.purchase.total) || 0;
-    var paid = Number(accountingGroup.purchase.paid_amount) || 0;
-    var remaining = Number(accountingGroup.purchase.remaining_amount) || 0;
-
-    var lines = [
-      { account: "13", debit: total, credit: 0 }
-    ];
-
-    if (paid > 0) {
-      lines.push({ account: "11", debit: 0, credit: paid });
-    }
-
-    if (remaining > 0) {
-      lines.push({ account: "21", debit: 0, credit: remaining });
-    }
-
-    await createAccountingEntry(
-      "purchase",
-      accountingGroup.purchase.id,
-      String(accountingGroup.purchase.created_at || "").slice(0, 10),
-      "Import achat fournisseur " + accountingGroup.supplier,
-      lines
-    );
-  }
+    await createImportPurchaseAccountingBatch(purchaseGroupList);
 
   return {
     products: Object.keys(productGroups).length,
