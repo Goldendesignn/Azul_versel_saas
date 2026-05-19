@@ -344,7 +344,26 @@ function groupCartQuantityByProduct(items) {
 
   return grouped;
 }
+function getCartProductKey(item) {
+  if (item && item.productId) return String(item.productId);
+  return String(item && (item.baseName || item.name) || "").trim();
+}
 
+function findProductForCartItem(item) {
+  if (!item) return null;
+
+  if (item.productId) {
+    var byId = (products || []).find(function(product) {
+      return String(product.id) === String(item.productId);
+    });
+
+    if (byId) return byId;
+  }
+
+  return (products || []).find(function(product) {
+    return product.name === item.name || product.name === item.baseName;
+  }) || null;
+}
 async function saveSaleToSupabase(data) {
   var organizationId = getAzulOrganizationId();
 
