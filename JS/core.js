@@ -8109,7 +8109,7 @@ function normalizeCsvHeader(value) {
     .replace(/[^\w]/g, "");
 }
 
-function parseCsvText(text) {
+function parseCsvText(text, requiredHeaders) {
   var lines = String(text || "")
     .replace(/\r/g, "")
     .split("\n")
@@ -8124,7 +8124,8 @@ function parseCsvText(text) {
   var delimiter = detectCsvDelimiter(lines[0]);
   var headers = parseCsvLine(lines[0], delimiter).map(normalizeCsvHeader);
 
-  var requiredHeaders = ["supplier", "designation", "quantity", "unit_price"];
+  requiredHeaders = requiredHeaders || [];
+
   var missingHeaders = requiredHeaders.filter(function(header) {
     return headers.indexOf(header) === -1;
   });
@@ -8232,7 +8233,7 @@ function handlePurchaseCsvFile(event) {
 
   reader.onload = function(e) {
     try {
-      var rawRows = parseCsvText(e.target.result || "");
+      var rawRows = parseCsvText(e.target.result || "", ["supplier", "designation", "quantity", "unit_price"]);
 
       purchaseImportRows = rawRows.map(function(row, index) {
         var mapped = mapPurchaseImportRow(row, index);
@@ -8966,7 +8967,7 @@ function handleSaleCsvFile(event) {
 
   reader.onload = function(e) {
     try {
-      var rawRows = parseCsvText(e.target.result || "");
+      var rawRows = parseCsvText(e.target.result || "", ["date", "designation", "quantity", "unit_price"]);
 
       saleImportRows = rawRows.map(function(row, index) {
         var mapped = mapSaleImportRow(row, index);
