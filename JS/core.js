@@ -9193,7 +9193,7 @@ async function createSaleImportClientDebts(sales) {
 
     if (credit <= 0) return;
 
-   debtRows.push({
+       debtRows.push({
       organization_id: organizationId,
       sale_id: item.sale.id,
       client_name: item.row.client,
