@@ -8170,6 +8170,9 @@ function validatePurchaseImportRow(row) {
   if (!row.designation) return "Designation obligatoire";
   if (!row.quantity || row.quantity <= 0) return "Quantite invalide";
   if (!row.unitPrice || row.unitPrice <= 0) return "Prix unitaire invalide";
+  if (row.paymentStatus !== "paid" && row.paymentStatus !== "credit") {
+  return "payment_status doit etre paid ou credit";
+  }
   return "";
 }
 
