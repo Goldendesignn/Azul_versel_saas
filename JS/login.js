@@ -28,15 +28,15 @@ function getLicenseErrorMessage(error) {
   }
 
   if (msg.indexOf("LICENCA_INATIVA") >= 0) {
-    return "Licence désactivée. Contacte l'administrateur.";
+    return "Licence desactivee. Contacte l'administrateur.";
   }
 
   if (msg.indexOf("LICENCA_EXPIRADA") >= 0) {
-    return "Licence expirée. Renouvelle ton abonnement.";
+    return "Licence expiree. Renouvelle ton abonnement.";
   }
 
   if (msg.indexOf("LIMITE_ATIVACAO") >= 0) {
-    return "Cette licence a déjà été activée.";
+    return "Cette licence a deja ete activee.";
   }
 
   return "Erreur lors de l'activation de la licence.";
@@ -85,19 +85,19 @@ async function login() {
       return;
     }
 
-    var profileResult = await supabaseClient
-      .from("profiles")
-      .insert({
-        organization_id: organization.id,
-        name: data.nom,
-        phone: data.numero,
-        email: data.email || null,
-        role: "owner"
-      });
+var profileResult = await supabaseClient
+  .from("profiles")
+  .insert({
+    organization_id: organization.id,
+    name: data.nom,
+    phone: data.numero,
+    email: data.email || null,
+    role: "owner"
+  });
 
-    if (profileResult.error) {
-      throw profileResult.error;
-    }
+if (profileResult.error) {
+  console.warn("Profil non cree, mais licence activee:", profileResult.error);
+}
 
     localStorage.setItem("azul_organization_id", organization.id);
     localStorage.setItem("azul_organization_name", organization.name || "");
