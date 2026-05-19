@@ -7956,6 +7956,7 @@ async function renderSupplierDatalists() {
 }
 
 var purchaseImportRows = [];
+var purchaseImportRunning = false;
 
 function downloadPurchaseCsvTemplate() {
   var csv =
@@ -8192,6 +8193,11 @@ function renderPurchaseImportPreview() {
 
 async function importPurchaseCsvRows() {
   var log = document.getElementById("purchase-import-log");
+  
+  if (purchaseImportRunning) {
+  toast("Importation deja en cours...", "error");
+  return;
+  }
 
   if (!purchaseImportRows.length) {
     toast("Choisis d'abord un fichier CSV.", "error");
@@ -8247,6 +8253,15 @@ async function importPurchaseCsvRows() {
 
   var imported = 0;
 
+    purchaseImportRunning = true;
+
+  var importBtn = document.querySelector(".import-submit-btn");
+  if (importBtn) {
+    importBtn.disabled = true;
+    importBtn.textContent = "Importation...";
+    importBtn.style.opacity = "0.65";
+  }
+  
   try {
     if (log) log.innerHTML = "Importation en cours...";
 
@@ -8278,12 +8293,21 @@ async function importPurchaseCsvRows() {
     if (log) {
       log.innerHTML = "Import termine avec succes: " + imported + " produits.";
     }
-  } catch (e) {
+    } catch (e) {
     console.error("Erreur import achats:", e);
     toast("Erreur import: " + (e.message || e), "error");
 
     if (log) {
       log.innerHTML = "Erreur: " + escapeDepenseHtml(e.message || e);
+    }
+  } finally {
+    purchaseImportRunning = false;
+
+    var importBtnEnd = document.querySelector(".import-submit-btn");
+    if (importBtnEnd) {
+      importBtnEnd.disabled = false;
+      importBtnEnd.textContent = "Importer achats";
+      importBtnEnd.style.opacity = "1";
     }
   }
 }
