@@ -2643,10 +2643,10 @@ function groupRevCartQuantityByProduct(items) {
   var grouped = {};
 
   (items || []).forEach(function(item) {
-    var name = String(item.baseName || item.name || "").trim();
-    if (!name) return;
+    var key = getCartProductKey(item);
+    if (!key) return;
 
-    grouped[name] = (grouped[name] || 0) + (Number(item.qty) || 0);
+    grouped[key] = (grouped[key] || 0) + (Number(item.qty) || 0);
   });
 
   return grouped;
@@ -2666,16 +2666,16 @@ async function createConsignmentInSupabase(data) {
 
   var qtyByProduct = groupRevCartQuantityByProduct(items);
 
-Object.keys(qtyByProduct).forEach(function(productName) {
+Object.keys(qtyByProduct).forEach(function(productKey) {
   var product = (products || []).find(function(p) {
-    return p.name === productName;
+    return String(p.id) === String(productKey) || p.name === productKey;
   });
 
   if (!product) {
-    throw new Error("Produto nao encontrado: " + productName);
+    throw new Error("Produto nao encontrado: " + productKey);
   }
 
-  var qty = qtyByProduct[productName];
+  var qty = qtyByProduct[productKey];
   var stock = Number(product.stockBoutique) || 0;
 
   if (stock < qty) {
@@ -2704,7 +2704,11 @@ Object.keys(qtyByProduct).forEach(function(productName) {
 
   for (var j = 0; j < items.length; j++) {
     var item = items[j];
-    var productRow = (products || []).find(function(p) { return p.name === item.baseName || p.name === item.name; });
+    var productRow = findProductForCartItem(item);
+
+    if (!productRow) {
+      throw new Error("Produto nao encontrado: " + item.name);
+    }
     var qtyItem = Number(item.qty) || 0;
 
     itemRows.push({
@@ -2731,9 +2735,9 @@ Object.keys(qtyByProduct).forEach(function(productName) {
 
   var groupedStock = groupRevCartQuantityByProduct(items);
 
-for (var stockName in groupedStock) {
+for (var stockKey in groupedStock) {
   var stockProduct = (products || []).find(function(p) {
-    return p.name === stockName;
+    return String(p.id) === String(stockKey) || p.name === stockKey;
   });
 
   if (!stockProduct) continue;
