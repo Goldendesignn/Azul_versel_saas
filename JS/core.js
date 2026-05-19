@@ -8296,6 +8296,12 @@ function renderPurchaseImportPreview() {
 function chunkImportArray(list, size) {
   var chunks = [];
 
+  if (!Array.isArray(list)) {
+    return chunks;
+  }
+
+  size = Number(size) || 100;
+
   for (var i = 0; i < list.length; i += size) {
     chunks.push(list.slice(i, i + size));
   }
