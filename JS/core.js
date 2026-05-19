@@ -9195,15 +9195,13 @@ async function createSaleImportClientDebts(sales) {
 
     debtRows.push({
       organization_id: organizationId,
-      client_name: item.row.client,
       sale_id: item.sale.id,
+      client_name: item.row.client,
       total_amount: credit,
       paid_amount: 0,
       remaining_amount: credit,
-      debt_date: item.row.date,
-      note: "Import venda " + item.sale.receipt_no
+      status: "open"
     });
-  });
 
   for (var i = 0; i < chunkImportArray(debtRows, 300).length; i++) {
     var chunk = chunkImportArray(debtRows, 300)[i];
