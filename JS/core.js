@@ -9035,37 +9035,27 @@ function getSaleImportProductKey(row) {
 
 async function fetchSaleImportProducts(rows) {
   var organizationId = getAzulOrganizationId();
-  var names = [];
-
-  rows.forEach(function(row) {
-    if (row.designation && names.indexOf(row.designation) === -1) {
-      names.push(row.designation);
-    }
-  });
-
   var byName = {};
+  var pageSize = 1000;
+  var from = 0;
 
-  for (var i = 0; i < chunkImportArray(names, 80).length; i++) {
-    var chunk = chunkImportArray(names, 80)[i];
-
-    if (!chunk.length) continue;
-
+  while (true) {
     var result = await supabaseClient
       .from("products")
       .select("id,name,purchase_price,sale_price,stock_shop,stock_warehouse,supplier,variation,variations")
       .eq("organization_id", organizationId)
-      .in("name", chunk)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
 
     if (result.error) throw result.error;
 
     (result.data || []).forEach(function(product) {
       var key = normalizeImportText(product.name);
-
-      if (!byName[key]) {
-        byName[key] = product;
-      }
+      if (key && !byName[key]) byName[key] = product;
     });
+
+    if (!result.data || result.data.length < pageSize) break;
+    from += pageSize;
   }
 
   return byName;
