@@ -9193,7 +9193,7 @@ async function createSaleImportClientDebts(sales) {
 
     if (credit <= 0) return;
 
-    debtRows.push({
+   debtRows.push({
       organization_id: organizationId,
       sale_id: item.sale.id,
       client_name: item.row.client,
@@ -9202,6 +9202,7 @@ async function createSaleImportClientDebts(sales) {
       remaining_amount: credit,
       status: "open"
     });
+  });
 
   for (var i = 0; i < chunkImportArray(debtRows, 300).length; i++) {
     var chunk = chunkImportArray(debtRows, 300)[i];
