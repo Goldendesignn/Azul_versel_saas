@@ -230,9 +230,10 @@
 
     <!-- NOVO ACHAT -->
     <div class="page" id="page-achat">
-     <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
-        <button class="mode-btn active" id="achat-tab-novo" onclick="switchAchatTab('novo',this)"> Novo Achat</button>
-      </div>
+    <div class="achat-tabs">
+      <button class="mode-btn active" id="achat-tab-novo" onclick="switchAchatTab('novo',this)">Novo Achat</button>
+      <button class="mode-btn" id="achat-tab-historico" onclick="switchAchatTab('historico',this)">Historique</button>
+    </div>
 
       <!-- NOVO ACHAT -->
       <div id="achat-panel-novo">
@@ -315,6 +316,69 @@
 
         <button class="form-submit" onclick="saveAchat()"> Registar Achat</button>
       </div>
+      <div id="achat-panel-historico" style="display:none;">
+  <div class="achat-history-head">
+    <div>
+      <div class="eyebrow">Achats</div>
+      <h2>Historique des achats</h2>
+      <p>Recherche par produit, fournisseur, code ou variation.</p>
+    </div>
+    <button class="filter-btn" onclick="loadAchatHistorique()">Actualiser</button>
+  </div>
+
+  <div class="achat-history-kpis">
+    <div class="kpi">
+      <div class="kpi-label">Total achats</div>
+      <div class="kpi-val" id="achatHistTotal">0 Kz</div>
+      <div class="kpi-sub" id="achatHistCount">0 achats</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total payé</div>
+      <div class="kpi-val" id="achatHistPaid">0 Kz</div>
+      <div class="kpi-sub">Paiements fournisseurs</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Dette</div>
+      <div class="kpi-val" id="achatHistDebt">0 Kz</div>
+      <div class="kpi-sub">Reste à payer</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Quantité</div>
+      <div class="kpi-val" id="achatHistQty">0</div>
+      <div class="kpi-sub">articles achetés</div>
+    </div>
+  </div>
+
+  <div class="achat-history-filters">
+    <input type="date" class="filter-input" id="achatHistFrom" onchange="loadAchatHistorique()">
+    <input type="date" class="filter-input" id="achatHistTo" onchange="loadAchatHistorique()">
+    <input type="text" class="filter-input" id="achatHistSearch" placeholder="Rechercher produit, fournisseur, code..." oninput="loadAchatHistoriqueDebounced()">
+  </div>
+
+  <div class="achat-history-mobile" id="achatHistoryCards"></div>
+
+  <div class="achat-history-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Fornecedor</th>
+          <th>Produto</th>
+          <th>Codigo</th>
+          <th>Variação</th>
+          <th>Qtd</th>
+          <th>P. Achat</th>
+          <th>Total</th>
+          <th>Pago</th>
+          <th>Reste</th>
+        </tr>
+      </thead>
+      <tbody id="achatHistoryBody">
+        <tr><td colspan="10" class="empty">A carregar...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
     </div>
 
     <!-- TRANSFERENCIA -->
