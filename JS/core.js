@@ -1314,7 +1314,11 @@ function goTo(page, btn) {
     if (page === 'dashboard') loadDashboard();
     if (page === 'depenses') initDepensesPage();
     if (page === 'historique') loadHist();
-    if (page === 'forn') loadProducts();
+    if (page === 'forn') {
+      loadProducts();
+      renderSupplierDatalists();
+      switchFornTab('cadastro', document.getElementById('forn-tab-cadastro'));
+    }
     if (page === 'clientes') renderClientDatalist();
     if (page === 'tresorerie') loadTresorerie();
     if (page === 'comptabilite') loadComptabilite();
@@ -4359,16 +4363,25 @@ function printReceipt() {
 var achatLines    = [];
 var paiementLines = [];
 
-function switchAchatTab(tab, btn) {
-  ['novo','pagamento','resumo'].forEach(function(t) {
-    document.getElementById('achat-panel-'+t).style.display = 'none';
-    document.getElementById('achat-tab-'+t).classList.remove('active');
+function switchFornTab(tab, btn) {
+  ['cadastro', 'pagamento', 'dividas'].forEach(function(name) {
+    var panel = document.getElementById('forn-panel-' + name);
+    var tabBtn = document.getElementById('forn-tab-' + name);
+
+    if (panel) panel.style.display = name === tab ? 'block' : 'none';
+    if (tabBtn) tabBtn.classList.toggle('active', name === tab);
   });
-  document.getElementById('achat-panel-'+tab).style.display = 'block';
-  btn.classList.add('active');
-  if (tab === 'resumo') loadResumoDettes();
-  if (tab === 'pagamento') document.getElementById('p-date').value = new Date().toISOString().split('T')[0];
-  if (tab === 'novo') { if (!achatLines.length) initAchatLines(); else renderAchatLines(); }
+
+  if (tab === 'pagamento') {
+    var date = document.getElementById('p-date');
+    if (date && !date.value) date.value = new Date().toISOString().split('T')[0];
+    renderSupplierDatalists();
+    updateResteApayerFourn();
+  }
+
+  if (tab === 'dividas') {
+    loadResumoDettes();
+  }
 }
 //MOI-MEME
 function switchVendaTab(tab, btn) {
