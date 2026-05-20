@@ -9401,58 +9401,17 @@ async function upsertSupplierToSupabase(data) {
 
   if (!name) throw new Error("Nome do fornecedor obrigatorio.");
 
-  var existing = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .eq("name", name)
-    .order("created_at", { ascending: false })
-    .limit(1);
+  var result = await supabaseClient.rpc("upsert_supplier_for_org", {
+    p_organization_id: organizationId,
+    p_name: name,
+    p_phone: data.phone || data.tel || "",
+    p_country: data.country || data.pais || "",
+    p_note: data.note || data.nota || ""
+  });
 
-  if (existing.error) throw existing.error;
+  if (result.error) throw result.error;
 
-  var existingSupplier = existing.data && existing.data.length
-    ? existing.data[0]
-    : null;
-
-  if (existingSupplier) {
-    var updateData = {
-      phone: data.phone || data.tel || existingSupplier.phone || "",
-      country: data.country || data.pais || existingSupplier.country || "",
-      note: data.note || data.nota || existingSupplier.note || ""
-    };
-
-    var updateResult = await supabaseClient
-      .from("suppliers")
-      .update(updateData)
-      .eq("id", existingSupplier.id)
-      .select()
-      .limit(1);
-
-    if (updateResult.error) throw updateResult.error;
-
-    return updateResult.data && updateResult.data.length
-      ? updateResult.data[0]
-      : existingSupplier;
-  }
-
-  var insertResult = await supabaseClient
-    .from("suppliers")
-    .insert({
-      organization_id: organizationId,
-      name: name,
-      phone: data.phone || data.tel || "",
-      country: data.country || data.pais || "",
-      note: data.note || data.nota || ""
-    })
-    .select()
-    .limit(1);
-
-  if (insertResult.error) throw insertResult.error;
-
-  return insertResult.data && insertResult.data.length
-    ? insertResult.data[0]
-    : { name: name };
+  return result.data || { name: name };
 }
 async function getSuppliersFromSupabase() {
   var organizationId = getAzulOrganizationId();
