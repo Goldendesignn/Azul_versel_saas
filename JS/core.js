@@ -1316,12 +1316,27 @@ function cleanupLegacyCartFooter() {
 
 // ===== NAVIGATION =====
 function openMobileMenu() {
-  closeMobileCart();
+  if (typeof closeMobileCart === "function") closeMobileCart();
+
+  var achatSummary = document.getElementById("mobileAchatSummary");
+  var achatAddBtn = document.getElementById("mobileAchatAddBtn");
+
+  if (achatSummary) achatSummary.style.display = "none";
+  if (achatAddBtn) achatAddBtn.style.display = "none";
+
   document.body.classList.add("mobile-nav-open");
 }
 
 function closeMobileMenu() {
   document.body.classList.remove("mobile-nav-open");
+
+  if (typeof renderMobileAchatSummary === "function") {
+    renderMobileAchatSummary();
+  }
+
+  if (typeof renderMobileCartBar === "function") {
+    renderMobileCartBar();
+  }
 }
 
 function goTo(page, btn) {
