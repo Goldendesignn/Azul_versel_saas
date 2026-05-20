@@ -272,6 +272,58 @@
     </div>
   </div>
 </div>
+<div class="smart-stock-card">
+  <div class="smart-stock-head">
+    <div>
+      <div class="eyebrow">Stock</div>
+      <h2>Stock intelligent</h2>
+      <p>Valeur, ruptures, alertes et produits dormants.</p>
+    </div>
+    <button class="filter-btn" onclick="goTo('transfert', null)">Voir stock</button>
+  </div>
+
+  <div class="smart-stock-grid">
+    <div class="smart-stock-kpi">
+      <span>Valeur totale stock</span>
+      <strong id="smart-stock-value">0 Kz</strong>
+      <small>Boutique + dépôt</small>
+    </div>
+
+    <div class="smart-stock-kpi red">
+      <span>Produits finis</span>
+      <strong id="smart-stock-out">0</strong>
+      <small>stock total à 0</small>
+    </div>
+
+    <div class="smart-stock-kpi orange">
+      <span>Stock faible</span>
+      <strong id="smart-stock-low">0</strong>
+      <small>sous le minimum</small>
+    </div>
+
+    <div class="smart-stock-kpi">
+      <span>Produits dormants</span>
+      <strong id="smart-stock-dormant">0</strong>
+      <small>pas vendus sur la période</small>
+    </div>
+  </div>
+
+  <div class="smart-stock-body">
+    <div class="smart-stock-list-card">
+      <div class="card-title">Alertes prioritaires</div>
+      <div id="smart-stock-alerts">
+        <div class="empty">A carregar...</div>
+      </div>
+    </div>
+
+    <div class="smart-stock-list-card">
+      <div class="card-title">Produits dormants</div>
+      <div id="smart-stock-dormants">
+        <div class="empty">A carregar...</div>
+      </div>
+    </div>
+  </div>
+</div>
 
       <div class="row2">
         <div class="card">
