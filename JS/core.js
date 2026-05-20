@@ -2704,9 +2704,9 @@ function renderDashboardImportantAlerts(data) {
         '<strong>' + escapeDepenseHtml(alert.title || "Alerte") + '</strong>' +
         '<small>' + escapeDepenseHtml(alert.desc || "") + '</small>' +
       '</div>' +
-      '<button class="important-alert-action" onclick="goTo(\'' + escapeDepenseHtml(alert.page || "dashboard") + '\', null)">' +
-        escapeDepenseHtml(alert.action || "Voir") +
-      '</button>' +
+      '<button class="important-alert-action" aria-label="Voir plus" onclick="goTo(\'' + escapeDepenseHtml(alert.page || "dashboard") + '\', null)">' +
+        '<span>›</span>' +
+    '</button>' +
     '</div>';
   }).join("");
 }
