@@ -4539,3 +4539,35 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     margin: 0 auto;
   }
 }
+@media (max-width: 760px) {
+  .header {
+    height: 64px !important;
+    min-height: 64px !important;
+    padding: 10px 16px !important;
+    display: grid !important;
+    grid-template-columns: 44px 1fr 44px !important;
+    align-items: center !important;
+  }
+
+  .header .date-txt,
+  #dateTxt,
+  .logo small {
+    display: none !important;
+  }
+
+  .header .logo {
+    grid-column: 2 !important;
+    justify-self: center !important;
+    margin: 0 !important;
+    font-size: 30px !important;
+    line-height: 1 !important;
+    letter-spacing: 2px !important;
+    text-align: center !important;
+  }
+
+  .header .mobile-menu-btn {
+    grid-column: 1 !important;
+    justify-self: start !important;
+    position: static !important;
+  }
+}
