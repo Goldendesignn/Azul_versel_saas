@@ -1330,8 +1330,9 @@ function goTo(page, btn) {
       loadOpenConsignations();
       switchRevendeurTab('create', document.getElementById('rev-tab-create'));
     }
-    if (page === 'achat' && typeof renderMobileAchatSummary === 'function') {
-    renderMobileAchatSummary();
+    if (page === 'achat') {
+      switchAchatTab('novo', document.getElementById('achat-tab-novo'));
+      if (typeof renderMobileAchatSummary === 'function') renderMobileAchatSummary();
     }
     if (page === "forn" || page === "achat") {
       renderSupplierDatalists();
@@ -4362,6 +4363,191 @@ function printReceipt() {
 // ===== ACHAT =====
 var achatLines    = [];
 var paiementLines = [];
+var achatHistorySearchTimer = null;
+
+function switchAchatTab(tab, btn) {
+  ["novo", "historico"].forEach(function(name) {
+    var panel = document.getElementById("achat-panel-" + name);
+    var tabBtn = document.getElementById("achat-tab-" + name);
+
+    if (panel) panel.style.display = name === tab ? "block" : "none";
+    if (tabBtn) tabBtn.classList.toggle("active", name === tab);
+  });
+
+  if (tab === "novo" && typeof renderMobileAchatSummary === "function") {
+    renderMobileAchatSummary();
+  }
+
+  if (tab === "historico") {
+    loadAchatHistorique();
+  }
+}
+
+function loadAchatHistoriqueDebounced() {
+  clearTimeout(achatHistorySearchTimer);
+  achatHistorySearchTimer = setTimeout(function() {
+    loadAchatHistorique();
+  }, 250);
+}
+
+async function getAchatHistoriqueFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var from = document.getElementById("achatHistFrom") ? document.getElementById("achatHistFrom").value : "";
+  var to = document.getElementById("achatHistTo") ? document.getElementById("achatHistTo").value : "";
+  var search = document.getElementById("achatHistSearch") ? document.getElementById("achatHistSearch").value.trim().toLowerCase() : "";
+
+  var query = supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (from) query = query.gte("created_at", from + "T00:00:00");
+  if (to) query = query.lte("created_at", to + "T23:59:59");
+
+  var purchasesResult = await query;
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  var purchases = purchasesResult.data || [];
+  if (!purchases.length) return { rows: [], summary: { total: 0, paid: 0, debt: 0, qty: 0, count: 0 } };
+
+  var purchaseById = {};
+  purchases.forEach(function(purchase) {
+    purchaseById[purchase.id] = purchase;
+  });
+
+  var items = await fetchPurchaseItemsByPurchaseIds(purchases.map(function(purchase) {
+    return purchase.id;
+  }));
+
+  var rows = [];
+
+  items.forEach(function(item) {
+    var purchase = purchaseById[item.purchase_id] || {};
+    var qty = Number(item.quantity) || 0;
+    var unit = Number(item.purchase_price) || 0;
+    var lineTotal = qty * unit;
+
+    var row = {
+      date: String(purchase.created_at || "").slice(0, 10),
+      supplier: purchase.supplier || item.supplier || "",
+      product: item.product_name || "",
+      code: item.code || "",
+      variation: item.variation || "",
+      qty: qty,
+      unit: unit,
+      total: lineTotal,
+      paid: Number(purchase.paid_amount) || 0,
+      debt: Number(purchase.remaining_amount) || 0,
+      purchaseTotal: Number(purchase.total) || 0,
+      purchaseId: purchase.id || ""
+    };
+
+    rows.push(row);
+  });
+
+  if (search) {
+    rows = rows.filter(function(row) {
+      return (
+        String(row.supplier || "").toLowerCase().indexOf(search) >= 0 ||
+        String(row.product || "").toLowerCase().indexOf(search) >= 0 ||
+        String(row.code || "").toLowerCase().indexOf(search) >= 0 ||
+        String(row.variation || "").toLowerCase().indexOf(search) >= 0
+      );
+    });
+  }
+
+  var purchaseSeen = {};
+  var summary = { total: 0, paid: 0, debt: 0, qty: 0, count: 0 };
+
+  rows.forEach(function(row) {
+    summary.qty += Number(row.qty) || 0;
+
+    if (!purchaseSeen[row.purchaseId]) {
+      purchaseSeen[row.purchaseId] = true;
+      summary.total += Number(row.purchaseTotal) || 0;
+      summary.paid += Number(row.paid) || 0;
+      summary.debt += Number(row.debt) || 0;
+      summary.count += 1;
+    }
+  });
+
+  return { rows: rows, summary: summary };
+}
+
+async function loadAchatHistorique() {
+  var body = document.getElementById("achatHistoryBody");
+  var cards = document.getElementById("achatHistoryCards");
+
+  if (body) body.innerHTML = '<tr><td colspan="10" class="empty">A carregar...</td></tr>';
+  if (cards) cards.innerHTML = '<div class="empty">A carregar...</div>';
+
+  try {
+    var data = await getAchatHistoriqueFromSupabase();
+    var rows = data.rows || [];
+    var summary = data.summary || {};
+
+    document.getElementById("achatHistTotal").textContent = fmt(summary.total || 0);
+    document.getElementById("achatHistPaid").textContent = fmt(summary.paid || 0);
+    document.getElementById("achatHistDebt").textContent = fmt(summary.debt || 0);
+    document.getElementById("achatHistQty").textContent = new Intl.NumberFormat(getLocale()).format(summary.qty || 0);
+    document.getElementById("achatHistCount").textContent = (summary.count || 0) + " achats";
+
+    if (!rows.length) {
+      if (body) body.innerHTML = '<tr><td colspan="10" class="empty">Aucun achat trouvé</td></tr>';
+      if (cards) cards.innerHTML = '<div class="empty">Aucun achat trouvé</div>';
+      return;
+    }
+
+    if (body) {
+      body.innerHTML = rows.map(function(row) {
+        return '<tr>' +
+          '<td>' + escapeDepenseHtml(row.date) + '</td>' +
+          '<td>' + escapeDepenseHtml(row.supplier) + '</td>' +
+          '<td>' + escapeDepenseHtml(row.product) + '</td>' +
+          '<td>' + escapeDepenseHtml(row.code || "-") + '</td>' +
+          '<td>' + escapeDepenseHtml(row.variation || "-") + '</td>' +
+          '<td>' + row.qty + '</td>' +
+          '<td>' + fmt(row.unit) + '</td>' +
+          '<td>' + fmt(row.total) + '</td>' +
+          '<td>' + fmt(row.paid) + '</td>' +
+          '<td>' + fmt(row.debt) + '</td>' +
+        '</tr>';
+      }).join("");
+    }
+
+    if (cards) {
+      cards.innerHTML = rows.map(function(row) {
+        return '<div class="achat-history-card">' +
+          '<div class="achat-history-card-top">' +
+            '<div>' +
+              '<strong>' + escapeDepenseHtml(row.product) + '</strong>' +
+              '<span>' + escapeDepenseHtml(row.supplier || "Fornecedor") + '</span>' +
+            '</div>' +
+            '<b>' + fmt(row.total) + '</b>' +
+          '</div>' +
+          '<div class="achat-history-card-meta">' +
+            '<span>' + escapeDepenseHtml(row.date) + '</span>' +
+            '<span>Qtd: ' + row.qty + '</span>' +
+            '<span>P. Achat: ' + fmt(row.unit) + '</span>' +
+          '</div>' +
+          '<div class="achat-history-card-meta">' +
+            '<span>Code: ' + escapeDepenseHtml(row.code || "-") + '</span>' +
+            '<span>Var: ' + escapeDepenseHtml(row.variation || "-") + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join("");
+    }
+
+  } catch (e) {
+    console.error("Erro historico achat:", e);
+    if (body) body.innerHTML = '<tr><td colspan="10" class="empty">Erro ao carregar histórico</td></tr>';
+    if (cards) cards.innerHTML = '<div class="empty">Erro ao carregar histórico</div>';
+    toast("Erro histórico achat: " + (e.message || e), "error");
+  }
+}
 
 function switchFornTab(tab, btn) {
   ["fiche", "cadastro", "pagamento", "dividas"].forEach(function(name) {
@@ -4723,6 +4909,9 @@ async function saveAchat() {
 
     initAchatLines();
     await loadProducts(true);
+    if (document.getElementById("achat-panel-historico") && document.getElementById("achat-panel-historico").style.display !== "none") {
+      loadAchatHistorique();
+    }
 
   } catch (e) {
     console.error("Erro Supabase achat:", e);
