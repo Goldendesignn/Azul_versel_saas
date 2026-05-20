@@ -939,6 +939,7 @@ var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
   };
 });
   var quickTreasury = await getDashboardQuickTreasuryFromSupabase();
+  var debts = await getDashboardDebtsFromSupabase();
 
 return {
   vendasHoje: totalVendas,
@@ -952,7 +953,8 @@ return {
   totalDepenses: totalDepenses,
   depensesCount: expenseRows.length,
   depenses: latestDepenses,
-  quickTreasury: quickTreasury
+  quickTreasury: quickTreasury,
+  debts: debts
 };
 }
 
@@ -1868,6 +1870,150 @@ function renderDashboardQuickTreasury(data, pagamentos) {
     '</div>';
   }).join("");
 }
+
+async function getDashboardDebtsFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var clientResult = await supabaseClient
+    .from("client_debts")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gt("remaining_amount", 0)
+    .order("created_at", { ascending: false });
+
+  if (clientResult.error) throw clientResult.error;
+
+  var supplierResult = await supabaseClient
+    .from("purchases")
+    .select("id,supplier,total,paid_amount,remaining_amount,created_at")
+    .eq("organization_id", organizationId)
+    .gt("remaining_amount", 0)
+    .order("created_at", { ascending: false });
+
+  if (supplierResult.error) throw supplierResult.error;
+
+  var clientMap = {};
+  var supplierMap = {};
+
+  (clientResult.data || []).forEach(function(row) {
+    var name = String(row.client_name || "Cliente").trim();
+
+    if (!clientMap[name]) {
+      clientMap[name] = {
+        name: name,
+        total: 0,
+        count: 0
+      };
+    }
+
+    clientMap[name].total += Number(row.remaining_amount) || 0;
+    clientMap[name].count += 1;
+  });
+
+  (supplierResult.data || []).forEach(function(row) {
+    var name = String(row.supplier || "Fornecedor").trim();
+
+    if (!supplierMap[name]) {
+      supplierMap[name] = {
+        name: name,
+        total: 0,
+        count: 0
+      };
+    }
+
+    supplierMap[name].total += Number(row.remaining_amount) || 0;
+    supplierMap[name].count += 1;
+  });
+
+  var clients = Object.keys(clientMap).map(function(key) {
+    return clientMap[key];
+  }).sort(function(a, b) {
+    return b.total - a.total;
+  });
+
+  var suppliers = Object.keys(supplierMap).map(function(key) {
+    return supplierMap[key];
+  }).sort(function(a, b) {
+    return b.total - a.total;
+  });
+
+  var clientTotal = clients.reduce(function(sum, row) {
+    return sum + (Number(row.total) || 0);
+  }, 0);
+
+  var supplierTotal = suppliers.reduce(function(sum, row) {
+    return sum + (Number(row.total) || 0);
+  }, 0);
+
+  return {
+    clientTotal: clientTotal,
+    supplierTotal: supplierTotal,
+    net: clientTotal - supplierTotal,
+    clientCount: clients.length,
+    supplierCount: suppliers.length,
+    openCount: clients.length + suppliers.length,
+    clients: clients.slice(0, 6),
+    suppliers: suppliers.slice(0, 6)
+  };
+}
+
+function renderDashboardDebts(data) {
+  data = data || {};
+
+  var clientTotal = document.getElementById("debt-client-total");
+  var supplierTotal = document.getElementById("debt-supplier-total");
+  var net = document.getElementById("debt-net");
+  var clientCount = document.getElementById("debt-client-count");
+  var supplierCount = document.getElementById("debt-supplier-count");
+  var openCount = document.getElementById("debt-open-count");
+
+  if (clientTotal) clientTotal.textContent = fmt(data.clientTotal || 0);
+  if (supplierTotal) supplierTotal.textContent = fmt(data.supplierTotal || 0);
+  if (net) {
+    net.textContent = fmt(data.net || 0);
+    net.style.color = (Number(data.net) || 0) < 0 ? "var(--red)" : "var(--green)";
+  }
+
+  if (clientCount) clientCount.textContent = (data.clientCount || 0) + " clients";
+  if (supplierCount) supplierCount.textContent = (data.supplierCount || 0) + " fournisseurs";
+  if (openCount) openCount.textContent = data.openCount || 0;
+
+  var clientList = document.getElementById("debt-client-list");
+  var supplierList = document.getElementById("debt-supplier-list");
+
+  if (clientList) {
+    if (!data.clients || !data.clients.length) {
+      clientList.innerHTML = '<div class="empty">Aucune dette client</div>';
+    } else {
+      clientList.innerHTML = data.clients.map(function(row) {
+        return '<div class="debt-row">' +
+          '<div>' +
+            '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
+            '<small>' + (row.count || 0) + ' dette(s)</small>' +
+          '</div>' +
+          '<span class="green">' + fmt(row.total || 0) + '</span>' +
+        '</div>';
+      }).join("");
+    }
+  }
+
+  if (supplierList) {
+    if (!data.suppliers || !data.suppliers.length) {
+      supplierList.innerHTML = '<div class="empty">Aucune dette fournisseur</div>';
+    } else {
+      supplierList.innerHTML = data.suppliers.map(function(row) {
+        return '<div class="debt-row">' +
+          '<div>' +
+            '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
+            '<small>' + (row.count || 0) + ' achat(s)</small>' +
+          '</div>' +
+          '<span class="red">' + fmt(row.total || 0) + '</span>' +
+        '</div>';
+      }).join("");
+    }
+  }
+}
+
 var lastDashboardData = null;
 var lastDashboardFilters = null;
 var dashboardRequestSeq = 0;
@@ -1882,6 +2028,7 @@ function renderDashboardData(d) {
   document.getElementById('k-depenses').textContent = fmt(d.totalDepenses);
   document.getElementById('k-depenses-n').textContent = (d.depensesCount||0) + ' registos';
   renderDashboardQuickTreasury(d.quickTreasury, d.pagamentos || {});
+  renderDashboardDebts(d.debts);
 
   var el = document.getElementById('top-list');
   el.innerHTML = '';
