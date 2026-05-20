@@ -4748,3 +4748,48 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     height: 22px !important;
   }
 }
+
+/* Panier mobile aux couleurs du theme choisi - compatible */
+@media (max-width: 820px) {
+  .mobile-cart-bar,
+  .mobile-payment-type button.active,
+  .mobile-checkout-btn,
+  .mobile-cart-img-empty {
+    background: var(--blue) !important;
+    color: #fff !important;
+  }
+
+  .mobile-cart-page {
+    background: var(--bg) !important;
+  }
+
+  .mobile-cart-head {
+    background: var(--surface) !important;
+  }
+
+  .mobile-cart-title,
+  .mobile-cart-price,
+  .mobile-total-row strong,
+  .mobile-add-pay,
+  .mobile-cart-qty button {
+    color: var(--blue) !important;
+  }
+
+  .mobile-cart-qty button,
+  .mobile-add-pay {
+    background: var(--surface2) !important;
+  }
+
+  .mobile-add-pay {
+    border-color: var(--border) !important;
+  }
+
+  .mobile-cart-img {
+    background: var(--surface2) !important;
+  }
+
+  .mobile-cart-img-empty {
+    background: var(--blue) !important;
+    border: 0 !important;
+  }
+}
