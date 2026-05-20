@@ -163,7 +163,7 @@
   </div>
 </div>
 
-      <div class="debt-dashboard-card">
+<div class="debt-dashboard-card">
   <div class="debt-dashboard-head">
     <div>
       <div class="eyebrow">Dettes</div>
@@ -213,6 +213,60 @@
     <div class="debt-list-card">
       <div class="card-title">Fournisseurs à payer</div>
       <div id="debt-supplier-list">
+        <div class="empty">A carregar...</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="purchase-dashboard-card">
+  <div class="purchase-dashboard-head">
+    <div>
+      <div class="eyebrow">Achats</div>
+      <h2>Vue achats</h2>
+      <p>Suivi des achats, fournisseurs et crédits.</p>
+    </div>
+    <div class="purchase-actions">
+      <button class="filter-btn" onclick="goTo('achat', null)">Nouvel achat</button>
+      <button class="filter-btn" onclick="goTo('forn', null)">Fournisseurs</button>
+    </div>
+  </div>
+
+  <div class="purchase-kpi-grid">
+    <div class="purchase-kpi">
+      <span>Achats aujourd’hui</span>
+      <strong id="dash-purchase-today">0 Kz</strong>
+      <small id="dash-purchase-today-count">0 achats</small>
+    </div>
+
+    <div class="purchase-kpi">
+      <span>Achats du mois</span>
+      <strong id="dash-purchase-month">0 Kz</strong>
+      <small id="dash-purchase-month-count">0 achats</small>
+    </div>
+
+    <div class="purchase-kpi red">
+      <span>Achats à crédit</span>
+      <strong id="dash-purchase-credit">0 Kz</strong>
+      <small id="dash-purchase-credit-count">0 dossiers</small>
+    </div>
+
+    <div class="purchase-kpi red">
+      <span>Dette fournisseurs</span>
+      <strong id="dash-purchase-debt">0 Kz</strong>
+      <small>Reste à payer</small>
+    </div>
+  </div>
+
+  <div class="purchase-dashboard-body">
+    <div class="purchase-main-supplier">
+      <span>Fournisseur principal</span>
+      <strong id="dash-main-supplier">-</strong>
+      <small id="dash-main-supplier-total">0 Kz</small>
+    </div>
+
+    <div class="purchase-latest-card">
+      <div class="card-title">Derniers achats</div>
+      <div id="dash-latest-purchases">
         <div class="empty">A carregar...</div>
       </div>
     </div>
