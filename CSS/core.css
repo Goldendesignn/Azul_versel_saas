@@ -13,7 +13,9 @@
   --orange: #e08c3a;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
 html, body {
   width: 100%;
   height: 100%;
@@ -22,6 +24,7 @@ html, body {
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   overflow: hidden;
+  
 }
 
 /*  LAYOUT  */
@@ -4915,4 +4918,46 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     place-items: center !important;
     padding: 0 !important;
   }
+}
+/* Police simple et pro */
+body,
+button,
+input,
+select,
+textarea,
+.kpi,
+.card,
+.logo,
+.r-logo,
+.mobile-cart-title,
+.mobile-achat-summary,
+.data-table,
+.form-input,
+.filter-input {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
+.logo {
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+.kpi-val,
+.quick-treasury-main strong,
+.debt-kpi strong,
+.purchase-kpi strong,
+.smart-stock-kpi strong,
+.sales-performance-kpi strong,
+.accounting-summary-kpi strong,
+.important-alerts-kpi strong {
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+.card-title,
+.section-title,
+.mobile-cart-title,
+.mobile-achat-summary-total {
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
 }
