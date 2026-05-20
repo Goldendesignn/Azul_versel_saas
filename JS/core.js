@@ -1316,6 +1316,7 @@ function cleanupLegacyCartFooter() {
 
 // ===== NAVIGATION =====
 function openMobileMenu() {
+  closeMobileCart();
   document.body.classList.add("mobile-nav-open");
 }
 
