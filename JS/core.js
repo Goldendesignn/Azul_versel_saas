@@ -940,6 +940,7 @@ var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
 });
   var quickTreasury = await getDashboardQuickTreasuryFromSupabase();
   var debts = await getDashboardDebtsFromSupabase();
+  var purchases = await getDashboardPurchasesFromSupabase();
 
 return {
   vendasHoje: totalVendas,
@@ -954,7 +955,8 @@ return {
   depensesCount: expenseRows.length,
   depenses: latestDepenses,
   quickTreasury: quickTreasury,
-  debts: debts
+  debts: debts,
+  purchases: purchases
 };
 }
 
@@ -2014,6 +2016,144 @@ function renderDashboardDebts(data) {
   }
 }
 
+async function getDashboardPurchasesFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var now = new Date();
+  var today = localDateKey(now);
+  var monthStart = localDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+
+  var result = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(300);
+
+  if (result.error) throw result.error;
+
+  var rows = result.data || [];
+
+  var todayRows = rows.filter(function(row) {
+    return String(row.created_at || "").slice(0, 10) === today;
+  });
+
+  var monthRows = rows.filter(function(row) {
+    var date = String(row.created_at || "").slice(0, 10);
+    return date >= monthStart && date <= today;
+  });
+
+  var creditRows = rows.filter(function(row) {
+    return (Number(row.remaining_amount) || 0) > 0;
+  });
+
+  var todayTotal = todayRows.reduce(function(sum, row) {
+    return sum + (Number(row.total) || 0);
+  }, 0);
+
+  var monthTotal = monthRows.reduce(function(sum, row) {
+    return sum + (Number(row.total) || 0);
+  }, 0);
+
+  var creditTotal = creditRows.reduce(function(sum, row) {
+    return sum + (Number(row.remaining_amount) || 0);
+  }, 0);
+
+  var supplierMap = {};
+
+  monthRows.forEach(function(row) {
+    var supplier = String(row.supplier || "Fornecedor").trim();
+
+    if (!supplierMap[supplier]) {
+      supplierMap[supplier] = {
+        name: supplier,
+        total: 0,
+        count: 0
+      };
+    }
+
+    supplierMap[supplier].total += Number(row.total) || 0;
+    supplierMap[supplier].count += 1;
+  });
+
+  var suppliers = Object.keys(supplierMap).map(function(key) {
+    return supplierMap[key];
+  }).sort(function(a, b) {
+    return b.total - a.total;
+  });
+
+  var mainSupplier = suppliers[0] || {
+    name: "-",
+    total: 0,
+    count: 0
+  };
+
+  var latest = rows.slice(0, 6).map(function(row) {
+    return {
+      date: String(row.created_at || "").slice(0, 10),
+      supplier: row.supplier || "Fornecedor",
+      total: Number(row.total) || 0,
+      paid: Number(row.paid_amount) || 0,
+      debt: Number(row.remaining_amount) || 0
+    };
+  });
+
+  return {
+    todayTotal: todayTotal,
+    todayCount: todayRows.length,
+    monthTotal: monthTotal,
+    monthCount: monthRows.length,
+    creditTotal: creditTotal,
+    creditCount: creditRows.length,
+    debtTotal: creditTotal,
+    mainSupplier: mainSupplier,
+    latest: latest
+  };
+}
+
+function renderDashboardPurchases(data) {
+  data = data || {};
+
+  var set = function(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  set("dash-purchase-today", fmt(data.todayTotal || 0));
+  set("dash-purchase-today-count", (data.todayCount || 0) + " achats");
+
+  set("dash-purchase-month", fmt(data.monthTotal || 0));
+  set("dash-purchase-month-count", (data.monthCount || 0) + " achats");
+
+  set("dash-purchase-credit", fmt(data.creditTotal || 0));
+  set("dash-purchase-credit-count", (data.creditCount || 0) + " dossiers");
+
+  set("dash-purchase-debt", fmt(data.debtTotal || 0));
+
+  set("dash-main-supplier", (data.mainSupplier && data.mainSupplier.name) || "-");
+  set("dash-main-supplier-total", fmt((data.mainSupplier && data.mainSupplier.total) || 0));
+
+  var latest = document.getElementById("dash-latest-purchases");
+  if (!latest) return;
+
+  if (!data.latest || !data.latest.length) {
+    latest.innerHTML = '<div class="empty">Aucun achat trouvé</div>';
+    return;
+  }
+
+  latest.innerHTML = data.latest.map(function(row) {
+    return '<div class="purchase-row">' +
+      '<div>' +
+        '<strong>' + escapeDepenseHtml(row.supplier || "Fornecedor") + '</strong>' +
+        '<small>' + escapeDepenseHtml(row.date || "") + '</small>' +
+      '</div>' +
+      '<div class="purchase-row-money">' +
+        '<strong>' + fmt(row.total || 0) + '</strong>' +
+        '<small>Reste: ' + fmt(row.debt || 0) + '</small>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
 var lastDashboardData = null;
 var lastDashboardFilters = null;
 var dashboardRequestSeq = 0;
@@ -2029,6 +2169,7 @@ function renderDashboardData(d) {
   document.getElementById('k-depenses-n').textContent = (d.depensesCount||0) + ' registos';
   renderDashboardQuickTreasury(d.quickTreasury, d.pagamentos || {});
   renderDashboardDebts(d.debts);
+  renderDashboardPurchases(d.purchases);
 
   var el = document.getElementById('top-list');
   el.innerHTML = '';
