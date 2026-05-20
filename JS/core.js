@@ -4753,6 +4753,94 @@ function returnRevConsignation() {
   confirmSelectedRevReturn();
 }
 
+function renderMobileRevHistory(rows) {
+  var list = ensureMobileList("revHistoryBody", "mobileRevHistoryList");
+  if (!list) return;
+
+  rows = rows || [];
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Aucun historique revendeur</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(row) {
+    var status = row.status || "-";
+    var statusText = String(status).toLowerCase();
+
+    var pillClass = "open";
+    if (statusText.indexOf("pay") >= 0 || statusText.indexOf("pago") >= 0) pillClass = "paid";
+    if (statusText.indexOf("retour") >= 0 || statusText.indexOf("return") >= 0) pillClass = "returned";
+
+    return '' +
+      '<div class="mobile-rev-history-card">' +
+        '<div class="mobile-card-top">' +
+          '<div>' +
+            '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.id || "-") + '</div>' +
+            '<div class="mobile-card-title">' + escapeDepenseHtml(row.revendeur || "Revendeur") + '</div>' +
+            '<div class="mobile-card-sub">' + escapeDepenseHtml(row.actionDate || row.date || "") + '</div>' +
+            '<div class="mobile-card-sub">' + escapeDepenseHtml(row.itemsSummary || "") + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<div class="mobile-card-amount">' + fmt(row.total || 0) + '</div>' +
+            '<div class="mobile-rev-pill ' + pillClass + '">' + escapeDepenseHtml(status) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="mobile-rev-extra">' +
+          '<span>Paiement: ' + escapeDepenseHtml(row.payment || "-") + '</span>' +
+          '<span>Recu: ' + escapeDepenseHtml(row.recibo || "-") + '</span>' +
+        '</div>' +
+      '</div>';
+  }).join("");
+}
+
+async function loadRevHistory() {
+  var body = document.getElementById("revHistoryBody");
+  if (!body) return;
+
+  body.innerHTML = '<tr><td colspan="8" class="empty">A carregar...</td></tr>';
+  renderMobileRevHistory([]);
+
+  try {
+    var list = await getResellerHistoryFromSupabase({
+      revendeur: document.getElementById("rev-history-name").value.trim(),
+      from: document.getElementById("rev-history-from").value,
+      to: document.getElementById("rev-history-to").value
+    });
+
+    list = list || [];
+
+    if (!list.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty">Nenhum historique encontrado</td></tr>';
+      renderMobileRevHistory([]);
+      return;
+    }
+
+    renderMobileRevHistory(list);
+
+    body.innerHTML = "";
+
+    list.forEach(function(row) {
+      body.innerHTML += "<tr>" +
+        "<td>" + escapeDepenseHtml(row.id || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.actionDate || row.date || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.revendeur || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.status || "") + "</td>" +
+        '<td style="font-size:11px;line-height:1.4;">' + escapeDepenseHtml(row.itemsSummary || "") + "</td>" +
+        '<td style="color:var(--blue);font-weight:600;">' + fmt(row.total || 0) + "</td>" +
+        "<td>" + escapeDepenseHtml(row.payment || "-") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.recibo || "-") + "</td>" +
+      "</tr>";
+    });
+
+  } catch (e) {
+    console.error("Erro historique revendeur:", e);
+    body.innerHTML = '<tr><td colspan="8" class="empty">Erro ao carregar historique</td></tr>';
+    renderMobileRevHistory([]);
+    toast("Erro historique revendeur: " + (e.message || e), "error");
+  }
+}
+
 async function loadRevHistory() {
   var body = document.getElementById("revHistoryBody");
   if (!body) return;
