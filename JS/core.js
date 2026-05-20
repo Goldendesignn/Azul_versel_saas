@@ -5101,7 +5101,18 @@ function closeMobileCart() {
 
 function setMobileSaleType(type) {
   selectedType = type;
-  renderMobileCartPage();
+
+  document.querySelectorAll(".mobile-payment-type button").forEach(function(btn) {
+    btn.classList.remove("active");
+  });
+
+  var buttons = document.querySelectorAll(".mobile-payment-type button");
+
+  if (type === "Externo") {
+    if (buttons[1]) buttons[1].classList.add("active");
+  } else {
+    if (buttons[0]) buttons[0].classList.add("active");
+  }
 }
 
 function updateMobilePaymentLine(index, field, value) {
@@ -5192,8 +5203,8 @@ function renderMobileCartPage() {
       itemsHtml +
       '<div class="mobile-payment-card">' +
         '<div class="mobile-payment-type">' +
-          '<button class="' + (selectedType !== "Externo" ? "active" : "") + '" onclick="setMobileSaleType(\'interno\')">Interne</button>' +
-          '<button class="' + (selectedType === "Externo" ? "active" : "") + '" onclick="setMobileSaleType(\'Externo\')">Externe</button>' +
+         '<button type="button" class="' + (selectedType !== "Externo" ? "active" : "") + '" onclick="event.preventDefault(); setMobileSaleType(\'interno\')">Interne</button>' +
+'<button type="button" class="' + (selectedType === "Externo" ? "active" : "") + '" onclick="event.preventDefault(); setMobileSaleType(\'Externo\')">Externe</button>' +
         '</div>' +
         paymentHtml +
         '<button class="mobile-add-pay" onclick="addMobilePaymentLine()">+ Ajouter moyen de paiement</button>' +
