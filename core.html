@@ -101,6 +101,68 @@
         </div>
       </div>
 
+      <div class="quick-treasury-card">
+  <div class="quick-treasury-head">
+    <div>
+      <div class="eyebrow">Tresorerie</div>
+      <h2>Trésorerie rapide</h2>
+    </div>
+    <button class="filter-btn" onclick="loadDashboard()">Actualiser</button>
+  </div>
+
+  <div class="quick-treasury-grid">
+    <div class="quick-treasury-main">
+      <span>Solde disponible</span>
+      <strong id="qt-balance">0 Kz</strong>
+      <small id="qt-balance-sub">Entrées - sorties</small>
+    </div>
+
+    <div class="quick-treasury-mini green">
+      <span>Entrées aujourd’hui</span>
+      <strong id="qt-today-in">0 Kz</strong>
+    </div>
+
+    <div class="quick-treasury-mini red">
+      <span>Sorties aujourd’hui</span>
+      <strong id="qt-today-out">0 Kz</strong>
+    </div>
+
+    <div class="quick-treasury-mini green">
+      <span>Entrées du mois</span>
+      <strong id="qt-month-in">0 Kz</strong>
+    </div>
+
+    <div class="quick-treasury-mini red">
+      <span>Sorties du mois</span>
+      <strong id="qt-month-out">0 Kz</strong>
+    </div>
+
+    <div class="quick-treasury-mini">
+      <span>Résultat du mois</span>
+      <strong id="qt-month-net">0 Kz</strong>
+    </div>
+  </div>
+
+  <div class="quick-payment-strip">
+    <div>
+      <span>Cash</span>
+      <strong id="qt-cash">0 Kz</strong>
+    </div>
+    <div>
+      <span>Express</span>
+      <strong id="qt-express">0 Kz</strong>
+    </div>
+    <div>
+      <span>Cartão</span>
+      <strong id="qt-card">0 Kz</strong>
+    </div>
+  </div>
+
+  <div class="quick-treasury-list" id="qt-latest">
+    <div class="empty">A carregar mouvements...</div>
+  </div>
+</div>
+
       <div class="row2">
         <div class="card">
           <div class="card-title"> Top Produtos</div>
