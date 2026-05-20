@@ -5144,10 +5144,13 @@ function renderMobileCartPage() {
     : cart.map(function(item, index) {
         var product = (products || []).find(function(p) { return p.name === item.name; }) || {};
         var img = product.photo || "";
-
+        var imgHtml = img
+          ? '<img class="mobile-cart-img" src="' + escapeDepenseHtml(img) + '" alt="">'
+          : '<div class="mobile-cart-img mobile-cart-img-empty"></div>';
+        
         return '<div class="mobile-cart-item">' +
           '<div class="mobile-cart-item-main">' +
-            '<img class="mobile-cart-img" src="' + img + '" alt="">' +
+            imgHtml +
             '<div>' +
               '<div class="mobile-cart-name">' + escapeDepenseHtml(getItemDisplayName(item)) + '</div>' +
               '<div class="mobile-cart-sub">Stock boutique: ' + (item.stock || 0) + ' un</div>' +
