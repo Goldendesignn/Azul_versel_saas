@@ -1804,7 +1804,11 @@ async function getDashboardQuickTreasuryFromSupabase() {
   var today = localDateKey(now);
   var monthStart = localDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
 
-  var allTreasury = await getTreasuryFromSupabase({});
+  var allTreasury = await getTreasuryFromSupabase({
+  from: monthStart,
+  to: today,
+  limit: 5
+    });
   var entries = allTreasury.entries || [];
 
   var todaySummary = summarizeTreasuryEntries(entries, today, today);
@@ -2359,11 +2363,11 @@ async function loadDashboard() {
 
   setDashboardFilterLoading(true);
 
-  dashboardLoadingTimer = setTimeout(function() {
-    if (requestId !== dashboardRequestSeq) return;
-    setDashboardFilterLoading(false);
-    toast("Dashboard demorou demasiado para responder.", "error");
-  }, 10000);
+dashboardLoadingTimer = setTimeout(function() {
+  if (requestId !== dashboardRequestSeq) return;
+  setDashboardFilterLoading(false);
+  toast("Dashboard encore en chargement...", "info");
+}, 30000);
 
   try {
     var data = await getDashboardDataFromSupabase(filters);
