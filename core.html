@@ -101,7 +101,7 @@
         </div>
       </div>
 
-      <div class="quick-treasury-card">
+  <div class="quick-treasury-card">
   <div class="quick-treasury-head">
     <div>
       <div class="eyebrow">Tresorerie</div>
@@ -160,6 +160,62 @@
 
   <div class="quick-treasury-list" id="qt-latest">
     <div class="empty">A carregar mouvements...</div>
+  </div>
+</div>
+
+      <div class="debt-dashboard-card">
+  <div class="debt-dashboard-head">
+    <div>
+      <div class="eyebrow">Dettes</div>
+      <h2>Situation des dettes</h2>
+      <p>Clients à recevoir et fournisseurs à payer.</p>
+    </div>
+    <div class="debt-actions">
+      <button class="filter-btn" onclick="goTo('clientes', null)">Clients</button>
+      <button class="filter-btn" onclick="goTo('forn', null)">Fournisseurs</button>
+    </div>
+  </div>
+
+  <div class="debt-kpi-grid">
+    <div class="debt-kpi green">
+      <span>Clients à recevoir</span>
+      <strong id="debt-client-total">0 Kz</strong>
+      <small id="debt-client-count">0 clients</small>
+    </div>
+
+    <div class="debt-kpi red">
+      <span>Fournisseurs à payer</span>
+      <strong id="debt-supplier-total">0 Kz</strong>
+      <small id="debt-supplier-count">0 fournisseurs</small>
+    </div>
+
+    <div class="debt-kpi">
+      <span>Solde net</span>
+      <strong id="debt-net">0 Kz</strong>
+      <small>À recevoir - à payer</small>
+    </div>
+
+    <div class="debt-kpi">
+      <span>Dossiers ouverts</span>
+      <strong id="debt-open-count">0</strong>
+      <small>clients + fournisseurs</small>
+    </div>
+  </div>
+
+  <div class="debt-lists">
+    <div class="debt-list-card">
+      <div class="card-title">Clients débiteurs</div>
+      <div id="debt-client-list">
+        <div class="empty">A carregar...</div>
+      </div>
+    </div>
+
+    <div class="debt-list-card">
+      <div class="card-title">Fournisseurs à payer</div>
+      <div id="debt-supplier-list">
+        <div class="empty">A carregar...</div>
+      </div>
+    </div>
   </div>
 </div>
 
