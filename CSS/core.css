@@ -4399,3 +4399,117 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 760px) {
+  #page-dashboard .kpi-grid,
+  #page-dashboard .quick-treasury-grid,
+  #page-dashboard .debt-kpi-grid,
+  #page-dashboard .purchase-kpi-grid,
+  #page-dashboard .smart-stock-grid,
+  #page-dashboard .sales-performance-grid,
+  #page-dashboard .sales-performance-body,
+  #page-dashboard .accounting-summary-grid,
+  #page-dashboard .accounting-balance-grid,
+  #page-dashboard .important-alerts-grid,
+  #page-dashboard .row2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  #page-dashboard .quick-payment-strip,
+  #page-dashboard .debt-lists,
+  #page-dashboard .purchase-dashboard-body,
+  #page-dashboard .smart-stock-body,
+  #page-dashboard .sales-performance-lists,
+  #page-dashboard .accounting-summary-body {
+    grid-template-columns: 1fr !important;
+  }
+
+  #page-dashboard .kpi,
+  #page-dashboard .quick-treasury-mini,
+  #page-dashboard .debt-kpi,
+  #page-dashboard .purchase-kpi,
+  #page-dashboard .smart-stock-kpi,
+  #page-dashboard .sales-performance-kpi,
+  #page-dashboard .sales-performance-highlight,
+  #page-dashboard .accounting-summary-kpi,
+  #page-dashboard .accounting-balance-grid div,
+  #page-dashboard .important-alerts-kpi {
+    padding: 11px !important;
+    min-width: 0;
+  }
+
+  #page-dashboard .quick-treasury-main {
+    grid-column: 1 / -1;
+    padding: 14px !important;
+  }
+
+  #page-dashboard .kpi-val,
+  #page-dashboard .quick-treasury-main strong,
+  #page-dashboard .quick-treasury-mini strong,
+  #page-dashboard .debt-kpi strong,
+  #page-dashboard .purchase-kpi strong,
+  #page-dashboard .smart-stock-kpi strong,
+  #page-dashboard .sales-performance-kpi strong,
+  #page-dashboard .sales-performance-highlight strong,
+  #page-dashboard .accounting-summary-kpi strong,
+  #page-dashboard .accounting-balance-grid strong,
+  #page-dashboard .important-alerts-kpi strong {
+    font-size: 16px !important;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  #page-dashboard .kpi-label,
+  #page-dashboard .quick-treasury-mini span,
+  #page-dashboard .debt-kpi span,
+  #page-dashboard .purchase-kpi span,
+  #page-dashboard .smart-stock-kpi span,
+  #page-dashboard .sales-performance-kpi span,
+  #page-dashboard .sales-performance-highlight span,
+  #page-dashboard .accounting-summary-kpi span,
+  #page-dashboard .important-alerts-kpi span {
+    font-size: 9px !important;
+  }
+
+  #page-dashboard .kpi-sub,
+  #page-dashboard .quick-treasury-mini small,
+  #page-dashboard .debt-kpi small,
+  #page-dashboard .purchase-kpi small,
+  #page-dashboard .smart-stock-kpi small,
+  #page-dashboard .sales-performance-kpi small,
+  #page-dashboard .accounting-summary-kpi small,
+  #page-dashboard .important-alerts-kpi small {
+    font-size: 10px !important;
+  }
+}
+@media (max-width: 760px) {
+  #page-dashboard .dashboard-preview-list {
+    max-height: 210px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #page-dashboard .dashboard-preview-list::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 42px;
+    background: linear-gradient(180deg, rgba(255,255,255,0), #fff);
+    pointer-events: none;
+  }
+
+  #page-dashboard .dashboard-see-all {
+    width: 100%;
+    height: 38px;
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--blue);
+    font-weight: 800;
+    cursor: pointer;
+  }
+}
