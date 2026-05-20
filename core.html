@@ -158,9 +158,10 @@
     </div>
   </div>
 
-  <div class="quick-treasury-list" id="qt-latest">
+   <div class="quick-treasury-list dashboard-preview-list" id="qt-latest">
     <div class="empty">A carregar mouvements...</div>
   </div>
+  <button class="dashboard-see-all" onclick="goTo('tresorerie', null)">Tout voir</button>
 </div>
 
 <div class="debt-dashboard-card">
@@ -266,9 +267,10 @@
 
     <div class="purchase-latest-card">
       <div class="card-title">Derniers achats</div>
-      <div id="dash-latest-purchases">
-        <div class="empty">A carregar...</div>
-      </div>
+<div id="dash-latest-purchases" class="dashboard-preview-list">
+  <div class="empty">A carregar...</div>
+</div>
+<button class="dashboard-see-all" onclick="goTo('achat', null); setTimeout(function(){ switchAchatTab('historico', document.getElementById('achat-tab-historico')); }, 100);">Tout voir</button>
     </div>
   </div>
 </div>
@@ -544,11 +546,13 @@
       <div class="row2">
         <div class="card">
           <div class="card-title"> Alertas de Stock Baixo</div>
-          <div id="alert-list"><div class="empty">A verificar...</div></div>
+         <div id="alert-list" class="dashboard-preview-list"><div class="empty">A verificar...</div></div>
+<button class="dashboard-see-all" onclick="goTo('transfert', null)">Tout voir</button>
         </div>
         <div class="card">
           <div class="card-title"> Ultimas Depenses</div>
-          <div id="depenses-list"><div class="empty">A carregar...</div></div>
+          <div id="depenses-list" class="dashboard-preview-list"><div class="empty">A carregar...</div></div>
+          <button class="dashboard-see-all" onclick="goTo('depenses', null)">Tout voir</button>
         </div>
       </div>
     </div>
