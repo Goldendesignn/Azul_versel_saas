@@ -1317,7 +1317,7 @@ function goTo(page, btn) {
     if (page === 'forn') {
       loadProducts();
       renderSupplierDatalists();
-      switchFornTab('cadastro', document.getElementById('forn-tab-cadastro'));
+      switchFornTab('fiche', document.getElementById('forn-tab-fiche'));
     }
     if (page === 'clientes') renderClientDatalist();
     if (page === 'tresorerie') loadTresorerie();
@@ -1334,7 +1334,7 @@ function goTo(page, btn) {
     renderMobileAchatSummary();
     }
     if (page === "forn" || page === "achat") {
-  renderSupplierDatalists();
+      renderSupplierDatalists();
     }
   } catch (e) {
     toast('Erreur onglet: ' + (e && e.message ? e.message : e), 'error');
@@ -4364,22 +4364,27 @@ var achatLines    = [];
 var paiementLines = [];
 
 function switchFornTab(tab, btn) {
-  ['cadastro', 'pagamento', 'dividas'].forEach(function(name) {
-    var panel = document.getElementById('forn-panel-' + name);
-    var tabBtn = document.getElementById('forn-tab-' + name);
+  ["fiche", "cadastro", "pagamento", "dividas"].forEach(function(name) {
+    var panel = document.getElementById("forn-panel-" + name);
+    var tabBtn = document.getElementById("forn-tab-" + name);
 
-    if (panel) panel.style.display = name === tab ? 'block' : 'none';
-    if (tabBtn) tabBtn.classList.toggle('active', name === tab);
+    if (panel) panel.style.display = name === tab ? "block" : "none";
+    if (tabBtn) tabBtn.classList.toggle("active", name === tab);
   });
 
-  if (tab === 'pagamento') {
-    var date = document.getElementById('p-date');
-    if (date && !date.value) date.value = new Date().toISOString().split('T')[0];
+  if (tab === "fiche") {
+    renderSupplierDatalists();
+    renderSupplierDirectory();
+  }
+
+  if (tab === "pagamento") {
+    var date = document.getElementById("p-date");
+    if (date && !date.value) date.value = new Date().toISOString().split("T")[0];
     renderSupplierDatalists();
     updateResteApayerFourn();
   }
 
-  if (tab === 'dividas') {
+  if (tab === "dividas") {
     loadResumoDettes();
   }
 }
@@ -7752,6 +7757,7 @@ async function saveFornecedor() {
     document.getElementById("forn-nota").value = "";
 
     await renderSupplierDatalists();
+    await renderSupplierDirectory();
 
   } catch (e) {
     console.error("Erro fornecedor:", e);
@@ -8061,7 +8067,7 @@ async function renderSupplierDatalists() {
       return '<option value="' + escapeDepenseHtml(supplier.name || "") + '"></option>';
     }).join("");
 
-    ["list-forn", "list-pay-forn"].forEach(function(id) {
+    ["list-forn", "list-pay-forn", "list-supplier-fiche"].forEach(function(id) {
       document.querySelectorAll("#" + id).forEach(function(list) {
         list.innerHTML = html;
       });
@@ -8069,6 +8075,268 @@ async function renderSupplierDatalists() {
 
   } catch (e) {
     console.error("Erro fornecedores datalist:", e);
+  }
+}
+
+async function getSupplierDirectoryFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+  var suppliers = await getSuppliersFromSupabase();
+
+  var purchasesResult = await supabaseClient
+    .from("purchases")
+    .select("supplier")
+    .eq("organization_id", organizationId)
+    .not("supplier", "is", null)
+    .order("created_at", { ascending: false });
+
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  var map = {};
+
+  suppliers.forEach(function(supplier) {
+    var name = String(supplier.name || "").trim();
+    if (!name) return;
+    map[name.toLowerCase()] = supplier;
+  });
+
+  (purchasesResult.data || []).forEach(function(row) {
+    var name = String(row.supplier || "").trim();
+    if (!name) return;
+    if (!map[name.toLowerCase()]) {
+      map[name.toLowerCase()] = {
+        name: name,
+        phone: "",
+        country: "",
+        note: ""
+      };
+    }
+  });
+
+  return Object.keys(map).map(function(key) {
+    return map[key];
+  }).sort(function(a, b) {
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+}
+
+async function renderSupplierDirectory() {
+  var el = document.getElementById("supplier-directory");
+  if (!el) return;
+
+  el.innerHTML = '<div class="empty">A carregar fornecedores...</div>';
+
+  try {
+    var searchEl = document.getElementById("supplier-fiche-search");
+    var search = String(searchEl ? searchEl.value : "").trim().toLowerCase();
+
+    var suppliers = await getSupplierDirectoryFromSupabase();
+
+    if (search) {
+      suppliers = suppliers.filter(function(supplier) {
+        return String(supplier.name || "").toLowerCase().indexOf(search) >= 0;
+      });
+    }
+
+    if (!suppliers.length) {
+      el.innerHTML = '<div class="empty">Aucun fournisseur trouvé.</div>';
+      return;
+    }
+
+    el.innerHTML = suppliers.map(function(supplier) {
+      var initial = String(supplier.name || "?").charAt(0).toUpperCase();
+
+      return '' +
+        '<button type="button" class="supplier-card-btn" data-name="' + escapeDepenseHtml(supplier.name || "") + '" onclick="openSupplierFicheFromCard(this)">' +
+          '<span class="supplier-avatar">' + escapeDepenseHtml(initial) + '</span>' +
+          '<span class="supplier-card-text">' +
+            '<strong>' + escapeDepenseHtml(supplier.name || "") + '</strong>' +
+            '<small>' + escapeDepenseHtml(supplier.phone || supplier.country || "Sans contact") + '</small>' +
+          '</span>' +
+        '</button>';
+    }).join("");
+
+  } catch (e) {
+    console.error("Erro fornecedores:", e);
+    el.innerHTML = '<div class="empty">Erreur ao carregar fornecedores.</div>';
+  }
+}
+
+function openSupplierFicheFromCard(btn) {
+  var name = btn.getAttribute("data-name") || "";
+  var input = document.getElementById("supplier-fiche-search");
+  if (input) input.value = name;
+  loadSupplierFiche(name);
+}
+
+async function getSupplierFicheFromSupabase(name) {
+  var organizationId = getAzulOrganizationId();
+  name = String(name || "").trim();
+
+  if (!name) throw new Error("Fornecedor obrigatorio.");
+
+  var supplierResult = await supabaseClient
+    .from("suppliers")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .ilike("name", name)
+    .limit(1);
+
+  if (supplierResult.error) throw supplierResult.error;
+
+  var supplier = supplierResult.data && supplierResult.data.length
+    ? supplierResult.data[0]
+    : { name: name, phone: "", country: "", note: "" };
+
+  var purchasesResult = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .ilike("supplier", name)
+    .order("created_at", { ascending: false });
+
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  var paymentsResult = await supabaseClient
+    .from("supplier_payments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .ilike("supplier", name)
+    .order("payment_date", { ascending: false });
+
+  if (paymentsResult.error) throw paymentsResult.error;
+
+  var purchases = purchasesResult.data || [];
+  var payments = paymentsResult.data || [];
+
+  var purchaseItems = await fetchPurchaseItemsByPurchaseIds(purchases.map(function(p) {
+    return p.id;
+  }));
+
+  var itemsByPurchase = {};
+  purchaseItems.forEach(function(item) {
+    if (!itemsByPurchase[item.purchase_id]) itemsByPurchase[item.purchase_id] = [];
+    itemsByPurchase[item.purchase_id].push(item);
+  });
+
+  var totalCompras = purchases.reduce(function(sum, p) {
+    return sum + (Number(p.total) || 0);
+  }, 0);
+
+  var totalPago = purchases.reduce(function(sum, p) {
+    return sum + (Number(p.paid_amount) || 0);
+  }, 0);
+
+  var saldo = purchases.reduce(function(sum, p) {
+    return sum + (Number(p.remaining_amount) || 0);
+  }, 0);
+
+  return {
+    supplier: supplier,
+    purchases: purchases,
+    payments: payments,
+    itemsByPurchase: itemsByPurchase,
+    totalCompras: totalCompras,
+    totalPago: totalPago,
+    saldo: saldo
+  };
+}
+
+async function loadSupplierFiche(name) {
+  var input = document.getElementById("supplier-fiche-search");
+  name = String(name || (input ? input.value : "") || "").trim();
+
+  if (!name) {
+    toast("Escolhe um fornecedor.", "error");
+    return;
+  }
+
+  var el = document.getElementById("supplier-fiche-result");
+  if (!el) return;
+
+  el.innerHTML = '<div class="empty">A carregar fiche fournisseur...</div>';
+
+  try {
+    var data = await getSupplierFicheFromSupabase(name);
+    var supplier = data.supplier || {};
+    var initial = String(supplier.name || name || "?").charAt(0).toUpperCase();
+
+    var purchasesHtml = data.purchases.length
+      ? data.purchases.map(function(purchase) {
+          var items = data.itemsByPurchase[purchase.id] || [];
+
+          var itemsHtml = items.length
+            ? items.map(function(item) {
+                return '<div class="supplier-line-item">' +
+                  '<span>' + escapeDepenseHtml(item.product_name || "Produto") + '</span>' +
+                  '<strong>' + (Number(item.quantity) || 0) + ' x ' + fmt(Number(item.purchase_price) || 0) + '</strong>' +
+                '</div>';
+              }).join("")
+            : '<div class="muted">Sem artigos detalhados</div>';
+
+          return '<div class="supplier-history-card">' +
+            '<div class="supplier-history-head">' +
+              '<div>' +
+                '<strong>Achat #' + escapeDepenseHtml(String(purchase.id || "").slice(0, 8)) + '</strong>' +
+                '<small>' + escapeDepenseHtml(String(purchase.created_at || "").slice(0, 10)) + '</small>' +
+              '</div>' +
+              '<div class="supplier-history-total">' + fmt(Number(purchase.total) || 0) + '</div>' +
+            '</div>' +
+            itemsHtml +
+            '<div class="supplier-history-foot">' +
+              '<span>Pago: ' + fmt(Number(purchase.paid_amount) || 0) + '</span>' +
+              '<span>Reste: ' + fmt(Number(purchase.remaining_amount) || 0) + '</span>' +
+            '</div>' +
+          '</div>';
+        }).join("")
+      : '<div class="empty">Aucun achat trouvé.</div>';
+
+    var paymentsHtml = data.payments.length
+      ? data.payments.map(function(payment) {
+          return '<div class="supplier-payment-row">' +
+            '<div>' +
+              '<strong>' + fmt(Number(payment.amount) || 0) + '</strong>' +
+              '<small>' + escapeDepenseHtml(payment.note || "Paiement fournisseur") + '</small>' +
+            '</div>' +
+            '<span>' + escapeDepenseHtml(payment.payment_date || "") + '</span>' +
+          '</div>';
+        }).join("")
+      : '<div class="empty">Aucun paiement trouvé.</div>';
+
+    el.innerHTML =
+      '<div class="supplier-profile-card">' +
+        '<div class="supplier-profile-top">' +
+          '<div class="supplier-profile-avatar">' + escapeDepenseHtml(initial) + '</div>' +
+          '<div>' +
+            '<h3>' + escapeDepenseHtml(supplier.name || name) + '</h3>' +
+            '<p>' + escapeDepenseHtml(supplier.phone || "Sans telephone") + '</p>' +
+            '<p>' + escapeDepenseHtml(supplier.country || "Sans pays") + '</p>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="supplier-note">' + escapeDepenseHtml(supplier.note || "Aucune note fournisseur.") + '</div>' +
+
+        '<div class="supplier-kpis">' +
+          '<div><span>Total achats</span><strong>' + fmt(data.totalCompras) + '</strong></div>' +
+          '<div><span>Total paye</span><strong>' + fmt(data.totalPago) + '</strong></div>' +
+          '<div><span>Dette</span><strong class="' + (data.saldo > 0 ? "text-red" : "text-green") + '">' + fmt(data.saldo) + '</strong></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="supplier-two-cols">' +
+        '<div class="card">' +
+          '<div class="card-title">Historique des achats</div>' +
+          purchasesHtml +
+        '</div>' +
+        '<div class="card">' +
+          '<div class="card-title">Paiements</div>' +
+          paymentsHtml +
+        '</div>' +
+      '</div>';
+
+  } catch (e) {
+    console.error("Erreur fiche fournisseur:", e);
+    el.innerHTML = '<div class="empty">Erreur fiche fournisseur.</div>';
+    toast("Erreur fiche fournisseur: " + (e.message || e), "error");
   }
 }
 
