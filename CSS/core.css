@@ -3089,3 +3089,110 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     flex: 1 1 calc(50% - 8px);
   }
 }
+
+.achat-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  max-width: 700px;
+  flex-wrap: wrap;
+}
+
+.achat-history-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.achat-history-head h2 {
+  margin: 2px 0 4px;
+  font-size: 24px;
+}
+
+.achat-history-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.achat-history-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.achat-history-filters {
+  display: grid;
+  grid-template-columns: 160px 160px 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.achat-history-table-wrap {
+  overflow-x: auto;
+}
+
+.achat-history-mobile {
+  display: none;
+}
+
+.achat-history-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.05);
+}
+
+.achat-history-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.achat-history-card-top strong,
+.achat-history-card-top span {
+  display: block;
+}
+
+.achat-history-card-top span,
+.achat-history-card-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.achat-history-card-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+@media (max-width: 760px) {
+  .achat-history-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .achat-history-kpis,
+  .achat-history-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .achat-history-table-wrap {
+    display: none;
+  }
+
+  .achat-history-mobile {
+    display: grid;
+    gap: 10px;
+  }
+
+  .achat-tabs .mode-btn {
+    flex: 1;
+  }
+}
