@@ -5760,23 +5760,27 @@ function renderMobileAchatSummary() {
 }
 function renderAchatTotals() {
   var cur = window._currency || 'Kz';
-  var total = achatLines.reduce(function(s,l) { return s+(l.qty||0)*(l.price||0); }, 0);
+  var total = achatLines.reduce(function(s,l) {
+    return s + (Number(l.qty) || 0) * (Number(l.price) || 0);
+  }, 0);
 
-  // Total global
   var tg = document.getElementById('achat-total-global');
-  if (tg) tg.textContent = new Intl.NumberFormat('pt-PT').format(total)+' '+cur;
+  if (tg) tg.textContent = new Intl.NumberFormat('pt-PT').format(total) + ' ' + cur;
 
-  // Totaux par ligne
-  achatLines.forEach(function(l,i) {
-    var t = (l.qty||0)*(l.price||0);
-    var el = document.getElementById('al-total-'+i);
-    if (el) el.textContent = t>0 ? new Intl.NumberFormat('pt-PT').format(t)+' '+cur : '0 kz';
+  achatLines.forEach(function(l, i) {
+    var t = (Number(l.qty) || 0) * (Number(l.price) || 0);
+    var el = document.getElementById('al-total-' + i);
+    if (el) el.textContent = t > 0 ? new Intl.NumberFormat('pt-PT').format(t) + ' ' + cur : '0 ' + cur;
   });
 
-  // Total du (credit)
   var du = document.getElementById('a-total-du-display');
-  if (du) du.textContent = new Intl.NumberFormat('pt-PT').format(total)+' '+cur;
+  if (du) du.textContent = new Intl.NumberFormat('pt-PT').format(total) + ' ' + cur;
+
   updateResteAPayer(total);
+
+  if (typeof renderMobileAchatSummary === "function") {
+    renderMobileAchatSummary();
+  }
 }
 
 function toggleCredit() {
