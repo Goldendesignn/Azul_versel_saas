@@ -212,6 +212,17 @@
           <button class="filter-btn" onclick="loadHist()">Filtrar</button>
         </div>
         <div style="overflow-x:auto;">
+      <div style="display:flex;gap:10px;align-items:center;margin:12px 0 14px 0;max-width:520px;">
+        <input
+          type="text"
+          class="filter-input"
+          id="inventory-search"
+          placeholder="Rechercher produit, fournisseur, code..."
+          oninput="onInventorySearch()"
+          style="flex:1;"
+        >
+        <button class="filter-btn" type="button" onclick="clearInventorySearch()">Effacer</button>
+      </div>
           <table class="data-table">
             <thead>
               <tr>
