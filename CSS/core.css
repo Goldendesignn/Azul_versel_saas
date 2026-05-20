@@ -4571,3 +4571,33 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     position: static !important;
   }
 }
+@media (max-width: 760px) {
+  #page-dashboard .dashboard-preview-list {
+    max-height: 210px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #page-dashboard .dashboard-preview-list::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 42px;
+    background: linear-gradient(180deg, rgba(255,255,255,0), #fff);
+    pointer-events: none;
+  }
+
+  #page-dashboard .dashboard-see-all {
+    width: 100%;
+    height: 38px;
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--blue);
+    font-weight: 800;
+    cursor: pointer;
+  }
+}
