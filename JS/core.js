@@ -7382,9 +7382,9 @@ function applyConfig() {
   }
 
   // Apply name
-  var logoEl = document.querySelector('.logo');
+   var logoEl = document.querySelector('.logo');
   if (logoEl) {
-    logoEl.innerHTML = (config.name || 'Azul Gestao') + '<small>' + (config.slogan || 'O sisteme que o seu negocio') + '</small>';
+    logoEl.textContent = 'Azul';
   }
 
   // Update receipt
