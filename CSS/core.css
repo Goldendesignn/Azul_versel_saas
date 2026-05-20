@@ -4820,3 +4820,99 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     color: #fff !important;
   }
 }
+/* Correction mobile tableau paiements achat */
+@media (max-width: 820px) {
+  #a-credit-fields {
+    padding-bottom: 16px !important;
+  }
+
+  #paiements-table {
+    display: block !important;
+    width: 100% !important;
+    border-collapse: separate !important;
+  }
+
+  #paiements-table thead {
+    display: none !important;
+  }
+
+  #paiements-table tbody {
+    display: grid !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  #paiements-table tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 28px !important;
+    grid-template-areas:
+      "date amount remove"
+      "rest rest remove" !important;
+    gap: 8px 10px !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 10px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 14px !important;
+    background: var(--surface2) !important;
+  }
+
+  #paiements-table td {
+    display: block !important;
+    width: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  #paiements-table td:nth-child(1) {
+    grid-area: date !important;
+  }
+
+  #paiements-table td:nth-child(2) {
+    grid-area: amount !important;
+  }
+
+  #paiements-table td:nth-child(3) {
+    grid-area: rest !important;
+    text-align: right !important;
+  }
+
+  #paiements-table td:nth-child(4) {
+    grid-area: remove !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  #paiements-table input[type="date"],
+  #paiements-table input[type="number"] {
+    width: 100% !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    border: 1px solid var(--border) !important;
+    padding: 0 10px !important;
+    font-size: 13px !important;
+  }
+
+  #paiements-table td:nth-child(3) span,
+  #paiements-table td:nth-child(3) {
+    color: var(--green) !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+  }
+
+  #paiements-table button {
+    width: 28px !important;
+    height: 28px !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--red) !important;
+    font-size: 16px !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+  }
+}
