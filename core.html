@@ -402,6 +402,84 @@
     </div>
   </div>
 </div>
+<div class="accounting-summary-card">
+  <div class="accounting-summary-head">
+    <div>
+      <div class="eyebrow">Fiscal / Comptable</div>
+      <h2>Résumé fiscal/comptable</h2>
+      <p>Vue simplifiée du résultat, stock, créances et dettes.</p>
+    </div>
+    <button class="filter-btn" onclick="goTo('comptabilite', null)">Comptabilité</button>
+  </div>
+
+  <div class="accounting-summary-grid">
+    <div class="accounting-summary-kpi">
+      <span>Chiffre d’affaires</span>
+      <strong id="acct-sum-revenue">0 Kz</strong>
+      <small>Ventes de la période</small>
+    </div>
+
+    <div class="accounting-summary-kpi red">
+      <span>Coût marchandises</span>
+      <strong id="acct-sum-cogs">0 Kz</strong>
+      <small>Prix d’achat vendus</small>
+    </div>
+
+    <div class="accounting-summary-kpi green">
+      <span>Marge brute</span>
+      <strong id="acct-sum-gross">0 Kz</strong>
+      <small id="acct-sum-gross-rate">0%</small>
+    </div>
+
+    <div class="accounting-summary-kpi red">
+      <span>Dépenses</span>
+      <strong id="acct-sum-expenses">0 Kz</strong>
+      <small>Charges de la période</small>
+    </div>
+  </div>
+
+  <div class="accounting-summary-body">
+    <div class="accounting-result-box">
+      <span>Résultat net estimé</span>
+      <strong id="acct-sum-net">0 Kz</strong>
+      <small id="acct-sum-net-rate">Marge nette: 0%</small>
+    </div>
+
+    <div class="accounting-mini-list">
+      <div class="accounting-mini-row">
+        <span>Stock valorisé</span>
+        <strong id="acct-sum-stock">0 Kz</strong>
+      </div>
+      <div class="accounting-mini-row">
+        <span>Clients à recevoir</span>
+        <strong id="acct-sum-receivables">0 Kz</strong>
+      </div>
+      <div class="accounting-mini-row">
+        <span>Fournisseurs à payer</span>
+        <strong id="acct-sum-payables">0 Kz</strong>
+      </div>
+      <div class="accounting-mini-row">
+        <span>Trésorerie</span>
+        <strong id="acct-sum-cash">0 Kz</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="accounting-balance-grid">
+    <div>
+      <span>Actif simplifié</span>
+      <strong id="acct-sum-assets">0 Kz</strong>
+    </div>
+    <div>
+      <span>Passif simplifié</span>
+      <strong id="acct-sum-liabilities">0 Kz</strong>
+    </div>
+    <div>
+      <span>Situation nette</span>
+      <strong id="acct-sum-equity">0 Kz</strong>
+    </div>
+  </div>
+</div>
 
       <div class="row2">
         <div class="card">
