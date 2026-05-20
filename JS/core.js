@@ -6358,10 +6358,11 @@ function switchMode(mode, btn) {
   btn.classList.add('active');
   document.getElementById('transferSingle').style.display = mode === 'single' ? 'block' : 'none';
   document.getElementById('transferTudo').style.display = mode === 'tudo' ? 'block' : 'none';
-  document.getElementById('stock').style.display = mode === 'stock' ? 'block' : 'none';
+   document.getElementById('stock').style.display = mode === 'stock' ? 'block' : 'none';
+
   if (mode === 'stock') {
-  loadProducts(true);
-}
+    loadProducts(true);
+  }
 }
 
 var stockArmazem = [];
@@ -6629,6 +6630,40 @@ function renderDepenseDayChart(list) {
     '</div>';
   }).join('') + '</div>';
 }
+function getInventorySearchValue() {
+  var input = document.getElementById("inventory-search");
+  return input ? String(input.value || "").trim().toLowerCase() : "";
+}
+
+function filterInventoryProducts(list) {
+  var search = getInventorySearchValue();
+
+  if (!search) return list || [];
+
+  return (list || []).filter(function(product) {
+    var text = [
+      product.name,
+      product.mainSupplier,
+      product.supplier,
+      product.category,
+      product.code,
+      product.variation,
+      (product.variations || []).join(" ")
+    ].join(" ").toLowerCase();
+
+    return text.indexOf(search) >= 0;
+  });
+}
+
+function onInventorySearch() {
+  renderinventaire(products || []);
+}
+
+function clearInventorySearch() {
+  var input = document.getElementById("inventory-search");
+  if (input) input.value = "";
+  renderinventaire(products || []);
+}
 function renderinventaire(products) {
   var body = document.getElementById('Inventaires');
   var valeurtext = document.getElementById('valeurStocktotal');
@@ -6640,8 +6675,8 @@ function renderinventaire(products) {
 
   if (!body) return;
 
-  products = products || [];
-  renderMobileInventory(products);
+products = filterInventoryProducts(products || []);
+renderMobileInventory(products);
 
   var valeurtotal = 0;
   var valeurTotalBoutique = 0;
@@ -6651,7 +6686,7 @@ function renderinventaire(products) {
   var nbreProductTotal = 0;
 
   if (!products.length) {
-    body.innerHTML = '<tr><td colspan="7" class="empty">Aucun produit trouve</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" class="empty">Aucun produit trouve</td></tr>';
     return;
   }
 
