@@ -206,16 +206,18 @@
   <div class="debt-lists">
     <div class="debt-list-card">
       <div class="card-title">Clients débiteurs</div>
-      <div id="debt-client-list">
+      <div id="debt-client-list" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
+      <button class="dashboard-see-all" onclick="goTo('clientes', null)">Tout voir</button>
     </div>
 
     <div class="debt-list-card">
       <div class="card-title">Fournisseurs à payer</div>
-      <div id="debt-supplier-list">
-        <div class="empty">A carregar...</div>
-      </div>
+        <div id="debt-supplier-list" class="dashboard-preview-list">
+          <div class="empty">A carregar...</div>
+        </div>
+        <button class="dashboard-see-all" onclick="goTo('forn', null)">Tout voir</button>
     </div>
   </div>
 </div>
@@ -313,16 +315,18 @@
   <div class="smart-stock-body">
     <div class="smart-stock-list-card">
       <div class="card-title">Alertes prioritaires</div>
-      <div id="smart-stock-alerts">
+      <div id="smart-stock-alerts" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
+      <button class="dashboard-see-all" onclick="goTo('transfert', null)">Tout voir</button>
     </div>
 
     <div class="smart-stock-list-card">
       <div class="card-title">Produits dormants</div>
-      <div id="smart-stock-dormants">
+      <div id="smart-stock-dormants" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
+      <button class="dashboard-see-all" onclick="goTo('transfert', null)">Tout voir</button>
     </div>
   </div>
 </div>
@@ -391,16 +395,18 @@
   <div class="sales-performance-lists">
     <div class="sales-performance-list-card">
       <div class="card-title">Top clients</div>
-      <div id="sales-perf-top-clients">
+      <div id="sales-perf-top-clients" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
+      <button class="dashboard-see-all" onclick="goTo('clientes', null)">Tout voir</button>
     </div>
 
     <div class="sales-performance-list-card">
       <div class="card-title">Origine des ventes</div>
-      <div id="sales-perf-origin-list">
-        <div class="empty">A carregar...</div>
-      </div>
+<div id="sales-perf-origin-list" class="dashboard-preview-list">
+  <div class="empty">A carregar...</div>
+</div>
+<button class="dashboard-see-all" onclick="goTo('venda', null); setTimeout(function(){ switchVendaTab('historico', document.getElementById('vente-tab-historico')); }, 100);">Tout voir</button>
     </div>
   </div>
 </div>
