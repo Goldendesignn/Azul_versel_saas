@@ -4601,3 +4601,95 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     cursor: pointer;
   }
 }
+/* Alertes importantes compactes mobile/desktop */
+#page-dashboard .important-alert-row {
+  display: grid !important;
+  grid-template-columns: 12px 1fr 34px !important;
+  gap: 10px !important;
+  align-items: center !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  background: rgba(255,255,255,.78) !important;
+  min-height: 62px !important;
+}
+
+#page-dashboard .important-alert-row.critical {
+  border-color: rgba(224,92,92,.35) !important;
+  background: rgba(224,92,92,.045) !important;
+}
+
+#page-dashboard .important-alert-row.warning {
+  border-color: rgba(224,140,58,.35) !important;
+  background: rgba(224,140,58,.045) !important;
+}
+
+#page-dashboard .important-alert-dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: var(--orange) !important;
+}
+
+#page-dashboard .important-alert-row.critical .important-alert-dot {
+  background: var(--red) !important;
+}
+
+#page-dashboard .important-alert-content {
+  min-width: 0 !important;
+}
+
+#page-dashboard .important-alert-content strong,
+#page-dashboard .important-alert-content small {
+  display: block !important;
+}
+
+#page-dashboard .important-alert-content strong {
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+}
+
+#page-dashboard .important-alert-content small {
+  margin-top: 3px !important;
+  color: var(--muted) !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+#page-dashboard .important-alert-action {
+  grid-column: auto !important;
+  width: 34px !important;
+  height: 34px !important;
+  border: 0 !important;
+  background: var(--surface2) !important;
+  color: var(--muted) !important;
+  border-radius: 999px !important;
+  display: grid !important;
+  place-items: center !important;
+  font-weight: 900 !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+}
+
+#page-dashboard .important-alert-action::before {
+  content: "›";
+  font-size: 24px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 760px) {
+  #page-dashboard .important-alert-row {
+    grid-template-columns: 10px 1fr 32px !important;
+    gap: 9px !important;
+    padding: 9px 10px !important;
+    min-height: 58px !important;
+  }
+
+  #page-dashboard .important-alert-action {
+    width: 32px !important;
+    height: 32px !important;
+  }
+}
