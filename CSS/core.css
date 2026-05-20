@@ -3467,3 +3467,146 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     grid-template-columns: 1fr;
   }
 }
+.purchase-dashboard-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 16px 0;
+  box-shadow: 0 12px 30px rgba(0,0,0,.06);
+}
+
+.purchase-dashboard-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.purchase-dashboard-head h2 {
+  margin: 2px 0 4px;
+  font-size: 24px;
+}
+
+.purchase-dashboard-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.purchase-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.purchase-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.purchase-kpi {
+  background: var(--surface2);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.purchase-kpi span,
+.purchase-main-supplier span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.purchase-kpi strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 20px;
+}
+
+.purchase-kpi small,
+.purchase-main-supplier small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.purchase-kpi.red strong {
+  color: var(--red);
+}
+
+.purchase-dashboard-body {
+  display: grid;
+  grid-template-columns: .7fr 1.3fr;
+  gap: 12px;
+}
+
+.purchase-main-supplier,
+.purchase-latest-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(255,255,255,.72);
+}
+
+.purchase-main-supplier strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--blue);
+  font-size: 22px;
+}
+
+.purchase-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.purchase-row:last-child {
+  border-bottom: 0;
+}
+
+.purchase-row strong,
+.purchase-row small {
+  display: block;
+}
+
+.purchase-row small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.purchase-row-money {
+  text-align: right;
+}
+
+.purchase-row-money strong {
+  color: var(--blue);
+}
+
+@media (max-width: 800px) {
+  .purchase-dashboard-head,
+  .purchase-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .purchase-kpi-grid,
+  .purchase-dashboard-body {
+    grid-template-columns: 1fr;
+  }
+
+  .purchase-row-money {
+    text-align: left;
+  }
+}
