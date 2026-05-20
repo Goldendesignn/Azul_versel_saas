@@ -9646,6 +9646,69 @@ async function createExpenseImportAccountingBatch(expenses) {
   }
 }
 
+function getExpenseImportKey(row) {
+  return [
+    normalizeImportText(row.expense_date || row.date),
+    normalizeImportText(row.category),
+    normalizeImportText(row.description),
+    String(Number(row.amount) || 0)
+  ].join("|");
+}
+
+function syncImportedExpenseCategories(rows) {
+  var categories = getStoredDepenseCategories();
+  var exists = {};
+
+  categories.forEach(function(category) {
+    exists[normalizeImportText(category)] = true;
+  });
+
+  (rows || []).forEach(function(row) {
+    var category = String(row.category || "").trim();
+    var key = normalizeImportText(category);
+
+    if (category && !exists[key]) {
+      categories.push(category);
+      exists[key] = true;
+    }
+  });
+
+  saveStoredDepenseCategories(categories);
+  renderDepenseCategories();
+}
+
+async function fetchExistingExpenseImportKeys(rows) {
+  var organizationId = getAzulOrganizationId();
+  var existing = {};
+  var dates = [];
+
+  (rows || []).forEach(function(row) {
+    if (row.date && dates.indexOf(row.date) === -1) {
+      dates.push(row.date);
+    }
+  });
+
+  for (var i = 0; i < chunkImportArray(dates, 80).length; i++) {
+    var dateChunk = chunkImportArray(dates, 80)[i];
+
+    if (!dateChunk.length) continue;
+
+    var result = await supabaseClient
+      .from("expenses")
+      .select("expense_date,category,description,amount")
+      .eq("organization_id", organizationId)
+      .in("expense_date", dateChunk);
+
+    if (result.error) throw result.error;
+
+    (result.data || []).forEach(function(row) {
+      existing[getExpenseImportKey(row)] = true;
+    });
+  }
+
+  return existing;
+}
+
 async function saveExpenseImportBatchToSupabase(rows) {
   var organizationId = getAzulOrganizationId();
   var validRows = (rows || []).filter(function(row) {
@@ -9656,7 +9719,32 @@ async function saveExpenseImportBatchToSupabase(rows) {
     throw new Error("Aucune depense valide a importer.");
   }
 
-  var expenseRows = validRows.map(function(row) {
+  var existingKeys = await fetchExistingExpenseImportKeys(validRows);
+  var usedKeys = {};
+  var skippedDuplicates = 0;
+
+  var rowsToInsert = validRows.filter(function(row) {
+    var key = getExpenseImportKey(row);
+
+    if (existingKeys[key] || usedKeys[key]) {
+      skippedDuplicates++;
+      return false;
+    }
+
+    usedKeys[key] = true;
+    return true;
+  });
+
+  if (!rowsToInsert.length) {
+    syncImportedExpenseCategories(validRows);
+
+    return {
+      expenses: 0,
+      skipped: skippedDuplicates
+    };
+  }
+
+  var expenseRows = rowsToInsert.map(function(row) {
     return {
       organization_id: organizationId,
       expense_date: row.date,
@@ -9682,9 +9770,11 @@ async function saveExpenseImportBatchToSupabase(rows) {
   }
 
   await createExpenseImportAccountingBatch(insertedExpenses);
+  syncImportedExpenseCategories(validRows);
 
   return {
-    expenses: insertedExpenses.length
+    expenses: insertedExpenses.length,
+    skipped: skippedDuplicates
   };
 }
 
@@ -9731,7 +9821,7 @@ async function importExpenseCsvRows() {
 
     var result = await saveExpenseImportBatchToSupabase(expenseImportRows);
 
-    toast("Import depenses termine: " + result.expenses + " depenses.", "success");
+    toast("Import depenses termine: " + result.expenses + " depenses, " + (result.skipped || 0) + " doublons ignores.", "success");
 
     expenseImportRows = [];
     renderExpenseImportPreview();
@@ -9743,7 +9833,7 @@ async function importExpenseCsvRows() {
     loadDepenseInsights();
 
     if (log) {
-      log.innerHTML = "Import depenses termine: " + result.expenses + " depenses.";
+            log.innerHTML = "Import depenses termine: " + result.expenses + " depenses. Doublons ignores: " + (result.skipped || 0) + ".";
     }
   } catch (e) {
     console.error("Erreur import depenses:", e);
