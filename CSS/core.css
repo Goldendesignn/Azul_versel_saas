@@ -1358,10 +1358,6 @@ html, body {
     padding: 12px;
   }
 
-  .kpi-grid {
-    grid-template-columns: 1fr;
-  }
-
   .prod-grid {
     grid-template-columns: 1fr 1fr;
   }
