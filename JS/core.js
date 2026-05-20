@@ -8312,6 +8312,177 @@ async function fetchSaleItemsBySaleIds(saleIds) {
   return allItems;
 }
 
+async function fetchPurchaseItemsByPurchaseIds(purchaseIds) {
+  var allItems = [];
+  var ids = (purchaseIds || []).filter(Boolean);
+
+  for (var i = 0; i < chunkImportArray(ids, 80).length; i++) {
+    var chunk = chunkImportArray(ids, 80)[i];
+
+    if (!chunk.length) continue;
+
+    var result = await supabaseClient
+      .from("purchase_items")
+      .select("*")
+      .in("purchase_id", chunk);
+
+    if (result.error) throw result.error;
+
+    allItems = allItems.concat(result.data || []);
+  }
+
+  return allItems;
+}
+
+function getPurchaseImportDuplicateKey(row) {
+  return [
+    normalizeImportText(row.date),
+    normalizeImportText(row.supplier),
+    normalizeImportText(row.designation || row.product_name),
+    normalizeImportText(row.code),
+    normalizeImportText(row.variation),
+    String(Number(row.quantity) || 0),
+    String(Number(row.unitPrice || row.purchase_price) || 0),
+    String(Number(row.salePrice || row.sale_price) || 0)
+  ].join("|");
+}
+
+async function fetchExistingPurchaseImportKeys(rows) {
+  var organizationId = getAzulOrganizationId();
+  var existing = {};
+  var dates = [];
+  var suppliers = [];
+
+  (rows || []).forEach(function(row) {
+    if (row.date && dates.indexOf(row.date) === -1) dates.push(row.date);
+    if (row.supplier && suppliers.indexOf(row.supplier) === -1) suppliers.push(row.supplier);
+  });
+
+  if (!dates.length) return existing;
+
+  dates.sort();
+
+  var minDate = dates[0] + "T00:00:00";
+  var maxDate = dates[dates.length - 1] + "T23:59:59";
+  var purchases = [];
+
+  for (var i = 0; i < chunkImportArray(suppliers, 80).length; i++) {
+    var supplierChunk = chunkImportArray(suppliers, 80)[i];
+
+    if (!supplierChunk.length) continue;
+
+    var result = await supabaseClient
+      .from("purchases")
+      .select("id,supplier,created_at")
+      .eq("organization_id", organizationId)
+      .gte("created_at", minDate)
+      .lte("created_at", maxDate)
+      .in("supplier", supplierChunk);
+
+    if (result.error) throw result.error;
+
+    purchases = purchases.concat(result.data || []);
+  }
+
+  var purchaseById = {};
+  purchases.forEach(function(purchase) {
+    purchaseById[purchase.id] = purchase;
+  });
+
+  var purchaseItems = await fetchPurchaseItemsByPurchaseIds(purchases.map(function(purchase) {
+    return purchase.id;
+  }));
+
+  purchaseItems.forEach(function(item) {
+    var purchase = purchaseById[item.purchase_id];
+    if (!purchase) return;
+
+    existing[getPurchaseImportDuplicateKey({
+      date: String(purchase.created_at || "").slice(0, 10),
+      supplier: purchase.supplier,
+      designation: item.product_name,
+      code: item.code,
+      variation: item.variation,
+      quantity: item.quantity,
+      unitPrice: item.purchase_price,
+      salePrice: item.sale_price
+    })] = true;
+  });
+
+  return existing;
+}
+
+function getSaleImportDuplicateKey(row) {
+  return [
+    normalizeImportText(row.date),
+    normalizeImportText(row.client || "Anonimo"),
+    normalizeImportText(row.designation || row.product_name),
+    normalizeImportText(row.origin || row.sale_type),
+    String(Number(row.quantity) || 0),
+    String(Number(row.unitPrice || row.unit_price) || 0),
+    String(Number(row.totalAmount || row.total) || 0)
+  ].join("|");
+}
+
+async function fetchExistingSaleImportKeys(rows) {
+  var organizationId = getAzulOrganizationId();
+  var existing = {
+    keys: {},
+    receipts: {}
+  };
+
+  var dates = [];
+
+  (rows || []).forEach(function(row) {
+    if (row.date && dates.indexOf(row.date) === -1) dates.push(row.date);
+  });
+
+  if (!dates.length) return existing;
+
+  dates.sort();
+
+  var result = await supabaseClient
+    .from("sales")
+    .select("id,receipt_no,sale_date,client_name,sale_type,total")
+    .eq("organization_id", organizationId)
+    .gte("sale_date", dates[0])
+    .lte("sale_date", dates[dates.length - 1]);
+
+  if (result.error) throw result.error;
+
+  var sales = result.data || [];
+  var saleById = {};
+
+  sales.forEach(function(sale) {
+    saleById[sale.id] = sale;
+
+    if (sale.receipt_no) {
+      existing.receipts[String(sale.receipt_no).trim()] = true;
+    }
+  });
+
+  var saleItems = await fetchSaleItemsBySaleIds(sales.map(function(sale) {
+    return sale.id;
+  }));
+
+  saleItems.forEach(function(item) {
+    var sale = saleById[item.sale_id];
+    if (!sale) return;
+
+    existing.keys[getSaleImportDuplicateKey({
+      date: sale.sale_date,
+      client: sale.client_name,
+      designation: item.product_name,
+      origin: sale.sale_type,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      totalAmount: item.total
+    })] = true;
+  });
+
+  return existing;
+}
+
 function normalizeImportText(value) {
   return String(value || "").trim().toLowerCase();
 }
@@ -8546,6 +8717,31 @@ async function savePurchaseImportBatchToSupabase(rows) {
     throw new Error("Aucune ligne valide a importer.");
   }
 
+  var existingPurchaseKeys = await fetchExistingPurchaseImportKeys(validRows);
+  var usedPurchaseKeys = {};
+  var skippedDuplicates = 0;
+
+  validRows = validRows.filter(function(row) {
+    var key = getPurchaseImportDuplicateKey(row);
+
+    if (existingPurchaseKeys[key] || usedPurchaseKeys[key]) {
+      skippedDuplicates++;
+      return false;
+    }
+
+    usedPurchaseKeys[key] = true;
+    return true;
+  });
+
+  if (!validRows.length) {
+    return {
+      products: 0,
+      purchases: 0,
+      items: 0,
+      skipped: skippedDuplicates
+    };
+  }
+
   await ensureImportSuppliers(validRows);
 
   var productNames = [];
@@ -8775,7 +8971,8 @@ async function savePurchaseImportBatchToSupabase(rows) {
   return {
     products: Object.keys(productGroups).length,
     purchases: insertedPurchases.length,
-    items: purchaseItems.length
+    items: purchaseItems.length,
+    skipped: skippedDuplicates
   };
 }
 
@@ -8824,8 +9021,8 @@ async function importPurchaseCsvRows() {
 
     var result = await savePurchaseImportBatchToSupabase(purchaseImportRows);
 
-    toast("Import termine: " + result.items + " lignes importees.", "success");
-
+    toast("Import termine: " + result.items + " lignes importees, " + (result.skipped || 0) + " doublons ignores.", "success");
+    
     purchaseImportRows = [];
     renderPurchaseImportPreview();
 
@@ -8839,7 +9036,7 @@ async function importPurchaseCsvRows() {
         "Import termine avec succes: " +
         result.items + " lignes, " +
         result.products + " produits, " +
-        result.purchases + " achats.";
+        result.purchases + " achats. Doublons ignores: " + (result.skipped || 0) + ".";
     }
   } catch (e) {
     console.error("Erreur import achats:", e);
@@ -9255,6 +9452,31 @@ async function saveSaleImportBatchToSupabase(rows) {
     throw new Error("Aucune vente valide a importer.");
   }
 
+  var existingSaleImport = await fetchExistingSaleImportKeys(validRows);
+  var usedSaleKeys = {};
+  var skippedDuplicates = 0;
+
+  validRows = validRows.filter(function(row) {
+    var receiptNo = String(row.receiptNo || "").trim();
+    var key = getSaleImportDuplicateKey(row);
+
+    if ((receiptNo && existingSaleImport.receipts[receiptNo]) || existingSaleImport.keys[key] || usedSaleKeys[key]) {
+      skippedDuplicates++;
+      return false;
+    }
+
+    usedSaleKeys[key] = true;
+    return true;
+  });
+
+  if (!validRows.length) {
+    return {
+      sales: 0,
+      items: 0,
+      skipped: skippedDuplicates
+    };
+  }
+
   var productsByName = await fetchSaleImportProducts(validRows);
   var receiptSeed = Date.now();
 
@@ -9389,7 +9611,8 @@ async function saveSaleImportBatchToSupabase(rows) {
 
   return {
     sales: insertedSales.length,
-    items: saleItems.length
+    items: saleItems.length,
+    skipped: skippedDuplicates
   };
 }
 
@@ -9436,7 +9659,7 @@ async function importSaleCsvRows() {
 
     var result = await saveSaleImportBatchToSupabase(saleImportRows);
 
-    toast("Import ventes termine: " + result.sales + " ventes.", "success");
+    toast("Import ventes termine: " + result.sales + " ventes, " + (result.skipped || 0) + " doublons ignores.", "success");
 
     saleImportRows = [];
     renderSaleImportPreview();
@@ -9447,7 +9670,7 @@ async function importSaleCsvRows() {
     products = [];
 
     if (log) {
-      log.innerHTML = "Import ventes termine: " + result.sales + " ventes, " + result.items + " lignes.";
+      log.innerHTML = "Import ventes termine: " + result.sales + " ventes, " + result.items + " lignes. Doublons ignores: " + (result.skipped || 0) + ".";
     }
   } catch (e) {
     console.error("Erreur import ventes:", e);
