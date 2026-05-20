@@ -4798,3 +4798,25 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     display: none !important;
   }
 }
+/* Achat mobile: couleur du theme + cache quand menu ouvert */
+@media (max-width: 820px) {
+  body.mobile-nav-open #mobileAchatSummary,
+  body.mobile-nav-open #mobileAchatAddBtn {
+    display: none !important;
+  }
+
+  .mobile-achat-summary {
+    background: var(--blue) !important;
+    color: #fff !important;
+  }
+
+  .mobile-achat-summary-btn {
+    background: #fff !important;
+    color: var(--blue) !important;
+  }
+
+  .mobile-achat-add-btn {
+    background: var(--blue) !important;
+    color: #fff !important;
+  }
+}
