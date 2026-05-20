@@ -2841,3 +2841,251 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.supplier-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  max-width: 980px;
+  flex-wrap: wrap;
+}
+
+.supplier-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.supplier-page-head h2 {
+  margin: 2px 0 4px;
+  font-size: 24px;
+}
+
+.supplier-page-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.supplier-search-card,
+.supplier-form-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.05);
+  max-width: 760px;
+}
+
+.supplier-search-card {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.supplier-directory {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.supplier-card-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: .2s ease;
+}
+
+.supplier-card-btn:hover {
+  border-color: var(--blue);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0,0,0,.08);
+}
+
+.supplier-avatar,
+.supplier-profile-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(11,61,145,.12);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.supplier-card-text {
+  display: grid;
+  gap: 3px;
+}
+
+.supplier-card-text strong {
+  font-size: 14px;
+}
+
+.supplier-card-text small,
+.supplier-profile-top p,
+.supplier-payment-row small,
+.supplier-history-head small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.supplier-profile-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.06);
+}
+
+.supplier-profile-top {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.supplier-profile-top h3 {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+
+.supplier-profile-top p {
+  margin: 2px 0;
+}
+
+.supplier-note {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.supplier-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.supplier-kpis div,
+.supplier-debt-mini {
+  background: var(--soft);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.supplier-kpis span,
+.supplier-debt-mini span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.supplier-kpis strong,
+.supplier-debt-mini strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 18px;
+}
+
+.supplier-two-cols {
+  display: grid;
+  grid-template-columns: 1.3fr .7fr;
+  gap: 14px;
+}
+
+.supplier-history-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.supplier-history-head,
+.supplier-history-foot,
+.supplier-payment-row,
+.supplier-line-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.supplier-history-head {
+  margin-bottom: 10px;
+}
+
+.supplier-history-total {
+  font-weight: 900;
+  color: var(--blue);
+}
+
+.supplier-line-item {
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.supplier-history-foot {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.supplier-payment-row {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+
+.text-red {
+  color: var(--red);
+}
+
+.text-green {
+  color: var(--green);
+}
+
+@media (max-width: 760px) {
+  .supplier-page-head,
+  .supplier-history-head,
+  .supplier-history-foot,
+  .supplier-payment-row {
+    align-items: flex-start;
+  }
+
+  .supplier-page-head,
+  .supplier-history-head,
+  .supplier-history-foot,
+  .supplier-payment-row {
+    flex-direction: column;
+  }
+
+  .supplier-search-card,
+  .supplier-two-cols,
+  .supplier-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .supplier-tabs .mode-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+}
