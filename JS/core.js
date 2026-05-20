@@ -5680,7 +5680,7 @@ function renderAchatLines() {
       '</td>' +
       //Supprimer 
       '<td style="text-align:center;">' +
-        '<button onclick="removeAchatLine(' + i + ')" class="achat-remove-btn">x</button>' +
+        '<button onclick="removeAchatLine(' + i + ')" class="achat-remove-btn">Supprimer</button>' +
       '</td>';
 
     tbody.appendChild(tr);
