@@ -941,6 +941,7 @@ var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
   var quickTreasury = await getDashboardQuickTreasuryFromSupabase();
   var debts = await getDashboardDebtsFromSupabase();
   var purchases = await getDashboardPurchasesFromSupabase();
+  var smartStock = getDashboardSmartStock(productRows, items);
 
 return {
   vendasHoje: totalVendas,
@@ -956,7 +957,8 @@ return {
   depenses: latestDepenses,
   quickTreasury: quickTreasury,
   debts: debts,
-  purchases: purchases
+  purchases: purchases,
+  smartStock: smartStock
 };
 }
 
@@ -2158,6 +2160,124 @@ function renderDashboardPurchases(data) {
     '</div>';
   }).join("");
 }
+
+function getDashboardSmartStock(productRows, saleItems) {
+  productRows = productRows || [];
+  saleItems = saleItems || [];
+
+  var soldMap = {};
+
+  saleItems.forEach(function(item) {
+    var nameKey = String(item.product_name || "").trim().toLowerCase();
+    var idKey = String(item.product_id || "").trim();
+
+    if (nameKey) soldMap["name:" + nameKey] = true;
+    if (idKey) soldMap["id:" + idKey] = true;
+  });
+
+  var totalValue = 0;
+  var out = [];
+  var low = [];
+  var dormant = [];
+
+  productRows.forEach(function(product) {
+    var shop = Number(product.stock_shop) || 0;
+    var warehouse = Number(product.stock_warehouse) || 0;
+    var totalStock = shop + warehouse;
+    var minStock = Number(product.min_stock) || 3;
+    var purchasePrice = Number(product.purchase_price) || 0;
+
+    totalValue += totalStock * purchasePrice;
+
+    var row = {
+      id: product.id || "",
+      name: product.name || "Produto",
+      stock: totalStock,
+      shop: shop,
+      warehouse: warehouse,
+      minStock: minStock,
+      value: totalStock * purchasePrice
+    };
+
+    if (totalStock <= 0) {
+      out.push(row);
+    } else if (totalStock <= minStock) {
+      low.push(row);
+    }
+
+    var nameKey = String(product.name || "").trim().toLowerCase();
+    var idKey = String(product.id || "").trim();
+
+    if (totalStock > 0 && !soldMap["name:" + nameKey] && !soldMap["id:" + idKey]) {
+      dormant.push(row);
+    }
+  });
+
+  out.sort(function(a, b) { return a.stock - b.stock; });
+  low.sort(function(a, b) { return a.stock - b.stock; });
+  dormant.sort(function(a, b) { return b.value - a.value; });
+
+  return {
+    totalValue: totalValue,
+    outCount: out.length,
+    lowCount: low.length,
+    dormantCount: dormant.length,
+    alerts: out.concat(low).slice(0, 6),
+    dormants: dormant.slice(0, 6)
+  };
+}
+
+function renderDashboardSmartStock(data) {
+  data = data || {};
+
+  var set = function(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  set("smart-stock-value", fmt(data.totalValue || 0));
+  set("smart-stock-out", data.outCount || 0);
+  set("smart-stock-low", data.lowCount || 0);
+  set("smart-stock-dormant", data.dormantCount || 0);
+
+  var alerts = document.getElementById("smart-stock-alerts");
+  var dormants = document.getElementById("smart-stock-dormants");
+
+  if (alerts) {
+    if (!data.alerts || !data.alerts.length) {
+      alerts.innerHTML = '<div class="empty">Stock OK</div>';
+    } else {
+      alerts.innerHTML = data.alerts.map(function(row) {
+        var critical = Number(row.stock) <= 0;
+
+        return '<div class="smart-stock-row">' +
+          '<div>' +
+            '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
+            '<small>Boutique: ' + row.shop + ' | Dépôt: ' + row.warehouse + '</small>' +
+          '</div>' +
+          '<span class="' + (critical ? "red" : "orange") + '">' + row.stock + ' un</span>' +
+        '</div>';
+      }).join("");
+    }
+  }
+
+  if (dormants) {
+    if (!data.dormants || !data.dormants.length) {
+      dormants.innerHTML = '<div class="empty">Aucun produit dormant</div>';
+    } else {
+      dormants.innerHTML = data.dormants.map(function(row) {
+        return '<div class="smart-stock-row">' +
+          '<div>' +
+            '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
+            '<small>Valeur stock: ' + fmt(row.value || 0) + '</small>' +
+          '</div>' +
+          '<span>' + row.stock + ' un</span>' +
+        '</div>';
+      }).join("");
+    }
+  }
+}
+
 var lastDashboardData = null;
 var lastDashboardFilters = null;
 var dashboardRequestSeq = 0;
@@ -2174,6 +2294,7 @@ function renderDashboardData(d) {
   renderDashboardQuickTreasury(d.quickTreasury, d.pagamentos || {});
   renderDashboardDebts(d.debts);
   renderDashboardPurchases(d.purchases);
+  renderDashboardSmartStock(d.smartStock);
 
   var el = document.getElementById('top-list');
   el.innerHTML = '';
