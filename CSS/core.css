@@ -4793,3 +4793,8 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     border: 0 !important;
   }
 }
+@media (max-width: 820px) {
+  body.mobile-nav-open .mobile-cart-bar {
+    display: none !important;
+  }
+}
