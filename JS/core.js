@@ -943,6 +943,14 @@ var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
   var purchases = await getDashboardPurchasesFromSupabase();
   var smartStock = getDashboardSmartStock(productRows, items);
   var salesPerformance = getDashboardSalesPerformance(sales, items);
+  var accountingSummary = getDashboardAccountingSummary(
+    sales,
+    items,
+    expenseRows,
+    productRows,
+    debts,
+    quickTreasury
+  );
 
 return {
   vendasHoje: totalVendas,
@@ -960,7 +968,8 @@ return {
   debts: debts,
   purchases: purchases,
   smartStock: smartStock,
-  salesPerformance: salesPerformance
+  salesPerformance: salesPerformance,
+  accountingSummary: accountingSummary
 };
 }
 
@@ -2438,6 +2447,108 @@ function renderDashboardSalesPerformance(data) {
   }
 }
 
+function getDashboardAccountingSummary(sales, saleItems, expenseRows, productRows, debts, quickTreasury) {
+  sales = sales || [];
+  saleItems = saleItems || [];
+  expenseRows = expenseRows || [];
+  productRows = productRows || [];
+  debts = debts || {};
+  quickTreasury = quickTreasury || {};
+
+  var revenue = sales.reduce(function(sum, sale) {
+    return sum + (Number(sale.total) || 0);
+  }, 0);
+
+  var grossProfit = saleItems.reduce(function(sum, item) {
+    return sum + (Number(item.profit) || 0);
+  }, 0);
+
+  var cogs = saleItems.reduce(function(sum, item) {
+    var qty = Number(item.quantity) || 0;
+    var purchasePrice = Number(item.purchase_price) || 0;
+
+    if (purchasePrice > 0) {
+      return sum + (qty * purchasePrice);
+    }
+
+    return sum + ((Number(item.total) || 0) - (Number(item.profit) || 0));
+  }, 0);
+
+  var expenses = expenseRows.reduce(function(sum, row) {
+    return sum + (Number(row.amount) || 0);
+  }, 0);
+
+  var netResult = grossProfit - expenses;
+
+  var stockValue = productRows.reduce(function(sum, product) {
+    var stock = (Number(product.stock_shop) || 0) + (Number(product.stock_warehouse) || 0);
+    var purchasePrice = Number(product.purchase_price) || 0;
+    return sum + (stock * purchasePrice);
+  }, 0);
+
+  var receivables = Number(debts.clientTotal) || 0;
+  var payables = Number(debts.supplierTotal) || 0;
+  var cash = Number(quickTreasury.balance) || 0;
+
+  var assets = cash + stockValue + receivables;
+  var liabilities = payables;
+  var equity = assets - liabilities;
+
+  return {
+    revenue: revenue,
+    cogs: cogs,
+    grossProfit: grossProfit,
+    expenses: expenses,
+    netResult: netResult,
+    grossRate: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
+    netRate: revenue > 0 ? (netResult / revenue) * 100 : 0,
+    stockValue: stockValue,
+    receivables: receivables,
+    payables: payables,
+    cash: cash,
+    assets: assets,
+    liabilities: liabilities,
+    equity: equity
+  };
+}
+
+function renderDashboardAccountingSummary(data) {
+  data = data || {};
+
+  var set = function(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  var percent = function(value) {
+    return ((Number(value) || 0).toFixed(1)).replace(".", ",") + "%";
+  };
+
+  set("acct-sum-revenue", fmt(data.revenue || 0));
+  set("acct-sum-cogs", fmt(data.cogs || 0));
+  set("acct-sum-gross", fmt(data.grossProfit || 0));
+  set("acct-sum-gross-rate", "Marge brute: " + percent(data.grossRate || 0));
+  set("acct-sum-expenses", fmt(data.expenses || 0));
+
+  set("acct-sum-net", fmt(data.netResult || 0));
+  set("acct-sum-net-rate", "Marge nette: " + percent(data.netRate || 0));
+
+  set("acct-sum-stock", fmt(data.stockValue || 0));
+  set("acct-sum-receivables", fmt(data.receivables || 0));
+  set("acct-sum-payables", fmt(data.payables || 0));
+  set("acct-sum-cash", fmt(data.cash || 0));
+
+  set("acct-sum-assets", fmt(data.assets || 0));
+  set("acct-sum-liabilities", fmt(data.liabilities || 0));
+  set("acct-sum-equity", fmt(data.equity || 0));
+
+  var netEl = document.getElementById("acct-sum-net");
+  if (netEl) netEl.style.color = (Number(data.netResult) || 0) < 0 ? "var(--red)" : "var(--green)";
+
+  var equityEl = document.getElementById("acct-sum-equity");
+  if (equityEl) equityEl.style.color = (Number(data.equity) || 0) < 0 ? "var(--red)" : "var(--green)";
+}
+
 var lastDashboardData = null;
 var lastDashboardFilters = null;
 var dashboardRequestSeq = 0;
@@ -2456,6 +2567,7 @@ function renderDashboardData(d) {
   renderDashboardPurchases(d.purchases);
   renderDashboardSmartStock(d.smartStock);
   renderDashboardSalesPerformance(d.salesPerformance);
+  renderDashboardAccountingSummary(d.accountingSummary);
 
   var el = document.getElementById('top-list');
   el.innerHTML = '';
