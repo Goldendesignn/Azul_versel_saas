@@ -938,19 +938,22 @@ var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
     valor: Number(row.amount) || 0
   };
 });
-  return {
-    vendasHoje: totalVendas,
-    vendasHojeCount: sales.length,
-    lucroMes: totalLucro,
-    alertas: stockAlertas.length,
-    topProdutos: topProdutos,
-    pagamentos: pagamentos,
-    stockAlertas: stockAlertas,
+  var quickTreasury = await getDashboardQuickTreasuryFromSupabase();
 
-   totalDepenses: totalDepenses,
+return {
+  vendasHoje: totalVendas,
+  vendasHojeCount: sales.length,
+  lucroMes: totalLucro,
+  alertas: stockAlertas.length,
+  topProdutos: topProdutos,
+  pagamentos: pagamentos,
+  stockAlertas: stockAlertas,
+
+  totalDepenses: totalDepenses,
   depensesCount: expenseRows.length,
-  depenses: latestDepenses
-  };
+  depenses: latestDepenses,
+  quickTreasury: quickTreasury
+};
 }
 
 
@@ -1765,10 +1768,108 @@ function setDashboardFilterLoading(isLoading) {
     btn.textContent = btn.getAttribute('data-original-text') || 'Aplicar';
   }
 }
+function summarizeTreasuryEntries(entries, from, to) {
+  entries = entries || [];
 
+  var filtered = entries.filter(function(row) {
+    var date = String(row.date || "");
+    if (from && date < from) return false;
+    if (to && date > to) return false;
+    return true;
+  });
+
+  var totalIn = filtered.reduce(function(sum, row) {
+    return sum + (Number(row.income) || 0);
+  }, 0);
+
+  var totalOut = filtered.reduce(function(sum, row) {
+    return sum + (Number(row.expense) || 0);
+  }, 0);
+
+  return {
+    totalIn: totalIn,
+    totalOut: totalOut,
+    net: totalIn - totalOut,
+    count: filtered.length,
+    entries: filtered
+  };
+}
+
+async function getDashboardQuickTreasuryFromSupabase() {
+  var now = new Date();
+  var today = localDateKey(now);
+  var monthStart = localDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+
+  var allTreasury = await getTreasuryFromSupabase({});
+  var entries = allTreasury.entries || [];
+
+  var todaySummary = summarizeTreasuryEntries(entries, today, today);
+  var monthSummary = summarizeTreasuryEntries(entries, monthStart, today);
+
+  return {
+    balance: Number(allTreasury.balance) || 0,
+    todayIn: todaySummary.totalIn,
+    todayOut: todaySummary.totalOut,
+    monthIn: monthSummary.totalIn,
+    monthOut: monthSummary.totalOut,
+    monthNet: monthSummary.net,
+    latest: entries.slice(0, 5)
+  };
+}
+
+function setQuickTreasuryText(id, value) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = fmt(value || 0);
+}
+
+function renderDashboardQuickTreasury(data, pagamentos) {
+  data = data || {};
+  pagamentos = pagamentos || {};
+
+  setQuickTreasuryText("qt-balance", data.balance || 0);
+  setQuickTreasuryText("qt-today-in", data.todayIn || 0);
+  setQuickTreasuryText("qt-today-out", data.todayOut || 0);
+  setQuickTreasuryText("qt-month-in", data.monthIn || 0);
+  setQuickTreasuryText("qt-month-out", data.monthOut || 0);
+  setQuickTreasuryText("qt-month-net", data.monthNet || 0);
+
+  setQuickTreasuryText("qt-cash", pagamentos.Cash || 0);
+  setQuickTreasuryText("qt-express", pagamentos.Express || 0);
+  setQuickTreasuryText("qt-card", pagamentos.Cartao || 0);
+
+  var netEl = document.getElementById("qt-month-net");
+  if (netEl) {
+    netEl.style.color = (Number(data.monthNet) || 0) < 0 ? "var(--red)" : "var(--green)";
+  }
+
+  var list = document.getElementById("qt-latest");
+  if (!list) return;
+
+  var latest = data.latest || [];
+
+  if (!latest.length) {
+    list.innerHTML = '<div class="empty">Nenhum mouvement encontrado</div>';
+    return;
+  }
+
+  list.innerHTML = latest.map(function(row) {
+    var income = Number(row.income) || 0;
+    var expense = Number(row.expense) || 0;
+    var isIn = income > 0;
+
+    return '<div class="quick-treasury-row">' +
+      '<div>' +
+        '<strong>' + escapeDepenseHtml(row.type || "Mouvement") + '</strong>' +
+        '<small>' + escapeDepenseHtml(row.date || "") + ' - ' + escapeDepenseHtml(row.desc || "") + '</small>' +
+      '</div>' +
+      '<span class="' + (isIn ? "green" : "red") + '">' +
+        (isIn ? "+" : "-") + fmt(isIn ? income : expense) +
+      '</span>' +
+    '</div>';
+  }).join("");
+}
 var lastDashboardData = null;
 var lastDashboardFilters = null;
-
 var dashboardRequestSeq = 0;
 var dashboardLoadingTimer = null;
 function renderDashboardData(d) {
@@ -1780,6 +1881,7 @@ function renderDashboardData(d) {
   document.getElementById('k-alertas').textContent = d.alertas || 0;
   document.getElementById('k-depenses').textContent = fmt(d.totalDepenses);
   document.getElementById('k-depenses-n').textContent = (d.depensesCount||0) + ' registos';
+  renderDashboardQuickTreasury(d.quickTreasury, d.pagamentos || {});
 
   var el = document.getElementById('top-list');
   el.innerHTML = '';
