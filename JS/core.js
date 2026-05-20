@@ -951,6 +951,14 @@ var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
     debts,
     quickTreasury
   );
+  var importantAlerts = buildDashboardImportantAlerts({
+    debts: debts,
+    smartStock: smartStock,
+    purchases: purchases,
+    quickTreasury: quickTreasury,
+    accountingSummary: accountingSummary,
+    salesPerformance: salesPerformance
+  });
 
 return {
   vendasHoje: totalVendas,
@@ -969,7 +977,8 @@ return {
   purchases: purchases,
   smartStock: smartStock,
   salesPerformance: salesPerformance,
-  accountingSummary: accountingSummary
+  accountingSummary: accountingSummary,
+  importantAlerts: importantAlerts
 };
 }
 
@@ -2549,6 +2558,159 @@ function renderDashboardAccountingSummary(data) {
   if (equityEl) equityEl.style.color = (Number(data.equity) || 0) < 0 ? "var(--red)" : "var(--green)";
 }
 
+function buildDashboardImportantAlerts(data) {
+  data = data || {};
+
+  var alerts = [];
+  var debts = data.debts || {};
+  var smartStock = data.smartStock || {};
+  var purchases = data.purchases || {};
+  var quickTreasury = data.quickTreasury || {};
+  var accounting = data.accountingSummary || {};
+  var salesPerf = data.salesPerformance || {};
+
+  if ((smartStock.outCount || 0) > 0) {
+    alerts.push({
+      level: "critical",
+      title: "Produits finis",
+      desc: (smartStock.outCount || 0) + " produit(s) avec stock à 0.",
+      action: "Voir stock",
+      page: "transfert"
+    });
+  }
+
+  if ((smartStock.lowCount || 0) > 0) {
+    alerts.push({
+      level: "warning",
+      title: "Stock faible",
+      desc: (smartStock.lowCount || 0) + " produit(s) sous le minimum.",
+      action: "Voir stock",
+      page: "transfert"
+    });
+  }
+
+  if ((debts.clientTotal || 0) > 0) {
+    alerts.push({
+      level: (debts.clientTotal || 0) >= 100000 ? "critical" : "warning",
+      title: "Clients à encaisser",
+      desc: "Total à recevoir: " + fmt(debts.clientTotal || 0) + ".",
+      action: "Clients",
+      page: "clientes"
+    });
+  }
+
+  if ((debts.supplierTotal || 0) > 0) {
+    alerts.push({
+      level: (debts.supplierTotal || 0) >= 100000 ? "critical" : "warning",
+      title: "Fournisseurs à payer",
+      desc: "Total à payer: " + fmt(debts.supplierTotal || 0) + ".",
+      action: "Fournisseurs",
+      page: "forn"
+    });
+  }
+
+  if ((quickTreasury.monthNet || 0) < 0) {
+    alerts.push({
+      level: "critical",
+      title: "Trésorerie du mois négative",
+      desc: "Résultat trésorerie: " + fmt(quickTreasury.monthNet || 0) + ".",
+      action: "Trésorerie",
+      page: "tresorerie"
+    });
+  }
+
+  if ((accounting.netResult || 0) < 0) {
+    alerts.push({
+      level: "critical",
+      title: "Résultat net négatif",
+      desc: "Résultat estimé: " + fmt(accounting.netResult || 0) + ".",
+      action: "Comptabilité",
+      page: "comptabilite"
+    });
+  }
+
+  if ((salesPerf.marginPercent || 0) > 0 && (salesPerf.marginPercent || 0) < 15) {
+    alerts.push({
+      level: "warning",
+      title: "Marge faible",
+      desc: "Marge moyenne: " + ((salesPerf.marginPercent || 0).toFixed(1)).replace(".", ",") + "%.",
+      action: "Ventes",
+      page: "venda"
+    });
+  }
+
+  if ((purchases.creditTotal || 0) > 0) {
+    alerts.push({
+      level: "warning",
+      title: "Achats à crédit",
+      desc: "Reste à payer sur achats: " + fmt(purchases.creditTotal || 0) + ".",
+      action: "Achats",
+      page: "achat"
+    });
+  }
+
+  if (smartStock.alerts && smartStock.alerts.length) {
+    smartStock.alerts.slice(0, 3).forEach(function(row) {
+      alerts.push({
+        level: Number(row.stock) <= 0 ? "critical" : "warning",
+        title: row.name || "Produit",
+        desc: "Stock actuel: " + (row.stock || 0) + " unité(s).",
+        action: "Stock",
+        page: "transfert"
+      });
+    });
+  }
+
+  var critical = alerts.filter(function(alert) {
+    return alert.level === "critical";
+  }).length;
+
+  var warning = alerts.filter(function(alert) {
+    return alert.level === "warning";
+  }).length;
+
+  return {
+    critical: critical,
+    warning: warning,
+    total: alerts.length,
+    alerts: alerts.slice(0, 10)
+  };
+}
+
+function renderDashboardImportantAlerts(data) {
+  data = data || {};
+
+  var set = function(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  set("important-alerts-critical", data.critical || 0);
+  set("important-alerts-warning", data.warning || 0);
+  set("important-alerts-total", data.total || 0);
+
+  var list = document.getElementById("important-alerts-list");
+  if (!list) return;
+
+  if (!data.alerts || !data.alerts.length) {
+    list.innerHTML = '<div class="empty">Aucune alerte importante. Situation propre.</div>';
+    return;
+  }
+
+  list.innerHTML = data.alerts.map(function(alert) {
+    return '<div class="important-alert-row ' + escapeDepenseHtml(alert.level || "warning") + '">' +
+      '<div class="important-alert-dot"></div>' +
+      '<div class="important-alert-content">' +
+        '<strong>' + escapeDepenseHtml(alert.title || "Alerte") + '</strong>' +
+        '<small>' + escapeDepenseHtml(alert.desc || "") + '</small>' +
+      '</div>' +
+      '<button class="important-alert-action" onclick="goTo(\'' + escapeDepenseHtml(alert.page || "dashboard") + '\', null)">' +
+        escapeDepenseHtml(alert.action || "Voir") +
+      '</button>' +
+    '</div>';
+  }).join("");
+}
+
 var lastDashboardData = null;
 var lastDashboardFilters = null;
 var dashboardRequestSeq = 0;
@@ -2568,6 +2730,7 @@ function renderDashboardData(d) {
   renderDashboardSmartStock(d.smartStock);
   renderDashboardSalesPerformance(d.salesPerformance);
   renderDashboardAccountingSummary(d.accountingSummary);
+  renderDashboardImportantAlerts(d.importantAlerts);
 
   var el = document.getElementById('top-list');
   el.innerHTML = '';
