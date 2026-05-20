@@ -7922,15 +7922,42 @@ renderMobileInventory(products);
   nbrestock.innerHTML = totalstock;
   nbreboutique.innerHTML = totalboutique;
 }
+function renderMobileDepenseHistory(rows) {
+  var list = ensureMobileList("depHistoryBody", "mobileDepenseHistoryList");
+  if (!list) return;
 
+  rows = rows || [];
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Aucune depense trouvee</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(row) {
+    return '<div class="mobile-expense-card">' +
+      '<div class="mobile-card-top">' +
+        '<div>' +
+          '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.category || 'Depense') + '</div>' +
+          '<div class="mobile-card-title">' + escapeDepenseHtml(row.description || 'Sans description') + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(row.date || '') + '</div>' +
+        '</div>' +
+        '<div class="mobile-expense-amount">-' + fmt(row.amount || 0) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
 function renderDepenseHistory(rows) {
   var body = document.getElementById('depHistoryBody');
   if (!body) return;
+
   rows = rows || [];
+  renderMobileDepenseHistory(rows);
+
   if (!rows.length) {
     body.innerHTML = '<tr><td colspan="4" class="empty">Aucune depense trouvee</td></tr>';
     return;
   }
+
   body.innerHTML = rows.map(function(row) {
     return '<tr>' +
       '<td>' + escapeDepenseHtml(row.date || '') + '</td>' +
