@@ -1318,6 +1318,7 @@ function goTo(page, btn) {
     if (page === 'clientes') renderClientDatalist();
     if (page === 'tresorerie') loadTresorerie();
     if (page === 'comptabilite') loadComptabilite();
+    if (page === 'transfert') loadProducts(true);
     if (page === 'revendeurs') {
       renderRevProducts(products);
       renderRevCart();
@@ -2034,8 +2035,11 @@ function normalizeProductList(list) {
       id: product.id || "",
       name: name,
       price: parseFloat(product.price) || 0,
-      stock: parseFloat(product.stock) || 0,
+     stock: parseFloat(product.stock) || 0,
+      stockage: parseFloat(product.stockage || product.stock) || 0,
       stockBoutique: parseFloat(product.stockBoutique) || 0,
+      entries: parseFloat(product.entries) || 0,
+      exits: parseFloat(product.exits) || 0,
       photo: String(product.photo || ''),
       category: String(product.category || ''),
       code: String(product.code || ''),
@@ -2091,6 +2095,7 @@ async function loadProducts(forceRefresh) {
     var data = await getProductsFromSupabase();
 
     products = normalizeProductList(data);
+    products = applyInventoryMovementSummary(products, await getInventoryMovementSummaryFromSupabase());
 
     setVendaProductsLoading(false);
     filterProds();
@@ -6354,6 +6359,9 @@ function switchMode(mode, btn) {
   document.getElementById('transferSingle').style.display = mode === 'single' ? 'block' : 'none';
   document.getElementById('transferTudo').style.display = mode === 'tudo' ? 'block' : 'none';
   document.getElementById('stock').style.display = mode === 'stock' ? 'block' : 'none';
+  if (mode === 'stock') {
+  loadProducts(true);
+}
 }
 
 var stockArmazem = [];
@@ -6650,6 +6658,8 @@ function renderinventaire(products) {
   body.innerHTML = products.map(function(product) {
     var stockBoutique = Number(product.stockBoutique) || 0;
     var stockage = Number(product.stockage) || 0;
+    var entries = Number(product.entries) || 0;
+    var exits = Number(product.exits) || 0;
     var purchasePrice = Number(product.purchasePrice) || 0;
 
     var stocktotal = stockBoutique + stockage;
@@ -6668,6 +6678,8 @@ function renderinventaire(products) {
     return '<tr>' +
       '<td>' + escapeDepenseHtml(product.name || '') + '</td>' +
       '<td>' + escapeDepenseHtml(product.mainSupplier || '') + '</td>' +
+      '<td>' + entries + '</td>' +
+      '<td>' + exits + '</td>' +
       '<td>' + stockBoutique + '</td>' +
       '<td>' + stockage + '</td>' +
       '<td>' + stocktotal + '</td>' +
@@ -8329,6 +8341,80 @@ async function fetchPurchaseItemsByPurchaseIds(purchaseIds) {
   return allItems;
 }
 
+function addInventoryMove(summary, productId, productName, field, qty) {
+  qty = Number(qty) || 0;
+  if (qty <= 0) return;
+
+  var keys = [];
+
+  if (productId) keys.push("id:" + productId);
+  if (productName) keys.push("name:" + normalizeImportText(productName));
+
+  keys.forEach(function(key) {
+    if (!summary[key]) summary[key] = { entries: 0, exits: 0 };
+    summary[key][field] += qty;
+  });
+}
+
+async function getInventoryMovementSummaryFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+  var summary = {};
+
+  var purchasesResult = await supabaseClient
+    .from("purchases")
+    .select("id")
+    .eq("organization_id", organizationId);
+
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  var purchaseItems = await fetchPurchaseItemsByPurchaseIds((purchasesResult.data || []).map(function(row) {
+    return row.id;
+  }));
+
+  purchaseItems.forEach(function(item) {
+    addInventoryMove(summary, item.product_id, item.product_name, "entries", item.quantity);
+  });
+
+  var salesResult = await supabaseClient
+    .from("sales")
+    .select("id,sale_type")
+    .eq("organization_id", organizationId);
+
+  if (salesResult.error) throw salesResult.error;
+
+  var saleById = {};
+  (salesResult.data || []).forEach(function(sale) {
+    saleById[sale.id] = sale;
+  });
+
+  var saleItems = await fetchSaleItemsBySaleIds((salesResult.data || []).map(function(row) {
+    return row.id;
+  }));
+
+  saleItems.forEach(function(item) {
+    var sale = saleById[item.sale_id] || {};
+    if (String(sale.sale_type || "").toLowerCase() === "externo") return;
+
+    addInventoryMove(summary, item.product_id, item.product_name, "exits", item.quantity);
+  });
+
+  return summary;
+}
+
+function applyInventoryMovementSummary(productList, summary) {
+  summary = summary || {};
+
+  return (productList || []).map(function(product) {
+    var byId = summary["id:" + product.id];
+    var byName = summary["name:" + normalizeImportText(product.name)];
+    var movement = byId || byName || { entries: 0, exits: 0 };
+
+    product.entries = Number(movement.entries) || 0;
+    product.exits = Number(movement.exits) || 0;
+
+    return product;
+  });
+}
 function getPurchaseImportDuplicateKey(row) {
   return [
     normalizeImportText(row.date),
