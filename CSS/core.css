@@ -3927,3 +3927,134 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     grid-template-columns: 1fr;
   }
 }
+#page-dashboard .accounting-summary-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 18px 0;
+  box-shadow: 0 14px 34px rgba(0,0,0,.07);
+}
+
+#page-dashboard .accounting-summary-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+#page-dashboard .accounting-summary-head h2 {
+  margin: 2px 0 4px;
+  font-size: 24px;
+}
+
+#page-dashboard .accounting-summary-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#page-dashboard .accounting-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+#page-dashboard .accounting-summary-kpi,
+#page-dashboard .accounting-result-box,
+#page-dashboard .accounting-mini-list,
+#page-dashboard .accounting-balance-grid div {
+  background: var(--surface2);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+#page-dashboard .accounting-summary-kpi span,
+#page-dashboard .accounting-result-box span,
+#page-dashboard .accounting-balance-grid span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+#page-dashboard .accounting-summary-kpi strong,
+#page-dashboard .accounting-result-box strong,
+#page-dashboard .accounting-balance-grid strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--blue);
+  font-size: 20px;
+}
+
+#page-dashboard .accounting-summary-kpi.red strong {
+  color: var(--red);
+}
+
+#page-dashboard .accounting-summary-kpi.green strong {
+  color: var(--green);
+}
+
+#page-dashboard .accounting-summary-kpi small,
+#page-dashboard .accounting-result-box small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#page-dashboard .accounting-summary-body {
+  display: grid;
+  grid-template-columns: .8fr 1.2fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+#page-dashboard .accounting-result-box strong {
+  font-size: 28px;
+}
+
+#page-dashboard .accounting-mini-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+#page-dashboard .accounting-mini-row:last-child {
+  border-bottom: 0;
+}
+
+#page-dashboard .accounting-mini-row span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#page-dashboard .accounting-mini-row strong {
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+#page-dashboard .accounting-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  #page-dashboard .accounting-summary-grid,
+  #page-dashboard .accounting-summary-body,
+  #page-dashboard .accounting-balance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #page-dashboard .accounting-summary-head,
+  #page-dashboard .accounting-mini-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
