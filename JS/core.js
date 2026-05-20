@@ -8709,6 +8709,64 @@ async function createAccountingEntry(sourceType, sourceId, entryDate, descriptio
 
   return entry;
 }
+
+function renderMobileAccountingRows(listId, rows, emptyText) {
+  var list = ensureMobileList(listId, "mobile-" + listId);
+  if (!list) return;
+
+  rows = rows || [];
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">' + escapeDepenseHtml(emptyText || "Aucun mouvement") + '</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(row) {
+    return '<div class="mobile-accounting-card">' +
+      '<div class="mobile-card-top">' +
+        '<div>' +
+          '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.kicker || '') + '</div>' +
+          '<div class="mobile-card-title">' + escapeDepenseHtml(row.label || '') + '</div>' +
+          (row.sub ? '<div class="mobile-card-sub">' + escapeDepenseHtml(row.sub || '') + '</div>' : '') +
+        '</div>' +
+        '<div class="mobile-accounting-amount ' + escapeDepenseHtml(row.kind || '') + '">' + fmt(row.amount || 0) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderMobileAccountingJournal(rows) {
+  var list = ensureMobileList("acctJournalBody", "mobileAcctJournalList");
+  if (!list) return;
+
+  rows = rows || [];
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhum movimento encontrado</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(row) {
+    var debito = row.debito != null ? row.debito : row.entree;
+    var credito = row.credito != null ? row.credito : row.sortie;
+    var isDebit = Number(debito) > 0;
+    var amount = isDebit ? debito : credito;
+
+    return '<div class="mobile-accounting-card">' +
+      '<div class="mobile-card-top">' +
+        '<div>' +
+          '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.type || 'Comptabilite') + '</div>' +
+          '<div class="mobile-card-title">' + escapeDepenseHtml(row.desc || 'Sans description') + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(row.date || '') + ' · ' + escapeDepenseHtml(row.source || '') + '</div>' +
+        '</div>' +
+        '<div class="mobile-accounting-amount ' + (isDebit ? 'debit' : 'credit') + '">' +
+          (isDebit ? '+' : '-') + fmt(amount || 0) +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
 async function loadComptabilite() {
   var body = document.getElementById("acctJournalBody");
   if (!body) return;
@@ -8730,6 +8788,30 @@ async function loadComptabilite() {
     var r = data.resume || {};
     var b = data.bilan || {};
     var p = data.period || {};
+
+    var incomeRowsMobile = [
+  { kicker: "Resultat", label: "Vendas", amount: r.vendas || 0, kind: "debit" },
+  { kicker: "Resultat", label: "Custo das vendas", amount: r.coutVendas || 0, kind: "credit" },
+  { kicker: "Resultat", label: "Lucro bruto", amount: r.beneficeBrut || 0, kind: "debit" },
+  { kicker: "Resultat", label: "Despesas operacionais", amount: r.depenses || 0, kind: "credit" },
+  { kicker: "Resultat", label: "Resultado operacional", amount: r.resultatNet || 0, kind: (r.resultatNet || 0) >= 0 ? "debit" : "credit" },
+  { kicker: "Stock", label: "Compras de stock no periodo", amount: r.achats || 0, kind: "" },
+  { kicker: "Credito", label: "Compras a credito", amount: r.comprasCredito || 0, kind: "credit" },
+  { kicker: "Fornecedor", label: "Pagamentos a fornecedores", amount: r.pagamentosFornecedores || 0, kind: "credit" }
+];
+
+var balanceRowsMobile = [
+  { kicker: "Ativo", label: "Tesouraria", amount: b.tresorerie || 0, kind: "debit" },
+  { kicker: "Ativo", label: "Stock", amount: b.stock || 0, kind: "" },
+  { kicker: "Ativo", label: "Clientes a receber", amount: b.clientesAReceber || 0, kind: "debit" },
+  { kicker: "Ativo", label: "Total do ativo", amount: b.actifSimplifie || 0, kind: "debit" },
+  { kicker: "Passivo", label: "Dividas fornecedores", amount: b.dividasFournisseurs || 0, kind: "credit" },
+  { kicker: "Passivo", label: "Total do passivo", amount: b.passivo || 0, kind: "credit" },
+  { kicker: "Capital", label: "Capital proprio simplificado", amount: b.capitaisProprios || 0, kind: (b.capitaisProprios || 0) >= 0 ? "debit" : "credit" }
+];
+
+renderMobileAccountingRows("acctIncomeBody", incomeRowsMobile, "Aucun resultat");
+renderMobileAccountingRows("acctBalanceBody", balanceRowsMobile, "Aucun bilan");
 
     acctSet("acct-sales", fmt(r.vendas || 0));
     acctSet("acct-sales-n", (r.vendasCount || 0) + " vendas");
@@ -8767,12 +8849,14 @@ async function loadComptabilite() {
         acctAmountRow("Capital proprio simplificado", b.capitaisProprios, (b.capitaisProprios || 0) >= 0 ? "var(--green)" : "var(--red)");
     }
 
-    if (!data.journal || !data.journal.length) {
+  if (!data.journal || !data.journal.length) {
       body.innerHTML = '<tr><td colspan="6" class="empty">Nenhum movimento encontrado</td></tr>';
+      renderMobileAccountingJournal([]);
       return;
     }
 
     body.innerHTML = "";
+    renderMobileAccountingJournal(data.journal || []);
 
     data.journal.forEach(function(row) {
       var debito = row.debito != null ? row.debito : row.entree;
