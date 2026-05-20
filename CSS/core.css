@@ -3196,3 +3196,141 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     flex: 1;
   }
 }
+.quick-treasury-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 16px 0;
+  box-shadow: 0 12px 30px rgba(0,0,0,.06);
+}
+
+.quick-treasury-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.quick-treasury-head h2 {
+  margin: 2px 0 0;
+  font-size: 24px;
+}
+
+.quick-treasury-grid {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(5, 1fr);
+  gap: 10px;
+}
+
+.quick-treasury-main,
+.quick-treasury-mini,
+.quick-payment-strip div {
+  background: var(--surface2);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.quick-treasury-main {
+  background: linear-gradient(135deg, var(--blue), #071e4f);
+  color: #fff;
+}
+
+.quick-treasury-main span,
+.quick-treasury-mini span,
+.quick-payment-strip span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.quick-treasury-main span,
+.quick-treasury-main small {
+  color: rgba(255,255,255,.76);
+}
+
+.quick-treasury-main strong {
+  display: block;
+  font-size: 28px;
+  margin-top: 8px;
+}
+
+.quick-treasury-mini strong,
+.quick-payment-strip strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 18px;
+}
+
+.quick-treasury-mini.green strong,
+.quick-treasury-row span.green {
+  color: var(--green);
+}
+
+.quick-treasury-mini.red strong,
+.quick-treasury-row span.red {
+  color: var(--red);
+}
+
+.quick-payment-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.quick-treasury-list {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.quick-treasury-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.quick-treasury-row strong,
+.quick-treasury-row small {
+  display: block;
+}
+
+.quick-treasury-row small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.quick-treasury-row span {
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .quick-treasury-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .quick-treasury-main {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .quick-treasury-head,
+  .quick-treasury-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .quick-treasury-grid,
+  .quick-payment-strip {
+    grid-template-columns: 1fr;
+  }
+}
