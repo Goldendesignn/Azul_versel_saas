@@ -1399,16 +1399,16 @@ function renderMobileInventory(rows) {
   list.innerHTML = rows.map(function(product) {
     var stockBoutique = Number(product.stockBoutique) || 0;
     var stockage = Number(product.stockage) || 0;
-    var price = Number(product.price) || 0;
+    var purchasePrice = Number(product.purchasePrice) || 0;
     var total = stockBoutique + stockage;
-    var valeur = total * price;
+    var valeur = total * purchasePrice;
 
     return '<div class="mobile-stock-card">' +
       '<div class="mobile-card-top">' +
         '<div>' +
           '<div class="mobile-card-kicker">' + escapeDepenseHtml(product.mainSupplier || 'Stock') + '</div>' +
           '<div class="mobile-card-title">' + escapeDepenseHtml(product.name || '') + '</div>' +
-          '<div class="mobile-card-sub">Prix: ' + fmt(price) + '</div>' +
+          '<div class="mobile-card-sub">Prix achat: ' + fmt(purchasePrice) + '</div>' +
         '</div>' +
         '<div class="mobile-card-amount">' + fmt(valeur) + '</div>' +
       '</div>' +
@@ -6643,22 +6643,19 @@ function renderinventaire(products) {
   var nbreProductTotal = 0;
 
   if (!products.length) {
-    body.innerHTML =
-      '<tr><td colspan="9" class="empty">Aucun produit trouvé</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="empty">Aucun produit trouve</td></tr>';
     return;
   }
 
   body.innerHTML = products.map(function(product) {
     var stockBoutique = Number(product.stockBoutique) || 0;
     var stockage = Number(product.stockage) || 0;
-    var entries = Number(product.entries) || 0;
-    var exits = Number(product.exits) || 0;
-    var price = Number(product.price) || 0;
+    var purchasePrice = Number(product.purchasePrice) || 0;
 
     var stocktotal = stockBoutique + stockage;
-    var valeur = price * stocktotal;
-    var valeurstock = price * stockage;
-    var valeurboutique = price * stockBoutique;
+    var valeur = purchasePrice * stocktotal;
+    var valeurstock = purchasePrice * stockage;
+    var valeurboutique = purchasePrice * stockBoutique;
 
     valeurtotal += valeur;
     valeurTotalBoutique += valeurboutique;
@@ -6671,12 +6668,10 @@ function renderinventaire(products) {
     return '<tr>' +
       '<td>' + escapeDepenseHtml(product.name || '') + '</td>' +
       '<td>' + escapeDepenseHtml(product.mainSupplier || '') + '</td>' +
-      '<td>' + entries + '</td>' +
-      '<td>' + exits + '</td>' +
       '<td>' + stockBoutique + '</td>' +
       '<td>' + stockage + '</td>' +
       '<td>' + stocktotal + '</td>' +
-      '<td>' + fmt(price) + '</td>' +
+      '<td>' + fmt(purchasePrice) + '</td>' +
       '<td style="font-weight:600;color:var(--red);">' + fmt(valeur) + '</td>' +
     '</tr>';
   }).join('');
