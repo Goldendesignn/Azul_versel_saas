@@ -1137,32 +1137,12 @@ async function savePurchaseToSupabase(data) {
     ? Math.max(0, total - paidAmount)
     : 0;
 
-  var purchaseResult = await supabaseClient
-   .from("purchases")
-  .insert({
-    organization_id: organizationId,
-    supplier: supplier,
-    total: total,
-    paid_amount: paidAmount,
-    remaining_amount: remainingAmount,
-    is_credit: remainingAmount > 0,
-    created_at: data.purchaseDate ? data.purchaseDate + "T12:00:00" : undefined
-  })
-    .select()
-    .single();
-
-  if (purchaseResult.error) {
-    throw purchaseResult.error;
-  }
-
-  var purchase = purchaseResult.data;
   var purchaseItems = [];
 
   for (var i = 0; i < items.length; i++) {
     var savedProduct = await upsertProductFromPurchase(items[i], supplier);
 
   purchaseItems.push({
-    purchase_id: purchase.id,
     product_id: savedProduct.id,
     product_name: savedProduct.name,
     category: savedProduct.category || "",
@@ -1178,9 +1158,22 @@ async function savePurchaseToSupabase(data) {
 
   }
 
-  var itemsResult = await supabaseClient
-    .from("purchase_items")
-    .insert(purchaseItems);
+  var purchaseResult = await supabaseClient.rpc("create_purchase_for_org", {
+    p_organization_id: organizationId,
+    p_supplier: supplier,
+    p_total: total,
+    p_paid_amount: paidAmount,
+    p_remaining_amount: remainingAmount,
+    p_is_credit: remainingAmount > 0,
+    p_created_at: data.purchaseDate ? data.purchaseDate + "T12:00:00" : null,
+    p_items: purchaseItems
+  });
+
+  if (purchaseResult.error) {
+    throw purchaseResult.error;
+  }
+
+  var purchase = purchaseResult.data;
   
   var purchaseLinesAccounting = [
     { account: "13", debit: total, credit: 0 }
@@ -1201,10 +1194,6 @@ async function savePurchaseToSupabase(data) {
     "Compra fornecedor " + supplier,
     purchaseLinesAccounting
   );
-
-  if (itemsResult.error) {
-    throw itemsResult.error;
-  }
 
   return purchase;
 }
