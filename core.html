@@ -324,6 +324,84 @@
     </div>
   </div>
 </div>
+      <div class="sales-performance-card">
+  <div class="sales-performance-head">
+    <div>
+      <div class="eyebrow">Ventes</div>
+      <h2>Performance commerciale</h2>
+      <p>Ticket moyen, marge, clients et rythme des ventes.</p>
+    </div>
+    <button class="filter-btn" onclick="goTo('venda', null)">Nouvelle vente</button>
+  </div>
+
+  <div class="sales-performance-grid">
+    <div class="sales-performance-kpi">
+      <span>Ticket moyen</span>
+      <strong id="sales-perf-average-ticket">0 Kz</strong>
+      <small>total ventes / transactions</small>
+    </div>
+
+    <div class="sales-performance-kpi">
+      <span>Nombre de ventes</span>
+      <strong id="sales-perf-sales-count">0</strong>
+      <small>transactions</small>
+    </div>
+
+    <div class="sales-performance-kpi">
+      <span>Articles vendus</span>
+      <strong id="sales-perf-items-sold">0</strong>
+      <small>quantité totale</small>
+    </div>
+
+    <div class="sales-performance-kpi green">
+      <span>Marge moyenne</span>
+      <strong id="sales-perf-margin">0%</strong>
+      <small>profit / ventes</small>
+    </div>
+  </div>
+
+  <div class="sales-performance-body">
+    <div class="sales-performance-highlight">
+      <span>Meilleur client</span>
+      <strong id="sales-perf-best-client">-</strong>
+      <small id="sales-perf-best-client-total">0 Kz</small>
+    </div>
+
+    <div class="sales-performance-highlight">
+      <span>Meilleur vendeur</span>
+      <strong id="sales-perf-best-seller">-</strong>
+      <small id="sales-perf-best-seller-total">0 Kz</small>
+    </div>
+
+    <div class="sales-performance-highlight">
+      <span>Origine dominante</span>
+      <strong id="sales-perf-origin">-</strong>
+      <small id="sales-perf-origin-total">0 Kz</small>
+    </div>
+
+    <div class="sales-performance-highlight">
+      <span>Plus gros panier</span>
+      <strong id="sales-perf-biggest-sale">0 Kz</strong>
+      <small id="sales-perf-biggest-sale-client">-</small>
+    </div>
+  </div>
+
+  <div class="sales-performance-lists">
+    <div class="sales-performance-list-card">
+      <div class="card-title">Top clients</div>
+      <div id="sales-perf-top-clients">
+        <div class="empty">A carregar...</div>
+      </div>
+    </div>
+
+    <div class="sales-performance-list-card">
+      <div class="card-title">Origine des ventes</div>
+      <div id="sales-perf-origin-list">
+        <div class="empty">A carregar...</div>
+      </div>
+    </div>
+  </div>
+</div>
 
       <div class="row2">
         <div class="card">
