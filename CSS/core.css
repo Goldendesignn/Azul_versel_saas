@@ -4513,3 +4513,29 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     cursor: pointer;
   }
 }
+@media (max-width: 760px) {
+  .header .slogan,
+  .header-date,
+  #currentDate,
+  .date-display {
+    display: none !important;
+  }
+
+  .header {
+    min-height: 58px;
+    padding: 10px 16px;
+    justify-content: center;
+  }
+
+  .brand,
+  .logo,
+  .brand-logo {
+    font-size: 28px !important;
+    line-height: 1 !important;
+    letter-spacing: .08em;
+  }
+
+  .header .brand {
+    margin: 0 auto;
+  }
+}
