@@ -942,6 +942,7 @@ var latestDepenses = expenseRows.slice(0, 5).map(function(row) {
   var debts = await getDashboardDebtsFromSupabase();
   var purchases = await getDashboardPurchasesFromSupabase();
   var smartStock = getDashboardSmartStock(productRows, items);
+  var salesPerformance = getDashboardSalesPerformance(sales, items);
 
 return {
   vendasHoje: totalVendas,
@@ -958,7 +959,8 @@ return {
   quickTreasury: quickTreasury,
   debts: debts,
   purchases: purchases,
-  smartStock: smartStock
+  smartStock: smartStock,
+  salesPerformance: salesPerformance
 };
 }
 
@@ -2278,6 +2280,164 @@ function renderDashboardSmartStock(data) {
   }
 }
 
+function getDashboardSalesPerformance(sales, saleItems) {
+  sales = sales || [];
+  saleItems = saleItems || [];
+
+  var totalSales = sales.reduce(function(sum, sale) {
+    return sum + (Number(sale.total) || 0);
+  }, 0);
+
+  var totalProfit = saleItems.reduce(function(sum, item) {
+    return sum + (Number(item.profit) || 0);
+  }, 0);
+
+  var itemsSold = saleItems.reduce(function(sum, item) {
+    return sum + (Number(item.quantity) || 0);
+  }, 0);
+
+  var averageTicket = sales.length ? totalSales / sales.length : 0;
+  var marginPercent = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+
+  var clientMap = {};
+  var sellerMap = {};
+  var originMap = {};
+
+  var biggestSale = {
+    total: 0,
+    client: "-"
+  };
+
+  sales.forEach(function(sale) {
+    var total = Number(sale.total) || 0;
+    var client = String(sale.client_name || "Anonimo").trim() || "Anonimo";
+    var seller = String(sale.seller || sale.vendor || sale.created_by || "Não informado").trim() || "Não informado";
+    var origin = String(sale.sale_type || sale.origin || "Interno").trim() || "Interno";
+
+    if (!clientMap[client]) {
+      clientMap[client] = { name: client, total: 0, count: 0 };
+    }
+
+    clientMap[client].total += total;
+    clientMap[client].count += 1;
+
+    if (!sellerMap[seller]) {
+      sellerMap[seller] = { name: seller, total: 0, count: 0 };
+    }
+
+    sellerMap[seller].total += total;
+    sellerMap[seller].count += 1;
+
+    if (!originMap[origin]) {
+      originMap[origin] = { name: origin, total: 0, count: 0 };
+    }
+
+    originMap[origin].total += total;
+    originMap[origin].count += 1;
+
+    if (total > biggestSale.total) {
+      biggestSale = {
+        total: total,
+        client: client
+      };
+    }
+  });
+
+  var clients = Object.keys(clientMap).map(function(key) {
+    return clientMap[key];
+  }).sort(function(a, b) {
+    return b.total - a.total;
+  });
+
+  var sellers = Object.keys(sellerMap).map(function(key) {
+    return sellerMap[key];
+  }).sort(function(a, b) {
+    return b.total - a.total;
+  });
+
+  var origins = Object.keys(originMap).map(function(key) {
+    return originMap[key];
+  }).sort(function(a, b) {
+    return b.total - a.total;
+  });
+
+  return {
+    totalSales: totalSales,
+    totalProfit: totalProfit,
+    averageTicket: averageTicket,
+    salesCount: sales.length,
+    itemsSold: itemsSold,
+    marginPercent: marginPercent,
+    bestClient: clients[0] || { name: "-", total: 0, count: 0 },
+    bestSeller: sellers[0] || { name: "-", total: 0, count: 0 },
+    bestOrigin: origins[0] || { name: "-", total: 0, count: 0 },
+    biggestSale: biggestSale,
+    topClients: clients.slice(0, 6),
+    origins: origins
+  };
+}
+
+function renderDashboardSalesPerformance(data) {
+  data = data || {};
+
+  var set = function(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  set("sales-perf-average-ticket", fmt(data.averageTicket || 0));
+  set("sales-perf-sales-count", data.salesCount || 0);
+  set("sales-perf-items-sold", new Intl.NumberFormat(getLocale()).format(data.itemsSold || 0));
+  set("sales-perf-margin", ((Number(data.marginPercent) || 0).toFixed(1)).replace(".", ",") + "%");
+
+  set("sales-perf-best-client", (data.bestClient && data.bestClient.name) || "-");
+  set("sales-perf-best-client-total", fmt((data.bestClient && data.bestClient.total) || 0));
+
+  set("sales-perf-best-seller", (data.bestSeller && data.bestSeller.name) || "-");
+  set("sales-perf-best-seller-total", fmt((data.bestSeller && data.bestSeller.total) || 0));
+
+  set("sales-perf-origin", (data.bestOrigin && data.bestOrigin.name) || "-");
+  set("sales-perf-origin-total", fmt((data.bestOrigin && data.bestOrigin.total) || 0));
+
+  set("sales-perf-biggest-sale", fmt((data.biggestSale && data.biggestSale.total) || 0));
+  set("sales-perf-biggest-sale-client", (data.biggestSale && data.biggestSale.client) || "-");
+
+  var topClients = document.getElementById("sales-perf-top-clients");
+  var origins = document.getElementById("sales-perf-origin-list");
+
+  if (topClients) {
+    if (!data.topClients || !data.topClients.length) {
+      topClients.innerHTML = '<div class="empty">Aucun client trouvé</div>';
+    } else {
+      topClients.innerHTML = data.topClients.map(function(row, index) {
+        return '<div class="sales-performance-row">' +
+          '<div>' +
+            '<strong>' + (index + 1) + '. ' + escapeDepenseHtml(row.name) + '</strong>' +
+            '<small>' + (row.count || 0) + ' vente(s)</small>' +
+          '</div>' +
+          '<span>' + fmt(row.total || 0) + '</span>' +
+        '</div>';
+      }).join("");
+    }
+  }
+
+  if (origins) {
+    if (!data.origins || !data.origins.length) {
+      origins.innerHTML = '<div class="empty">Aucune origine trouvée</div>';
+    } else {
+      origins.innerHTML = data.origins.map(function(row) {
+        return '<div class="sales-performance-row">' +
+          '<div>' +
+            '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
+            '<small>' + (row.count || 0) + ' vente(s)</small>' +
+          '</div>' +
+          '<span>' + fmt(row.total || 0) + '</span>' +
+        '</div>';
+      }).join("");
+    }
+  }
+}
+
 var lastDashboardData = null;
 var lastDashboardFilters = null;
 var dashboardRequestSeq = 0;
@@ -2295,6 +2455,7 @@ function renderDashboardData(d) {
   renderDashboardDebts(d.debts);
   renderDashboardPurchases(d.purchases);
   renderDashboardSmartStock(d.smartStock);
+  renderDashboardSalesPerformance(d.salesPerformance);
 
   var el = document.getElementById('top-list');
   el.innerHTML = '';
