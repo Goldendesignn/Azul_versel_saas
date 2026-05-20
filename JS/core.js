@@ -8248,6 +8248,40 @@ async function saveTresorerie() {
     }
   }
 }
+function renderMobileTreasuryHistory(rows) {
+  var list = ensureMobileList("tresoBody", "mobileTreasuryHistoryList");
+  if (!list) return;
+
+  rows = rows || [];
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhum movimento encontrado</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(row) {
+    var income = Number(row.income) || 0;
+    var expense = Number(row.expense) || 0;
+    var isIn = income > 0;
+    var amount = isIn ? income : expense;
+
+    return '<div class="mobile-treasury-card">' +
+      '<div class="mobile-card-top">' +
+        '<div>' +
+          '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.type || 'Mouvement') + '</div>' +
+          '<div class="mobile-card-title">' + escapeDepenseHtml(row.desc || 'Sans description') + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(row.date || '') + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div class="mobile-treasury-amount ' + (isIn ? 'in' : 'out') + '">' +
+            (isIn ? '+' : '-') + fmt(amount || 0) +
+          '</div>' +
+          '<div class="mobile-card-sub">Solde: ' + fmt(row.balance || 0) + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
 
 async function loadTresorerie() {
   var body = document.getElementById("tresoBody");
@@ -8273,10 +8307,12 @@ async function loadTresorerie() {
 
     if (!data.entries || data.entries.length === 0) {
       body.innerHTML = '<tr><td colspan="6" class="empty">Nenhum movimento encontrado</td></tr>';
+      renderMobileTreasuryHistory([]);
       return;
     }
 
     body.innerHTML = "";
+    renderMobileTreasuryHistory(data.entries || []);
 
     data.entries.forEach(function(row) {
       body.innerHTML += "<tr>" +
