@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v1";
+const AZUL_CACHE = "azul-pwa-v2";
 
 const AZUL_STATIC_ASSETS = [
   "/",
@@ -14,7 +14,7 @@ const AZUL_STATIC_ASSETS = [
   "/JS/login.js",
   "/JS/core.js",
   "/JS/admin.js",
-  "/Assets/icon.svg",
+  "/Assets/azul-icon.png",
   "/Assets/icon-192.png",
   "/Assets/icon-512.png",
   "/Assets/maskable-512.png"
