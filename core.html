@@ -480,7 +480,40 @@
     </div>
   </div>
 </div>
+<div class="important-alerts-card">
+  <div class="important-alerts-head">
+    <div>
+      <div class="eyebrow">Alertes</div>
+      <h2>Alertes importantes</h2>
+      <p>Ce qui demande ton attention avant de continuer à vendre.</p>
+    </div>
+    <button class="filter-btn" onclick="loadDashboard()">Actualiser</button>
+  </div>
 
+  <div class="important-alerts-grid">
+    <div class="important-alerts-kpi red">
+      <span>Critiques</span>
+      <strong id="important-alerts-critical">0</strong>
+      <small>à traiter vite</small>
+    </div>
+
+    <div class="important-alerts-kpi orange">
+      <span>À surveiller</span>
+      <strong id="important-alerts-warning">0</strong>
+      <small>risque moyen</small>
+    </div>
+
+    <div class="important-alerts-kpi">
+      <span>Total alertes</span>
+      <strong id="important-alerts-total">0</strong>
+      <small>sur la période</small>
+    </div>
+  </div>
+
+  <div class="important-alerts-list" id="important-alerts-list">
+    <div class="empty">A carregar alertes...</div>
+  </div>
+</div>
       <div class="row2">
         <div class="card">
           <div class="card-title"> Top Produtos</div>
