@@ -1857,6 +1857,314 @@ function setQuickTreasuryText(id, value) {
   if (el) el.textContent = fmt(value || 0);
 }
 
+function getDashboardLang() {
+  return ((config && config.language) || 'pt');
+}
+
+function getMainDashboardText(key) {
+  var lang = getDashboardLang();
+  var dict = {
+    pt: {
+      period: 'Periodo', from: 'De', to: 'Ate', product: 'Produto', supplier: 'Fornecedor',
+      today: 'Hoje', week: 'Esta semana', month: 'Este mes', custom: 'Personalizado',
+      all: 'Todos', apply: 'Aplicar', print: 'Imprimir', refresh: 'Atualizar', seeAll: 'Ver tudo',
+      sales: 'Vendas', profit: 'Lucro', expenses: 'Despesas', stockAlerts: 'Alertas Stock',
+      revenueCost: 'Receita - Custo', missingProducts: 'produtos em falta',
+      treasury: 'Tesouraria', quickTreasury: 'Tesouraria rapida', availableBalance: 'Saldo disponivel',
+      monthlyBalance: 'Saldo do mes', todayIn: 'Entradas hoje', todayOut: 'Saidas hoje',
+      monthIn: 'Entradas do mes', monthOut: 'Saidas do mes', monthResult: 'Resultado do mes',
+      cash: 'Cash', express: 'Express', card: 'Cartao', registos: 'registos',
+      loadingMovements: 'A carregar movimentos...', noMovement: 'Nenhum movimento encontrado',
+      debts: 'Dividas', debtSituation: 'Situacao das dividas',
+      debtIntro: 'Clientes a receber e fornecedores a pagar.', clients: 'Clientes',
+      suppliers: 'Fornecedores', clientsReceivable: 'Clientes a receber', suppliersPayable: 'Fornecedores a pagar',
+      netBalance: 'Saldo liquido', receivablePayable: 'A receber - a pagar',
+      openFiles: 'Dossiers abertos', dossierUnit: 'dossiers', clientSupplier: 'clientes + fornecedores',
+      debtorClients: 'Clientes devedores', noClientDebt: 'Nenhuma divida de cliente',
+      noSupplierDebt: 'Nenhuma divida de fornecedor', debtUnit: 'divida(s)', purchaseUnit: 'compra(s)',
+      purchases: 'Compras', purchaseOverview: 'Visao de compras',
+      purchaseIntro: 'Acompanhamento de compras, fornecedores e creditos.',
+      newPurchase: 'Nova compra', todayPurchases: 'Compras hoje', monthPurchases: 'Compras do mes',
+      creditPurchases: 'Compras a credito', supplierDebt: 'Divida fornecedores',
+      remainingToPay: 'Resta pagar', mainSupplier: 'Fornecedor principal', latestPurchases: 'Ultimas compras',
+      noPurchase: 'Nenhuma compra encontrada', remaining: 'Resta',
+      stock: 'Stock', smartStock: 'Stock inteligente',
+      stockIntro: 'Valor, rupturas, alertas e produtos parados.', viewStock: 'Ver stock',
+      totalStockValue: 'Valor total do stock', shopWarehouse: 'Boutique + armazem',
+      outProducts: 'Produtos esgotados', totalStockZero: 'stock total a 0',
+      lowStock: 'Stock baixo', belowMinimum: 'abaixo do minimo',
+      dormantProducts: 'Produtos parados', notSoldPeriod: 'sem vendas no periodo',
+      priorityAlerts: 'Alertas prioritarios', stockOk: 'Stock OK',
+      shop: 'Boutique', warehouse: 'Armazem', stockValue: 'Valor stock',
+      noDormantProduct: 'Nenhum produto parado',
+      commercialPerformance: 'Performance comercial',
+      commercialIntro: 'Ticket medio, margem, clientes e ritmo de vendas.',
+      newSale: 'Nova venda', averageTicket: 'Ticket medio',
+      salesTransactions: 'total vendas / transacoes', salesCount: 'Numero de vendas',
+      transactions: 'transacoes', soldItems: 'Artigos vendidos', totalQuantity: 'quantidade total',
+      averageMargin: 'Margem media', profitSales: 'lucro / vendas',
+      bestClient: 'Melhor cliente', bestSeller: 'Melhor vendedor',
+      dominantOrigin: 'Origem dominante', biggestCart: 'Maior carrinho',
+      topClients: 'Top clientes', salesOrigin: 'Origem das vendas',
+      noClientFound: 'Nenhum cliente encontrado', noOriginFound: 'Nenhuma origem encontrada',
+      saleUnit: 'venda(s)',
+      fiscalAccounting: 'Fiscal / Contabil', accountingSummary: 'Resumo fiscal/contabil',
+      accountingIntro: 'Visao simplificada do resultado, stock, valores a receber e dividas.',
+      accounting: 'Contabilidade', revenue: 'Volume de negocios', periodSales: 'Vendas do periodo',
+      cogs: 'Custo das mercadorias', purchaseCostSold: 'Preco de compra vendido',
+      grossMargin: 'Margem bruta', periodCharges: 'Despesas do periodo',
+      estimatedNetResult: 'Resultado liquido estimado', netMargin: 'Margem liquida',
+      valuedStock: 'Stock valorizado', treasuryAsset: 'Tesouraria', simplifiedAssets: 'Ativo simplificado',
+      simplifiedLiabilities: 'Passivo simplificado', netPosition: 'Situacao liquida',
+      alerts: 'Alertas', importantAlerts: 'Alertas importantes',
+      importantIntro: 'O que precisa da tua atencao antes de continuar a vender.',
+      critical: 'Criticos', handleFast: 'a tratar rapido', watch: 'A acompanhar',
+      mediumRisk: 'risco medio', totalAlerts: 'Total alertas', inPeriod: 'no periodo',
+      negativeTreasury: 'Tesouraria do mes negativa', treasuryResult: 'Resultado tesouraria',
+      negativeNetResult: 'Resultado liquido negativo', estimatedResult: 'Resultado estimado',
+      lowMargin: 'Margem baixa', avgMargin: 'Margem media', creditPurchaseRemain: 'Resta pagar nas compras',
+      currentStock: 'Stock atual', loadingAlerts: 'A carregar alertas...',
+      noImportantAlert: 'Nenhuma alerta importante. Situacao limpa.',
+      topProducts: 'Top Produtos', paymentMethods: 'Meios de Pagamento',
+      lowStockAlerts: 'Alertas de Stock Baixo', latestExpenses: 'Ultimas Despesas',
+      noData: 'Sem dados', noExpenses: 'Sem despesas', unit: 'un'
+    },
+    fr: {
+      period: 'Periode', from: 'De', to: 'A', product: 'Produit', supplier: 'Fournisseur',
+      today: 'Aujourd hui', week: 'Cette semaine', month: 'Ce mois', custom: 'Personnalise',
+      all: 'Tous', apply: 'Appliquer', print: 'Imprimer', refresh: 'Actualiser', seeAll: 'Tout voir',
+      sales: 'Ventes', profit: 'Benefice', expenses: 'Depenses', stockAlerts: 'Alertes Stock',
+      revenueCost: 'Recette - Cout', missingProducts: 'produits en manque',
+      treasury: 'Tresorerie', quickTreasury: 'Tresorerie rapide', availableBalance: 'Solde disponible',
+      monthlyBalance: 'Solde du mois', todayIn: "Entrees aujourd'hui", todayOut: "Sorties aujourd'hui",
+      monthIn: 'Entrees du mois', monthOut: 'Sorties du mois', monthResult: 'Resultat du mois',
+      cash: 'Cash', express: 'Express', card: 'Carte', registos: 'registres',
+      loadingMovements: 'Chargement des mouvements...', noMovement: 'Aucun mouvement trouve',
+      debts: 'Dettes', debtSituation: 'Situation des dettes',
+      debtIntro: 'Clients a recevoir et fournisseurs a payer.', clients: 'Clients',
+      suppliers: 'Fournisseurs', clientsReceivable: 'Clients a recevoir', suppliersPayable: 'Fournisseurs a payer',
+      netBalance: 'Solde net', receivablePayable: 'A recevoir - a payer',
+      openFiles: 'Dossiers ouverts', dossierUnit: 'dossiers', clientSupplier: 'clients + fournisseurs',
+      debtorClients: 'Clients debiteurs', noClientDebt: 'Aucune dette client',
+      noSupplierDebt: 'Aucune dette fournisseur', debtUnit: 'dette(s)', purchaseUnit: 'achat(s)',
+      purchases: 'Achats', purchaseOverview: 'Vue achats',
+      purchaseIntro: 'Suivi des achats, fournisseurs et credits.',
+      newPurchase: 'Nouvel achat', todayPurchases: "Achats aujourd'hui", monthPurchases: 'Achats du mois',
+      creditPurchases: 'Achats a credit', supplierDebt: 'Dette fournisseurs',
+      remainingToPay: 'Reste a payer', mainSupplier: 'Fournisseur principal', latestPurchases: 'Derniers achats',
+      noPurchase: 'Aucun achat trouve', remaining: 'Reste',
+      stock: 'Stock', smartStock: 'Stock intelligent',
+      stockIntro: 'Valeur, ruptures, alertes et produits dormants.', viewStock: 'Voir stock',
+      totalStockValue: 'Valeur totale stock', shopWarehouse: 'Boutique + depot',
+      outProducts: 'Produits finis', totalStockZero: 'stock total a 0',
+      lowStock: 'Stock faible', belowMinimum: 'sous le minimum',
+      dormantProducts: 'Produits dormants', notSoldPeriod: 'pas vendus sur la periode',
+      priorityAlerts: 'Alertes prioritaires', stockOk: 'Stock OK',
+      shop: 'Boutique', warehouse: 'Depot', stockValue: 'Valeur stock',
+      noDormantProduct: 'Aucun produit dormant',
+      commercialPerformance: 'Performance commerciale',
+      commercialIntro: 'Ticket moyen, marge, clients et rythme des ventes.',
+      newSale: 'Nouvelle vente', averageTicket: 'Ticket moyen',
+      salesTransactions: 'total ventes / transactions', salesCount: 'Nombre de ventes',
+      transactions: 'transactions', soldItems: 'Articles vendus', totalQuantity: 'quantite totale',
+      averageMargin: 'Marge moyenne', profitSales: 'profit / ventes',
+      bestClient: 'Meilleur client', bestSeller: 'Meilleur vendeur',
+      dominantOrigin: 'Origine dominante', biggestCart: 'Plus gros panier',
+      topClients: 'Top clients', salesOrigin: 'Origine des ventes',
+      noClientFound: 'Aucun client trouve', noOriginFound: 'Aucune origine trouvee',
+      saleUnit: 'vente(s)',
+      fiscalAccounting: 'Fiscal / Comptable', accountingSummary: 'Resume fiscal/comptable',
+      accountingIntro: 'Vue simplifiee du resultat, stock, creances et dettes.',
+      accounting: 'Comptabilite', revenue: "Chiffre d'affaires", periodSales: 'Ventes de la periode',
+      cogs: 'Cout marchandises', purchaseCostSold: "Prix d'achat vendus",
+      grossMargin: 'Marge brute', periodCharges: 'Charges de la periode',
+      estimatedNetResult: 'Resultat net estime', netMargin: 'Marge nette',
+      valuedStock: 'Stock valorise', treasuryAsset: 'Tresorerie', simplifiedAssets: 'Actif simplifie',
+      simplifiedLiabilities: 'Passif simplifie', netPosition: 'Situation nette',
+      alerts: 'Alertes', importantAlerts: 'Alertes importantes',
+      importantIntro: 'Ce qui demande ton attention avant de continuer a vendre.',
+      critical: 'Critiques', handleFast: 'a traiter vite', watch: 'A surveiller',
+      mediumRisk: 'risque moyen', totalAlerts: 'Total alertes', inPeriod: 'sur la periode',
+      negativeTreasury: 'Tresorerie du mois negative', treasuryResult: 'Resultat tresorerie',
+      negativeNetResult: 'Resultat net negatif', estimatedResult: 'Resultat estime',
+      lowMargin: 'Marge faible', avgMargin: 'Marge moyenne', creditPurchaseRemain: 'Reste a payer sur achats',
+      currentStock: 'Stock actuel', loadingAlerts: 'Chargement des alertes...',
+      noImportantAlert: 'Aucune alerte importante. Situation propre.',
+      topProducts: 'Top Produits', paymentMethods: 'Moyens de paiement',
+      lowStockAlerts: 'Alertes de stock faible', latestExpenses: 'Dernieres depenses',
+      noData: 'Aucune donnee', noExpenses: 'Aucune depense', unit: 'un'
+    },
+    en: {
+      period: 'Period', from: 'From', to: 'To', product: 'Product', supplier: 'Supplier',
+      today: 'Today', week: 'This week', month: 'This month', custom: 'Custom',
+      all: 'All', apply: 'Apply', print: 'Print', refresh: 'Refresh', seeAll: 'View all',
+      sales: 'Sales', profit: 'Profit', expenses: 'Expenses', stockAlerts: 'Stock Alerts',
+      revenueCost: 'Revenue - Cost', missingProducts: 'missing products',
+      treasury: 'Treasury', quickTreasury: 'Quick Treasury', availableBalance: 'Available Balance',
+      monthlyBalance: 'Monthly balance', todayIn: "Today's inflows", todayOut: "Today's outflows",
+      monthIn: 'Monthly inflows', monthOut: 'Monthly outflows', monthResult: 'Monthly result',
+      cash: 'Cash', express: 'Express', card: 'Card', registos: 'records',
+      loadingMovements: 'Loading movements...', noMovement: 'No movement found',
+      debts: 'Debts', debtSituation: 'Debt Situation',
+      debtIntro: 'Client receivables and supplier payables.', clients: 'Clients',
+      suppliers: 'Suppliers', clientsReceivable: 'Client receivables', suppliersPayable: 'Supplier payables',
+      netBalance: 'Net balance', receivablePayable: 'Receivable - payable',
+      openFiles: 'Open files', dossierUnit: 'files', clientSupplier: 'clients + suppliers',
+      debtorClients: 'Debtor clients', noClientDebt: 'No client debt',
+      noSupplierDebt: 'No supplier debt', debtUnit: 'debt(s)', purchaseUnit: 'purchase(s)',
+      purchases: 'Purchases', purchaseOverview: 'Purchase Overview',
+      purchaseIntro: 'Purchases, suppliers and credit tracking.',
+      newPurchase: 'New purchase', todayPurchases: "Today's purchases", monthPurchases: 'Monthly purchases',
+      creditPurchases: 'Credit purchases', supplierDebt: 'Supplier debt',
+      remainingToPay: 'Remaining to pay', mainSupplier: 'Main supplier', latestPurchases: 'Latest purchases',
+      noPurchase: 'No purchase found', remaining: 'Remaining',
+      stock: 'Stock', smartStock: 'Smart Stock',
+      stockIntro: 'Value, shortages, alerts and dormant products.', viewStock: 'View stock',
+      totalStockValue: 'Total stock value', shopWarehouse: 'Shop + warehouse',
+      outProducts: 'Out of stock', totalStockZero: 'total stock at 0',
+      lowStock: 'Low stock', belowMinimum: 'below minimum',
+      dormantProducts: 'Dormant products', notSoldPeriod: 'not sold in the period',
+      priorityAlerts: 'Priority Alerts', stockOk: 'Stock OK',
+      shop: 'Shop', warehouse: 'Warehouse', stockValue: 'Stock value',
+      noDormantProduct: 'No dormant product',
+      commercialPerformance: 'Sales Performance',
+      commercialIntro: 'Average ticket, margin, clients and sales pace.',
+      newSale: 'New sale', averageTicket: 'Average ticket',
+      salesTransactions: 'total sales / transactions', salesCount: 'Sales count',
+      transactions: 'transactions', soldItems: 'Items sold', totalQuantity: 'total quantity',
+      averageMargin: 'Average margin', profitSales: 'profit / sales',
+      bestClient: 'Best client', bestSeller: 'Best seller',
+      dominantOrigin: 'Dominant origin', biggestCart: 'Biggest cart',
+      topClients: 'Top clients', salesOrigin: 'Sales origin',
+      noClientFound: 'No client found', noOriginFound: 'No origin found',
+      saleUnit: 'sale(s)',
+      fiscalAccounting: 'Tax / Accounting', accountingSummary: 'Tax/accounting summary',
+      accountingIntro: 'Simplified view of result, stock, receivables and debts.',
+      accounting: 'Accounting', revenue: 'Revenue', periodSales: 'Period sales',
+      cogs: 'Cost of goods', purchaseCostSold: 'Purchase cost sold',
+      grossMargin: 'Gross margin', periodCharges: 'Period expenses',
+      estimatedNetResult: 'Estimated net result', netMargin: 'Net margin',
+      valuedStock: 'Valued stock', treasuryAsset: 'Treasury', simplifiedAssets: 'Simplified assets',
+      simplifiedLiabilities: 'Simplified liabilities', netPosition: 'Net position',
+      alerts: 'Alerts', importantAlerts: 'Important Alerts',
+      importantIntro: 'What needs attention before selling more.',
+      critical: 'Critical', handleFast: 'handle quickly', watch: 'To watch',
+      mediumRisk: 'medium risk', totalAlerts: 'Total alerts', inPeriod: 'in the period',
+      negativeTreasury: 'Negative monthly treasury', treasuryResult: 'Treasury result',
+      negativeNetResult: 'Negative net result', estimatedResult: 'Estimated result',
+      lowMargin: 'Low margin', avgMargin: 'Average margin', creditPurchaseRemain: 'Remaining on purchases',
+      currentStock: 'Current stock', loadingAlerts: 'Loading alerts...',
+      noImportantAlert: 'No important alert. Situation is clean.',
+      topProducts: 'Top Products', paymentMethods: 'Payment Methods',
+      lowStockAlerts: 'Low Stock Alerts', latestExpenses: 'Latest Expenses',
+      noData: 'No data', noExpenses: 'No expenses', unit: 'units'
+    }
+  };
+  return (dict[lang] && dict[lang][key]) || (dict.pt && dict.pt[key]) || key;
+}
+
+function setMainDashboardText(selector, key) {
+  var el = document.querySelector(selector);
+  if (el) el.textContent = getMainDashboardText(key);
+}
+
+function setMainDashboardTexts(selector, keys) {
+  var nodes = document.querySelectorAll(selector);
+  keys.forEach(function(key, index) {
+    if (nodes[index]) nodes[index].textContent = getMainDashboardText(key);
+  });
+}
+
+function formatDashboardCount(value, key) {
+  return (Number(value) || 0) + ' ' + getMainDashboardText(key);
+}
+
+function translateMainDashboard() {
+  var page = document.getElementById('page-dashboard');
+  if (!page) return;
+
+  setMainDashboardTexts('#page-dashboard .dash-filters .form-label', ['period', 'from', 'to', 'product', 'supplier']);
+  var period = document.getElementById('df-period');
+  if (period) ['today', 'week', 'month', 'custom'].forEach(function(key, index) {
+    if (period.options[index]) period.options[index].text = getMainDashboardText(key);
+  });
+  var dfProd = document.getElementById('df-prod');
+  if (dfProd) dfProd.placeholder = getMainDashboardText('all');
+  var dfForn = document.getElementById('df-forn');
+  if (dfForn) dfForn.placeholder = getMainDashboardText('all');
+  var applyBtn = document.getElementById('dashApplyBtn');
+  if (applyBtn) applyBtn.textContent = getMainDashboardText('apply');
+  var printBtn = document.getElementById('dashPrintBtn');
+  if (printBtn) printBtn.textContent = getMainDashboardText('print');
+
+  setMainDashboardTexts('#page-dashboard > .kpi-grid .kpi-label', ['sales', 'profit', 'expenses', 'stockAlerts']);
+  setMainDashboardText('#page-dashboard > .kpi-grid .kpi:nth-child(2) .kpi-sub', 'revenueCost');
+  setMainDashboardText('#page-dashboard > .kpi-grid .kpi:nth-child(4) .kpi-sub', 'missingProducts');
+  setMainDashboardText('#page-dashboard .quick-treasury-head .eyebrow', 'treasury');
+  setMainDashboardText('#page-dashboard .quick-treasury-head h2', 'quickTreasury');
+  setMainDashboardText('#page-dashboard .quick-treasury-head button', 'refresh');
+  setMainDashboardText('#page-dashboard .quick-treasury-main > span', 'availableBalance');
+  setMainDashboardText('#qt-balance-sub', 'monthlyBalance');
+  setMainDashboardTexts('#page-dashboard .quick-treasury-mini > span', ['todayIn', 'todayOut', 'monthIn', 'monthOut', 'monthResult']);
+  setMainDashboardTexts('#page-dashboard .quick-payment-strip span', ['cash', 'express', 'card']);
+
+  setMainDashboardText('#page-dashboard .debt-dashboard-head .eyebrow', 'debts');
+  setMainDashboardText('#page-dashboard .debt-dashboard-head h2', 'debtSituation');
+  setMainDashboardText('#page-dashboard .debt-dashboard-head p', 'debtIntro');
+  setMainDashboardTexts('#page-dashboard .debt-actions button', ['clients', 'suppliers']);
+  setMainDashboardTexts('#page-dashboard .debt-kpi > span', ['clientsReceivable', 'suppliersPayable', 'netBalance', 'openFiles']);
+  setMainDashboardTexts('#page-dashboard .debt-kpi > small:not([id])', ['receivablePayable', 'clientSupplier']);
+  setMainDashboardTexts('#page-dashboard .debt-list-card .card-title', ['debtorClients', 'suppliersPayable']);
+
+  setMainDashboardText('#page-dashboard .purchase-dashboard-head .eyebrow', 'purchases');
+  setMainDashboardText('#page-dashboard .purchase-dashboard-head h2', 'purchaseOverview');
+  setMainDashboardText('#page-dashboard .purchase-dashboard-head p', 'purchaseIntro');
+  setMainDashboardTexts('#page-dashboard .purchase-actions button', ['newPurchase', 'suppliers']);
+  setMainDashboardTexts('#page-dashboard .purchase-kpi > span', ['todayPurchases', 'monthPurchases', 'creditPurchases', 'supplierDebt']);
+  setMainDashboardText('#page-dashboard .purchase-kpi.red:last-child small', 'remainingToPay');
+  setMainDashboardText('#page-dashboard .purchase-main-supplier > span', 'mainSupplier');
+  setMainDashboardText('#page-dashboard .purchase-latest-card .card-title', 'latestPurchases');
+
+  setMainDashboardText('#page-dashboard .smart-stock-head .eyebrow', 'stock');
+  setMainDashboardText('#page-dashboard .smart-stock-head h2', 'smartStock');
+  setMainDashboardText('#page-dashboard .smart-stock-head p', 'stockIntro');
+  setMainDashboardText('#page-dashboard .smart-stock-head button', 'viewStock');
+  setMainDashboardTexts('#page-dashboard .smart-stock-kpi > span', ['totalStockValue', 'outProducts', 'lowStock', 'dormantProducts']);
+  setMainDashboardTexts('#page-dashboard .smart-stock-kpi > small', ['shopWarehouse', 'totalStockZero', 'belowMinimum', 'notSoldPeriod']);
+  setMainDashboardTexts('#page-dashboard .smart-stock-list-card .card-title', ['priorityAlerts', 'dormantProducts']);
+
+  setMainDashboardText('#page-dashboard .sales-performance-head .eyebrow', 'sales');
+  setMainDashboardText('#page-dashboard .sales-performance-head h2', 'commercialPerformance');
+  setMainDashboardText('#page-dashboard .sales-performance-head p', 'commercialIntro');
+  setMainDashboardText('#page-dashboard .sales-performance-head button', 'newSale');
+  setMainDashboardTexts('#page-dashboard .sales-performance-kpi > span', ['averageTicket', 'salesCount', 'soldItems', 'averageMargin']);
+  setMainDashboardTexts('#page-dashboard .sales-performance-kpi > small', ['salesTransactions', 'transactions', 'totalQuantity', 'profitSales']);
+  setMainDashboardTexts('#page-dashboard .sales-performance-highlight > span', ['bestClient', 'bestSeller', 'dominantOrigin', 'biggestCart']);
+  setMainDashboardTexts('#page-dashboard .sales-performance-list-card .card-title', ['topClients', 'salesOrigin']);
+
+  setMainDashboardText('#page-dashboard .accounting-summary-head .eyebrow', 'fiscalAccounting');
+  setMainDashboardText('#page-dashboard .accounting-summary-head h2', 'accountingSummary');
+  setMainDashboardText('#page-dashboard .accounting-summary-head p', 'accountingIntro');
+  setMainDashboardText('#page-dashboard .accounting-summary-head button', 'accounting');
+  setMainDashboardTexts('#page-dashboard .accounting-summary-kpi > span', ['revenue', 'cogs', 'grossMargin', 'expenses']);
+  setMainDashboardTexts('#page-dashboard .accounting-summary-kpi > small:not([id])', ['periodSales', 'purchaseCostSold', 'periodCharges']);
+  setMainDashboardText('#page-dashboard .accounting-result-box > span', 'estimatedNetResult');
+  setMainDashboardTexts('#page-dashboard .accounting-mini-row > span', ['valuedStock', 'clientsReceivable', 'suppliersPayable', 'treasuryAsset']);
+  setMainDashboardTexts('#page-dashboard .accounting-balance-grid span', ['simplifiedAssets', 'simplifiedLiabilities', 'netPosition']);
+
+  setMainDashboardText('#page-dashboard .important-alerts-head .eyebrow', 'alerts');
+  setMainDashboardText('#page-dashboard .important-alerts-head h2', 'importantAlerts');
+  setMainDashboardText('#page-dashboard .important-alerts-head p', 'importantIntro');
+  setMainDashboardText('#page-dashboard .important-alerts-head button', 'refresh');
+  setMainDashboardTexts('#page-dashboard .important-alerts-kpi > span', ['critical', 'watch', 'totalAlerts']);
+  setMainDashboardTexts('#page-dashboard .important-alerts-kpi > small', ['handleFast', 'mediumRisk', 'inPeriod']);
+
+  setMainDashboardTexts('#page-dashboard .row2 .card-title', ['topProducts', 'paymentMethods', 'lowStockAlerts', 'latestExpenses']);
+  document.querySelectorAll('#page-dashboard .dashboard-see-all').forEach(function(btn) {
+    btn.textContent = getMainDashboardText('seeAll');
+  });
+}
+
 function renderDashboardQuickTreasury(data, pagamentos) {
   data = data || {};
   pagamentos = pagamentos || {};
@@ -1883,7 +2191,7 @@ function renderDashboardQuickTreasury(data, pagamentos) {
   var latest = data.latest || [];
 
   if (!latest.length) {
-    list.innerHTML = '<div class="empty">Nenhum mouvement encontrado</div>';
+    list.innerHTML = '<div class="empty">' + getMainDashboardText('noMovement') + '</div>';
     return;
   }
 
@@ -1894,7 +2202,7 @@ function renderDashboardQuickTreasury(data, pagamentos) {
 
     return '<div class="quick-treasury-row">' +
       '<div>' +
-        '<strong>' + escapeDepenseHtml(row.type || "Mouvement") + '</strong>' +
+        '<strong>' + escapeDepenseHtml(row.type || getMainDashboardText('treasury')) + '</strong>' +
         '<small>' + escapeDepenseHtml(row.date || "") + ' - ' + escapeDepenseHtml(row.desc || "") + '</small>' +
       '</div>' +
       '<span class="' + (isIn ? "green" : "red") + '">' +
@@ -2007,8 +2315,8 @@ function renderDashboardDebts(data) {
     net.style.color = (Number(data.net) || 0) < 0 ? "var(--red)" : "var(--green)";
   }
 
-  if (clientCount) clientCount.textContent = (data.clientCount || 0) + " clients";
-  if (supplierCount) supplierCount.textContent = (data.supplierCount || 0) + " fournisseurs";
+  if (clientCount) clientCount.textContent = formatDashboardCount(data.clientCount || 0, 'clients');
+  if (supplierCount) supplierCount.textContent = formatDashboardCount(data.supplierCount || 0, 'suppliers');
   if (openCount) openCount.textContent = data.openCount || 0;
 
   var clientList = document.getElementById("debt-client-list");
@@ -2016,13 +2324,13 @@ function renderDashboardDebts(data) {
 
   if (clientList) {
     if (!data.clients || !data.clients.length) {
-      clientList.innerHTML = '<div class="empty">Aucune dette client</div>';
+      clientList.innerHTML = '<div class="empty">' + getMainDashboardText('noClientDebt') + '</div>';
     } else {
       clientList.innerHTML = data.clients.map(function(row) {
         return '<div class="debt-row">' +
           '<div>' +
             '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
-            '<small>' + (row.count || 0) + ' dette(s)</small>' +
+            '<small>' + formatDashboardCount(row.count || 0, 'debtUnit') + '</small>' +
           '</div>' +
           '<span class="green">' + fmt(row.total || 0) + '</span>' +
         '</div>';
@@ -2032,13 +2340,13 @@ function renderDashboardDebts(data) {
 
   if (supplierList) {
     if (!data.suppliers || !data.suppliers.length) {
-      supplierList.innerHTML = '<div class="empty">Aucune dette fournisseur</div>';
+      supplierList.innerHTML = '<div class="empty">' + getMainDashboardText('noSupplierDebt') + '</div>';
     } else {
       supplierList.innerHTML = data.suppliers.map(function(row) {
         return '<div class="debt-row">' +
           '<div>' +
             '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
-            '<small>' + (row.count || 0) + ' achat(s)</small>' +
+            '<small>' + formatDashboardCount(row.count || 0, 'purchaseUnit') + '</small>' +
           '</div>' +
           '<span class="red">' + fmt(row.total || 0) + '</span>' +
         '</div>';
@@ -2151,13 +2459,13 @@ function renderDashboardPurchases(data) {
   };
 
   set("dash-purchase-today", fmt(data.todayTotal || 0));
-  set("dash-purchase-today-count", (data.todayCount || 0) + " achats");
+  set("dash-purchase-today-count", formatDashboardCount(data.todayCount || 0, 'purchases'));
 
   set("dash-purchase-month", fmt(data.monthTotal || 0));
-  set("dash-purchase-month-count", (data.monthCount || 0) + " achats");
+  set("dash-purchase-month-count", formatDashboardCount(data.monthCount || 0, 'purchases'));
 
   set("dash-purchase-credit", fmt(data.creditTotal || 0));
-  set("dash-purchase-credit-count", (data.creditCount || 0) + " dossiers");
+  set("dash-purchase-credit-count", formatDashboardCount(data.creditCount || 0, 'dossierUnit'));
 
   set("dash-purchase-debt", fmt(data.debtTotal || 0));
 
@@ -2168,7 +2476,7 @@ function renderDashboardPurchases(data) {
   if (!latest) return;
 
   if (!data.latest || !data.latest.length) {
-    latest.innerHTML = '<div class="empty">Aucun achat trouvé</div>';
+    latest.innerHTML = '<div class="empty">' + getMainDashboardText('noPurchase') + '</div>';
     return;
   }
 
@@ -2180,7 +2488,7 @@ function renderDashboardPurchases(data) {
       '</div>' +
       '<div class="purchase-row-money">' +
         '<strong>' + fmt(row.total || 0) + '</strong>' +
-        '<small>Reste: ' + fmt(row.debt || 0) + '</small>' +
+        '<small>' + getMainDashboardText('remaining') + ': ' + fmt(row.debt || 0) + '</small>' +
       '</div>' +
     '</div>';
   }).join("");
@@ -2270,7 +2578,7 @@ function renderDashboardSmartStock(data) {
 
   if (alerts) {
     if (!data.alerts || !data.alerts.length) {
-      alerts.innerHTML = '<div class="empty">Stock OK</div>';
+      alerts.innerHTML = '<div class="empty">' + getMainDashboardText('stockOk') + '</div>';
     } else {
       alerts.innerHTML = data.alerts.map(function(row) {
         var critical = Number(row.stock) <= 0;
@@ -2278,9 +2586,9 @@ function renderDashboardSmartStock(data) {
         return '<div class="smart-stock-row">' +
           '<div>' +
             '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
-            '<small>Boutique: ' + row.shop + ' | Dépôt: ' + row.warehouse + '</small>' +
+            '<small>' + getMainDashboardText('shop') + ': ' + row.shop + ' | ' + getMainDashboardText('warehouse') + ': ' + row.warehouse + '</small>' +
           '</div>' +
-          '<span class="' + (critical ? "red" : "orange") + '">' + row.stock + ' un</span>' +
+          '<span class="' + (critical ? "red" : "orange") + '">' + row.stock + ' ' + getMainDashboardText('unit') + '</span>' +
         '</div>';
       }).join("");
     }
@@ -2288,15 +2596,15 @@ function renderDashboardSmartStock(data) {
 
   if (dormants) {
     if (!data.dormants || !data.dormants.length) {
-      dormants.innerHTML = '<div class="empty">Aucun produit dormant</div>';
+      dormants.innerHTML = '<div class="empty">' + getMainDashboardText('noDormantProduct') + '</div>';
     } else {
       dormants.innerHTML = data.dormants.map(function(row) {
         return '<div class="smart-stock-row">' +
           '<div>' +
             '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
-            '<small>Valeur stock: ' + fmt(row.value || 0) + '</small>' +
+            '<small>' + getMainDashboardText('stockValue') + ': ' + fmt(row.value || 0) + '</small>' +
           '</div>' +
-          '<span>' + row.stock + ' un</span>' +
+          '<span>' + row.stock + ' ' + getMainDashboardText('unit') + '</span>' +
         '</div>';
       }).join("");
     }
@@ -2430,13 +2738,13 @@ function renderDashboardSalesPerformance(data) {
 
   if (topClients) {
     if (!data.topClients || !data.topClients.length) {
-      topClients.innerHTML = '<div class="empty">Aucun client trouvé</div>';
+      topClients.innerHTML = '<div class="empty">' + getMainDashboardText('noClientFound') + '</div>';
     } else {
       topClients.innerHTML = data.topClients.map(function(row, index) {
         return '<div class="sales-performance-row">' +
           '<div>' +
             '<strong>' + (index + 1) + '. ' + escapeDepenseHtml(row.name) + '</strong>' +
-            '<small>' + (row.count || 0) + ' vente(s)</small>' +
+            '<small>' + formatDashboardCount(row.count || 0, 'saleUnit') + '</small>' +
           '</div>' +
           '<span>' + fmt(row.total || 0) + '</span>' +
         '</div>';
@@ -2446,13 +2754,13 @@ function renderDashboardSalesPerformance(data) {
 
   if (origins) {
     if (!data.origins || !data.origins.length) {
-      origins.innerHTML = '<div class="empty">Aucune origine trouvée</div>';
+      origins.innerHTML = '<div class="empty">' + getMainDashboardText('noOriginFound') + '</div>';
     } else {
       origins.innerHTML = data.origins.map(function(row) {
         return '<div class="sales-performance-row">' +
           '<div>' +
             '<strong>' + escapeDepenseHtml(row.name) + '</strong>' +
-            '<small>' + (row.count || 0) + ' vente(s)</small>' +
+            '<small>' + formatDashboardCount(row.count || 0, 'saleUnit') + '</small>' +
           '</div>' +
           '<span>' + fmt(row.total || 0) + '</span>' +
         '</div>';
@@ -2541,11 +2849,11 @@ function renderDashboardAccountingSummary(data) {
   set("acct-sum-revenue", fmt(data.revenue || 0));
   set("acct-sum-cogs", fmt(data.cogs || 0));
   set("acct-sum-gross", fmt(data.grossProfit || 0));
-  set("acct-sum-gross-rate", "Marge brute: " + percent(data.grossRate || 0));
+  set("acct-sum-gross-rate", getMainDashboardText('grossMargin') + ": " + percent(data.grossRate || 0));
   set("acct-sum-expenses", fmt(data.expenses || 0));
 
   set("acct-sum-net", fmt(data.netResult || 0));
-  set("acct-sum-net-rate", "Marge nette: " + percent(data.netRate || 0));
+  set("acct-sum-net-rate", getMainDashboardText('netMargin') + ": " + percent(data.netRate || 0));
 
   set("acct-sum-stock", fmt(data.stockValue || 0));
   set("acct-sum-receivables", fmt(data.receivables || 0));
@@ -2577,9 +2885,9 @@ function buildDashboardImportantAlerts(data) {
   if ((smartStock.outCount || 0) > 0) {
     alerts.push({
       level: "critical",
-      title: "Produits finis",
-      desc: (smartStock.outCount || 0) + " produit(s) avec stock à 0.",
-      action: "Voir stock",
+      title: getMainDashboardText('outProducts'),
+      desc: (smartStock.outCount || 0) + " " + getMainDashboardText('totalStockZero') + ".",
+      action: getMainDashboardText('viewStock'),
       page: "transfert"
     });
   }
@@ -2587,9 +2895,9 @@ function buildDashboardImportantAlerts(data) {
   if ((smartStock.lowCount || 0) > 0) {
     alerts.push({
       level: "warning",
-      title: "Stock faible",
-      desc: (smartStock.lowCount || 0) + " produit(s) sous le minimum.",
-      action: "Voir stock",
+      title: getMainDashboardText('lowStock'),
+      desc: (smartStock.lowCount || 0) + " " + getMainDashboardText('belowMinimum') + ".",
+      action: getMainDashboardText('viewStock'),
       page: "transfert"
     });
   }
@@ -2597,9 +2905,9 @@ function buildDashboardImportantAlerts(data) {
   if ((debts.clientTotal || 0) > 0) {
     alerts.push({
       level: (debts.clientTotal || 0) >= 100000 ? "critical" : "warning",
-      title: "Clients à encaisser",
-      desc: "Total à recevoir: " + fmt(debts.clientTotal || 0) + ".",
-      action: "Clients",
+      title: getMainDashboardText('clientsReceivable'),
+      desc: getMainDashboardText('clientsReceivable') + ": " + fmt(debts.clientTotal || 0) + ".",
+      action: getMainDashboardText('clients'),
       page: "clientes"
     });
   }
@@ -2607,9 +2915,9 @@ function buildDashboardImportantAlerts(data) {
   if ((debts.supplierTotal || 0) > 0) {
     alerts.push({
       level: (debts.supplierTotal || 0) >= 100000 ? "critical" : "warning",
-      title: "Fournisseurs à payer",
-      desc: "Total à payer: " + fmt(debts.supplierTotal || 0) + ".",
-      action: "Fournisseurs",
+      title: getMainDashboardText('suppliersPayable'),
+      desc: getMainDashboardText('remainingToPay') + ": " + fmt(debts.supplierTotal || 0) + ".",
+      action: getMainDashboardText('suppliers'),
       page: "forn"
     });
   }
@@ -2617,9 +2925,9 @@ function buildDashboardImportantAlerts(data) {
   if ((quickTreasury.monthNet || 0) < 0) {
     alerts.push({
       level: "critical",
-      title: "Trésorerie du mois négative",
-      desc: "Résultat trésorerie: " + fmt(quickTreasury.monthNet || 0) + ".",
-      action: "Trésorerie",
+      title: getMainDashboardText('negativeTreasury'),
+      desc: getMainDashboardText('treasuryResult') + ": " + fmt(quickTreasury.monthNet || 0) + ".",
+      action: getMainDashboardText('treasury'),
       page: "tresorerie"
     });
   }
@@ -2627,9 +2935,9 @@ function buildDashboardImportantAlerts(data) {
   if ((accounting.netResult || 0) < 0) {
     alerts.push({
       level: "critical",
-      title: "Résultat net négatif",
-      desc: "Résultat estimé: " + fmt(accounting.netResult || 0) + ".",
-      action: "Comptabilité",
+      title: getMainDashboardText('negativeNetResult'),
+      desc: getMainDashboardText('estimatedResult') + ": " + fmt(accounting.netResult || 0) + ".",
+      action: getMainDashboardText('accounting'),
       page: "comptabilite"
     });
   }
@@ -2637,9 +2945,9 @@ function buildDashboardImportantAlerts(data) {
   if ((salesPerf.marginPercent || 0) > 0 && (salesPerf.marginPercent || 0) < 15) {
     alerts.push({
       level: "warning",
-      title: "Marge faible",
-      desc: "Marge moyenne: " + ((salesPerf.marginPercent || 0).toFixed(1)).replace(".", ",") + "%.",
-      action: "Ventes",
+      title: getMainDashboardText('lowMargin'),
+      desc: getMainDashboardText('avgMargin') + ": " + ((salesPerf.marginPercent || 0).toFixed(1)).replace(".", ",") + "%.",
+      action: getMainDashboardText('sales'),
       page: "venda"
     });
   }
@@ -2647,9 +2955,9 @@ function buildDashboardImportantAlerts(data) {
   if ((purchases.creditTotal || 0) > 0) {
     alerts.push({
       level: "warning",
-      title: "Achats à crédit",
-      desc: "Reste à payer sur achats: " + fmt(purchases.creditTotal || 0) + ".",
-      action: "Achats",
+      title: getMainDashboardText('creditPurchases'),
+      desc: getMainDashboardText('creditPurchaseRemain') + ": " + fmt(purchases.creditTotal || 0) + ".",
+      action: getMainDashboardText('purchases'),
       page: "achat"
     });
   }
@@ -2658,9 +2966,9 @@ function buildDashboardImportantAlerts(data) {
     smartStock.alerts.slice(0, 3).forEach(function(row) {
       alerts.push({
         level: Number(row.stock) <= 0 ? "critical" : "warning",
-        title: row.name || "Produit",
-        desc: "Stock actuel: " + (row.stock || 0) + " unité(s).",
-        action: "Stock",
+        title: row.name || getMainDashboardText('product'),
+        desc: getMainDashboardText('currentStock') + ": " + (row.stock || 0) + " " + getMainDashboardText('unit') + ".",
+        action: getMainDashboardText('stock'),
         page: "transfert"
       });
     });
@@ -2698,7 +3006,7 @@ function renderDashboardImportantAlerts(data) {
   if (!list) return;
 
   if (!data.alerts || !data.alerts.length) {
-    list.innerHTML = '<div class="empty">Aucune alerte importante. Situation propre.</div>';
+    list.innerHTML = '<div class="empty">' + getMainDashboardText('noImportantAlert') + '</div>';
     return;
   }
 
@@ -2724,11 +3032,11 @@ function renderDashboardData(d) {
   if (!d) return;
   lastDashboardData = d;
   document.getElementById('k-hoje').textContent = fmt(d.vendasHoje);
-  document.getElementById('k-hoje-n').textContent = (d.vendasHojeCount||0) + ' transacoes';
+  document.getElementById('k-hoje-n').textContent = formatDashboardCount(d.vendasHojeCount || 0, 'transactions');
   document.getElementById('k-lucro').textContent = fmt(d.lucroMes);
   document.getElementById('k-alertas').textContent = d.alertas || 0;
   document.getElementById('k-depenses').textContent = fmt(d.totalDepenses);
-  document.getElementById('k-depenses-n').textContent = (d.depensesCount||0) + ' registos';
+  document.getElementById('k-depenses-n').textContent = formatDashboardCount(d.depensesCount || 0, 'registos');
   renderDashboardQuickTreasury(d.quickTreasury, d.pagamentos || {});
   renderDashboardDebts(d.debts);
   renderDashboardPurchases(d.purchases);
@@ -2740,7 +3048,7 @@ function renderDashboardData(d) {
   var el = document.getElementById('top-list');
   el.innerHTML = '';
   if (!d.topProdutos || d.topProdutos.length === 0) {
-    el.innerHTML = '<div class="empty">Sem dados</div>';
+    el.innerHTML = '<div class="empty">' + getMainDashboardText('noData') + '</div>';
   } else {
     d.topProdutos.forEach(function(p, i) {
       el.innerHTML += '<div class="top-item">' +
@@ -2762,20 +3070,20 @@ function renderDashboardData(d) {
 
   var al = document.getElementById('alert-list');
   if (!d.stockAlertas || d.stockAlertas.length === 0) {
-    al.innerHTML = '<div class="empty"> Stock OK</div>';
+    al.innerHTML = '<div class="empty">' + getMainDashboardText('stockOk') + '</div>';
   } else {
     al.innerHTML = '';
     d.stockAlertas.forEach(function(a) {
       al.innerHTML += '<div class="alert-row ' + a.level + '">' +
         '<span>' + escapeDepenseHtml(a.name || '') + '</span>' +
-        '<span class="badge ' + a.level + '">' + a.stock + ' un</span>' +
+        '<span class="badge ' + a.level + '">' + a.stock + ' ' + getMainDashboardText('unit') + '</span>' +
         '</div>';
     });
   }
 
   var dl = document.getElementById('depenses-list');
   if (!d.depenses || d.depenses.length === 0) {
-    dl.innerHTML = '<div class="empty">Sem depenses</div>';
+    dl.innerHTML = '<div class="empty">' + getMainDashboardText('noExpenses') + '</div>';
   } else {
     dl.innerHTML = '';
     d.depenses.forEach(function(dep) {
@@ -2786,6 +3094,8 @@ function renderDashboardData(d) {
         '</div>';
     });
   }
+
+  translateMainDashboard();
 }
 
 function escapeDashboardTicketText(value) {
@@ -7196,6 +7506,7 @@ function applyLanguage() {
     dashCards.forEach(function(el, i) { if (ui.dashCards[i]) el.textContent = ui.dashCards[i]; });
     var payLabels = document.querySelectorAll('#pay-bars .pay-lbl');
     payLabels.forEach(function(el, i) { if (ui.payLabels[i]) el.textContent = ui.payLabels[i]; });
+    translateMainDashboard();
 
     if (document.getElementById('searchInput')) document.getElementById('searchInput').placeholder = getText('search_product');
     if (document.getElementById('clientInput')) document.getElementById('clientInput').placeholder = getText('client_placeholder');
