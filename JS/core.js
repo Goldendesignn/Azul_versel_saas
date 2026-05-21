@@ -7368,6 +7368,9 @@ function applyLanguage() {
     }
   } finally {
     window._applyingLanguage = false;
+    if (window.AzulI18n && typeof window.AzulI18n.bindLanguageSelect === "function") {
+      window.AzulI18n.bindLanguageSelect();
+    }
   }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

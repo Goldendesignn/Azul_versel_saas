@@ -102,12 +102,26 @@
     return true;
   }
 
+  function getTranslatableElements(root) {
+    root = root || document.querySelector(".page.active") || document.body;
+    return Array.prototype.slice.call(root.querySelectorAll("button,label,h1,h2,h3,h4,.card-title,.section-title,.form-label,.kpi-label,.empty,p,span"))
+      .filter(shouldTranslateElement);
+  }
+
+  function snapshotVisibleTexts() {
+    return getTranslatableElements().map(function(el) {
+      return {
+        el: el,
+        text: el.textContent.trim()
+      };
+    });
+  }
+
   async function translateVisiblePage(targetLang, sourceLang) {
     targetLang = normalizeLang(targetLang || getLang());
     sourceLang = normalizeLang(sourceLang || "pt");
 
-    var root = document.querySelector(".page.active") || document.body;
-    var candidates = Array.prototype.slice.call(root.querySelectorAll("button,label,h1,h2,h3,h4,.card-title,.section-title,.form-label,.kpi-label,.empty,p,span"));
+    var candidates = getTranslatableElements();
     var translated = 0;
 
     for (var i = 0; i < candidates.length; i++) {
@@ -126,58 +140,60 @@
     return translated;
   }
 
-  function ensureI18nSettingsCard() {
-    var page = document.getElementById("page-settings");
-    if (!page || document.getElementById("azulI18nSettingsCard")) return;
+  async function translateUnchangedTexts(snapshots, sourceLang, targetLang) {
+    targetLang = normalizeLang(targetLang || getLang());
+    sourceLang = normalizeLang(sourceLang || "pt");
 
-    var grid = page.querySelector('div[style*="grid-template-columns"]') || page;
-    var card = document.createElement("div");
-    card.className = "card azul-i18n-card";
-    card.id = "azulI18nSettingsCard";
-    card.style.gridColumn = "1/-1";
-    card.innerHTML =
-      '<div class="card-title">Traduction intelligente</div>' +
-      '<p class="azul-i18n-help">Les traductions internes restent prioritaires. MyMemory sert seulement a aider pour les textes manquants ou visibles.</p>' +
-      '<div class="azul-i18n-grid">' +
-        '<div class="form-group">' +
-          '<label class="form-label">Email MyMemory</label>' +
-          '<input id="azulMyMemoryEmail" class="form-input" type="email" placeholder="email optionnel pour quota plus eleve">' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label class="form-label">Source</label>' +
-          '<select id="azulI18nSource" class="form-input"><option value="pt">Portugais</option><option value="fr">Francais</option><option value="en">Anglais</option></select>' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label class="form-label">Cible</label>' +
-          '<select id="azulI18nTarget" class="form-input"><option value="fr">Francais</option><option value="pt">Portugais</option><option value="en">Anglais</option></select>' +
-        '</div>' +
-      '</div>' +
-      '<div class="form-group">' +
-        '<label class="form-label">Texte test</label>' +
-        '<input id="azulI18nTestText" class="form-input" type="text" placeholder="Ex: Registar despesa">' +
-      '</div>' +
-      '<div class="azul-i18n-actions">' +
-        '<button type="button" class="form-submit" onclick="AzulI18n.translateTest()">Traduire le test</button>' +
-        '<button type="button" class="filter-btn" onclick="AzulI18n.translateCurrentPage()">Traduire la page active</button>' +
-      '</div>' +
-      '<div id="azulI18nResult" class="azul-i18n-result"></div>';
+    if (targetLang === sourceLang || targetLang === "pt") return 0;
 
-    var saveCard = page.querySelector('.card button[onclick="saveAllSettings()"]');
-    if (saveCard && saveCard.closest(".card")) {
-      grid.insertBefore(card, saveCard.closest(".card"));
-    } else {
-      grid.appendChild(card);
+    var translated = 0;
+
+    for (var i = 0; i < snapshots.length; i++) {
+      var item = snapshots[i];
+      if (!item.el || !document.body.contains(item.el)) continue;
+      if (item.el.textContent.trim() !== item.text) continue;
+
+      try {
+        item.el.textContent = await translateWithMyMemory(item.text, sourceLang, targetLang);
+        translated += 1;
+      } catch (e) {
+        console.warn("MyMemory auto translation failed:", e);
+      }
     }
 
-    var email = document.getElementById("azulMyMemoryEmail");
-    var target = document.getElementById("azulI18nTarget");
-    if (email) {
-      email.value = localStorage.getItem(EMAIL_KEY) || "";
-      email.addEventListener("input", function() {
-        localStorage.setItem(EMAIL_KEY, email.value.trim());
-      });
+    return translated;
+  }
+
+  function handleLanguageSelectChange(select) {
+    var previousLang = normalizeLang(getLang());
+    var targetLang = normalizeLang(select && select.value ? select.value : previousLang);
+    var snapshots = snapshotVisibleTexts();
+
+    if (window.config) {
+      window.config.language = targetLang;
     }
-    if (target) target.value = getLang();
+
+    if (typeof saveConfig === "function") {
+      saveConfig();
+    }
+
+    if (typeof applyLanguage === "function") {
+      applyLanguage();
+    }
+
+    setTimeout(function() {
+      translateUnchangedTexts(snapshots, previousLang, targetLang);
+    }, 80);
+  }
+
+  function bindLanguageSelect() {
+    var select = document.getElementById("cfg-language");
+    if (!select || select.dataset.azulI18nBound === "1") return;
+
+    select.dataset.azulI18nBound = "1";
+    select.addEventListener("change", function() {
+      handleLanguageSelectChange(select);
+    });
   }
 
   window.AzulI18n = {
@@ -188,34 +204,14 @@
     clearCache: function() { localStorage.removeItem(CACHE_KEY); },
     translateText: translateWithMyMemory,
     translateVisiblePage: translateVisiblePage,
-    translateTest: async function() {
-      var source = document.getElementById("azulI18nSource");
-      var target = document.getElementById("azulI18nTarget");
-      var text = document.getElementById("azulI18nTestText");
-      var result = document.getElementById("azulI18nResult");
-      if (!text || !text.value.trim()) return;
-
-      if (result) result.textContent = "Traduction...";
-      try {
-        var translated = await translateWithMyMemory(text.value, source ? source.value : "pt", target ? target.value : getLang());
-        if (result) result.textContent = translated;
-      } catch (e) {
-        if (result) result.textContent = "Erreur MyMemory: " + (e.message || e);
-      }
-    },
-    translateCurrentPage: async function() {
-      var source = document.getElementById("azulI18nSource");
-      var target = document.getElementById("azulI18nTarget");
-      var result = document.getElementById("azulI18nResult");
-      if (result) result.textContent = "Traduction de la page...";
-
-      var count = await translateVisiblePage(target ? target.value : getLang(), source ? source.value : "pt");
-      if (result) result.textContent = count + " texte(s) traduit(s).";
-    },
-    initSettingsCard: ensureI18nSettingsCard
+    translateUnchangedTexts: translateUnchangedTexts,
+    handleLanguageSelectChange: handleLanguageSelectChange,
+    bindLanguageSelect: bindLanguageSelect
   };
 
   document.addEventListener("DOMContentLoaded", function() {
-    ensureI18nSettingsCard();
+    bindLanguageSelect();
   });
+
+  setTimeout(bindLanguageSelect, 1200);
 })();
