@@ -297,18 +297,19 @@
   function shouldTranslateElement(el) {
     if (!el || !el.textContent) return false;
     if (el.children && el.children.length) return false;
-    if (el.closest("table,.data-table,.prod-grid,.mobile-card-list,.cart,.receipt-box,.toast,.payment-modal")) return false;
+    if (el.closest("table,.data-table,.prod-grid,.mobile-card-list,.cart,.receipt-box,.toast,.payment-modal,.dashboard-preview-list,#top-list,#pay-bars")) return false;
     if (/^(input|textarea|select|option|script|style)$/i.test(el.tagName)) return false;
 
     var text = el.textContent.trim();
     if (!text || text.length < 3 || text.length > 80) return false;
     if (/^[\d\s.,:;/%()+-]+$/.test(text)) return false;
+    if (/(kz|aoa|usd|eur|fcfa)$/i.test(text)) return false;
     return true;
   }
 
   function getTranslatableElements(root) {
     root = root || document.querySelector(".page.active") || document.body;
-    return Array.prototype.slice.call(root.querySelectorAll("button,label,h1,h2,h3,h4,.card-title,.section-title,.form-label,.kpi-label,.empty,p,span"))
+    return Array.prototype.slice.call(root.querySelectorAll("button,label,h1,h2,h3,h4,small,.eyebrow,.card-title,.section-title,.form-label,.kpi-label,.kpi-sub,.empty,p,span"))
       .filter(shouldTranslateElement);
   }
 
@@ -370,6 +371,8 @@
 
   var staticApplyTimer = null;
   var staticApplying = false;
+  var autoTranslateTimer = null;
+  var autoTranslating = false;
 
   function translateStaticText(text, lang) {
     lang = normalizeLang(lang || getLang());
@@ -421,18 +424,121 @@
     }, 120);
   }
 
+  function guessSourceLang(text, targetLang) {
+    text = String(text || "").toLowerCase();
+    if (targetLang === "pt") return "fr";
+    if (/(achat|fournisseur|dette|tresorerie|trésorerie|depense|dépense|vente|client|paiement|historique|résumé|resume|marge|stock|alerte|voir|tout|nouvelle)/i.test(text)) {
+      return "fr";
+    }
+    if (/(compra|venda|fornecedor|cliente|pagamento|historico|definicoes|despesa|produto|estoque|aplicar|limpar|registar|guardar)/i.test(text)) {
+      return "pt";
+    }
+    return "pt";
+  }
+
+  function restoreAutoTranslated(root) {
+    root = root || document;
+    Array.prototype.slice.call(root.querySelectorAll("[data-azul-i18n-original]")).forEach(function(el) {
+      if (el.dataset.azulI18nOriginal) {
+        el.textContent = el.dataset.azulI18nOriginal;
+      }
+      delete el.dataset.azulI18nOriginal;
+      delete el.dataset.azulI18nLang;
+    });
+  }
+
+  function scheduleAutoTranslate(root, forcedLang) {
+    clearTimeout(autoTranslateTimer);
+    autoTranslateTimer = setTimeout(function() {
+      autoTranslateVisible(root || document, forcedLang);
+    }, 350);
+  }
+
+  async function autoTranslateVisible(root, forcedLang) {
+    if (autoTranslating) return 0;
+    root = root || document;
+    var lang = normalizeLang(forcedLang || getLang());
+
+    applyStaticDictionary(root, lang);
+
+    if (lang === "pt") {
+      restoreAutoTranslated(root);
+      applyStaticDictionary(root, lang);
+      return 0;
+    }
+
+    autoTranslating = true;
+    var translated = 0;
+
+    try {
+      var elements = getTranslatableElements(root);
+
+      for (var i = 0; i < elements.length && translated < 35; i++) {
+        var el = elements[i];
+        if (!shouldTranslateElement(el)) continue;
+
+        var current = el.textContent.trim();
+        var staticText = translateStaticText(current, lang);
+        if (staticText) {
+          if (staticText !== current) {
+            el.textContent = staticText;
+            translated += 1;
+          }
+          continue;
+        }
+
+        if (el.dataset.azulI18nLang === lang) continue;
+
+        var original = el.dataset.azulI18nOriginal || current;
+        var sourceLang = guessSourceLang(original, lang);
+        if (sourceLang === lang) continue;
+
+        try {
+          var next = await translateWithMyMemory(original, sourceLang, lang);
+          next = String(next || "").trim();
+          if (next && next !== current) {
+            el.dataset.azulI18nOriginal = original;
+            el.dataset.azulI18nLang = lang;
+            el.textContent = next;
+            translated += 1;
+          }
+        } catch (e) {
+          console.warn("MyMemory background translation failed:", e);
+        }
+      }
+
+      Array.prototype.slice.call(root.querySelectorAll("input[placeholder],textarea[placeholder]")).forEach(function(el) {
+        var placeholder = el.getAttribute("placeholder") || "";
+        var next = translateStaticText(placeholder, lang);
+        if (next && next !== placeholder) {
+          el.setAttribute("placeholder", next);
+          translated += 1;
+        }
+      });
+    } finally {
+      autoTranslating = false;
+    }
+
+    return translated;
+  }
+
   function watchStaticTexts() {
     if (!document.body || window.__azulStaticI18nObserver) return;
     window.__azulStaticI18nObserver = new MutationObserver(function(mutations) {
-      if (staticApplying || window._applyingLanguage) return;
+      if (staticApplying || autoTranslating) return;
       var shouldRun = mutations.some(function(mutation) {
-        return mutation.type === "childList" && mutation.addedNodes && mutation.addedNodes.length;
+        return (mutation.type === "childList" && mutation.addedNodes && mutation.addedNodes.length) ||
+          mutation.type === "characterData" ||
+          (mutation.type === "attributes" && mutation.attributeName === "placeholder");
       });
-      if (shouldRun) scheduleStaticDictionary(document);
+      if (shouldRun) scheduleAutoTranslate(document);
     });
     window.__azulStaticI18nObserver.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["placeholder"]
     });
   }
 
@@ -461,6 +567,7 @@
 
     setTimeout(function() {
       applyStaticDictionary(document, targetLang);
+      scheduleAutoTranslate(document, targetLang);
       translateUnchangedTexts(snapshots, previousLang, targetLang);
     }, 80);
   }
@@ -486,19 +593,22 @@
     translateUnchangedTexts: translateUnchangedTexts,
     applyStaticDictionary: applyStaticDictionary,
     scheduleStaticDictionary: scheduleStaticDictionary,
+    autoTranslateVisible: autoTranslateVisible,
+    scheduleAutoTranslate: scheduleAutoTranslate,
+    refresh: function() { return autoTranslateVisible(document); },
     handleLanguageSelectChange: handleLanguageSelectChange,
     bindLanguageSelect: bindLanguageSelect
   };
 
   document.addEventListener("DOMContentLoaded", function() {
     bindLanguageSelect();
-    applyStaticDictionary(document);
+    scheduleAutoTranslate(document);
     watchStaticTexts();
   });
 
   setTimeout(function() {
     bindLanguageSelect();
-    applyStaticDictionary(document);
+    scheduleAutoTranslate(document);
     watchStaticTexts();
   }, 1200);
 })();

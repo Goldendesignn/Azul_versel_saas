@@ -7371,7 +7371,9 @@ function applyLanguage() {
     if (window.AzulI18n && typeof window.AzulI18n.bindLanguageSelect === "function") {
       window.AzulI18n.bindLanguageSelect();
     }
-    if (window.AzulI18n && typeof window.AzulI18n.scheduleStaticDictionary === "function") {
+    if (window.AzulI18n && typeof window.AzulI18n.scheduleAutoTranslate === "function") {
+      window.AzulI18n.scheduleAutoTranslate(document, lang);
+    } else if (window.AzulI18n && typeof window.AzulI18n.scheduleStaticDictionary === "function") {
       window.AzulI18n.scheduleStaticDictionary(document, lang);
     }
   }
