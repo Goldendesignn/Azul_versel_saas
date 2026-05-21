@@ -7372,7 +7372,7 @@ function applyLanguage() {
       window.AzulI18n.bindLanguageSelect();
     }
     if (window.AzulI18n && typeof window.AzulI18n.scheduleStaticDictionary === "function") {
-      window.AzulI18n.scheduleStaticDictionary(document);
+      window.AzulI18n.scheduleStaticDictionary(document, lang);
     }
   }
 }
