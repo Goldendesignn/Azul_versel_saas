@@ -2476,6 +2476,40 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   user-select: none !important;
   filter: blur(2px);
 }
+
+#azulOfflineStatus {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 99998;
+  display: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  cursor: pointer;
+}
+
+#azulOfflineStatus.offline {
+  background: #b91c1c;
+}
+
+#azulOfflineStatus.pending {
+  background: #e08c3a;
+}
+
+@media (max-width: 820px) {
+  #azulOfflineStatus {
+    left: 12px;
+    right: 12px;
+    bottom: 74px;
+    width: calc(100% - 24px);
+  }
+}
 /* ===== IMPORTATION PAGE ===== */
 
 .import-page {

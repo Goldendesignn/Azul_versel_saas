@@ -5073,14 +5073,16 @@ if (hasCredit && !clientName) {
     btn.style.opacity = "0.6";
   }
 
+  var salePayload = {
+    saleDate: document.getElementById("vendaDate").value,
+    clientName: clientName || "Anonimo",
+    saleType: selectedType,
+    paymentLines: finalPaymentLines,
+    items: cart
+  };
+
   try {
-    var result = await saveSaleToSupabase({
-      saleDate: document.getElementById("vendaDate").value,
-      clientName: clientName || "Anonimo",
-      saleType: selectedType,
-      paymentLines: finalPaymentLines,
-      items: cart
-    });
+    var result = await saveSaleToSupabase(salePayload);
 
     toast("Venda registada!", "success");
 
@@ -5115,6 +5117,14 @@ if (hasCredit && !clientName) {
 
   } catch (e) {
     console.error("Erro venda:", e);
+    if (typeof azulIsOfflineError === "function" && azulIsOfflineError(e)) {
+      azulQueueOfflineOperation("sale", salePayload);
+      toast("Sem internet: venda guardada para sincronizar depois.", "success");
+      cart = [];
+      renderCart();
+      if (typeof closePaymentModal === "function") closePaymentModal();
+      return;
+    }
     toast("Erro ao registar venda: " + (e.message || e), "error");
 
   } finally {
@@ -5956,13 +5966,15 @@ async function saveAchat() {
     btn.style.opacity = "0.6";
   }
 
-  try {
-   await savePurchaseToSupabase({
+  var purchasePayload = {
     forn: supplier,
     items: items,
     credit: document.getElementById("a-credit").checked,
     payments: paiementLines || []
-  });
+  };
+
+  try {
+   await savePurchaseToSupabase(purchasePayload);
 
     toast("Achat registado!", "success");
 
@@ -5977,6 +5989,14 @@ async function saveAchat() {
 
   } catch (e) {
     console.error("Erro Supabase achat:", e);
+    if (typeof azulIsOfflineError === "function" && azulIsOfflineError(e)) {
+      azulQueueOfflineOperation("purchase", purchasePayload);
+      toast("Sem internet: achat garde pour synchroniser depois.", "success");
+      document.getElementById("a-forn").value = "";
+      document.getElementById("a-credit").checked = false;
+      initAchatLines();
+      return;
+    }
     toast("Erro ao registar achat: " + (e.message || e), "error");
 
   } finally {
@@ -8268,6 +8288,13 @@ async function saveDepense() {
 
   } catch (e) {
     console.error("Erro depense:", e);
+    if (typeof azulIsOfflineError === "function" && azulIsOfflineError(e)) {
+      azulQueueOfflineOperation("expense", data);
+      toast("Sem internet: depense gardee pour synchroniser depois.", "success");
+      document.getElementById("dep-desc").value = "";
+      document.getElementById("dep-montant").value = "";
+      return;
+    }
     toast("Erro depense: " + (e.message || e), "error");
 
   } finally {
@@ -8315,6 +8342,14 @@ async function saveTresorerie() {
 
   } catch (e) {
     console.error("Erro tresorerie:", e);
+    if (typeof azulIsOfflineError === "function" && azulIsOfflineError(e)) {
+      azulQueueOfflineOperation("treasury", data);
+      toast("Sem internet: mouvement garde pour synchroniser depois.", "success");
+      document.getElementById("tre-type").value = "";
+      document.getElementById("tre-desc").value = "";
+      document.getElementById("tre-montant").value = "";
+      return;
+    }
     toast("Erro tresorerie: " + (e.message || e), "error");
 
   } finally {

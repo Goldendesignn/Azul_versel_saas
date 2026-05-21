@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v6";
+const AZUL_CACHE = "azul-pwa-v7";
 
 const AZUL_STATIC_ASSETS = [
   "/",
@@ -14,6 +14,7 @@ const AZUL_STATIC_ASSETS = [
   "/JS/login.js",
   "/JS/core.js",
   "/JS/admin.js",
+  "/JS/offline.js",
   "/Assets/azul-icon.png",
   "/Assets/icon-192.png",
   "/Assets/icon-512.png",
@@ -77,7 +78,7 @@ self.addEventListener("fetch", function(event) {
   event.respondWith(
     caches.match(request).then(function(cached) {
       return cached || fetch(request).then(function(response) {
-        if (!response || response.status !== 200 || response.type === "opaque") return response;
+        if (!response || (response.status !== 200 && response.type !== "opaque")) return response;
         var clone = response.clone();
         caches.open(AZUL_CACHE).then(function(cache) {
           cache.put(request, clone);
