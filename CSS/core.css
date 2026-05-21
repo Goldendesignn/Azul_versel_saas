@@ -2502,12 +2502,67 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   background: #e08c3a;
 }
 
+.azul-i18n-card {
+  border-color: rgba(13, 61, 143, 0.16) !important;
+}
+
+.azul-i18n-help {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.azul-i18n-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.8fr;
+  gap: 10px;
+}
+
+.azul-i18n-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.azul-i18n-actions .form-submit,
+.azul-i18n-actions .filter-btn {
+  width: auto;
+  min-width: 180px;
+}
+
+.azul-i18n-result {
+  margin-top: 10px;
+  padding: 10px 12px;
+  min-height: 40px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface2);
+  font-size: 13px;
+}
+
 @media (max-width: 820px) {
   #azulOfflineStatus {
     left: 12px;
     right: 12px;
     bottom: 74px;
     width: calc(100% - 24px);
+  }
+
+  .azul-i18n-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .azul-i18n-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .azul-i18n-actions .form-submit,
+  .azul-i18n-actions .filter-btn {
+    width: 100%;
   }
 }
 /* ===== IMPORTATION PAGE ===== */

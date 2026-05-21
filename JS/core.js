@@ -6930,7 +6930,11 @@ function getText(key) {
       confirm_return_button: 'Confirm return'
     }
   };
-  return (dict[lang] && dict[lang][key]) || dict.pt[key] || key;
+  var fallback = (dict[lang] && dict[lang][key]) || dict.pt[key] || key;
+  if (window.AzulI18n && typeof window.AzulI18n.t === "function") {
+    return window.AzulI18n.t(key, fallback, lang);
+  }
+  return fallback;
 }
 
 function setPageTitle(pageId, text) {
