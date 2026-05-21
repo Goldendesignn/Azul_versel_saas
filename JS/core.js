@@ -8737,40 +8737,8 @@ async function createAccountingEntry(sourceType, sourceId, entryDate, descriptio
     throw new Error("Ecriture comptable desequilibree: debit " + totalDebit + " / credit " + totalCredit);
   }
 
-  var existing = await supabaseClient
-    .from("accounting_entries")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .eq("source_type", sourceType)
-    .eq("source_id", sourceId)
-    .maybeSingle();
-
-  if (existing.error) throw existing.error;
-
-  if (existing.data) {
-    return existing.data;
-  }
-
-  var entryResult = await supabaseClient
-    .from("accounting_entries")
-    .insert({
-      organization_id: organizationId,
-      source_type: sourceType,
-      source_id: sourceId,
-      entry_date: entryDate || new Date().toISOString().split("T")[0],
-      description: description || ""
-    })
-    .select()
-    .single();
-
-  if (entryResult.error) throw entryResult.error;
-
-  var entry = entryResult.data;
-
   var lineRows = lines.map(function(line) {
     return {
-      organization_id: organizationId,
-      entry_id: entry.id,
       account_code: line.account,
       account_name: getAccountName(line.account),
       debit: Number(line.debit) || 0,
@@ -8778,13 +8746,18 @@ async function createAccountingEntry(sourceType, sourceId, entryDate, descriptio
     };
   });
 
-  var linesResult = await supabaseClient
-    .from("accounting_lines")
-    .insert(lineRows);
+  var entryResult = await supabaseClient.rpc("create_accounting_entry_for_org", {
+    p_organization_id: organizationId,
+    p_source_type: sourceType,
+    p_source_id: sourceId,
+    p_entry_date: entryDate || new Date().toISOString().split("T")[0],
+    p_description: description || "",
+    p_lines: lineRows
+  });
 
-  if (linesResult.error) throw linesResult.error;
+  if (entryResult.error) throw entryResult.error;
 
-  return entry;
+  return entryResult.data;
 }
 
 function renderMobileAccountingRows(listId, rows, emptyText) {
