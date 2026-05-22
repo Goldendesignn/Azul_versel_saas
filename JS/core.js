@@ -73,41 +73,84 @@ function getDeviceAccessMessage(message, activeDevices, deviceLimit) {
   return "Acces refuse.";
 }
 
-async function verifyDeviceAccess(organizationId) {
-  var result = await supabaseClient.rpc("register_device_access", {
-    p_organization_id: organizationId,
-    p_device_id: getOrCreateDeviceId(),
-    p_device_name: getDeviceName()
-  });
+function isAzulNetworkError(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
 
-  if (result.error) {
-    alert("Erreur controle appareil: " + result.error.message);
+  return navigator.onLine === false ||
+    msg.indexOf("failed to fetch") >= 0 ||
+    msg.indexOf("network") >= 0 ||
+    msg.indexOf("fetch") >= 0 ||
+    msg.indexOf("load failed") >= 0 ||
+    msg.indexOf("timeout") >= 0;
+}
+
+function allowOfflineLicenseAccess(reason) {
+  var organizationId = localStorage.getItem("azul_organization_id");
+
+  if (!organizationId) {
     return false;
   }
 
-  var row = Array.isArray(result.data) ? result.data[0] : result.data;
+  localStorage.setItem("azul_offline_mode", "1");
+  console.warn("Mode offline: verification licence ignoree temporairement.", reason || "");
 
-  if (!row || !row.allowed) {
-    alert(getDeviceAccessMessage(
-      row ? row.message : "",
-      row ? row.active_devices : 0,
-      row ? row.device_limit : 0
-    ));
-
-    return false;
+  if (typeof toast === "function") {
+    toast("Mode offline: l'ERP reste ouvert. La licence sera verifiee au retour d'internet.", "success");
   }
 
   return true;
 }
+
+async function verifyDeviceAccess(organizationId) {
+  try {
+    var result = await supabaseClient.rpc("register_device_access", {
+      p_organization_id: organizationId,
+      p_device_id: getOrCreateDeviceId(),
+      p_device_name: getDeviceName()
+    });
+
+    if (result.error) {
+      if (isAzulNetworkError(result.error)) {
+        return allowOfflineLicenseAccess(result.error);
+      }
+
+      alert("Erreur controle appareil: " + result.error.message);
+      return false;
+    }
+
+    var row = Array.isArray(result.data) ? result.data[0] : result.data;
+
+    if (!row || !row.allowed) {
+      alert(getDeviceAccessMessage(
+        row ? row.message : "",
+        row ? row.active_devices : 0,
+        row ? row.device_limit : 0
+      ));
+
+      return false;
+    }
+
+    return true;
+
+  } catch (e) {
+    if (isAzulNetworkError(e)) {
+      return allowOfflineLicenseAccess(e);
+    }
+
+    alert("Erreur controle appareil: " + (e.message || e));
+    return false;
+  }
+}
+
 function getCoreLicenseErrorMessage(error) {
   var msg = String(error && error.message ? error.message : error || "");
 
   if (msg.indexOf("LICENCA_INATIVA") >= 0) {
-    return "Licence désactivée. Contacte l'administrateur.";
+    return "Licence desactivee. Contacte l'administrateur.";
   }
 
   if (msg.indexOf("LICENCA_EXPIRADA") >= 0) {
-    return "Licence expirée. Renouvelle ton abonnement.";
+    return "Licence expiree. Renouvelle ton abonnement.";
   }
 
   if (msg.indexOf("ORGANIZATION_NOT_FOUND") >= 0) {
@@ -125,31 +168,56 @@ async function verifyCurrentLicense() {
     return false;
   }
 
-  var result = await supabaseClient.rpc("check_license_status", {
-    p_organization_id: organizationId
-  });
+  try {
+    var result = await supabaseClient.rpc("check_license_status", {
+      p_organization_id: organizationId
+    });
 
-  if (result.error) {
-    alert(getCoreLicenseErrorMessage(result.error));
+    if (result.error) {
+      if (isAzulNetworkError(result.error)) {
+        return allowOfflineLicenseAccess(result.error);
+      }
+
+      alert(getCoreLicenseErrorMessage(result.error));
+      clearAzulSession();
+      window.location.replace("index.html");
+      return false;
+    }
+
+    var organization = result.data;
+
+    if (!organization || !organization.id) {
+      alert("Licence invalide.");
+      clearAzulSession();
+      window.location.replace("index.html");
+      return false;
+    }
+
+    var deviceOk = await verifyDeviceAccess(organization.id);
+
+    if (!deviceOk) {
+      clearAzulSession();
+      window.location.replace("index.html");
+      return false;
+    }
+
+    localStorage.removeItem("azul_offline_mode");
+    localStorage.setItem("azul_license_last_check_at", new Date().toISOString());
+    localStorage.setItem("azul_organization_name", organization.name || "");
+    localStorage.setItem("azul_plan", organization.plan || "starter");
+
+    return true;
+
+  } catch (e) {
+    if (isAzulNetworkError(e)) {
+      return allowOfflineLicenseAccess(e);
+    }
+
+    alert(getCoreLicenseErrorMessage(e));
     clearAzulSession();
     window.location.replace("index.html");
     return false;
   }
-
-  var organization = result.data;
-
-  var deviceOk = await verifyDeviceAccess(organization.id);
-
-  if (!deviceOk) {
-    clearAzulSession();
-    window.location.replace("index.html");
-    return false;
-  }
-  
-  localStorage.setItem("azul_organization_name", organization.name || "");
-  localStorage.setItem("azul_plan", organization.plan || "starter");
-
-  return true;
 }
 function mapSupabaseProduct(row) {
   row = row || {};
