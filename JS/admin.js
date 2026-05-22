@@ -1,4 +1,4 @@
-const adminadminSupabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+const adminSupabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storageKey: "azul_admin_auth",
     persistSession: true,
