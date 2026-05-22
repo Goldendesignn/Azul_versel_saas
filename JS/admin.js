@@ -161,6 +161,7 @@ function renderOrganizations() {
           <button onclick="createRenewalLicense('${org.id}')">Renouveler</button>
           <button onclick="changeOrganizationStatus('${org.id}', '${nextStatus}')">${actionText}</button>
           <button onclick="changeDeviceLimit('${org.id}')">Appareils</button>
+          <button onclick="openDevicesPreview('${org.id}')">Voir appareils</button>
           
         </div>
       </div>
@@ -232,7 +233,110 @@ async function changeDeviceLimit(organizationId) {
 
   loadOrganizations();
 }
+function formatAdminDate(value) {
+  if (!value) return "-";
 
+  try {
+    return new Date(value).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (e) {
+    return String(value);
+  }
+}
+
+function closeDevicesPreview() {
+  var modal = document.getElementById("devices-preview-modal");
+  if (modal) modal.remove();
+}
+
+async function openDevicesPreview(organizationId) {
+  var org = organizationsCache.find(function(item) {
+    return item.id === organizationId;
+  });
+
+  var modal = document.createElement("div");
+  modal.id = "devices-preview-modal";
+  modal.className = "devices-preview-backdrop";
+
+  modal.innerHTML = `
+    <div class="devices-preview">
+      <div class="devices-preview-head">
+        <div>
+          <div class="devices-preview-kicker">Appareils connectés</div>
+          <h2>${htmlSafe(org && org.name ? org.name : "Client")}</h2>
+          <p>${htmlSafe(org && org.email ? org.email : "-")}</p>
+        </div>
+        <button type="button" class="devices-preview-close" onclick="closeDevicesPreview()">×</button>
+      </div>
+
+      <div class="devices-preview-stats">
+        <div>
+          <strong>${htmlSafe(org && org.active_devices != null ? org.active_devices : 0)}</strong>
+          <span>Actifs</span>
+        </div>
+        <div>
+          <strong>${htmlSafe(org && org.device_limit != null ? org.device_limit : 1)}</strong>
+          <span>Limite</span>
+        </div>
+      </div>
+
+      <div id="devices-preview-body" class="devices-preview-body">
+        <div class="empty">Chargement des appareils...</div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  var body = document.getElementById("devices-preview-body");
+
+  var result = await adminSupabaseClient.rpc("admin_list_devices", {
+    p_organization_id: organizationId
+  });
+
+  if (result.error) {
+    body.innerHTML = '<div class="empty">Erreur: ' + htmlSafe(result.error.message) + '</div>';
+    return;
+  }
+
+  var devices = result.data || [];
+
+  if (!devices.length) {
+    body.innerHTML = '<div class="empty">Aucun appareil connecté.</div>';
+    return;
+  }
+
+  body.innerHTML = devices.map(function(device) {
+    var statusClass = device.active ? "active" : "inactive";
+    var statusText = device.active ? "Actif" : "Inactif";
+    var shortId = String(device.device_id || "").slice(0, 8);
+
+    return `
+      <div class="device-card">
+        <div class="device-icon">${htmlSafe(String(device.device_name || "A").charAt(0).toUpperCase())}</div>
+
+        <div class="device-info">
+          <div class="device-main">
+            <strong>${htmlSafe(device.device_name || "Appareil")}</strong>
+            <span class="device-status ${statusClass}">${statusText}</span>
+          </div>
+
+          <div class="device-meta">
+            ID: ${htmlSafe(shortId || "-")}<br>
+            Première connexion ERP: ${htmlSafe(formatAdminDate(device.first_login_at))}<br>
+            Dernière activité: ${htmlSafe(formatAdminDate(device.last_seen_at))}<br>
+            ${htmlSafe(device.last_seen_label || "")}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 document.addEventListener("DOMContentLoaded", async function() {
   var result = await adminSupabaseClient.auth.getSession();
 
