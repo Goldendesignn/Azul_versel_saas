@@ -1,3 +1,12 @@
+const adminadminSupabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storageKey: "azul_admin_auth",
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false
+  }
+});
+
 var organizationsCache = [];
 
 function adminMsg(id, text) {
@@ -14,7 +23,7 @@ async function loginAdmin() {
     return;
   }
 
-  var result = await supabaseClient.auth.signInWithPassword({
+  var result = await adminSupabaseClient.auth.signInWithPassword({
     email: email,
     password: password
   });
@@ -28,7 +37,7 @@ async function loginAdmin() {
 }
 
 async function logoutAdmin() {
-  await supabaseClient.auth.signOut();
+  await adminSupabaseClient.auth.signOut();
   location.reload();
 }
 
@@ -68,7 +77,7 @@ async function createOrganization() {
   var expires = document.getElementById("org-expires").value;
   var notes = document.getElementById("org-notes").value.trim();
 
-  var result = await supabaseClient.rpc("admin_create_license", {
+  var result = await adminSupabaseClient.rpc("admin_create_license", {
     p_expires_at: expires ? expires + "T23:59:59" : null,
     p_notes: notes || null
   });
@@ -91,7 +100,7 @@ async function loadOrganizations() {
   var list = document.getElementById("organizations-list");
   list.innerHTML = '<div class="empty">Chargement...</div>';
 
-  var result = await supabaseClient.rpc("admin_list_clients");
+  var result = await adminSupabaseClient.rpc("admin_list_clients");
 
   if (result.error) {
     list.innerHTML = '<div class="empty">Erreur: ' + htmlSafe(result.error.message) + '</div>';
@@ -160,7 +169,7 @@ function renderOrganizations() {
 }
 
 async function changeOrganizationStatus(id, status) {
-  var result = await supabaseClient.rpc("admin_set_organization_status", {
+  var result = await adminSupabaseClient.rpc("admin_set_organization_status", {
     p_organization_id: id,
     p_status: status
   });
@@ -184,7 +193,7 @@ async function copyLicense(key) {
   }
 }
 async function createRenewalLicense(organizationId) {
-  var result = await supabaseClient.rpc("admin_create_renewal_license", {
+  var result = await adminSupabaseClient.rpc("admin_create_renewal_license", {
     p_organization_id: organizationId,
     p_expires_at: null,
     p_notes: "Renouvellement"
@@ -211,7 +220,7 @@ async function changeDeviceLimit(organizationId) {
     return;
   }
 
-  var result = await supabaseClient.rpc("admin_set_device_limit", {
+  var result = await adminSupabaseClient.rpc("admin_set_device_limit", {
     p_organization_id: organizationId,
     p_device_limit: limit
   });
@@ -225,7 +234,7 @@ async function changeDeviceLimit(organizationId) {
 }
 
 document.addEventListener("DOMContentLoaded", async function() {
-  var result = await supabaseClient.auth.getSession();
+  var result = await adminSupabaseClient.auth.getSession();
 
   if (result.data && result.data.session) {
     showAdminPanel();
