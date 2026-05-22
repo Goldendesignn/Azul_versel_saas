@@ -151,28 +151,6 @@ function getDeviceAccessMessage(row) {
   return "Acesso recusado.";
 }
 
-async function verifyLoginDeviceAccess(organizationId) {
-  var result = await supabaseClient.rpc("register_device_access", {
-    p_organization_id: organizationId,
-    p_device_id: getOrCreateLoginDeviceId(),
-    p_device_name: getLoginDeviceName()
-  });
-
-  if (result.error) {
-    showMessage(getLicenseErrorMessage(result.error));
-    return false;
-  }
-
-  var row = Array.isArray(result.data) ? result.data[0] : result.data;
-
-  if (!row || !row.allowed) {
-    showMessage(getDeviceAccessMessage(row));
-    return false;
-  }
-
-  return true;
-}
-
 async function getProfileByIdentifier(identifier) {
   var result = await supabaseClient.rpc("get_login_profile", {
     p_identifier: identifier
@@ -225,9 +203,6 @@ async function restoreSessionFromAuth() {
   }
 
   var organization = await checkOrganizationAccess(profile.organization_id);
-  var deviceAllowed = await verifyLoginDeviceAccess(profile.organization_id);
-
-  if (!deviceAllowed) return false;
 
   saveSession(organization, profile, organization.license_key);
   window.location.href = "core.html";
@@ -271,13 +246,6 @@ async function loginAccount() {
     }
 
     var organization = await checkOrganizationAccess(profile.organization_id);
-    var deviceAllowed = await verifyLoginDeviceAccess(profile.organization_id);
-
-    if (!deviceAllowed) {
-      btn.disabled = false;
-      btn.textContent = "Entrar";
-      return;
-    }
 
     saveSession(organization, profile, organization.license_key);
     window.location.href = "core.html";
@@ -407,14 +375,6 @@ if (signInResult.error) {
   btn.textContent = "Ativar o meu ERP";
   return;
 }
-    var deviceAllowed = await verifyLoginDeviceAccess(organization.id);
-
-    if (!deviceAllowed) {
-      btn.disabled = false;
-      btn.textContent = "Ativar o meu ERP";
-      return;
-    }
-
     saveSession(organization, profile, organization.license_key);
 
     document.body.innerHTML = `
