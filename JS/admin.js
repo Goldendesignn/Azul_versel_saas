@@ -318,6 +318,9 @@ async function openDevicesPreview(organizationId) {
     var statusClass = device.active ? "active" : "inactive";
     var statusText = device.active ? "Actif" : "Inactif";
     var shortId = String(device.device_id || "").slice(0, 8);
+    var ownerName = device.owner_name || device.user_name || (org && org.name) || "-";
+    var ownerEmail = device.owner_email || device.user_email || (org && org.email) || "-";
+    var ownerPhone = device.owner_phone || device.user_phone || (org && org.phone) || "-";
 
     return `
       <div class="device-card">
@@ -330,6 +333,9 @@ async function openDevicesPreview(organizationId) {
           </div>
 
           <div class="device-meta">
+            Proprietaire: ${htmlSafe(ownerName)}<br>
+            Email: ${htmlSafe(ownerEmail)}<br>
+            Numero: ${htmlSafe(ownerPhone)}<br>
             ID: ${htmlSafe(shortId || "-")}<br>
             Première connexion ERP: ${htmlSafe(formatAdminDate(device.first_login_at))}<br>
             Dernière activité: ${htmlSafe(formatAdminDate(device.last_seen_at))}<br>
