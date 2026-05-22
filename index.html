@@ -20,17 +20,66 @@
   <link rel="stylesheet" href="CSS/login.css">
 </head>
   <body>
-    <div class="cont-login">
-      <h1 style="text-align: center;">Registo</h1>
-      <div class="cont-input-login">
-        <input type="text" placeholder="Nome" id="nom" autocomplete="name">
-        <input type="tel" placeholder="Telefone" id="numero" autocomplete="tel">
-        <input type="email" placeholder="Email opcional" id="email" autocomplete="email">
-        <input type="text" placeholder="Chave de licenca" id="license" autocomplete="off" oninput="formatLicenseInput(this)">
-      </div>
-      <div id="login-message" class="login-message"></div>
-      <button id="login-btn" onclick="login()">Ativar</button>
-    </div>
+    <main class="login-shell">
+      <section class="login-brand">
+        <img src="Assets/icon-192.png" alt="Azul" class="login-logo">
+        <div>
+          <p class="login-eyebrow">Azul Gestao</p>
+          <h1>Entre no seu ERP</h1>
+          <p class="login-subtitle">Acesso seguro para vendas, stock, compras e gestao financeira.</p>
+        </div>
+      </section>
+
+      <section class="cont-login">
+        <div class="login-tabs" role="tablist" aria-label="Acesso Azul">
+          <button id="tab-login" class="login-tab active" type="button" onclick="showLoginMode('login')">Connexion</button>
+          <button id="tab-register" class="login-tab" type="button" onclick="showLoginMode('register')">Inscription</button>
+        </div>
+
+        <div id="panel-login" class="login-panel active">
+          <div class="login-header">
+            <h2>Connexion</h2>
+            <p>Pour les boutiques deja activees.</p>
+          </div>
+
+          <div class="cont-input-login">
+            <input type="text" placeholder="Email ou telefone" id="login-identifier" autocomplete="username">
+            <input type="password" placeholder="Mot de passe" id="login-password" autocomplete="current-password">
+          </div>
+
+          <button id="account-login-btn" onclick="loginAccount()">Entrer</button>
+
+          <button class="link-btn" type="button" onclick="showLoginMode('register')">
+            Je n'ai pas encore active ma licence
+          </button>
+        </div>
+
+        <div id="panel-register" class="login-panel">
+          <div class="login-header">
+            <h2>Inscription</h2>
+            <p>Activez la licence et creez le compte proprietaire.</p>
+          </div>
+
+          <div class="cont-input-login">
+            <input type="text" placeholder="Chave de licenca" id="license" autocomplete="off" oninput="formatLicenseInput(this)">
+            <input type="text" placeholder="Nom de la boutique" id="store-name" autocomplete="organization">
+            <input type="text" placeholder="Nom du responsable" id="nom" autocomplete="name">
+            <input type="tel" placeholder="Telefone" id="numero" autocomplete="tel">
+            <input type="email" placeholder="Email" id="email" autocomplete="email">
+            <input type="password" placeholder="Mot de passe" id="register-password" autocomplete="new-password">
+            <input type="password" placeholder="Confirmer mot de passe" id="register-password-confirm" autocomplete="new-password">
+          </div>
+
+          <button id="login-btn" onclick="login()">Activer mon ERP</button>
+
+          <button class="link-btn" type="button" onclick="showLoginMode('login')">
+            J'ai deja un compte
+          </button>
+        </div>
+
+        <div id="login-message" class="login-message"></div>
+      </section>
+    </main>
   </body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="JS/supabase.js"></script>

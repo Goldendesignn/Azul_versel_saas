@@ -48,6 +48,25 @@ function getLoginDeviceName() {
   return "Navigateur";
 }
 
+function showLoginMode(mode) {
+  var isRegister = mode === "register";
+  var tabLogin = document.getElementById("tab-login");
+  var tabRegister = document.getElementById("tab-register");
+  var panelLogin = document.getElementById("panel-login");
+  var panelRegister = document.getElementById("panel-register");
+
+  if (tabLogin) tabLogin.classList.toggle("active", !isRegister);
+  if (tabRegister) tabRegister.classList.toggle("active", isRegister);
+  if (panelLogin) panelLogin.classList.toggle("active", !isRegister);
+  if (panelRegister) panelRegister.classList.toggle("active", isRegister);
+
+  showMessage("");
+}
+
+function loginAccount() {
+  showMessage("La connexion par compte sera activee a l'etape suivante.");
+}
+
 function getLicenseErrorMessage(error) {
   var msg = String(error && error.message ? error.message : error || "");
 
