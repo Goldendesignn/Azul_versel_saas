@@ -217,16 +217,17 @@ body {
   box-shadow: 0 0 0 4px rgba(23,119,255,.12);
 }
 
-.input-field span {
-  width: 24px;
-  height: 24px;
+.input-field .field-icon {
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  flex: 0 0 auto;
+  border-radius: 10px;
   background: rgba(23,119,255,.18);
   color: #9cc8ff;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 15px;
+  line-height: 1;
 }
 
 input {
@@ -372,10 +373,10 @@ button {
     background: var(--input);
   }
 
-  .input-field span {
-    background: var(--primary);
-    color: #fff;
-  }
+.input-field .field-icon {
+  background: var(--primary);
+  color: #fff;
+}
 
   input {
     height: 56px;
