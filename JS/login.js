@@ -20,6 +20,34 @@ function formatLicenseInput(input) {
   input.value = normalizeLicense(input.value);
 }
 
+function getOrCreateLoginDeviceId() {
+  var key = "azul_device_id";
+  var deviceId = localStorage.getItem(key);
+
+  if (!deviceId) {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      deviceId = crypto.randomUUID();
+    } else {
+      deviceId = "device-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    }
+
+    localStorage.setItem(key, deviceId);
+  }
+
+  return deviceId;
+}
+
+function getLoginDeviceName() {
+  var ua = navigator.userAgent || "";
+
+  if (/Android/i.test(ua)) return "Android";
+  if (/iPhone|iPad/i.test(ua)) return "iPhone/iPad";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Mac/i.test(ua)) return "Mac";
+
+  return "Navigateur";
+}
+
 function getLicenseErrorMessage(error) {
   var msg = String(error && error.message ? error.message : error || "");
 
@@ -35,11 +63,51 @@ function getLicenseErrorMessage(error) {
     return "Licence expiree. Renouvelle ton abonnement.";
   }
 
-  if (msg.indexOf("LIMITE_ATIVACAO") >= 0) {
-    return "Cette licence a deja ete activee.";
+  if (msg.indexOf("DEVICE_LIMIT_REACHED") >= 0) {
+    return "Limite d'appareils atteinte. Contacte l'administrateur.";
   }
 
   return "Erreur lors de l'activation de la licence.";
+}
+
+function getDeviceAccessMessage(row) {
+  row = row || {};
+
+  if (row.message === "DEVICE_LIMIT_REACHED") {
+    return "Limite d'appareils atteinte: " + (row.active_devices || 0) + "/" + (row.device_limit || 0) + ". Contacte l'administrateur.";
+  }
+
+  if (row.message === "LICENCA_INATIVA") {
+    return "Licence desactivee. Contacte l'administrateur.";
+  }
+
+  if (row.message === "LICENCA_EXPIRADA") {
+    return "Licence expiree. Renouvelle ton abonnement.";
+  }
+
+  return "Acces refuse.";
+}
+
+async function verifyLoginDeviceAccess(organizationId) {
+  var result = await supabaseClient.rpc("register_device_access", {
+    p_organization_id: organizationId,
+    p_device_id: getOrCreateLoginDeviceId(),
+    p_device_name: getLoginDeviceName()
+  });
+
+  if (result.error) {
+    showMessage(getLicenseErrorMessage(result.error));
+    return false;
+  }
+
+  var row = Array.isArray(result.data) ? result.data[0] : result.data;
+
+  if (!row || !row.allowed) {
+    showMessage(getDeviceAccessMessage(row));
+    return false;
+  }
+
+  return true;
 }
 
 async function login() {
@@ -85,19 +153,29 @@ async function login() {
       return;
     }
 
-var profileResult = await supabaseClient
-  .from("profiles")
-  .insert({
-    organization_id: organization.id,
-    name: data.nom,
-    phone: data.numero,
-    email: data.email || null,
-    role: "owner"
-  });
+    var deviceAllowed = await verifyLoginDeviceAccess(organization.id);
 
-if (profileResult.error) {
-  console.warn("Profil non cree, mais licence activee:", profileResult.error);
-}
+    if (!deviceAllowed) {
+      btn.disabled = false;
+      btn.textContent = "Ativar";
+      return;
+    }
+
+    var profileResult = await supabaseClient
+      .from("profiles")
+      .upsert({
+        organization_id: organization.id,
+        name: data.nom,
+        phone: data.numero,
+        email: data.email || null,
+        role: "owner"
+      }, {
+        onConflict: "organization_id,phone"
+      });
+
+    if (profileResult.error) {
+      console.warn("Profil non cree, mais licence activee:", profileResult.error);
+    }
 
     localStorage.setItem("azul_organization_id", organization.id);
     localStorage.setItem("azul_organization_name", organization.name || "");
