@@ -1339,6 +1339,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (document.getElementById('rev-history-to')) document.getElementById('rev-history-to').value = today;
 
   loadSettings();
+  renderSettingsUserCard();
   initPaymentLines();
   initAchatLines();
   cleanupLegacyCartFooter();
@@ -1412,7 +1413,11 @@ function goTo(page, btn) {
   try {
     if (typeof syncPageTitles === 'function') syncPageTitles();
     if (page === 'venda') loadProducts();
-    if (page === 'settings') { if (products.length) renderProductProfileOptions(); else loadProducts(); }
+    if (page === 'settings') {
+      renderSettingsUserCard();
+      if (products.length) renderProductProfileOptions();
+      else loadProducts();
+    }
     if (page === 'dashboard') loadDashboard();
     if (page === 'depenses') initDepensesPage();
     if (page === 'historique') loadHist();
