@@ -381,6 +381,7 @@ if (signInResult.error) {
   btn.disabled = false;
   btn.textContent = "Ativar o meu ERP";
   return;
+
 }
 
     var profileResult = await supabaseClient.rpc("complete_owner_profile", {
