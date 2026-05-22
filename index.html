@@ -19,62 +19,122 @@
   <link rel="apple-touch-icon" href="Assets/icon-192.png">
   <link rel="stylesheet" href="CSS/login.css">
 </head>
-  <body>
+  <body class="auth-page">
     <main class="login-shell">
       <section class="login-brand">
-        <img src="Assets/icon-192.png" alt="Azul" class="login-logo">
-        <div>
-          <p class="login-eyebrow">Azul Gestao</p>
-          <h1>Entre no seu ERP</h1>
-          <p class="login-subtitle">Acesso seguro para vendas, stock, compras e gestao financeira.</p>
+        <div class="brand-nav">
+          <div class="brand-mark">
+            <img src="Assets/icon-192.png" alt="Azul">
+            <span>Azul Gestao</span>
+          </div>
+          <button class="brand-link" type="button" onclick="showLoginMode('login')">Entrar</button>
+        </div>
+
+        <div class="brand-copy">
+          <p class="login-eyebrow">ERP SAAS</p>
+          <h1>Gerencie sua loja com seguranca.</h1>
+          <p class="login-subtitle">Vendas, stock, compras, caixa e relatorios em uma unica experiencia profissional.</p>
+        </div>
+
+        <div class="brand-stats" aria-label="Resumo Azul">
+          <div>
+            <strong>24h</strong>
+            <span>acesso</span>
+          </div>
+          <div>
+            <strong>PWA</strong>
+            <span>mobile</span>
+          </div>
+          <div>
+            <strong>ERP</strong>
+            <span>completo</span>
+          </div>
         </div>
       </section>
 
       <section class="cont-login">
-        <div class="login-tabs" role="tablist" aria-label="Acesso Azul">
-          <button id="tab-login" class="login-tab active" type="button" onclick="showLoginMode('login')">Connexion</button>
-          <button id="tab-register" class="login-tab" type="button" onclick="showLoginMode('register')">Inscription</button>
+        <div class="mobile-logo">
+          <img src="Assets/icon-192.png" alt="Azul">
         </div>
 
         <div id="panel-login" class="login-panel active">
           <div class="login-header">
+            <p class="login-kicker">Bienvenue</p>
             <h2>Connexion</h2>
-            <p>Pour les boutiques deja activees.</p>
+            <p>Entrez dans votre espace Azul avec votre compte.</p>
           </div>
 
           <div class="cont-input-login">
-            <input type="text" placeholder="Email ou telefone" id="login-identifier" autocomplete="username">
-            <input type="password" placeholder="Mot de passe" id="login-password" autocomplete="current-password">
+            <label class="input-field">
+              <span>@</span>
+              <input type="text" placeholder="Email ou telefone" id="login-identifier" autocomplete="username">
+            </label>
+            <label class="input-field">
+              <span>*</span>
+              <input type="password" placeholder="Mot de passe" id="login-password" autocomplete="current-password">
+            </label>
           </div>
 
+          <button class="forgot-btn" type="button">Mot de passe oublie?</button>
           <button id="account-login-btn" onclick="loginAccount()">Entrer</button>
 
+          <div class="login-divider"><span>Pas encore de compte?</span></div>
+
           <button class="link-btn" type="button" onclick="showLoginMode('register')">
-            Je n'ai pas encore active ma licence
+            Creer un compte
           </button>
         </div>
 
         <div id="panel-register" class="login-panel">
           <div class="login-header">
-            <h2>Inscription</h2>
-            <p>Activez la licence et creez le compte proprietaire.</p>
+            <p class="login-kicker">Activation</p>
+            <h2>Creer un compte</h2>
+            <p>Activez votre licence et creez le compte proprietaire.</p>
           </div>
 
           <div class="cont-input-login">
-            <input type="text" placeholder="Chave de licenca" id="license" autocomplete="off" oninput="formatLicenseInput(this)">
-            <input type="text" placeholder="Nom de la boutique" id="store-name" autocomplete="organization">
-            <input type="text" placeholder="Nom du responsable" id="nom" autocomplete="name">
-            <input type="tel" placeholder="Telefone" id="numero" autocomplete="tel">
-            <input type="email" placeholder="Email" id="email" autocomplete="email">
-            <input type="password" placeholder="Mot de passe" id="register-password" autocomplete="new-password">
-            <input type="password" placeholder="Confirmer mot de passe" id="register-password-confirm" autocomplete="new-password">
+            <label class="input-field">
+              <span>#</span>
+              <input type="text" placeholder="Chave de licenca" id="license" autocomplete="off" oninput="formatLicenseInput(this)">
+            </label>
+            <label class="input-field">
+              <span>B</span>
+              <input type="text" placeholder="Nom de la boutique" id="store-name" autocomplete="organization">
+            </label>
+            <label class="input-field">
+              <span>U</span>
+              <input type="text" placeholder="Nom du responsable" id="nom" autocomplete="name">
+            </label>
+            <label class="input-field">
+              <span>T</span>
+              <input type="tel" placeholder="Telefone" id="numero" autocomplete="tel">
+            </label>
+            <label class="input-field">
+              <span>@</span>
+              <input type="email" placeholder="Email" id="email" autocomplete="email">
+            </label>
+            <label class="input-field">
+              <span>*</span>
+              <input type="password" placeholder="Mot de passe" id="register-password" autocomplete="new-password">
+            </label>
+            <label class="input-field">
+              <span>*</span>
+              <input type="password" placeholder="Confirmer mot de passe" id="register-password-confirm" autocomplete="new-password">
+            </label>
           </div>
 
           <button id="login-btn" onclick="login()">Activer mon ERP</button>
 
+          <div class="login-divider"><span>Deja membre?</span></div>
+
           <button class="link-btn" type="button" onclick="showLoginMode('login')">
-            J'ai deja un compte
+            Se connecter
           </button>
+        </div>
+
+        <div class="login-tabs" role="tablist" aria-label="Acesso Azul">
+          <button id="tab-login" class="login-tab active" type="button" onclick="showLoginMode('login')">Connexion</button>
+          <button id="tab-register" class="login-tab" type="button" onclick="showLoginMode('register')">Inscription</button>
         </div>
 
         <div id="login-message" class="login-message"></div>
