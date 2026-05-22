@@ -361,17 +361,27 @@ async function login() {
       return;
     }
 
-    var signInResult = await supabaseClient.auth.signInWithPassword({
-      email: data.email,
-      password: data.password
-    });
+var signInResult = await supabaseClient.auth.signInWithPassword({
+  email: data.email,
+  password: data.password
+});
 
-    if (signInResult.error) {
-      showMessage("Conta criada. Confirme o email ou entre novamente.");
-      btn.disabled = false;
-      btn.textContent = "Ativar o meu ERP";
-      return;
-    }
+if (signInResult.error) {
+  console.warn("Entrada automatica falhou:", signInResult.error);
+
+  showMessage("Conta criada. Agora clique em Entrar e use o email e a palavra-passe.");
+  showLoginMode("login");
+
+  var loginIdentifier = document.getElementById("login-identifier");
+  var loginPassword = document.getElementById("login-password");
+
+  if (loginIdentifier) loginIdentifier.value = data.email;
+  if (loginPassword) loginPassword.value = "";
+
+  btn.disabled = false;
+  btn.textContent = "Ativar o meu ERP";
+  return;
+}
 
     var profileResult = await supabaseClient.rpc("complete_owner_profile", {
       p_organization_id: organization.id,
