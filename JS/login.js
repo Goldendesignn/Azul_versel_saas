@@ -107,21 +107,30 @@ function getLicenseErrorMessage(error) {
 }
 
 function getAuthErrorMessage(error) {
-  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  var raw = String(error && error.message ? error.message : error || "");
+  var msg = raw.toLowerCase();
 
   if (msg.indexOf("invalid login") >= 0 || msg.indexOf("invalid credentials") >= 0) {
     return "Email/telefone ou palavra-passe incorretos.";
   }
 
-  if (msg.indexOf("already registered") >= 0 || msg.indexOf("already exists") >= 0) {
+  if (msg.indexOf("already registered") >= 0 || msg.indexOf("already exists") >= 0 || msg.indexOf("user already") >= 0) {
     return "Este email ja tem conta. Use a opcao Entrar.";
+  }
+
+  if (msg.indexOf("signup") >= 0 && msg.indexOf("disabled") >= 0) {
+    return "O registo de novos usuarios esta desativado no Supabase.";
   }
 
   if (msg.indexOf("password") >= 0) {
     return "A palavra-passe deve ter pelo menos 6 caracteres.";
   }
 
-  return "Erro de autenticacao. Tente novamente.";
+  if (msg.indexOf("email") >= 0) {
+    return "Verifique o email informado.";
+  }
+
+  return "Erro Supabase Auth: " + raw;
 }
 
 function getDeviceAccessMessage(row) {
@@ -342,24 +351,40 @@ async function login() {
       return;
     }
 
-    var signUpResult = await supabaseClient.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          name: data.nom,
-          phone: data.numero,
-          organization_id: organization.id
-        }
-      }
-    });
-
-    if (signUpResult.error) {
-      showMessage(getAuthErrorMessage(signUpResult.error));
-      btn.disabled = false;
-      btn.textContent = "Ativar o meu ERP";
-      return;
+var signUpResult = await supabaseClient.auth.signUp({
+  email: data.email,
+  password: data.password,
+  options: {
+    data: {
+      name: data.nom,
+      phone: data.numero,
+      organization_id: organization.id
     }
+  }
+});
+
+if (signUpResult.error) {
+  showMessage(getAuthErrorMessage(signUpResult.error));
+  btn.disabled = false;
+  btn.textContent = "Ativar o meu ERP";
+  return;
+}
+
+var profileResult = await supabaseClient.rpc("complete_owner_profile", {
+  p_organization_id: organization.id,
+  p_name: data.nom,
+  p_phone: data.numero,
+  p_email: data.email
+});
+
+if (profileResult.error) {
+  showMessage("Conta criada, mas o perfil nao foi guardado: " + profileResult.error.message);
+  btn.disabled = false;
+  btn.textContent = "Ativar o meu ERP";
+  return;
+}
+
+var profile = profileResult.data;
 
 var signInResult = await supabaseClient.auth.signInWithPassword({
   email: data.email,
@@ -369,7 +394,7 @@ var signInResult = await supabaseClient.auth.signInWithPassword({
 if (signInResult.error) {
   console.warn("Entrada automatica falhou:", signInResult.error);
 
-  showMessage("Conta criada. Agora clique em Entrar e use o email e a palavra-passe.");
+  showMessage("Conta criada e perfil guardado. Clique em Entrar e use o email e a palavra-passe. Detalhe: " + signInResult.error.message);
   showLoginMode("login");
 
   var loginIdentifier = document.getElementById("login-identifier");
@@ -381,24 +406,7 @@ if (signInResult.error) {
   btn.disabled = false;
   btn.textContent = "Ativar o meu ERP";
   return;
-
 }
-
-    var profileResult = await supabaseClient.rpc("complete_owner_profile", {
-      p_organization_id: organization.id,
-      p_name: data.nom,
-      p_phone: data.numero,
-      p_email: data.email
-    });
-
-    if (profileResult.error) {
-      showMessage("Conta criada, mas o perfil nao foi guardado: " + profileResult.error.message);
-      btn.disabled = false;
-      btn.textContent = "Ativar o meu ERP";
-      return;
-    }
-
-    var profile = profileResult.data;
     var deviceAllowed = await verifyLoginDeviceAccess(organization.id);
 
     if (!deviceAllowed) {
