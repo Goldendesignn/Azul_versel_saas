@@ -161,7 +161,7 @@ function renderOrganizations() {
           <button onclick="createRenewalLicense('${org.id}')">Renouveler</button>
           <button onclick="changeOrganizationStatus('${org.id}', '${nextStatus}')">${actionText}</button>
           <button onclick="changeDeviceLimit('${org.id}')">Appareils</button>
-          <button onclick="openDevicesPreview('${org.id}')">Voir appareils</button>
+          <button type="button" data-devices-preview="${htmlSafe(org.id)}">Voir appareils</button>
           
         </div>
       </div>
@@ -255,6 +255,8 @@ function closeDevicesPreview() {
 }
 
 async function openDevicesPreview(organizationId) {
+  closeDevicesPreview();
+
   var org = organizationsCache.find(function(item) {
     return item.id === organizationId;
   });
@@ -295,6 +297,7 @@ async function openDevicesPreview(organizationId) {
 
   var body = document.getElementById("devices-preview-body");
 
+  try {
   var result = await adminSupabaseClient.rpc("admin_list_devices", {
     p_organization_id: organizationId
   });
@@ -336,7 +339,23 @@ async function openDevicesPreview(organizationId) {
       </div>
     `;
   }).join("");
+  } catch (e) {
+    body.innerHTML = '<div class="empty">Erreur: ' + htmlSafe(e.message || e) + '</div>';
+  }
 }
+
+window.openDevicesPreview = openDevicesPreview;
+window.closeDevicesPreview = closeDevicesPreview;
+
+document.addEventListener("click", function(event) {
+  var button = event.target.closest("[data-devices-preview]");
+
+  if (!button) return;
+
+  event.preventDefault();
+  openDevicesPreview(button.getAttribute("data-devices-preview"));
+});
+
 document.addEventListener("DOMContentLoaded", async function() {
   var result = await adminSupabaseClient.auth.getSession();
 
