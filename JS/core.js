@@ -12461,6 +12461,66 @@ async function unlockErp() {
   
   toast("ERP deverrouille.", "success");
 }
+function setSettingsUserText(id, value) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = value || "-";
+}
+
+function getCurrentDeviceNameForSettings() {
+  if (typeof getDeviceName === "function") {
+    return getDeviceName();
+  }
+
+  var ua = navigator.userAgent || "";
+
+  if (/Android/i.test(ua)) return "Android";
+  if (/iPhone|iPad/i.test(ua)) return "iPhone/iPad";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Mac/i.test(ua)) return "Mac";
+
+  return "Navegador";
+}
+
+async function renderSettingsUserCard() {
+  var card = document.getElementById("settings-user-card");
+  if (!card) return;
+
+  var userName = localStorage.getItem("azul_user_name") || "";
+  var userRole = localStorage.getItem("azul_user_role") || "owner";
+  var orgName = localStorage.getItem("azul_organization_name") || "";
+  var licenseKey = localStorage.getItem("azul_license_key") || "";
+  var plan = localStorage.getItem("azul_plan") || "starter";
+  var email = "";
+  var phone = "";
+
+  try {
+    var userResult = await supabaseClient.auth.getUser();
+
+    if (userResult && userResult.data && userResult.data.user) {
+      var user = userResult.data.user;
+      var meta = user.user_metadata || {};
+
+      email = user.email || meta.email || "";
+      phone = meta.phone || meta.numero || "";
+      userName = userName || meta.name || meta.nome || "";
+      userRole = userRole || meta.role || "owner";
+    }
+  } catch (e) {
+    console.warn("Nao foi possivel carregar o utilizador:", e);
+  }
+
+  var initial = String(userName || email || "U").trim().charAt(0).toUpperCase();
+
+  setSettingsUserText("settings-user-avatar", initial);
+  setSettingsUserText("settings-user-name", userName || "Utilizador");
+  setSettingsUserText("settings-user-email", email || "-");
+  setSettingsUserText("settings-user-phone", phone || "-");
+  setSettingsUserText("settings-user-role", userRole || "owner");
+  setSettingsUserText("settings-user-org", orgName || "-");
+  setSettingsUserText("settings-user-plan", plan || "-");
+  setSettingsUserText("settings-user-license", licenseKey || "-");
+  setSettingsUserText("settings-user-device", getCurrentDeviceNameForSettings());
+}
 function initErpLockSystem() {
   injectLockSettingsCard();
 
