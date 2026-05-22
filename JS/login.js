@@ -64,47 +64,29 @@ function showLoginMode(mode) {
 }
 
 function loginAccount() {
-  showMessage("La connexion par compte sera activee a l'etape suivante.");
+  showMessage("A entrada por conta sera ativada na proxima etapa.");
 }
 
 function getLicenseErrorMessage(error) {
   var msg = String(error && error.message ? error.message : error || "");
 
   if (msg.indexOf("LICENCA_INVALIDA") >= 0) {
-    return "Licence invalide.";
+    return "Licenca invalida.";
   }
 
   if (msg.indexOf("LICENCA_INATIVA") >= 0) {
-    return "Licence desactivee. Contacte l'administrateur.";
+    return "Licenca desativada. Contacte o administrador.";
   }
 
   if (msg.indexOf("LICENCA_EXPIRADA") >= 0) {
-    return "Licence expiree. Renouvelle ton abonnement.";
+    return "Licenca expirada. Renove a sua assinatura.";
   }
 
   if (msg.indexOf("DEVICE_LIMIT_REACHED") >= 0) {
-    return "Limite d'appareils atteinte. Contacte l'administrateur.";
+    return "Limite de aparelhos atingido. Contacte o administrador.";
   }
 
-  return "Erreur lors de l'activation de la licence.";
-}
-
-function getDeviceAccessMessage(row) {
-  row = row || {};
-
-  if (row.message === "DEVICE_LIMIT_REACHED") {
-    return "Limite d'appareils atteinte: " + (row.active_devices || 0) + "/" + (row.device_limit || 0) + ". Contacte l'administrateur.";
-  }
-
-  if (row.message === "LICENCA_INATIVA") {
-    return "Licence desactivee. Contacte l'administrateur.";
-  }
-
-  if (row.message === "LICENCA_EXPIRADA") {
-    return "Licence expiree. Renouvelle ton abonnement.";
-  }
-
-  return "Acces refuse.";
+  return "Erro ao ativar a licenca.";
 }
 
 async function verifyLoginDeviceAccess(organizationId) {
