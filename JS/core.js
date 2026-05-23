@@ -110,6 +110,13 @@ async function insertSingleWithAzulAudit(tableName, row) {
       .single();
   }
 
+  if (!result.error && result.data) {
+    await logAzulAction(AZUL_TABLE_ACTIONS[tableName] || (tableName + ":insert"), tableName, "success", {
+      source_table: tableName,
+      source_id: result.data.id || null
+    });
+  }
+
   return result;
 }
 
@@ -130,6 +137,13 @@ async function insertRowsWithAzulAudit(tableName, rows, selectColumns) {
     var retryQuery = supabaseClient.from(tableName).insert(rows.map(removeAzulAuditFields));
     if (selectColumns) retryQuery = retryQuery.select(selectColumns);
     result = await retryQuery;
+  }
+
+  if (!result.error) {
+    await logAzulAction(AZUL_TABLE_ACTIONS[tableName] || (tableName + ":bulk_insert"), tableName, "success", {
+      source_table: tableName,
+      rows: rows.length
+    });
   }
 
   return result;
@@ -154,47 +168,184 @@ async function updateAzulAuditFields(tableName, id, audit) {
   }
 }
 
+var AZUL_TABLE_ACTIONS = {
+  sales: "sale:create",
+  purchases: "purchase:create",
+  expenses: "expense:create",
+  client_payments: "client_payment:create",
+  supplier_payments: "supplier_payment:create",
+  corrections_log: "correction:create"
+};
+
+async function logAzulAction(action, moduleName, status, details) {
+  try {
+    var organizationId = localStorage.getItem("azul_organization_id");
+    if (!organizationId || !action) return;
+
+    var userResult = await supabaseClient.auth.getUser();
+    var user = userResult && userResult.data ? userResult.data.user : null;
+    var meta = user && user.user_metadata ? user.user_metadata : {};
+
+    await supabaseClient.from("action_audit_log").insert({
+      organization_id: organizationId,
+      actor_user_id: user && user.id ? user.id : null,
+      actor_name: localStorage.getItem("azul_user_name") || meta.name || meta.nome || "",
+      actor_email: user && user.email ? user.email : "",
+      actor_role: getAzulCurrentRole(),
+      device_id: localStorage.getItem("azul_device_id") || "",
+      action: action,
+      module: moduleName || "",
+      status: status || "success",
+      source_table: details && details.source_table ? details.source_table : null,
+      source_id: details && details.source_id ? details.source_id : null,
+      details: details || {}
+    });
+  } catch (e) {
+    console.warn("Journal d'audit indisponible:", e);
+  }
+}
+
+var AZUL_PERMISSION_CATALOG = {
+  "*": { label: "Acesso total", group: "Sistema" },
+  "page:dashboard": { label: "Dashboard", group: "Paginas" },
+  "page:venda": { label: "Nova venda", group: "Paginas" },
+  "page:achat": { label: "Nova compra", group: "Paginas" },
+  "page:transfert": { label: "Stock", group: "Paginas" },
+  "page:clientes": { label: "Clientes", group: "Paginas" },
+  "page:depenses": { label: "Despesas", group: "Paginas" },
+  "page:forn": { label: "Fornecedores", group: "Paginas" },
+  "page:tresorerie": { label: "Tesouraria", group: "Paginas" },
+  "page:comptabilite": { label: "Contabilidade", group: "Paginas" },
+  "page:corrections": { label: "Correcoes", group: "Paginas" },
+  "page:revendeurs": { label: "Revendedores", group: "Paginas" },
+  "page:settings": { label: "Definicoes", group: "Paginas" },
+  "sale:create": { label: "Registar vendas", group: "Vendas" },
+  "sale:view": { label: "Ver vendas", group: "Vendas" },
+  "purchase:create": { label: "Registar compras", group: "Compras" },
+  "purchase:view": { label: "Ver compras", group: "Compras" },
+  "expense:create": { label: "Registar despesas", group: "Despesas" },
+  "expense:view": { label: "Ver despesas", group: "Despesas" },
+  "stock:transfer": { label: "Transferir stock", group: "Stock" },
+  "client:view": { label: "Ver clientes", group: "Clientes" },
+  "supplier:view": { label: "Ver fornecedores", group: "Fornecedores" },
+  "client_payment:create": { label: "Receber clientes", group: "Pagamentos" },
+  "supplier_payment:create": { label: "Pagar fornecedores", group: "Pagamentos" },
+  "cash:view": { label: "Ver tesouraria", group: "Financeiro" },
+  "accounting:view": { label: "Ver contabilidade", group: "Financeiro" },
+  "correction:create": { label: "Fazer correcoes", group: "Correcoes" },
+  "import:create": { label: "Importar dados", group: "Importacao" },
+  "settings:team": { label: "Gerir equipe", group: "Definicoes" },
+  "settings:roles": { label: "Gerir roles", group: "Definicoes" }
+};
+
 var AZUL_ROLE_PERMISSIONS = {
   owner: {
-    pages: ["*"],
-    actions: ["*"]
+    name: "Proprietario",
+    permissions: ["*"]
   },
   manager: {
-    pages: ["*"],
-    actions: ["*"]
+    name: "Gerente",
+    permissions: ["*"]
   },
   cashier: {
-    pages: ["dashboard", "venda", "clientes", "tresorerie"],
-    actions: ["sale:create", "client_payment:create"]
+    name: "Caixa",
+    permissions: ["page:dashboard", "page:venda", "page:clientes", "page:tresorerie", "sale:create", "sale:view", "client:view", "client_payment:create"]
   },
   stock: {
-    pages: ["dashboard", "achat", "transfert", "forn"],
-    actions: ["purchase:create", "stock:transfer", "supplier_payment:create"]
+    name: "Stock",
+    permissions: ["page:dashboard", "page:achat", "page:transfert", "page:forn", "purchase:create", "purchase:view", "stock:transfer", "supplier:view", "supplier_payment:create", "import:create"]
   },
   accountant: {
-    pages: ["dashboard", "depenses", "tresorerie", "comptabilite", "corrections"],
-    actions: ["expense:create", "client_payment:create", "supplier_payment:create", "correction:create"]
+    name: "Contabilista",
+    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:corrections", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view"]
   },
   readonly: {
-    pages: ["dashboard", "transfert", "clientes", "tresorerie", "comptabilite"],
-    actions: []
+    name: "Leitura",
+    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view"]
   },
   member: {
-    pages: ["dashboard", "transfert", "clientes"],
-    actions: []
+    name: "Utilizador",
+    permissions: ["page:dashboard"]
   }
 };
+
+var azulRoleCatalogCache = null;
 
 function getAzulCurrentRole() {
   return String(localStorage.getItem("azul_user_role") || "member").toLowerCase();
 }
 
+function getAzulStaticRoleDefinition(role) {
+  role = String(role || "member").toLowerCase();
+  var fallback = AZUL_ROLE_PERMISSIONS[role] || AZUL_ROLE_PERMISSIONS.member;
+
+  return {
+    code: role,
+    name: fallback.name || role,
+    isSystem: true,
+    permissions: fallback.permissions || []
+  };
+}
+
+function getAzulRoleDefinition(role) {
+  role = String(role || "member").toLowerCase();
+
+  if (azulRoleCatalogCache && azulRoleCatalogCache[role]) {
+    return azulRoleCatalogCache[role];
+  }
+
+  return getAzulStaticRoleDefinition(role);
+}
+
+async function loadAzulRoleCatalog(force) {
+  var organizationId = localStorage.getItem("azul_organization_id");
+
+  if (!force && azulRoleCatalogCache) return azulRoleCatalogCache;
+
+  var catalog = {};
+  Object.keys(AZUL_ROLE_PERMISSIONS).forEach(function(role) {
+    catalog[role] = getAzulStaticRoleDefinition(role);
+  });
+
+  if (!organizationId || !supabaseClient || !supabaseClient.rpc) {
+    azulRoleCatalogCache = catalog;
+    return catalog;
+  }
+
+  try {
+    var result = await supabaseClient.rpc("get_role_catalog", {
+      p_organization_id: organizationId
+    });
+
+    if (result.error) throw result.error;
+
+    (result.data || []).forEach(function(role) {
+      var code = String(role.code || "").toLowerCase();
+      if (!code) return;
+
+      catalog[code] = {
+        code: code,
+        name: role.name || getTeamRoleLabel(code),
+        description: role.description || "",
+        isSystem: !!role.is_system,
+        permissions: Array.isArray(role.permissions) ? role.permissions : []
+      };
+    });
+  } catch (e) {
+    console.warn("Catalogue de roles indisponible, fallback local utilise:", e);
+  }
+
+  azulRoleCatalogCache = catalog;
+  return catalog;
+}
+
 function azulRoleAllows(kind, key) {
   var role = getAzulCurrentRole();
-  var permissions = AZUL_ROLE_PERMISSIONS[role] || AZUL_ROLE_PERMISSIONS.member;
-  var list = permissions[kind] || [];
+  var roleDefinition = getAzulRoleDefinition(role);
+  var list = roleDefinition.permissions || [];
+  var permission = kind === "pages" ? "page:" + key : key;
 
-  return list.indexOf("*") >= 0 || list.indexOf(key) >= 0;
+  return list.indexOf("*") >= 0 || list.indexOf(permission) >= 0;
 }
 
 function canAccessAzulPage(page) {
@@ -209,6 +360,10 @@ function requireAzulAction(action, label) {
   if (canRunAzulAction(action)) return true;
 
   toast("Sem permissao para " + (label || "esta accao") + ".", "error");
+  logAzulAction(action, "permission", "denied", {
+    label: label || "",
+    role: getAzulCurrentRole()
+  });
   return false;
 }
 
@@ -1561,6 +1716,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (!licenseOk) return;
   var userOk = await verifyCurrentUserAccess();
   if (!userOk) return;
+  await loadAzulRoleCatalog();
   var now = new Date();
   document.getElementById('dateTxt').textContent =
     now.toLocaleDateString('pt-PT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -13171,6 +13327,7 @@ window.confirmCorrectionCancel = confirmCorrectionCancel;
 window.saveTeamMemberRoleStatus = saveTeamMemberRoleStatus;
 window.rejectTeamMember = rejectTeamMember;
 window.deleteTeamMember = deleteTeamMember;
+window.createCustomRoleFromBase = createCustomRoleFromBase;
 
 document.addEventListener("click", function(event) {
   var button = event.target.closest("[data-correction-type][data-correction-id]");
@@ -13497,6 +13654,10 @@ function formatTeamDate(value) {
 function getTeamRoleLabel(role) {
   role = String(role || "member").toLowerCase();
 
+  if (azulRoleCatalogCache && azulRoleCatalogCache[role] && azulRoleCatalogCache[role].name) {
+    return azulRoleCatalogCache[role].name;
+  }
+
   var map = {
     owner: "Proprietario",
     manager: "Gerente",
@@ -13508,6 +13669,37 @@ function getTeamRoleLabel(role) {
   };
 
   return map[role] || role;
+}
+
+function getPermissionLabel(permission) {
+  var meta = AZUL_PERMISSION_CATALOG[permission] || {};
+  return meta.label || permission;
+}
+
+function getRolePermissionLabels(role, limit) {
+  var def = getAzulRoleDefinition(role);
+  var permissions = def.permissions || [];
+
+  if (permissions.indexOf("*") >= 0) {
+    return ["Acesso total"];
+  }
+
+  return permissions
+    .filter(function(permission) { return permission.indexOf("page:") !== 0; })
+    .slice(0, limit || 6)
+    .map(getPermissionLabel);
+}
+
+function renderRolePermissionChips(role) {
+  var labels = getRolePermissionLabels(role, 8);
+
+  if (!labels.length) {
+    return '<div class="team-permissions muted">Sem permissoes de accao.</div>';
+  }
+
+  return '<div class="team-permissions">' + labels.map(function(label) {
+    return '<span>' + escapeDepenseHtml(label) + '</span>';
+  }).join("") + '</div>';
 }
 
 function getTeamStatusLabel(status) {
@@ -13533,21 +13725,23 @@ function getTeamMemberDomKey(email) {
   return String(email || "user").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "user";
 }
 
-function getTeamRoleOptions(selectedRole) {
+function getTeamRoleOptions(selectedRole, roleCatalog) {
   selectedRole = String(selectedRole || "member").toLowerCase();
 
-  var roles = [
-    ["owner", "Proprietario"],
-    ["manager", "Gerente"],
-    ["cashier", "Caixa"],
-    ["stock", "Stock"],
-    ["accountant", "Contabilista"],
-    ["readonly", "Leitura"],
-    ["member", "Utilizador"]
-  ];
+  roleCatalog = roleCatalog || azulRoleCatalogCache || {};
+  var roles = Object.keys(roleCatalog).map(function(code) {
+    return [code, roleCatalog[code].name || getTeamRoleLabel(code), !!roleCatalog[code].isSystem];
+  });
+
+  if (!roles.length) {
+    roles = Object.keys(AZUL_ROLE_PERMISSIONS).map(function(code) {
+      return [code, getTeamRoleLabel(code), true];
+    });
+  }
 
   return roles.map(function(item) {
-    return '<option value="' + item[0] + '"' + (item[0] === selectedRole ? " selected" : "") + '>' + item[1] + '</option>';
+    var suffix = item[2] ? "" : " (personalizado)";
+    return '<option value="' + item[0] + '"' + (item[0] === selectedRole ? " selected" : "") + '>' + item[1] + suffix + '</option>';
   }).join("");
 }
 
@@ -13569,6 +13763,75 @@ function getTeamStatusOptions(selectedStatus) {
 
 function getTeamInitial(name, email) {
   return String(name || email || "U").trim().charAt(0).toUpperCase();
+}
+
+function slugifyCustomRole(value) {
+  return "custom_" + String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 32);
+}
+
+function getBaseRoleOptionsForCustomRole() {
+  var baseRoles = ["cashier", "stock", "accountant", "readonly", "manager"];
+
+  return baseRoles.map(function(role) {
+    return '<option value="' + role + '">' + escapeDepenseHtml(getTeamRoleLabel(role)) + '</option>';
+  }).join("");
+}
+
+async function createCustomRoleFromBase() {
+  if (!canManageTeamRoles()) {
+    toast("Sem permissao para criar roles.", "error");
+    return;
+  }
+
+  var organizationId = localStorage.getItem("azul_organization_id");
+  var nameInput = document.getElementById("custom-role-name");
+  var baseInput = document.getElementById("custom-role-base");
+  var roleName = nameInput ? nameInput.value.trim() : "";
+  var baseRole = baseInput ? baseInput.value : "readonly";
+
+  if (!organizationId || !roleName) {
+    toast("Informe o nome do role personalizado.", "error");
+    return;
+  }
+
+  var baseDefinition = getAzulRoleDefinition(baseRole);
+  var permissions = (baseDefinition.permissions || []).filter(function(permission) {
+    return permission !== "*";
+  });
+
+  if ((baseDefinition.permissions || []).indexOf("*") >= 0) {
+    permissions = Object.keys(AZUL_PERMISSION_CATALOG).filter(function(permission) {
+      return permission !== "*";
+    });
+  }
+
+  try {
+    var result = await supabaseClient.rpc("upsert_custom_role", {
+      p_organization_id: organizationId,
+      p_code: slugifyCustomRole(roleName),
+      p_name: roleName,
+      p_permissions: permissions
+    });
+
+    if (result.error) throw result.error;
+
+    toast("Role personalizado criado.", "success");
+    if (nameInput) nameInput.value = "";
+
+    await loadAzulRoleCatalog(true);
+    await renderSettingsTeamCard();
+  } catch (e) {
+    var msg = String(e && e.message ? e.message : e);
+    if (msg.indexOf("TEAM_PERMISSION_DENIED") >= 0) msg = "Apenas o proprietario pode criar roles.";
+    if (msg.indexOf("SYSTEM_ROLE_LOCKED") >= 0) msg = "Role do sistema nao pode ser alterado.";
+    toast("Erro role: " + msg, "error");
+  }
 }
 
 async function saveTeamMemberRoleStatus(encodedEmail) {
@@ -13868,6 +14131,7 @@ async function renderSettingsTeamCard() {
 
   try {
     await touchCurrentTeamUser();
+    var roleCatalog = await loadAzulRoleCatalog(true);
 
     var result = await supabaseClient.rpc("get_organization_team", {
       p_organization_id: organizationId
@@ -13883,8 +14147,30 @@ async function renderSettingsTeamCard() {
     }
 
     var canManage = canManageTeamRoles();
+    var customRoles = Object.keys(roleCatalog).filter(function(code) {
+      return roleCatalog[code] && !roleCatalog[code].isSystem;
+    });
 
-    list.innerHTML = users.map(function(user) {
+    var customRoleBuilder = canManage ? `
+      <div class="custom-role-builder">
+        <div>
+          <strong>Roles personalizados</strong>
+          <span>Crie uma funcao a partir de um modelo e ajuste depois pela base de permissoes.</span>
+        </div>
+        <div class="custom-role-form">
+          <input id="custom-role-name" type="text" placeholder="Ex: Caixa noite">
+          <select id="custom-role-base">${getBaseRoleOptionsForCustomRole()}</select>
+          <button type="button" onclick="createCustomRoleFromBase()">Criar role</button>
+        </div>
+        <div class="custom-role-list">
+          ${customRoles.length ? customRoles.map(function(code) {
+            return '<span>' + escapeDepenseHtml(roleCatalog[code].name || code) + '</span>';
+          }).join("") : '<em>Nenhum role personalizado ainda.</em>'}
+        </div>
+      </div>
+    ` : "";
+
+    list.innerHTML = customRoleBuilder + users.map(function(user) {
       var name = user.name || "Utilizador";
       var email = user.email || "-";
       var phone = user.phone || "-";
@@ -13899,7 +14185,7 @@ async function renderSettingsTeamCard() {
             <div class="team-user-controls">
               <label>
                 <span>Role</span>
-                <select id="team-role-${escapeDepenseHtml(key)}">${getTeamRoleOptions(rawRole)}</select>
+                <select id="team-role-${escapeDepenseHtml(key)}">${getTeamRoleOptions(rawRole, roleCatalog)}</select>
               </label>
 
               <label>
@@ -13933,6 +14219,8 @@ async function renderSettingsTeamCard() {
             <div class="team-user-last">
               Ultima actividade: ${escapeDepenseHtml(formatTeamDate(user.last_seen_at))}
             </div>
+
+            ${renderRolePermissionChips(rawRole)}
 
             ${controls}
           </div>
