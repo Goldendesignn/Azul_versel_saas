@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v31";
+const AZUL_CACHE = "azul-pwa-v32";
 
 const AZUL_STATIC_ASSETS = [
   "/",
@@ -25,12 +25,22 @@ const AZUL_STATIC_ASSETS = [
 self.addEventListener("install", function(event) {
   event.waitUntil(
     caches.open(AZUL_CACHE).then(function(cache) {
-      return cache.addAll(AZUL_STATIC_ASSETS).catch(function() {
+      return cache.addAll(
+        AZUL_STATIC_ASSETS.map(function(asset) {
+          return new Request(asset, { cache: "reload" });
+        })
+      ).catch(function() {
         return Promise.resolve();
       });
     })
   );
   self.skipWaiting();
+});
+
+self.addEventListener("message", function(event) {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", function(event) {
