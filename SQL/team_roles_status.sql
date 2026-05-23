@@ -108,14 +108,13 @@ begin
     auth_user_id = coalesce(auth_user_id, auth.uid()),
     name = coalesce(nullif(p_name, ''), name, email),
     phone = coalesce(nullif(p_phone, ''), phone, ''),
-    role = coalesce(nullif(p_role, ''), nullif(role, ''), 'member'),
-    status = coalesce(nullif(status, ''), 'active'),
     last_seen_at = now()
   where organization_id = p_organization_id
     and (
       auth_user_id = auth.uid()
       or lower(email) = v_email
-    );
+    )
+    and coalesce(nullif(status, ''), 'pending') = 'active';
 end;
 $$;
 

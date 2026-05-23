@@ -6041,6 +6041,11 @@ textarea,
   color: #166534;
 }
 
+.team-user-status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .team-user-status.inactive,
 .team-user-status.suspended {
   background: #fee2e2;
@@ -6072,7 +6077,7 @@ textarea,
 
 .team-user-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   align-items: end;
   margin-top: 12px;
@@ -6107,6 +6112,7 @@ textarea,
 }
 
 .team-user-controls button {
+  width: 100%;
   min-height: 38px;
   border: 0;
   border-radius: 10px;
@@ -6115,6 +6121,20 @@ textarea,
   padding: 0 14px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.team-user-controls button.approve {
+  background: var(--green);
+}
+
+.team-user-controls button.danger {
+  background: var(--red);
+}
+
+.team-user-controls button.ghost {
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
 }
 
 @media (max-width: 760px) {

@@ -27,6 +27,8 @@ function clearAzulSession() {
   localStorage.removeItem("azul_organization_id");
   localStorage.removeItem("azul_organization_name");
   localStorage.removeItem("azul_user_name");
+  localStorage.removeItem("azul_user_role");
+  localStorage.removeItem("azul_user_status");
   localStorage.removeItem("azul_license_key");
   localStorage.removeItem("azul_plan");
 }
@@ -184,7 +186,7 @@ var AZUL_ROLE_PERMISSIONS = {
 };
 
 function getAzulCurrentRole() {
-  return String(localStorage.getItem("azul_user_role") || "owner").toLowerCase();
+  return String(localStorage.getItem("azul_user_role") || "member").toLowerCase();
 }
 
 function azulRoleAllows(kind, key) {
@@ -1501,6 +1503,8 @@ function ensureSpreadsheetBinding(done) {
 document.addEventListener('DOMContentLoaded', async function() {
   var licenseOk = await verifyCurrentLicense();
   if (!licenseOk) return;
+  var userOk = await verifyCurrentUserAccess();
+  if (!userOk) return;
   var now = new Date();
   document.getElementById('dateTxt').textContent =
     now.toLocaleDateString('pt-PT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -13109,6 +13113,8 @@ window.loadCorrections = loadCorrections;
 window.loadCorrectionsDebounced = loadCorrectionsDebounced;
 window.confirmCorrectionCancel = confirmCorrectionCancel;
 window.saveTeamMemberRoleStatus = saveTeamMemberRoleStatus;
+window.rejectTeamMember = rejectTeamMember;
+window.deleteTeamMember = deleteTeamMember;
 
 document.addEventListener("click", function(event) {
   var button = event.target.closest("[data-correction-type][data-correction-id]");
@@ -13359,7 +13365,7 @@ async function renderSettingsUserCard() {
   if (!card) return;
 
   var userName = localStorage.getItem("azul_user_name") || "";
-  var userRole = localStorage.getItem("azul_user_role") || "owner";
+  var userRole = localStorage.getItem("azul_user_role") || "member";
   var userStatus = "active";
   var orgName = localStorage.getItem("azul_organization_name") || "";
   var organizationId = localStorage.getItem("azul_organization_id") || "";
@@ -13378,14 +13384,14 @@ async function renderSettingsUserCard() {
       email = user.email || meta.email || "";
       phone = meta.phone || meta.numero || "";
       userName = userName || meta.name || meta.nome || "";
-      userRole = userRole || meta.role || "owner";
+      userRole = userRole || meta.role || "member";
 
       if (organizationId && email) {
         var profileResult = await supabaseClient
           .from("profiles")
           .select("name, phone, role, status")
           .eq("organization_id", organizationId)
-          .eq("email", email)
+          .ilike("email", email)
           .maybeSingle();
 
         if (!profileResult.error && profileResult.data) {
@@ -13408,7 +13414,7 @@ async function renderSettingsUserCard() {
   setSettingsUserText("settings-user-name", userName || "Utilizador");
   setSettingsUserText("settings-user-email", email || "-");
   setSettingsUserText("settings-user-phone", phone || "-");
-  setSettingsUserText("settings-user-role", getTeamRoleLabel(userRole || "owner"));
+  setSettingsUserText("settings-user-role", getTeamRoleLabel(userRole || "member"));
   setSettingsUserText("settings-user-status", getTeamStatusLabel(userStatus));
   setSettingsUserText("settings-user-org", orgName || "-");
   setSettingsUserText("settings-user-plan", plan || "-");
@@ -13453,6 +13459,7 @@ function getTeamStatusLabel(status) {
 
   var map = {
     active: "Activo",
+    pending: "Pendente",
     inactive: "Inactivo",
     suspended: "Suspenso",
     blocked: "Bloqueado"
@@ -13463,7 +13470,7 @@ function getTeamStatusLabel(status) {
 
 function canManageTeamRoles() {
   var role = getAzulCurrentRole();
-  return role === "owner" || role === "manager";
+  return role === "owner";
 }
 
 function getTeamMemberDomKey(email) {
@@ -13493,6 +13500,7 @@ function getTeamStatusOptions(selectedStatus) {
 
   var statuses = [
     ["active", "Activo"],
+    ["pending", "Pendente"],
     ["inactive", "Inactivo"],
     ["suspended", "Suspenso"],
     ["blocked", "Bloqueado"]
@@ -13551,6 +13559,136 @@ async function saveTeamMemberRoleStatus(encodedEmail) {
   }
 }
 
+async function rejectTeamMember(encodedEmail) {
+  var email = decodeURIComponent(String(encodedEmail || ""));
+  var key = getTeamMemberDomKey(email);
+  var statusInput = document.getElementById("team-status-" + key);
+
+  if (statusInput) statusInput.value = "blocked";
+  await saveTeamMemberRoleStatus(encodedEmail);
+}
+
+async function deleteTeamMember(encodedEmail) {
+  if (!canManageTeamRoles()) {
+    toast("Sem permissao para eliminar utilizador.", "error");
+    return;
+  }
+
+  var email = decodeURIComponent(String(encodedEmail || ""));
+  var organizationId = localStorage.getItem("azul_organization_id");
+
+  if (!organizationId || !email) {
+    toast("Utilizador invalido.", "error");
+    return;
+  }
+
+  if (!confirm("Eliminar definitivamente este utilizador da equipa?")) return;
+
+  try {
+    var result = await supabaseClient.rpc("delete_team_member", {
+      p_organization_id: organizationId,
+      p_email: email
+    });
+
+    if (result.error) throw result.error;
+
+    toast("Utilizador eliminado.", "success");
+    await renderSettingsTeamCard();
+  } catch (e) {
+    var msg = String(e && e.message ? e.message : e);
+
+    if (msg.indexOf("TEAM_PERMISSION_DENIED") >= 0) msg = "Apenas o proprietario pode eliminar utilizadores.";
+    if (msg.indexOf("LAST_OWNER_REQUIRED") >= 0) msg = "Nao podes eliminar o ultimo proprietario activo.";
+    if (msg.indexOf("TEAM_MEMBER_NOT_FOUND") >= 0) msg = "Utilizador nao encontrado.";
+
+    toast("Erro equipa: " + msg, "error");
+  }
+}
+
+function getCoreProfileAccessMessage(profile) {
+  var status = String(profile && profile.status ? profile.status : "").toLowerCase();
+
+  if (status === "pending") {
+    return "A tua conta esta a aguardar autorizacao do proprietario.";
+  }
+
+  if (status === "blocked" || status === "inactive" || status === "suspended") {
+    return "Acesso recusado pelo proprietario da loja.";
+  }
+
+  return "Acesso do utilizador invalido.";
+}
+
+async function getCurrentCoreProfile() {
+  var organizationId = localStorage.getItem("azul_organization_id");
+  var userResult = await supabaseClient.auth.getUser();
+
+  if (userResult.error || !userResult.data || !userResult.data.user) {
+    return null;
+  }
+
+  var user = userResult.data.user;
+  var email = user.email || "";
+
+  if (!email || !organizationId) return null;
+
+  var result = await supabaseClient
+    .from("profiles")
+    .select("organization_id,name,email,phone,role,status")
+    .eq("organization_id", organizationId)
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (result.error) {
+    result = await supabaseClient.rpc("get_login_profile_v2", {
+      p_identifier: email
+    }).maybeSingle();
+  }
+
+  if (result.error) throw result.error;
+
+  var profile = result.data || null;
+  if (!profile || String(profile.organization_id) !== String(organizationId)) return null;
+
+  return profile;
+}
+
+async function verifyCurrentUserAccess() {
+  try {
+    var profile = await getCurrentCoreProfile();
+
+    if (!profile) {
+      alert("Sessao de utilizador invalida. Entre novamente.");
+      await supabaseClient.auth.signOut();
+      clearAzulSession();
+      window.location.replace("index.html");
+      return false;
+    }
+
+    var status = String(profile.status || "active").toLowerCase();
+
+    localStorage.setItem("azul_user_name", profile.name || profile.email || "Utilizador");
+    localStorage.setItem("azul_user_role", profile.role || "member");
+    localStorage.setItem("azul_user_status", status);
+
+    if (status !== "active") {
+      alert(getCoreProfileAccessMessage(profile));
+      await supabaseClient.auth.signOut();
+      clearAzulSession();
+      window.location.replace("index.html");
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    alert("Erro ao validar utilizador: " + (e.message || e));
+    await supabaseClient.auth.signOut();
+    clearAzulSession();
+    window.location.replace("index.html");
+    return false;
+  }
+}
+
 async function touchCurrentTeamUser() {
   var organizationId = localStorage.getItem("azul_organization_id");
   if (!organizationId) return;
@@ -13565,7 +13703,7 @@ async function touchCurrentTeamUser() {
     var email = user.email || meta.email || "";
     var name = localStorage.getItem("azul_user_name") || meta.name || meta.nome || "";
     var phone = meta.phone || meta.numero || "";
-    var role = localStorage.getItem("azul_user_role") || meta.role || "owner";
+    var role = localStorage.getItem("azul_user_role") || meta.role || "member";
 
     if (!email) return;
 
@@ -13577,20 +13715,7 @@ async function touchCurrentTeamUser() {
       p_role: role || "member"
     });
 
-    if (result.error) {
-      await supabaseClient
-        .from("profiles")
-        .update({
-          auth_user_id: user.id,
-          name: name || email,
-          phone: phone || "",
-          role: role || "member",
-          status: "active",
-          last_seen_at: new Date().toISOString()
-        })
-        .eq("organization_id", organizationId)
-        .eq("email", email);
-    }
+    if (result.error) throw result.error;
   } catch (e) {
     console.warn("Presenca da equipa nao actualizada:", e);
   }
@@ -13598,9 +13723,17 @@ async function touchCurrentTeamUser() {
 
 async function renderSettingsTeamCard() {
   var list = document.getElementById("settings-team-list");
+  var card = document.getElementById("settings-team-card");
   var organizationId = localStorage.getItem("azul_organization_id");
 
   if (!list || !organizationId) return;
+
+  if (!canManageTeamRoles()) {
+    if (card) card.style.display = "none";
+    return;
+  }
+
+  if (card) card.style.display = "";
 
   list.innerHTML = '<div class="empty">A carregar equipa...</div>';
 
@@ -13646,6 +13779,9 @@ async function renderSettingsTeamCard() {
               </label>
 
               <button type="button" onclick="saveTeamMemberRoleStatus('${escapeDepenseHtml(encodedEmail)}')">Guardar</button>
+              ${status === "pending" ? `<button type="button" class="approve" onclick="document.getElementById('team-status-${escapeDepenseHtml(key)}').value='active'; saveTeamMemberRoleStatus('${escapeDepenseHtml(encodedEmail)}')">Aceitar</button>` : ""}
+              <button type="button" class="danger ghost" onclick="rejectTeamMember('${escapeDepenseHtml(encodedEmail)}')">Recusar</button>
+              <button type="button" class="danger" onclick="deleteTeamMember('${escapeDepenseHtml(encodedEmail)}')">Eliminar</button>
             </div>
       ` : "";
 

@@ -151,16 +151,40 @@ function getDeviceAccessMessage(row) {
   return "Acesso recusado.";
 }
 
+function getProfileAccessMessage(profile) {
+  var status = String(profile && profile.status ? profile.status : "").toLowerCase();
+
+  if (status === "pending") {
+    return "A tua conta esta a aguardar autorizacao do proprietario.";
+  }
+
+  if (status === "blocked" || status === "inactive" || status === "suspended") {
+    return "Acesso recusado. Contacte o proprietario da loja.";
+  }
+
+  return "";
+}
+
+function isProfileActive(profile) {
+  return String(profile && profile.status ? profile.status : "active").toLowerCase() === "active";
+}
+
 async function getProfileByIdentifier(identifier) {
-  var result = await supabaseClient.rpc("get_login_profile", {
+  var result = await supabaseClient.rpc("get_login_profile_v2", {
     p_identifier: identifier
-  });
+  }).maybeSingle();
+
+  if (result.error && String(result.error.message || "").indexOf("get_login_profile_v2") >= 0) {
+    result = await supabaseClient.rpc("get_login_profile", {
+      p_identifier: identifier
+    });
+  }
 
   if (result.error) {
     throw result.error;
   }
 
-  return result.data || null;
+  return Array.isArray(result.data) ? (result.data[0] || null) : (result.data || null);
 }
 
 async function checkOrganizationAccess(organizationId) {
@@ -175,11 +199,28 @@ async function checkOrganizationAccess(organizationId) {
   return result.data;
 }
 
+async function registerLicenseOrTeamAccess(data) {
+  var result = await supabaseClient.rpc("register_license_access", {
+    p_license_key: data.licence,
+    p_store_name: data.storeName,
+    p_name: data.nom,
+    p_phone: data.numero,
+    p_email: data.email
+  }).maybeSingle();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.data || null;
+}
+
 function saveSession(organization, profile, licenseKey) {
   localStorage.setItem("azul_organization_id", organization.id || organization.organization_id);
   localStorage.setItem("azul_organization_name", organization.name || "");
   localStorage.setItem("azul_user_name", profile && profile.name ? profile.name : "");
-  localStorage.setItem("azul_user_role", profile && profile.role ? profile.role : "owner");
+  localStorage.setItem("azul_user_role", profile && profile.role ? profile.role : "member");
+  localStorage.setItem("azul_user_status", profile && profile.status ? profile.status : "active");
   localStorage.setItem("azul_license_key", licenseKey || organization.license_key || "");
   localStorage.setItem("azul_plan", organization.plan || "starter");
 }
@@ -199,6 +240,12 @@ async function restoreSessionFromAuth() {
   var profile = await getProfileByIdentifier(email);
 
   if (!profile || !profile.organization_id) {
+    return false;
+  }
+
+  if (!isProfileActive(profile)) {
+    await supabaseClient.auth.signOut();
+    showMessage(getProfileAccessMessage(profile), profile.status === "pending" ? "success" : "");
     return false;
   }
 
@@ -240,6 +287,14 @@ async function loginAccount() {
 
     if (authResult.error) {
       showMessage(getAuthErrorMessage(authResult.error));
+      btn.disabled = false;
+      btn.textContent = "Entrar";
+      return;
+    }
+
+    if (!isProfileActive(profile)) {
+      await supabaseClient.auth.signOut();
+      showMessage(getProfileAccessMessage(profile), profile.status === "pending" ? "success" : "");
       btn.disabled = false;
       btn.textContent = "Entrar";
       return;
@@ -295,29 +350,30 @@ async function login() {
   showMessage("");
 
   try {
-    var licenseResult = await supabaseClient.rpc("activate_license", {
-      p_license_key: data.licence,
-      p_store_name: data.storeName,
-      p_owner_name: data.nom,
-      p_owner_phone: data.numero,
-      p_owner_email: data.email
-    });
+    var access = await registerLicenseOrTeamAccess(data);
 
-    if (licenseResult.error) {
-      showMessage(getLicenseErrorMessage(licenseResult.error));
-      btn.disabled = false;
-      btn.textContent = "Ativar o meu ERP";
-      return;
-    }
-
-    var organization = licenseResult.data;
-
-    if (!organization || !organization.id) {
+    if (!access || !access.organization_id) {
       showMessage("Licenca invalida.");
       btn.disabled = false;
       btn.textContent = "Ativar o meu ERP";
       return;
     }
+
+    var organization = {
+      id: access.organization_id,
+      name: access.organization_name || data.storeName,
+      license_key: access.license_key || data.licence,
+      plan: access.plan || "starter"
+    };
+
+    var profile = {
+      organization_id: access.organization_id,
+      name: data.nom,
+      phone: data.numero,
+      email: data.email,
+      role: access.role || "member",
+      status: access.status || "pending"
+    };
 
 var signUpResult = await supabaseClient.auth.signUp({
   email: data.email,
@@ -336,26 +392,6 @@ if (signUpResult.error) {
   btn.disabled = false;
   btn.textContent = "Ativar o meu ERP";
   return;
-}
-
-var profileResult = await supabaseClient.rpc("complete_owner_profile", {
-  p_organization_id: organization.id,
-  p_name: data.nom,
-  p_phone: data.numero,
-  p_email: data.email
-});
-
-if (profileResult.error) {
-  showMessage("Conta criada, mas o perfil nao foi guardado: " + profileResult.error.message);
-  btn.disabled = false;
-  btn.textContent = "Ativar o meu ERP";
-  return;
-}
-
-var profile = profileResult.data;
-if (profile) {
-  profile.role = "owner";
-  profile.status = "active";
 }
 
 var signInResult = await supabaseClient.auth.signInWithPassword({
@@ -379,6 +415,20 @@ if (signInResult.error) {
   btn.textContent = "Ativar o meu ERP";
   return;
 }
+
+    if (!isProfileActive(profile)) {
+      await supabaseClient.auth.signOut();
+      showMessage("Conta criada. Aguarde autorizacao do proprietario para entrar no ERP.", "success");
+      showLoginMode("login");
+
+      var pendingLoginIdentifier = document.getElementById("login-identifier");
+      if (pendingLoginIdentifier) pendingLoginIdentifier.value = data.email;
+
+      btn.disabled = false;
+      btn.textContent = "Ativar o meu ERP";
+      return;
+    }
+
     saveSession(organization, profile, organization.license_key);
 
     document.body.innerHTML = `
