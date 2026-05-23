@@ -1340,6 +1340,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   loadSettings();
   renderSettingsUserCard();
+  renderSettingsTeamCard();
   initPaymentLines();
   initAchatLines();
   cleanupLegacyCartFooter();
@@ -1415,6 +1416,7 @@ function goTo(page, btn) {
     if (page === 'venda') loadProducts();
     if (page === 'settings') {
       renderSettingsUserCard();
+      renderSettingsTeamCard();
       if (products.length) renderProductProfileOptions();
       else loadProducts();
     }
@@ -13203,6 +13205,139 @@ async function renderSettingsUserCard() {
   setSettingsUserText("settings-user-plan", plan || "-");
   setSettingsUserText("settings-user-license", licenseKey || "-");
   setSettingsUserText("settings-user-device", getCurrentDeviceNameForSettings());
+}
+
+function formatTeamDate(value) {
+  if (!value) return "-";
+
+  try {
+    return new Date(value).toLocaleString("pt-PT", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (e) {
+    return String(value);
+  }
+}
+
+function getTeamRoleLabel(role) {
+  role = String(role || "member").toLowerCase();
+
+  var map = {
+    owner: "Proprietario",
+    manager: "Gerente",
+    cashier: "Caixa",
+    stock: "Stock",
+    accountant: "Contabilista",
+    readonly: "Leitura",
+    member: "Utilizador"
+  };
+
+  return map[role] || role;
+}
+
+function getTeamInitial(name, email) {
+  return String(name || email || "U").trim().charAt(0).toUpperCase();
+}
+
+async function touchCurrentTeamUser() {
+  var organizationId = localStorage.getItem("azul_organization_id");
+  if (!organizationId) return;
+
+  try {
+    var userResult = await supabaseClient.auth.getUser();
+
+    if (!userResult || !userResult.data || !userResult.data.user) return;
+
+    var user = userResult.data.user;
+    var meta = user.user_metadata || {};
+    var email = user.email || meta.email || "";
+    var name = localStorage.getItem("azul_user_name") || meta.name || meta.nome || "";
+    var phone = meta.phone || meta.numero || "";
+    var role = localStorage.getItem("azul_user_role") || meta.role || "owner";
+
+    if (!email) return;
+
+    await supabaseClient
+      .from("profiles")
+      .update({
+        auth_user_id: user.id,
+        name: name || email,
+        phone: phone || "",
+        role: role || "member",
+        status: "active",
+        last_seen_at: new Date().toISOString()
+      })
+      .eq("organization_id", organizationId)
+      .eq("email", email);
+  } catch (e) {
+    console.warn("Presenca da equipa nao actualizada:", e);
+  }
+}
+
+async function renderSettingsTeamCard() {
+  var list = document.getElementById("settings-team-list");
+  var organizationId = localStorage.getItem("azul_organization_id");
+
+  if (!list || !organizationId) return;
+
+  list.innerHTML = '<div class="empty">A carregar equipa...</div>';
+
+  try {
+    await touchCurrentTeamUser();
+
+    var result = await supabaseClient.rpc("get_organization_team", {
+      p_organization_id: organizationId
+    });
+
+    if (result.error) throw result.error;
+
+    var users = result.data || [];
+
+    if (!users.length) {
+      list.innerHTML = '<div class="empty">Nenhum utilizador encontrado.</div>';
+      return;
+    }
+
+    list.innerHTML = users.map(function(user) {
+      var name = user.name || "Utilizador";
+      var email = user.email || "-";
+      var phone = user.phone || "-";
+      var role = getTeamRoleLabel(user.role);
+      var status = String(user.status || "active").toLowerCase();
+      var statusText = status === "active" ? "Activo" : "Inactivo";
+      var initial = getTeamInitial(name, email);
+
+      return `
+        <div class="team-user-card">
+          <div class="team-user-avatar">${escapeDepenseHtml(initial)}</div>
+
+          <div class="team-user-info">
+            <div class="team-user-top">
+              <strong>${escapeDepenseHtml(name)}</strong>
+              <span class="team-user-status ${escapeDepenseHtml(status)}">${escapeDepenseHtml(statusText)}</span>
+            </div>
+
+            <div class="team-user-meta">
+              <span>${escapeDepenseHtml(role)}</span>
+              <span>${escapeDepenseHtml(email)}</span>
+              <span>${escapeDepenseHtml(phone)}</span>
+            </div>
+
+            <div class="team-user-last">
+              Ultima actividade: ${escapeDepenseHtml(formatTeamDate(user.last_seen_at))}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch (e) {
+    console.error("Erro equipa:", e);
+    list.innerHTML = '<div class="empty">Erro equipa: ' + escapeDepenseHtml(e.message || e) + '</div>';
+  }
 }
 function initErpLockSystem() {
   injectLockSettingsCard();
