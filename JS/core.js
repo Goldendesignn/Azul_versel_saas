@@ -1429,6 +1429,7 @@ function goTo(page, btn) {
     if (page === 'clientes') renderClientDatalist();
     if (page === 'tresorerie') loadTresorerie();
     if (page === 'comptabilite') loadComptabilite();
+    if (page === 'corrections') loadCorrections();
     if (page === 'transfert') loadProducts(true);
     if (page === 'revendeurs') {
       renderRevProducts(products);
@@ -12249,6 +12250,679 @@ function switchImportTab(tab) {
     if (tabs[key]) tabs[key].classList.toggle("active", key === tab);
   });
 }
+
+var correctionCurrentType = "sale";
+var correctionSearchTimer = null;
+
+function correctionToday() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function correctionSafe(value) {
+  return typeof escapeDepenseHtml === "function" ? escapeDepenseHtml(value) : String(value == null ? "" : value);
+}
+
+function correctionSourceLabel(type) {
+  var map = {
+    sale: "Vente",
+    purchase: "Achat",
+    expense: "Depense",
+    client_payment: "Paiement client",
+    supplier_payment: "Paiement fournisseur"
+  };
+
+  return map[type] || type;
+}
+
+function switchCorrectionTab(type, btn) {
+  correctionCurrentType = type || "sale";
+
+  ["sale", "purchase", "expense", "payment"].forEach(function(name) {
+    var tab = document.getElementById("correction-tab-" + name);
+    if (tab) tab.classList.toggle("active", name === correctionCurrentType);
+  });
+
+  if (btn && btn.classList) btn.classList.add("active");
+  loadCorrections();
+}
+
+function loadCorrectionsDebounced() {
+  if (correctionSearchTimer) clearTimeout(correctionSearchTimer);
+  correctionSearchTimer = setTimeout(loadCorrections, 250);
+}
+
+async function getCorrectionLogsForRows(rows) {
+  var organizationId = getAzulOrganizationId();
+  var ids = (rows || []).map(function(row) { return row.id; }).filter(Boolean);
+  var logs = {};
+
+  if (!ids.length) return logs;
+
+  try {
+    var result = await supabaseClient
+      .from("corrections_log")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .in("source_id", ids);
+
+    if (result.error) throw result.error;
+
+    (result.data || []).forEach(function(log) {
+      logs[String(log.source_type) + ":" + String(log.source_id)] = log;
+    });
+  } catch (e) {
+    console.warn("Corrections log indisponible:", e);
+  }
+
+  return logs;
+}
+
+async function insertCorrectionLog(sourceType, sourceId, correctionType, correctionId, reason) {
+  try {
+    var result = await supabaseClient
+      .from("corrections_log")
+      .insert({
+        organization_id: getAzulOrganizationId(),
+        source_type: sourceType,
+        source_id: sourceId,
+        correction_type: correctionType,
+        correction_id: correctionId || null,
+        reason: reason || "",
+        user_name: localStorage.getItem("azul_user_name") || ""
+      });
+
+    if (result.error) throw result.error;
+  } catch (e) {
+    console.warn("Correction log non enregistre:", e);
+  }
+}
+
+async function fetchCorrectionsRows(type, search) {
+  var organizationId = getAzulOrganizationId();
+  search = String(search || "").trim().toLowerCase();
+
+  if (type === "sale") {
+    var salesResult = await supabaseClient
+      .from("sales")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (salesResult.error) throw salesResult.error;
+
+    return (salesResult.data || []).filter(function(row) {
+      var text = [row.receipt_no, row.client_name, row.payment_summary, row.sale_type].join(" ").toLowerCase();
+      return String(row.sale_type || "").toLowerCase() !== "correction" &&
+        String(row.receipt_no || "").indexOf("ANN-") !== 0 &&
+        (!search || text.indexOf(search) >= 0);
+    }).map(function(row) {
+      return {
+        id: row.id,
+        sourceType: "sale",
+        title: "Venda " + (row.receipt_no || "-"),
+        subtitle: (row.client_name || "Anonimo") + " - " + (row.sale_type || "interno"),
+        date: row.sale_date || String(row.created_at || "").slice(0, 10),
+        amount: Number(row.total) || 0,
+        raw: row
+      };
+    });
+  }
+
+  if (type === "purchase") {
+    var purchasesResult = await supabaseClient
+      .from("purchases")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (purchasesResult.error) throw purchasesResult.error;
+
+    return (purchasesResult.data || []).filter(function(row) {
+      var text = [row.supplier, row.total, row.remaining_amount].join(" ").toLowerCase();
+      return String(row.supplier || "").indexOf("Annulation - ") !== 0 &&
+        (!search || text.indexOf(search) >= 0);
+    }).map(function(row) {
+      return {
+        id: row.id,
+        sourceType: "purchase",
+        title: "Achat fournisseur",
+        subtitle: row.supplier || "Fornecedor",
+        date: String(row.created_at || "").slice(0, 10),
+        amount: Number(row.total) || 0,
+        raw: row
+      };
+    });
+  }
+
+  if (type === "expense") {
+    var expensesResult = await supabaseClient
+      .from("expenses")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("expense_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (expensesResult.error) throw expensesResult.error;
+
+    return (expensesResult.data || []).filter(function(row) {
+      var text = [row.category, row.description, row.amount].join(" ").toLowerCase();
+      return String(row.category || "").indexOf("Annulation - ") !== 0 &&
+        (!search || text.indexOf(search) >= 0);
+    }).map(function(row) {
+      return {
+        id: row.id,
+        sourceType: "expense",
+        title: row.category || "Depense",
+        subtitle: row.description || "Sans description",
+        date: row.expense_date || String(row.created_at || "").slice(0, 10),
+        amount: Number(row.amount) || 0,
+        raw: row
+      };
+    });
+  }
+
+  var rows = [];
+
+  var clientPaymentsResult = await supabaseClient
+    .from("client_payments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gt("amount", 0)
+    .order("payment_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(60);
+
+  if (clientPaymentsResult.error) throw clientPaymentsResult.error;
+
+  rows = rows.concat((clientPaymentsResult.data || []).map(function(row) {
+    return {
+      id: row.id,
+      sourceType: "client_payment",
+      title: "Paiement client",
+      subtitle: row.client_name || "Cliente",
+      date: row.payment_date || String(row.created_at || "").slice(0, 10),
+      amount: Number(row.amount) || 0,
+      raw: row
+    };
+  }));
+
+  var supplierPaymentsResult = await supabaseClient
+    .from("supplier_payments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gt("amount", 0)
+    .order("payment_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(60);
+
+  if (supplierPaymentsResult.error) throw supplierPaymentsResult.error;
+
+  rows = rows.concat((supplierPaymentsResult.data || []).map(function(row) {
+    return {
+      id: row.id,
+      sourceType: "supplier_payment",
+      title: "Paiement fournisseur",
+      subtitle: row.supplier || "Fornecedor",
+      date: row.payment_date || String(row.created_at || "").slice(0, 10),
+      amount: Number(row.amount) || 0,
+      raw: row
+    };
+  }));
+
+  if (search) {
+    rows = rows.filter(function(row) {
+      return [row.title, row.subtitle, row.amount, row.date].join(" ").toLowerCase().indexOf(search) >= 0;
+    });
+  }
+
+  rows.sort(function(a, b) {
+    return String(b.date || "").localeCompare(String(a.date || ""));
+  });
+
+  return rows;
+}
+
+async function loadCorrections() {
+  var list = document.getElementById("correction-list");
+  var search = document.getElementById("correction-search");
+
+  if (!list) return;
+
+  list.innerHTML = '<div class="empty">Chargement...</div>';
+
+  try {
+    var rows = await fetchCorrectionsRows(correctionCurrentType, search ? search.value : "");
+    var logs = await getCorrectionLogsForRows(rows);
+
+    if (!rows.length) {
+      list.innerHTML = '<div class="empty">Aucun mouvement trouve.</div>';
+      return;
+    }
+
+    list.innerHTML = rows.map(function(row) {
+      var key = row.sourceType + ":" + row.id;
+      var log = logs[key];
+      var cancelled = !!log;
+
+      return '<div class="correction-card ' + (cancelled ? 'is-cancelled' : '') + '">' +
+        '<div class="correction-card-main">' +
+          '<div class="correction-type">' + correctionSafe(correctionSourceLabel(row.sourceType)) + '</div>' +
+          '<h3>' + correctionSafe(row.title) + '</h3>' +
+          '<p>' + correctionSafe(row.subtitle) + '</p>' +
+          '<div class="correction-meta">' +
+            '<span>' + correctionSafe(row.date || "-") + '</span>' +
+            '<strong>' + fmt(row.amount || 0) + '</strong>' +
+          '</div>' +
+          (cancelled ? '<div class="correction-cancelled">Deja corrige: ' + correctionSafe(log.reason || "Annulation") + '</div>' : '') +
+        '</div>' +
+        '<button class="correction-action" ' + (cancelled ? 'disabled' : '') +
+          ' data-correction-type="' + correctionSafe(row.sourceType) + '" data-correction-id="' + correctionSafe(row.id) + '">' +
+          (cancelled ? 'Corrige' : 'Annuler') +
+        '</button>' +
+      '</div>';
+    }).join("");
+  } catch (e) {
+    console.error("Erreur corrections:", e);
+    list.innerHTML = '<div class="empty">Erreur: ' + correctionSafe(e.message || e) + '</div>';
+  }
+}
+
+async function confirmCorrectionCancel(sourceType, id) {
+  var reason = prompt("Pourquoi annuler ce mouvement ?");
+
+  if (reason === null) return;
+  reason = String(reason || "").trim();
+
+  if (!reason) {
+    toast("Ajoute une raison pour la correction.", "error");
+    return;
+  }
+
+  if (!confirm("Confirmer l'annulation controlee ?")) return;
+
+  try {
+    if (sourceType === "sale") await cancelSaleWithCorrection(id, reason);
+    else if (sourceType === "purchase") await cancelPurchaseWithCorrection(id, reason);
+    else if (sourceType === "expense") await cancelExpenseWithCorrection(id, reason);
+    else if (sourceType === "client_payment") await cancelClientPaymentWithCorrection(id, reason);
+    else if (sourceType === "supplier_payment") await cancelSupplierPaymentWithCorrection(id, reason);
+    else throw new Error("Type de correction inconnu.");
+
+    toast("Correction enregistree.", "success");
+    await loadProducts(true);
+    loadCorrections();
+    loadDashboard();
+  } catch (e) {
+    console.error("Erreur correction:", e);
+    toast("Erreur correction: " + (e.message || e), "error");
+  }
+}
+
+async function reverseAccountingForSource(originalType, originalId, correctionType, correctionId, date, description) {
+  var organizationId = getAzulOrganizationId();
+
+  var entriesResult = await supabaseClient
+    .from("accounting_entries")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("source_type", originalType)
+    .eq("source_id", originalId);
+
+  if (entriesResult.error) throw entriesResult.error;
+
+  var entryIds = (entriesResult.data || []).map(function(row) { return row.id; });
+  if (!entryIds.length) return;
+
+  var linesResult = await supabaseClient
+    .from("accounting_lines")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .in("entry_id", entryIds);
+
+  if (linesResult.error) throw linesResult.error;
+
+  var grouped = {};
+
+  (linesResult.data || []).forEach(function(line) {
+    var code = String(line.account_code || "");
+    if (!code) return;
+    if (!grouped[code]) grouped[code] = { account: code, debit: 0, credit: 0 };
+    grouped[code].debit += Number(line.credit) || 0;
+    grouped[code].credit += Number(line.debit) || 0;
+  });
+
+  var reverseLines = Object.keys(grouped).map(function(code) { return grouped[code]; })
+    .filter(function(line) { return line.debit || line.credit; });
+
+  if (!reverseLines.length) return;
+
+  await createAccountingEntry(
+    correctionType,
+    correctionId,
+    date || correctionToday(),
+    description || "Correction",
+    reverseLines
+  );
+}
+
+async function updateProductStockDelta(productId, field, delta) {
+  if (!productId || !field || !delta) return;
+
+  var productResult = await supabaseClient
+    .from("products")
+    .select("id,stock_shop,stock_warehouse")
+    .eq("id", productId)
+    .limit(1);
+
+  if (productResult.error) throw productResult.error;
+  if (!productResult.data || !productResult.data.length) return;
+
+  var product = productResult.data[0];
+  var current = Number(product[field]) || 0;
+  var update = {};
+  update[field] = Math.max(0, current + (Number(delta) || 0));
+
+  var updateResult = await supabaseClient
+    .from("products")
+    .update(update)
+    .eq("id", productId);
+
+  if (updateResult.error) throw updateResult.error;
+}
+
+async function cancelSaleWithCorrection(saleId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var saleResult = await supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", saleId)
+    .single();
+
+  if (saleResult.error) throw saleResult.error;
+  var sale = saleResult.data;
+
+  var itemsResult = await supabaseClient
+    .from("sale_items")
+    .select("*")
+    .eq("sale_id", saleId);
+
+  if (itemsResult.error) throw itemsResult.error;
+  var items = itemsResult.data || [];
+
+  var receiptNo = "ANN-" + String(sale.receipt_no || "").slice(0, 18);
+  var correctionResult = await supabaseClient
+    .from("sales")
+    .insert({
+      organization_id: organizationId,
+      receipt_no: receiptNo,
+      client_name: sale.client_name || "Anonimo",
+      sale_date: correctionToday(),
+      sale_type: "Correction",
+      total: -Math.abs(Number(sale.total) || 0),
+      profit: -(Number(sale.profit) || 0),
+      payment_summary: "Annulation " + (sale.receipt_no || ""),
+      payment_lines: [{ method: "Correction", montant: -Math.abs(Number(sale.total) || 0) }]
+    })
+    .select()
+    .single();
+
+  if (correctionResult.error) throw correctionResult.error;
+  var correction = correctionResult.data;
+
+  if (items.length) {
+    var correctionItems = items.map(function(item) {
+      var qty = Number(item.quantity) || 0;
+
+      return {
+        sale_id: correction.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        quantity: -Math.abs(qty),
+        unit_price: Number(item.unit_price) || 0,
+        total: -Math.abs(Number(item.total) || 0),
+        purchase_price: Number(item.purchase_price) || 0,
+        profit: -(Number(item.profit) || 0),
+        variation: item.variation || "",
+        variations: item.variations || []
+      };
+    });
+
+    var itemsInsert = await supabaseClient.from("sale_items").insert(correctionItems);
+    if (itemsInsert.error) throw itemsInsert.error;
+  }
+
+  if (String(sale.sale_type || "").toLowerCase() !== "externo") {
+    for (var i = 0; i < items.length; i++) {
+      await updateProductStockDelta(items[i].product_id, "stock_shop", Number(items[i].quantity) || 0);
+    }
+  }
+
+  var debtResult = await supabaseClient
+    .from("client_debts")
+    .update({ remaining_amount: 0, status: "cancelled" })
+    .eq("organization_id", organizationId)
+    .eq("sale_id", saleId);
+
+  if (debtResult.error) throw debtResult.error;
+
+  await reverseAccountingForSource("sale", saleId, "sale_correction", correction.id, correctionToday(), "Annulation vente " + (sale.receipt_no || ""));
+  await insertCorrectionLog("sale", saleId, "cancel", correction.id, reason);
+}
+
+async function cancelPurchaseWithCorrection(purchaseId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var purchaseResult = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", purchaseId)
+    .single();
+
+  if (purchaseResult.error) throw purchaseResult.error;
+  var purchase = purchaseResult.data;
+
+  var items = await fetchPurchaseItemsByPurchaseIds([purchaseId]);
+
+  var correctionResult = await supabaseClient
+    .from("purchases")
+    .insert({
+      organization_id: organizationId,
+      supplier: "Annulation - " + (purchase.supplier || "Fornecedor"),
+      total: -Math.abs(Number(purchase.total) || 0),
+      paid_amount: -Math.abs(Number(purchase.paid_amount) || 0),
+      remaining_amount: -Math.abs(Number(purchase.remaining_amount) || 0),
+      is_credit: false
+    })
+    .select()
+    .single();
+
+  if (correctionResult.error) throw correctionResult.error;
+  var correction = correctionResult.data;
+
+  if (items.length) {
+    var correctionItems = items.map(function(item) {
+      return {
+        purchase_id: correction.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        category: item.category || "",
+        purchase_price: Number(item.purchase_price) || 0,
+        sale_price: Number(item.sale_price) || 0,
+        quantity: -Math.abs(Number(item.quantity) || 0),
+        supplier: item.supplier || purchase.supplier || "",
+        code: item.code || "",
+        variation: item.variation || "",
+        variations: item.variations || [],
+        photo: item.photo || ""
+      };
+    });
+
+    var itemsInsert = await supabaseClient.from("purchase_items").insert(correctionItems);
+    if (itemsInsert.error) throw itemsInsert.error;
+  }
+
+  for (var i = 0; i < items.length; i++) {
+    await updateProductStockDelta(items[i].product_id, "stock_warehouse", -(Number(items[i].quantity) || 0));
+  }
+
+  await reverseAccountingForSource("purchase", purchaseId, "purchase_correction", correction.id, correctionToday(), "Annulation achat " + (purchase.supplier || ""));
+  await insertCorrectionLog("purchase", purchaseId, "cancel", correction.id, reason);
+}
+
+async function cancelExpenseWithCorrection(expenseId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var expenseResult = await supabaseClient
+    .from("expenses")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", expenseId)
+    .single();
+
+  if (expenseResult.error) throw expenseResult.error;
+  var expense = expenseResult.data;
+
+  var correctionResult = await supabaseClient
+    .from("expenses")
+    .insert({
+      organization_id: organizationId,
+      expense_date: correctionToday(),
+      category: "Annulation - " + (expense.category || "Depense"),
+      description: "Correction: " + (expense.description || "") + " - " + reason,
+      amount: -Math.abs(Number(expense.amount) || 0)
+    })
+    .select()
+    .single();
+
+  if (correctionResult.error) throw correctionResult.error;
+  var correction = correctionResult.data;
+
+  await reverseAccountingForSource("expense", expenseId, "expense_correction", correction.id, correctionToday(), "Annulation depense " + (expense.description || ""));
+  await insertCorrectionLog("expense", expenseId, "cancel", correction.id, reason);
+}
+
+async function cancelClientPaymentWithCorrection(paymentId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var paymentResult = await supabaseClient
+    .from("client_payments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", paymentId)
+    .single();
+
+  if (paymentResult.error) throw paymentResult.error;
+  var payment = paymentResult.data;
+  var amount = Math.abs(Number(payment.amount) || 0);
+
+  var correctionResult = await supabaseClient
+    .from("client_payments")
+    .insert({
+      organization_id: organizationId,
+      client_name: payment.client_name,
+      amount: -amount,
+      note: "Annulation paiement: " + reason,
+      payment_date: correctionToday()
+    })
+    .select()
+    .single();
+
+  if (correctionResult.error) throw correctionResult.error;
+  var correction = correctionResult.data;
+
+  var debtResult = await supabaseClient
+    .from("client_debts")
+    .insert({
+      organization_id: organizationId,
+      sale_id: null,
+      client_name: payment.client_name,
+      total_amount: amount,
+      paid_amount: 0,
+      remaining_amount: amount,
+      status: "open"
+    });
+
+  if (debtResult.error) throw debtResult.error;
+
+  await reverseAccountingForSource("client_payment", paymentId, "client_payment_correction", correction.id, correctionToday(), "Annulation paiement client " + (payment.client_name || ""));
+  await insertCorrectionLog("client_payment", paymentId, "cancel", correction.id, reason);
+}
+
+async function cancelSupplierPaymentWithCorrection(paymentId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var paymentResult = await supabaseClient
+    .from("supplier_payments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", paymentId)
+    .single();
+
+  if (paymentResult.error) throw paymentResult.error;
+  var payment = paymentResult.data;
+  var amount = Math.abs(Number(payment.amount) || 0);
+
+  var correctionResult = await supabaseClient
+    .from("supplier_payments")
+    .insert({
+      organization_id: organizationId,
+      supplier: payment.supplier,
+      amount: -amount,
+      note: "Annulation paiement: " + reason,
+      payment_date: correctionToday()
+    })
+    .select()
+    .single();
+
+  if (correctionResult.error) throw correctionResult.error;
+  var correction = correctionResult.data;
+
+  var purchasesResult = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("supplier", payment.supplier)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (purchasesResult.error) throw purchasesResult.error;
+
+  if (purchasesResult.data && purchasesResult.data.length) {
+    var purchase = purchasesResult.data[0];
+    var updateResult = await supabaseClient
+      .from("purchases")
+      .update({
+        paid_amount: Math.max(0, (Number(purchase.paid_amount) || 0) - amount),
+        remaining_amount: (Number(purchase.remaining_amount) || 0) + amount,
+        is_credit: true
+      })
+      .eq("id", purchase.id);
+
+    if (updateResult.error) throw updateResult.error;
+  }
+
+  await reverseAccountingForSource("supplier_payment", paymentId, "supplier_payment_correction", correction.id, correctionToday(), "Annulation paiement fournisseur " + (payment.supplier || ""));
+  await insertCorrectionLog("supplier_payment", paymentId, "cancel", correction.id, reason);
+}
+
+window.switchCorrectionTab = switchCorrectionTab;
+window.loadCorrections = loadCorrections;
+window.loadCorrectionsDebounced = loadCorrectionsDebounced;
+window.confirmCorrectionCancel = confirmCorrectionCancel;
+
+document.addEventListener("click", function(event) {
+  var button = event.target.closest("[data-correction-type][data-correction-id]");
+  if (!button || button.disabled) return;
+  event.preventDefault();
+  confirmCorrectionCancel(button.getAttribute("data-correction-type"), button.getAttribute("data-correction-id"));
+});
+
 // ===== UTILS =====
 function fmt(n) {
   if (n === undefined || n === null || n === '') return '-';

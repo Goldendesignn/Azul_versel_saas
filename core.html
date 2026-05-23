@@ -44,6 +44,7 @@
     <button class="tab" onclick="goTo('forn', this)"> Fornecedores</button>
     <button class="tab" onclick="goTo('tresorerie', this)">Tresorerie</button>
     <button class="tab" onclick="goTo('comptabilite', this)">Comptabilite</button>
+    <button class="tab" onclick="goTo('corrections', this)">Corrections</button>
     <button class="tab" onclick="goTo('revendeurs', this)">Revendeurs</button>
     <button class="tab" onclick="goTo('settings', this)"> Definicoes</button>
   </div>
@@ -1900,6 +1901,41 @@
         </div>
       </div>
     </div>
+    <!-- FORNECEDORES -->
+    <!-- CORRECTIONS -->
+    <div class="page" id="page-corrections">
+      <div class="correction-shell">
+        <div class="correction-hero">
+          <div>
+            <div class="eyebrow">Controlo</div>
+            <h2>Corrections</h2>
+            <p>Annule une vente, un achat, une depense ou un paiement en gardant une trace propre.</p>
+          </div>
+          <button class="filter-btn" onclick="loadCorrections()">Actualiser</button>
+        </div>
+
+        <div class="correction-tabs">
+          <button class="mode-btn active" id="correction-tab-sale" onclick="switchCorrectionTab('sale', this)">Corriger vente</button>
+          <button class="mode-btn" id="correction-tab-purchase" onclick="switchCorrectionTab('purchase', this)">Corriger achat</button>
+          <button class="mode-btn" id="correction-tab-expense" onclick="switchCorrectionTab('expense', this)">Corriger depense</button>
+          <button class="mode-btn" id="correction-tab-payment" onclick="switchCorrectionTab('payment', this)">Corriger paiement</button>
+        </div>
+
+        <div class="correction-search-card">
+          <input type="text" class="form-input" id="correction-search" placeholder="Rechercher numero, client, fournisseur, description..." oninput="loadCorrectionsDebounced()">
+          <button class="filter-btn" onclick="loadCorrections()">Rechercher</button>
+        </div>
+
+        <div class="correction-notice">
+          La correction n'efface pas l'ancien mouvement. Elle cree une trace d'annulation et inverse les effets possibles sur stock, dettes, caisse et comptabilite.
+        </div>
+
+        <div id="correction-list" class="correction-list">
+          <div class="empty">Selectionne un type de correction.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- FORNECEDORES -->
 <!-- FORNECEDORES -->
 <div class="page" id="page-forn">
