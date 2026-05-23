@@ -30,6 +30,199 @@ function clearAzulSession() {
   localStorage.removeItem("azul_license_key");
   localStorage.removeItem("azul_plan");
 }
+
+var azulAuditCache = null;
+
+function getAzulCurrentUserName() {
+  return localStorage.getItem("azul_user_name") || "Utilizador";
+}
+
+async function getAzulAuditFields() {
+  if (azulAuditCache) return azulAuditCache;
+
+  var audit = {
+    created_by: null,
+    user_name: getAzulCurrentUserName()
+  };
+
+  try {
+    var userResult = await supabaseClient.auth.getUser();
+
+    if (userResult && userResult.data && userResult.data.user) {
+      var user = userResult.data.user;
+      var meta = user.user_metadata || {};
+
+      audit.created_by = user.id || null;
+      audit.user_name = localStorage.getItem("azul_user_name") ||
+        meta.name ||
+        meta.nome ||
+        user.email ||
+        audit.user_name;
+    }
+  } catch (e) {
+    console.warn("Audit utilisateur indisponible:", e);
+  }
+
+  azulAuditCache = audit;
+  return audit;
+}
+
+function addAzulAuditFields(row, audit) {
+  row = Object.assign({}, row || {});
+  audit = audit || {};
+
+  row.created_by = audit.created_by || null;
+  row.user_name = audit.user_name || getAzulCurrentUserName();
+
+  return row;
+}
+
+function removeAzulAuditFields(row) {
+  row = Object.assign({}, row || {});
+  delete row.created_by;
+  delete row.user_name;
+  return row;
+}
+
+function isAzulAuditSchemaError(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+
+  return (msg.indexOf("created_by") >= 0 || msg.indexOf("user_name") >= 0) &&
+    (msg.indexOf("schema cache") >= 0 || msg.indexOf("column") >= 0 || msg.indexOf("could not find") >= 0);
+}
+
+async function insertSingleWithAzulAudit(tableName, row) {
+  var audit = await getAzulAuditFields();
+  var result = await supabaseClient
+    .from(tableName)
+    .insert(addAzulAuditFields(row, audit))
+    .select()
+    .single();
+
+  if (result.error && isAzulAuditSchemaError(result.error)) {
+    console.warn("Colonnes audit absentes pour " + tableName + ". Insertion sans audit temporairement.");
+    result = await supabaseClient
+      .from(tableName)
+      .insert(removeAzulAuditFields(row))
+      .select()
+      .single();
+  }
+
+  return result;
+}
+
+async function insertRowsWithAzulAudit(tableName, rows, selectColumns) {
+  rows = rows || [];
+  var audit = await getAzulAuditFields();
+  var auditedRows = rows.map(function(row) {
+    return addAzulAuditFields(row, audit);
+  });
+
+  var query = supabaseClient.from(tableName).insert(auditedRows);
+  if (selectColumns) query = query.select(selectColumns);
+
+  var result = await query;
+
+  if (result.error && isAzulAuditSchemaError(result.error)) {
+    console.warn("Colonnes audit absentes pour " + tableName + ". Insertion sans audit temporairement.");
+    var retryQuery = supabaseClient.from(tableName).insert(rows.map(removeAzulAuditFields));
+    if (selectColumns) retryQuery = retryQuery.select(selectColumns);
+    result = await retryQuery;
+  }
+
+  return result;
+}
+
+async function updateAzulAuditFields(tableName, id, audit) {
+  if (!id) return;
+
+  try {
+    audit = audit || await getAzulAuditFields();
+
+    var result = await supabaseClient
+      .from(tableName)
+      .update(addAzulAuditFields({}, audit))
+      .eq("id", id);
+
+    if (result.error && !isAzulAuditSchemaError(result.error)) {
+      throw result.error;
+    }
+  } catch (e) {
+    console.warn("Audit non mis a jour pour " + tableName + ":", e);
+  }
+}
+
+var AZUL_ROLE_PERMISSIONS = {
+  owner: {
+    pages: ["*"],
+    actions: ["*"]
+  },
+  manager: {
+    pages: ["*"],
+    actions: ["*"]
+  },
+  cashier: {
+    pages: ["dashboard", "venda", "clientes", "tresorerie"],
+    actions: ["sale:create", "client_payment:create"]
+  },
+  stock: {
+    pages: ["dashboard", "achat", "transfert", "forn"],
+    actions: ["purchase:create", "stock:transfer", "supplier_payment:create"]
+  },
+  accountant: {
+    pages: ["dashboard", "depenses", "tresorerie", "comptabilite", "corrections"],
+    actions: ["expense:create", "client_payment:create", "supplier_payment:create", "correction:create"]
+  },
+  readonly: {
+    pages: ["dashboard", "transfert", "clientes", "tresorerie", "comptabilite"],
+    actions: []
+  },
+  member: {
+    pages: ["dashboard", "transfert", "clientes"],
+    actions: []
+  }
+};
+
+function getAzulCurrentRole() {
+  return String(localStorage.getItem("azul_user_role") || "owner").toLowerCase();
+}
+
+function azulRoleAllows(kind, key) {
+  var role = getAzulCurrentRole();
+  var permissions = AZUL_ROLE_PERMISSIONS[role] || AZUL_ROLE_PERMISSIONS.member;
+  var list = permissions[kind] || [];
+
+  return list.indexOf("*") >= 0 || list.indexOf(key) >= 0;
+}
+
+function canAccessAzulPage(page) {
+  return azulRoleAllows("pages", page);
+}
+
+function canRunAzulAction(action) {
+  return azulRoleAllows("actions", action);
+}
+
+function requireAzulAction(action, label) {
+  if (canRunAzulAction(action)) return true;
+
+  toast("Sem permissao para " + (label || "esta accao") + ".", "error");
+  return false;
+}
+
+function extractGoToPage(onclickValue) {
+  var match = String(onclickValue || "").match(/goTo\(['"]([^'"]+)['"]/);
+  return match ? match[1] : "";
+}
+
+function applyAzulRolePermissions() {
+  Array.prototype.forEach.call(document.querySelectorAll(".tab[onclick]"), function(tab) {
+    var page = extractGoToPage(tab.getAttribute("onclick"));
+    if (!page) return;
+    tab.style.display = canAccessAzulPage(page) ? "" : "none";
+  });
+}
+
 function getOrCreateDeviceId() {
   var key = "azul_device_id";
   var deviceId = localStorage.getItem(key);
@@ -452,9 +645,7 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
   }
 });
 
-  var saleResult = await supabaseClient
-    .from("sales")
-    .insert({
+  var saleResult = await insertSingleWithAzulAudit("sales", {
       organization_id: organizationId,
       receipt_no: receiptNo,
       client_name: data.clientName || "Anonimo",
@@ -464,9 +655,7 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
       profit: profit,
       payment_summary: getPaymentSummary(data.paymentLines || []),
       payment_lines: data.paymentLines || []
-    })
-    .select()
-    .single();
+    });
 
   if (saleResult.error) throw saleResult.error;
 
@@ -667,17 +856,13 @@ async function registerClientPaymentInSupabase(data) {
   if (!clientName) throw new Error("Cliente obrigatorio.");
   if (amount <= 0) throw new Error("Montante invalido.");
 
-  var paymentResult = await supabaseClient
-    .from("client_payments")
-    .insert({
+  var paymentResult = await insertSingleWithAzulAudit("client_payments", {
       organization_id: organizationId,
       client_name: clientName,
       amount: amount,
       note: data.note || "",
       payment_date: data.date || new Date().toISOString().split("T")[0]
-    })
-    .select()
-    .single();
+    });
 
   if (paymentResult.error) throw paymentResult.error;
   var payment = paymentResult.data;
@@ -1174,6 +1359,7 @@ async function upsertProductFromPurchase(item, supplier) {
 
 async function savePurchaseToSupabase(data) {
   var organizationId = getAzulOrganizationId();
+  var audit = await getAzulAuditFields();
 
   var supplier = String(data.forn || data.supplier || "").trim();
   await upsertSupplierToSupabase({ name: supplier });
@@ -1242,6 +1428,7 @@ async function savePurchaseToSupabase(data) {
   }
 
   var purchase = purchaseResult.data;
+  await updateAzulAuditFields("purchases", purchase.id, audit);
   
   var purchaseLinesAccounting = [
     { account: "13", debit: total, credit: 0 }
@@ -1339,8 +1526,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (document.getElementById('rev-history-to')) document.getElementById('rev-history-to').value = today;
 
   loadSettings();
-  renderSettingsUserCard();
+  await renderSettingsUserCard();
   renderSettingsTeamCard();
+  applyAzulRolePermissions();
   initPaymentLines();
   initAchatLines();
   cleanupLegacyCartFooter();
@@ -1401,6 +1589,11 @@ function closeMobileMenu() {
 function goTo(page, btn) {
   closeMobileMenu();
 
+  if (!canAccessAzulPage(page)) {
+    toast("Sem permissao para abrir esta pagina.", "error");
+    return;
+  }
+
   var target = document.getElementById('page-' + page);
 
   if (!target) {
@@ -1415,7 +1608,7 @@ function goTo(page, btn) {
     if (typeof syncPageTitles === 'function') syncPageTitles();
     if (page === 'venda') loadProducts();
     if (page === 'settings') {
-      renderSettingsUserCard();
+      renderSettingsUserCard().then(applyAzulRolePermissions);
       renderSettingsTeamCard();
       if (products.length) renderProductProfileOptions();
       else loadProducts();
@@ -2719,6 +2912,7 @@ function getDashboardSalesPerformance(sales, saleItems) {
     var total = Number(sale.total) || 0;
     var client = String(sale.client_name || "Anonimo").trim() || "Anonimo";
     var seller = String(sale.seller || sale.vendor || sale.created_by || "Não informado").trim() || "Não informado";
+    seller = String(sale.user_name || seller || "Nao informado").trim() || "Nao informado";
     var origin = String(sale.sale_type || sale.origin || "Interno").trim() || "Interno";
 
     if (!clientMap[client]) {
@@ -5430,6 +5624,8 @@ function closePaymentModal() {
 
 // ===== CONFIRMAR VENDA =====
 async function confirmarVenda() {
+  if (!requireAzulAction("sale:create", "registar venda")) return;
+
   if (!cart.length) {
     toast("Carrinho vazio!", "error");
     return;
@@ -6317,6 +6513,8 @@ function renderPaiementLines() {
 }
 
 async function saveAchat() {
+  if (!requireAzulAction("purchase:create", "registar achat")) return;
+
   var supplier = document.getElementById("a-forn").value.trim();
 
   if (!supplier) {
@@ -6418,17 +6616,13 @@ async function registerSupplierPaymentInSupabase(data) {
   if (!supplier) throw new Error("Fornecedor obrigatorio.");
   if (amount <= 0) throw new Error("Montante invalido.");
 
-  var paymentResult = await supabaseClient
-    .from("supplier_payments")
-    .insert({
+  var paymentResult = await insertSingleWithAzulAudit("supplier_payments", {
       organization_id: organizationId,
       supplier: supplier,
       amount: amount,
       note: data.note || "",
       payment_date: data.date || new Date().toISOString().split("T")[0]
-    })
-     .select()
-     .single();
+    });
 
   if (paymentResult.error) throw paymentResult.error;
 
@@ -6521,6 +6715,8 @@ async function getResumoDettesFromSupabase() {
 
 // ===== PAGAMENTO FORNECEDOR =====
 async function savePagamentoForn() {
+  if (!requireAzulAction("supplier_payment:create", "registar pagamento fornecedor")) return;
+
   var btn = document.getElementById("pg-forn-btn");
 
   var data = {
@@ -6610,6 +6806,8 @@ async function loadResumoDettes() {
 
 // ===== TRANSFERENCIA =====
 async function saveTransfer() {
+  if (!requireAzulAction("stock:transfer", "transferir stock")) return;
+
   var data = {
     date: document.getElementById("t-date").value,
     prod: document.getElementById("t-prod").value.trim(),
@@ -8484,17 +8682,13 @@ function renderDepenseDashboard(data) {
 async function saveExpenseToSupabase(data) {
   var organizationId = getAzulOrganizationId();
 
-  var result = await supabaseClient
-    .from("expenses")
-    .insert({
+  var result = await insertSingleWithAzulAudit("expenses", {
       organization_id: organizationId,
       expense_date: data.date || new Date().toISOString().split("T")[0],
       category: data.tipo || data.category || "Autre",
       description: data.desc || "",
       amount: Number(data.montant) || 0
-    })
-    .select()
-    .single();
+    });
 
   if (result.error) throw result.error;
 
@@ -8645,6 +8839,8 @@ function initDepensesPage() {
 }
 
 async function saveDepense() {
+  if (!requireAzulAction("expense:create", "registar despesa")) return;
+
   var data = {
     date: document.getElementById("dep-date").value,
     tipo: document.getElementById("dep-tipo").value,
@@ -9702,6 +9898,8 @@ async function loadClientDetail() {
   }
 }
 async function savePagamentoClient() {
+  if (!requireAzulAction("client_payment:create", "registar pagamento cliente")) return;
+
   var data = {
     date: document.getElementById("c-date").value,
     client: document.getElementById("c-client").value.trim(),
@@ -11075,10 +11273,11 @@ async function savePurchaseImportBatchToSupabase(rows) {
   for (var pr = 0; pr < chunkImportArray(purchaseRows, 200).length; pr++) {
     var purchaseChunk = chunkImportArray(purchaseRows, 200)[pr];
 
-    var purchaseResult = await supabaseClient
-      .from("purchases")
-      .insert(purchaseChunk)
-      .select("id,supplier,total,paid_amount,remaining_amount,created_at");
+    var purchaseResult = await insertRowsWithAzulAudit(
+      "purchases",
+      purchaseChunk,
+      "id,supplier,total,paid_amount,remaining_amount,created_at"
+    );
 
     if (purchaseResult.error) throw purchaseResult.error;
 
@@ -11140,6 +11339,8 @@ async function savePurchaseImportBatchToSupabase(rows) {
 }
 
 async function importPurchaseCsvRows() {
+  if (!requireAzulAction("import:create", "importar dados")) return;
+
   var log = document.getElementById("purchase-import-log");
 
   if (purchaseImportRunning) {
@@ -11681,10 +11882,11 @@ async function saveSaleImportBatchToSupabase(rows) {
   for (var s = 0; s < chunkImportArray(saleRows, 300).length; s++) {
     var saleChunk = chunkImportArray(saleRows, 300)[s];
 
-    var saleResult = await supabaseClient
-      .from("sales")
-      .insert(saleChunk)
-      .select("id,receipt_no,sale_date,total");
+    var saleResult = await insertRowsWithAzulAudit(
+      "sales",
+      saleChunk,
+      "id,receipt_no,sale_date,total"
+    );
 
     if (saleResult.error) throw saleResult.error;
 
@@ -11780,6 +11982,8 @@ async function saveSaleImportBatchToSupabase(rows) {
 }
 
 async function importSaleCsvRows() {
+  if (!requireAzulAction("import:create", "importar dados")) return;
+
   var log = document.getElementById("sale-import-log");
 
   if (saleImportRunning) {
@@ -12145,10 +12349,11 @@ async function saveExpenseImportBatchToSupabase(rows) {
   for (var i = 0; i < chunkImportArray(expenseRows, 500).length; i++) {
     var chunk = chunkImportArray(expenseRows, 500)[i];
 
-    var result = await supabaseClient
-      .from("expenses")
-      .insert(chunk)
-      .select("id,expense_date,category,description,amount");
+    var result = await insertRowsWithAzulAudit(
+      "expenses",
+      chunk,
+      "id,expense_date,category,description,amount"
+    );
 
     if (result.error) throw result.error;
 
@@ -12165,6 +12370,8 @@ async function saveExpenseImportBatchToSupabase(rows) {
 }
 
 async function importExpenseCsvRows() {
+  if (!requireAzulAction("import:create", "importar dados")) return;
+
   var log = document.getElementById("expense-import-log");
 
   if (expenseImportRunning) {
@@ -12325,9 +12532,7 @@ async function getCorrectionLogsForRows(rows) {
 
 async function insertCorrectionLog(sourceType, sourceId, correctionType, correctionId, reason) {
   try {
-    var result = await supabaseClient
-      .from("corrections_log")
-      .insert({
+    var result = await insertRowsWithAzulAudit("corrections_log", [{
         organization_id: getAzulOrganizationId(),
         source_type: sourceType,
         source_id: sourceId,
@@ -12335,7 +12540,7 @@ async function insertCorrectionLog(sourceType, sourceId, correctionType, correct
         correction_id: correctionId || null,
         reason: reason || "",
         user_name: localStorage.getItem("azul_user_name") || ""
-      });
+      }]);
 
     if (result.error) throw result.error;
   } catch (e) {
@@ -12537,6 +12742,8 @@ async function loadCorrections() {
 }
 
 async function confirmCorrectionCancel(sourceType, id) {
+  if (!requireAzulAction("correction:create", "corrigir movimentos")) return;
+
   var reason = prompt("Pourquoi annuler ce mouvement ?");
 
   if (reason === null) return;
@@ -12661,9 +12868,7 @@ async function cancelSaleWithCorrection(saleId, reason) {
   var items = itemsResult.data || [];
 
   var receiptNo = "ANN-" + String(sale.receipt_no || "").slice(0, 18);
-  var correctionResult = await supabaseClient
-    .from("sales")
-    .insert({
+  var correctionResult = await insertSingleWithAzulAudit("sales", {
       organization_id: organizationId,
       receipt_no: receiptNo,
       client_name: sale.client_name || "Anonimo",
@@ -12673,9 +12878,7 @@ async function cancelSaleWithCorrection(saleId, reason) {
       profit: -(Number(sale.profit) || 0),
       payment_summary: "Annulation " + (sale.receipt_no || ""),
       payment_lines: [{ method: "Correction", montant: -Math.abs(Number(sale.total) || 0) }]
-    })
-    .select()
-    .single();
+    });
 
   if (correctionResult.error) throw correctionResult.error;
   var correction = correctionResult.data;
@@ -12735,18 +12938,14 @@ async function cancelPurchaseWithCorrection(purchaseId, reason) {
 
   var items = await fetchPurchaseItemsByPurchaseIds([purchaseId]);
 
-  var correctionResult = await supabaseClient
-    .from("purchases")
-    .insert({
+  var correctionResult = await insertSingleWithAzulAudit("purchases", {
       organization_id: organizationId,
       supplier: "Annulation - " + (purchase.supplier || "Fornecedor"),
       total: -Math.abs(Number(purchase.total) || 0),
       paid_amount: -Math.abs(Number(purchase.paid_amount) || 0),
       remaining_amount: -Math.abs(Number(purchase.remaining_amount) || 0),
       is_credit: false
-    })
-    .select()
-    .single();
+    });
 
   if (correctionResult.error) throw correctionResult.error;
   var correction = correctionResult.data;
@@ -12794,17 +12993,13 @@ async function cancelExpenseWithCorrection(expenseId, reason) {
   if (expenseResult.error) throw expenseResult.error;
   var expense = expenseResult.data;
 
-  var correctionResult = await supabaseClient
-    .from("expenses")
-    .insert({
+  var correctionResult = await insertSingleWithAzulAudit("expenses", {
       organization_id: organizationId,
       expense_date: correctionToday(),
       category: "Annulation - " + (expense.category || "Depense"),
       description: "Correction: " + (expense.description || "") + " - " + reason,
       amount: -Math.abs(Number(expense.amount) || 0)
-    })
-    .select()
-    .single();
+    });
 
   if (correctionResult.error) throw correctionResult.error;
   var correction = correctionResult.data;
@@ -12827,17 +13022,13 @@ async function cancelClientPaymentWithCorrection(paymentId, reason) {
   var payment = paymentResult.data;
   var amount = Math.abs(Number(payment.amount) || 0);
 
-  var correctionResult = await supabaseClient
-    .from("client_payments")
-    .insert({
+  var correctionResult = await insertSingleWithAzulAudit("client_payments", {
       organization_id: organizationId,
       client_name: payment.client_name,
       amount: -amount,
       note: "Annulation paiement: " + reason,
       payment_date: correctionToday()
-    })
-    .select()
-    .single();
+    });
 
   if (correctionResult.error) throw correctionResult.error;
   var correction = correctionResult.data;
@@ -12874,17 +13065,13 @@ async function cancelSupplierPaymentWithCorrection(paymentId, reason) {
   var payment = paymentResult.data;
   var amount = Math.abs(Number(payment.amount) || 0);
 
-  var correctionResult = await supabaseClient
-    .from("supplier_payments")
-    .insert({
+  var correctionResult = await insertSingleWithAzulAudit("supplier_payments", {
       organization_id: organizationId,
       supplier: payment.supplier,
       amount: -amount,
       note: "Annulation paiement: " + reason,
       payment_date: correctionToday()
-    })
-    .select()
-    .single();
+    });
 
   if (correctionResult.error) throw correctionResult.error;
   var correction = correctionResult.data;
@@ -13205,6 +13392,8 @@ async function renderSettingsUserCard() {
           phone = profileResult.data.phone || phone;
           userRole = profileResult.data.role || userRole;
           userStatus = profileResult.data.status || userStatus;
+          localStorage.setItem("azul_user_role", userRole || "member");
+          localStorage.setItem("azul_user_name", userName || "");
         }
       }
     }
