@@ -13108,6 +13108,7 @@ window.switchCorrectionTab = switchCorrectionTab;
 window.loadCorrections = loadCorrections;
 window.loadCorrectionsDebounced = loadCorrectionsDebounced;
 window.confirmCorrectionCancel = confirmCorrectionCancel;
+window.saveTeamMemberRoleStatus = saveTeamMemberRoleStatus;
 
 document.addEventListener("click", function(event) {
   var button = event.target.closest("[data-correction-type][data-correction-id]");
@@ -13460,8 +13461,94 @@ function getTeamStatusLabel(status) {
   return map[status] || status;
 }
 
+function canManageTeamRoles() {
+  var role = getAzulCurrentRole();
+  return role === "owner" || role === "manager";
+}
+
+function getTeamMemberDomKey(email) {
+  return String(email || "user").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "user";
+}
+
+function getTeamRoleOptions(selectedRole) {
+  selectedRole = String(selectedRole || "member").toLowerCase();
+
+  var roles = [
+    ["owner", "Proprietario"],
+    ["manager", "Gerente"],
+    ["cashier", "Caixa"],
+    ["stock", "Stock"],
+    ["accountant", "Contabilista"],
+    ["readonly", "Leitura"],
+    ["member", "Utilizador"]
+  ];
+
+  return roles.map(function(item) {
+    return '<option value="' + item[0] + '"' + (item[0] === selectedRole ? " selected" : "") + '>' + item[1] + '</option>';
+  }).join("");
+}
+
+function getTeamStatusOptions(selectedStatus) {
+  selectedStatus = String(selectedStatus || "active").toLowerCase();
+
+  var statuses = [
+    ["active", "Activo"],
+    ["inactive", "Inactivo"],
+    ["suspended", "Suspenso"],
+    ["blocked", "Bloqueado"]
+  ];
+
+  return statuses.map(function(item) {
+    return '<option value="' + item[0] + '"' + (item[0] === selectedStatus ? " selected" : "") + '>' + item[1] + '</option>';
+  }).join("");
+}
+
 function getTeamInitial(name, email) {
   return String(name || email || "U").trim().charAt(0).toUpperCase();
+}
+
+async function saveTeamMemberRoleStatus(encodedEmail) {
+  if (!canManageTeamRoles()) {
+    toast("Sem permissao para alterar a equipa.", "error");
+    return;
+  }
+
+  var email = decodeURIComponent(String(encodedEmail || ""));
+  var organizationId = localStorage.getItem("azul_organization_id");
+  var key = getTeamMemberDomKey(email);
+  var roleInput = document.getElementById("team-role-" + key);
+  var statusInput = document.getElementById("team-status-" + key);
+
+  if (!organizationId || !email || !roleInput || !statusInput) {
+    toast("Utilizador invalido.", "error");
+    return;
+  }
+
+  try {
+    var result = await supabaseClient.rpc("update_team_member_role_status", {
+      p_organization_id: organizationId,
+      p_email: email,
+      p_role: roleInput.value,
+      p_status: statusInput.value
+    });
+
+    if (result.error) throw result.error;
+
+    toast("Permissoes actualizadas.", "success");
+    azulAuditCache = null;
+    await renderSettingsUserCard();
+    applyAzulRolePermissions();
+    await renderSettingsTeamCard();
+  } catch (e) {
+    var msg = String(e && e.message ? e.message : e);
+
+    if (msg.indexOf("TEAM_PERMISSION_DENIED") >= 0) msg = "Apenas proprietario ou gerente pode alterar funcoes.";
+    if (msg.indexOf("TEAM_OWNER_ONLY") >= 0) msg = "Apenas o proprietario pode alterar outro proprietario.";
+    if (msg.indexOf("LAST_OWNER_REQUIRED") >= 0) msg = "A loja precisa manter pelo menos um proprietario activo.";
+    if (msg.indexOf("TEAM_MEMBER_NOT_FOUND") >= 0) msg = "Utilizador nao encontrado na equipa.";
+
+    toast("Erro equipa: " + msg, "error");
+  }
 }
 
 async function touchCurrentTeamUser() {
@@ -13533,14 +13620,34 @@ async function renderSettingsTeamCard() {
       return;
     }
 
+    var canManage = canManageTeamRoles();
+
     list.innerHTML = users.map(function(user) {
       var name = user.name || "Utilizador";
       var email = user.email || "-";
       var phone = user.phone || "-";
-      var role = getTeamRoleLabel(user.role);
+      var rawRole = String(user.role || "member").toLowerCase();
+      var role = getTeamRoleLabel(rawRole);
       var status = String(user.status || "active").toLowerCase();
       var statusText = getTeamStatusLabel(status);
       var initial = getTeamInitial(name, email);
+      var key = getTeamMemberDomKey(email);
+      var encodedEmail = encodeURIComponent(email);
+      var controls = canManage ? `
+            <div class="team-user-controls">
+              <label>
+                <span>Role</span>
+                <select id="team-role-${escapeDepenseHtml(key)}">${getTeamRoleOptions(rawRole)}</select>
+              </label>
+
+              <label>
+                <span>Estado</span>
+                <select id="team-status-${escapeDepenseHtml(key)}">${getTeamStatusOptions(status)}</select>
+              </label>
+
+              <button type="button" onclick="saveTeamMemberRoleStatus('${escapeDepenseHtml(encodedEmail)}')">Guardar</button>
+            </div>
+      ` : "";
 
       return `
         <div class="team-user-card">
@@ -13561,6 +13668,8 @@ async function renderSettingsTeamCard() {
             <div class="team-user-last">
               Ultima actividade: ${escapeDepenseHtml(formatTeamDate(user.last_seen_at))}
             </div>
+
+            ${controls}
           </div>
         </div>
       `;

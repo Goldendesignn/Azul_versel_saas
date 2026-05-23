@@ -6070,6 +6070,53 @@ textarea,
   font-size: 12px;
 }
 
+.team-user-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.team-user-controls label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.team-user-controls label span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.team-user-controls select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 10px;
+  font: inherit;
+  font-weight: 800;
+}
+
+.team-user-controls button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--blue);
+  color: var(--accent-text);
+  padding: 0 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 @media (max-width: 760px) {
   .team-settings-head {
     display: grid;
@@ -6085,5 +6132,9 @@ textarea,
 
   .team-user-top {
     align-items: flex-start;
+  }
+
+  .team-user-controls {
+    grid-template-columns: 1fr;
   }
 }
