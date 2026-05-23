@@ -268,6 +268,46 @@ function getDeviceAccessMessage(message, activeDevices, deviceLimit) {
   return "Acces refuse.";
 }
 
+function showDeviceLimitScreen(activeDevices, deviceLimit) {
+  var existing = document.getElementById("approval-lock-screen");
+  if (existing) existing.remove();
+
+  window.azulAccessBlocked = true;
+  document.body.classList.add("approval-locked");
+
+  var plan = approvalSafeText(localStorage.getItem("azul_plan") || "starter");
+  var active = approvalSafeText(activeDevices || 0);
+  var limit = approvalSafeText(deviceLimit || 0);
+
+  var screen = document.createElement("div");
+  screen.id = "approval-lock-screen";
+  screen.className = "approval-lock-screen";
+  screen.innerHTML = `
+    <div class="approval-lock-card" role="dialog" aria-modal="true" aria-labelledby="approval-lock-title">
+      <div class="approval-lock-head">
+        <div class="approval-lock-mark">!</div>
+      </div>
+      <div class="approval-lock-body">
+        <p class="approval-lock-eyebrow">Limite do plano</p>
+        <h1 id="approval-lock-title">Limite de utilizadores atingido</h1>
+        <p class="approval-lock-text">
+          Este plano ja atingiu o numero maximo de aparelhos autorizados.
+        </p>
+        <div class="approval-lock-user">
+          <strong>${active} / ${limit} aparelhos</strong>
+          <span>Plano actual: ${plan}</span>
+        </div>
+        <p class="approval-lock-hint">
+          Para adicionar este aparelho, pede ao administrador para aumentar o limite ou mudar para um plano superior.
+        </p>
+        <button type="button" onclick="logoutPendingApproval()">Voltar ao login</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(screen);
+}
+
 function isAzulNetworkError(error) {
   var msg = String(error && error.message ? error.message : error || "").toLowerCase();
 
@@ -316,6 +356,11 @@ async function verifyDeviceAccess(organizationId) {
     var row = Array.isArray(result.data) ? result.data[0] : result.data;
 
     if (!row || !row.allowed) {
+      if (row && row.message === "DEVICE_LIMIT_REACHED") {
+        showDeviceLimitScreen(row.active_devices || 0, row.device_limit || 0);
+        return false;
+      }
+
       alert(getDeviceAccessMessage(
         row ? row.message : "",
         row ? row.active_devices : 0,
@@ -399,8 +444,10 @@ async function verifyCurrentLicense() {
       var deviceOk = await verifyDeviceAccess(organization.id);
 
       if (!deviceOk) {
-        clearAzulSession();
-        window.location.replace("index.html");
+        if (!window.azulAccessBlocked) {
+          clearAzulSession();
+          window.location.replace("index.html");
+        }
         return false;
       }
     }
