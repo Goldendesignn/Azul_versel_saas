@@ -5954,3 +5954,136 @@ textarea,
     width: 100%;
   }
 }
+.team-settings-card {
+  overflow: hidden;
+}
+
+.team-settings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.team-settings-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.team-refresh-btn {
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--blue);
+  color: var(--accent-text);
+  padding: 0 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.team-settings-list {
+  display: grid;
+  gap: 10px;
+}
+
+.team-user-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.team-user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--blue);
+  color: var(--accent-text);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.team-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.team-user-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.team-user-top strong {
+  color: var(--text);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.team-user-status {
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.team-user-status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.team-user-status.inactive,
+.team-user-status.suspended {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.team-user-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.team-user-meta span {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.team-user-last {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .team-settings-head {
+    display: grid;
+  }
+
+  .team-refresh-btn {
+    width: 100%;
+  }
+
+  .team-user-card {
+    padding: 11px;
+  }
+
+  .team-user-top {
+    align-items: flex-start;
+  }
+}
