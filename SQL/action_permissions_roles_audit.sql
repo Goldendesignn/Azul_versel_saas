@@ -185,6 +185,9 @@ values
   (null, 'accountant', 'correction:create'),
   (null, 'accountant', 'accounting:view'),
   (null, 'accountant', 'cash:view'),
+  (null, 'accountant', 'page:rh'),
+  (null, 'accountant', 'hr:create'),
+  (null, 'accountant', 'hr:view'),
 
   (null, 'readonly', 'page:dashboard'),
   (null, 'readonly', 'page:transfert'),
@@ -196,6 +199,8 @@ values
   (null, 'readonly', 'expense:view'),
   (null, 'readonly', 'cash:view'),
   (null, 'readonly', 'accounting:view'),
+  (null, 'readonly', 'page:rh'),
+  (null, 'readonly', 'hr:view'),
 
   (null, 'member', 'page:dashboard')
 on conflict do nothing;

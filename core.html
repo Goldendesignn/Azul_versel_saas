@@ -41,6 +41,7 @@
     <button class="tab" id="tab-transfert" onclick="goTo('transfert', this)"> Estoque</button>
     <button class="tab" onclick="goTo('clientes', this)"> Clientes</button>
     <button class="tab" onclick="goTo('depenses', this)"> Depenses</button>
+    <button class="tab" onclick="goTo('rh', this)"> RH</button>
     <button class="tab" onclick="goTo('forn', this)"> Fornecedores</button>
     <button class="tab" onclick="goTo('tresorerie', this)">Tresorerie</button>
     <button class="tab" onclick="goTo('comptabilite', this)">Comptabilite</button>
@@ -1488,6 +1489,191 @@
           </div>
           <div class="form-group full">
             <button class="form-submit" id="pg-cl-btn" onclick="savePagamentoClient()"> Registar Pagamento</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- RH -->
+    <div class="page" id="page-rh">
+      <div class="rh-page-head">
+        <div>
+          <div class="section-title">Recursos Humanos</div>
+          <p>Funcionarios, presencas, salarios e adiantamentos.</p>
+        </div>
+        <button class="filter-btn" onclick="loadRhDashboard()">Actualizar</button>
+      </div>
+
+      <div class="rh-kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Funcionarios activos</div>
+          <div class="kpi-val" id="rh-kpi-active">0</div>
+          <div class="kpi-sub">Equipe actual</div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-label">Presentes hoje</div>
+          <div class="kpi-val" id="rh-kpi-present">0</div>
+          <div class="kpi-sub">Presencas registadas</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-label">Pagamentos do mes</div>
+          <div class="kpi-val" id="rh-kpi-paid">0 Kz</div>
+          <div class="kpi-sub">Salarios + adiantamentos</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Massa salarial</div>
+          <div class="kpi-val" id="rh-kpi-payroll">0 Kz</div>
+          <div class="kpi-sub">Salario base mensal</div>
+        </div>
+      </div>
+
+      <div class="rh-tabs">
+        <button class="mode-btn active" id="rh-tab-employee" onclick="switchRhTab('employee', this)">Funcionario</button>
+        <button class="mode-btn" id="rh-tab-attendance" onclick="switchRhTab('attendance', this)">Presenca</button>
+        <button class="mode-btn" id="rh-tab-payment" onclick="switchRhTab('payment', this)">Pagamento</button>
+        <button class="mode-btn" id="rh-tab-history" onclick="switchRhTab('history', this)">Historico</button>
+      </div>
+
+      <div id="rh-panel-employee" class="rh-panel">
+        <div class="card">
+          <div class="card-title">Registar funcionario</div>
+          <div class="form-grid" style="max-width:850px;">
+            <div class="form-group">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-input" id="rh-emp-name" placeholder="Nome do funcionario">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefone</label>
+              <input type="text" class="form-input" id="rh-emp-phone" placeholder="+244...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Funcao</label>
+              <input type="text" class="form-input" id="rh-emp-role" placeholder="Caixa, vendedor, stock...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Salario base</label>
+              <input type="number" class="form-input" id="rh-emp-salary" placeholder="0" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data de entrada</label>
+              <input type="date" class="form-input" id="rh-emp-start">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-input" id="rh-emp-status">
+                <option value="active">Activo</option>
+                <option value="inactive">Inactivo</option>
+                <option value="suspended">Suspenso</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Nota</label>
+              <input type="text" class="form-input" id="rh-emp-note" placeholder="Contrato, horario, observacao...">
+            </div>
+            <div class="form-group full">
+              <button class="form-submit" id="rh-emp-btn" onclick="saveRhEmployee()">Guardar funcionario</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="rh-panel-attendance" class="rh-panel" style="display:none;">
+        <div class="card">
+          <div class="card-title">Registar presenca</div>
+          <div class="form-grid" style="max-width:700px;">
+            <div class="form-group">
+              <label class="form-label">Data</label>
+              <input type="date" class="form-input" id="rh-att-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Funcionario</label>
+              <input type="text" class="form-input" id="rh-att-employee" list="rh-employee-list" placeholder="Nome do funcionario">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-input" id="rh-att-status">
+                <option value="present">Presente</option>
+                <option value="absent">Ausente</option>
+                <option value="late">Atrasado</option>
+                <option value="off">Folga</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nota</label>
+              <input type="text" class="form-input" id="rh-att-note" placeholder="Opcional">
+            </div>
+            <div class="form-group full">
+              <button class="form-submit" id="rh-att-btn" onclick="saveRhAttendance()">Registar presenca</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="rh-panel-payment" class="rh-panel" style="display:none;">
+        <div class="card">
+          <div class="card-title">Registar salario ou adiantamento</div>
+          <div class="form-grid" style="max-width:760px;">
+            <div class="form-group">
+              <label class="form-label">Data</label>
+              <input type="date" class="form-input" id="rh-pay-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Funcionario</label>
+              <input type="text" class="form-input" id="rh-pay-employee" list="rh-employee-list" placeholder="Nome do funcionario">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tipo</label>
+              <select class="form-input" id="rh-pay-type">
+                <option value="salary">Salario</option>
+                <option value="advance">Adiantamento</option>
+                <option value="bonus">Bonus</option>
+                <option value="deduction">Desconto</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Montante</label>
+              <input type="number" class="form-input" id="rh-pay-amount" placeholder="0" min="0">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Nota</label>
+              <input type="text" class="form-input" id="rh-pay-note" placeholder="Ex: Salario Maio">
+            </div>
+            <div class="form-group full">
+              <button class="form-submit" id="rh-pay-btn" onclick="saveRhPayment()">Registar pagamento RH</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="rh-panel-history" class="rh-panel" style="display:none;">
+        <div class="card">
+          <div class="card-title">Historico RH</div>
+          <div class="rh-filter-row">
+            <input type="text" class="filter-input" id="rh-filter-search" placeholder="Pesquisar funcionario, funcao..." oninput="loadRhHistory()">
+            <select class="filter-input" id="rh-filter-type" onchange="loadRhHistory()">
+              <option value="all">Todos</option>
+              <option value="employees">Funcionarios</option>
+              <option value="attendance">Presencas</option>
+              <option value="payments">Pagamentos</option>
+            </select>
+          </div>
+          <datalist id="rh-employee-list"></datalist>
+          <div id="rhHistoryCards" class="mobile-card-list"></div>
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Data</th>
+                  <th>Funcionario</th>
+                  <th>Detalhe</th>
+                  <th>Montante</th>
+                  <th>Autor</th>
+                </tr>
+              </thead>
+              <tbody id="rhHistoryBody">
+                <tr><td colspan="6" class="empty">A carregar...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

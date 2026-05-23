@@ -188,7 +188,10 @@ var AZUL_TABLE_ACTIONS = {
   client_payments: "client_payment:create",
   supplier_payments: "supplier_payment:create",
   corrections_log: "correction:create",
-  treasury_entries: "cash:create"
+  treasury_entries: "cash:create",
+  hr_employees: "hr:create",
+  hr_attendance: "hr:create",
+  hr_payments: "hr:create"
 };
 
 async function logAzulAction(action, moduleName, status, details) {
@@ -232,6 +235,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:comptabilite": { label: "Contabilidade", group: "Paginas" },
   "page:corrections": { label: "Correcoes", group: "Paginas" },
   "page:revendeurs": { label: "Revendedores", group: "Paginas" },
+  "page:rh": { label: "Recursos Humanos", group: "Paginas" },
   "page:settings": { label: "Definicoes", group: "Paginas" },
   "sale:create": { label: "Registar vendas", group: "Vendas" },
   "sale:view": { label: "Ver vendas", group: "Vendas" },
@@ -248,6 +252,8 @@ var AZUL_PERMISSION_CATALOG = {
   "accounting:view": { label: "Ver contabilidade", group: "Financeiro" },
   "correction:create": { label: "Fazer correcoes", group: "Correcoes" },
   "import:create": { label: "Importar dados", group: "Importacao" },
+  "hr:create": { label: "Gerir RH", group: "Recursos Humanos" },
+  "hr:view": { label: "Ver RH", group: "Recursos Humanos" },
   "settings:team": { label: "Gerir equipe", group: "Definicoes" },
   "settings:roles": { label: "Gerir roles", group: "Definicoes" }
 };
@@ -271,11 +277,11 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   accountant: {
     name: "Contabilista",
-    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:corrections", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view"]
+    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:corrections", "page:rh", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "hr:create", "hr:view"]
   },
   readonly: {
     name: "Leitura",
-    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view"]
+    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:rh", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "hr:view"]
   },
   member: {
     name: "Utilizador",
@@ -1746,6 +1752,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('tre-date').value = today;
   document.getElementById('rev-date').value = today;
   document.getElementById('rev-action-date').value = today;
+  if (document.getElementById('rh-emp-start')) document.getElementById('rh-emp-start').value = today;
+  if (document.getElementById('rh-att-date')) document.getElementById('rh-att-date').value = today;
+  if (document.getElementById('rh-pay-date')) document.getElementById('rh-pay-date').value = today;
 
   var first = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   document.getElementById('h-from').value = first;
@@ -1847,6 +1856,7 @@ function goTo(page, btn) {
     }
     if (page === 'dashboard') loadDashboard();
     if (page === 'depenses') initDepensesPage();
+    if (page === 'rh') initRhPage();
     if (page === 'historique') loadHist();
     if (page === 'forn') {
       loadProducts();
@@ -9142,6 +9152,476 @@ async function saveDepense() {
       btn.style.opacity = "1";
     }
   }
+}
+
+// ===== RH =====
+var rhHistoryLoading = false;
+
+function getRhPaymentTypeLabel(type) {
+  var map = {
+    salary: "Salario",
+    advance: "Adiantamento",
+    bonus: "Bonus",
+    deduction: "Desconto"
+  };
+
+  return map[String(type || "").toLowerCase()] || type || "-";
+}
+
+function getRhAttendanceStatusLabel(status) {
+  var map = {
+    present: "Presente",
+    absent: "Ausente",
+    late: "Atrasado",
+    off: "Folga"
+  };
+
+  return map[String(status || "").toLowerCase()] || status || "-";
+}
+
+function getRhEmployeeStatusLabel(status) {
+  var map = {
+    active: "Activo",
+    inactive: "Inactivo",
+    suspended: "Suspenso"
+  };
+
+  return map[String(status || "").toLowerCase()] || status || "-";
+}
+
+function switchRhTab(tab, btn) {
+  ["employee", "attendance", "payment", "history"].forEach(function(name) {
+    var panel = document.getElementById("rh-panel-" + name);
+    var tabBtn = document.getElementById("rh-tab-" + name);
+
+    if (panel) panel.style.display = name === tab ? "block" : "none";
+    if (tabBtn) tabBtn.classList.toggle("active", name === tab);
+  });
+
+  if (btn && btn.classList) btn.classList.add("active");
+
+  if (tab === "history") loadRhHistory();
+  else renderRhEmployeeDatalist();
+}
+
+async function getRhEmployeesFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+  var result = await supabaseClient
+    .from("hr_employees")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("name", { ascending: true });
+
+  if (result.error) throw result.error;
+  return result.data || [];
+}
+
+async function findRhEmployeeByName(name) {
+  name = String(name || "").trim();
+  if (!name) return null;
+
+  var organizationId = getAzulOrganizationId();
+  var result = await supabaseClient
+    .from("hr_employees")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .ilike("name", name)
+    .limit(1)
+    .maybeSingle();
+
+  if (result.error) throw result.error;
+  return result.data || null;
+}
+
+async function renderRhEmployeeDatalist() {
+  var datalist = document.getElementById("rh-employee-list");
+  if (!datalist) return;
+
+  try {
+    var employees = await getRhEmployeesFromSupabase();
+    datalist.innerHTML = employees.map(function(emp) {
+      return '<option value="' + escapeDepenseHtml(emp.name || "") + '"></option>';
+    }).join("");
+  } catch (e) {
+    console.warn("Datalist RH indisponivel:", e);
+  }
+}
+
+async function saveRhEmployee() {
+  if (!requireAzulAction("hr:create", "gerir RH")) return;
+
+  var name = (document.getElementById("rh-emp-name") || {}).value || "";
+  name = name.trim();
+
+  if (!name) {
+    toast("Informe o nome do funcionario.", "error");
+    return;
+  }
+
+  var btn = document.getElementById("rh-emp-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A guardar...";
+  }
+
+  try {
+    var result = await insertSingleWithAzulAudit("hr_employees", {
+      organization_id: getAzulOrganizationId(),
+      name: name,
+      phone: (document.getElementById("rh-emp-phone") || {}).value || "",
+      role: (document.getElementById("rh-emp-role") || {}).value || "",
+      base_salary: Number((document.getElementById("rh-emp-salary") || {}).value) || 0,
+      status: (document.getElementById("rh-emp-status") || {}).value || "active",
+      start_date: (document.getElementById("rh-emp-start") || {}).value || new Date().toISOString().split("T")[0],
+      note: (document.getElementById("rh-emp-note") || {}).value || ""
+    });
+
+    if (result.error) throw result.error;
+
+    ["rh-emp-name", "rh-emp-phone", "rh-emp-role", "rh-emp-salary", "rh-emp-note"].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+
+    toast("Funcionario guardado.", "success");
+    await loadRhDashboard();
+  } catch (e) {
+    toast("Erro RH: " + (e.message || e), "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Guardar funcionario";
+    }
+  }
+}
+
+async function saveRhAttendance() {
+  if (!requireAzulAction("hr:create", "registar presenca")) return;
+
+  var name = String((document.getElementById("rh-att-employee") || {}).value || "").trim();
+  if (!name) {
+    toast("Escolha um funcionario.", "error");
+    return;
+  }
+
+  var btn = document.getElementById("rh-att-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+  }
+
+  try {
+    var employee = await findRhEmployeeByName(name);
+    var result = await insertSingleWithAzulAudit("hr_attendance", {
+      organization_id: getAzulOrganizationId(),
+      employee_id: employee ? employee.id : null,
+      employee_name: name,
+      attendance_date: (document.getElementById("rh-att-date") || {}).value || new Date().toISOString().split("T")[0],
+      status: (document.getElementById("rh-att-status") || {}).value || "present",
+      note: (document.getElementById("rh-att-note") || {}).value || ""
+    });
+
+    if (result.error) throw result.error;
+
+    var note = document.getElementById("rh-att-note");
+    if (note) note.value = "";
+    toast("Presenca registada.", "success");
+    await loadRhDashboard();
+  } catch (e) {
+    toast("Erro presenca: " + (e.message || e), "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Registar presenca";
+    }
+  }
+}
+
+async function saveRhPayment() {
+  if (!requireAzulAction("hr:create", "registar pagamento RH")) return;
+
+  var name = String((document.getElementById("rh-pay-employee") || {}).value || "").trim();
+  var amount = Number((document.getElementById("rh-pay-amount") || {}).value) || 0;
+
+  if (!name || amount <= 0) {
+    toast("Informe funcionario e montante valido.", "error");
+    return;
+  }
+
+  var btn = document.getElementById("rh-pay-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+  }
+
+  try {
+    var employee = await findRhEmployeeByName(name);
+    var paymentType = (document.getElementById("rh-pay-type") || {}).value || "salary";
+    var paymentDate = (document.getElementById("rh-pay-date") || {}).value || new Date().toISOString().split("T")[0];
+    var note = (document.getElementById("rh-pay-note") || {}).value || "";
+
+    var result = await insertSingleWithAzulAudit("hr_payments", {
+      organization_id: getAzulOrganizationId(),
+      employee_id: employee ? employee.id : null,
+      employee_name: name,
+      payment_date: paymentDate,
+      payment_type: paymentType,
+      amount: amount,
+      note: note
+    });
+
+    if (result.error) throw result.error;
+
+    if (paymentType !== "deduction") {
+      var expenseResult = await insertSingleWithAzulAudit("expenses", {
+        organization_id: getAzulOrganizationId(),
+        expense_date: paymentDate,
+        category: paymentType === "advance" ? "Adiantamento salarial" : "Salaire",
+        description: "RH - " + getRhPaymentTypeLabel(paymentType) + " - " + name + (note ? " - " + note : ""),
+        amount: amount
+      });
+
+      if (expenseResult.error) throw expenseResult.error;
+
+      try {
+        var expense = expenseResult.data || {};
+        await createAccountingEntry(
+          "expense",
+          expense.id,
+          paymentDate,
+          "RH - " + getRhPaymentTypeLabel(paymentType) + " - " + name,
+          [
+            { account: "62", debit: amount, credit: 0 },
+            { account: "11", debit: 0, credit: amount }
+          ]
+        );
+      } catch (accountingError) {
+        console.warn("Lancamento contabilistico RH nao registado:", accountingError);
+      }
+    }
+
+    var amountInput = document.getElementById("rh-pay-amount");
+    var noteInput = document.getElementById("rh-pay-note");
+    if (amountInput) amountInput.value = "";
+    if (noteInput) noteInput.value = "";
+
+    toast("Pagamento RH registado.", "success");
+    await loadRhDashboard();
+    loadDashboard();
+  } catch (e) {
+    toast("Erro pagamento RH: " + (e.message || e), "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Registar pagamento RH";
+    }
+  }
+}
+
+async function getRhHistoryFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var employeesResult = await supabaseClient
+    .from("hr_employees")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (employeesResult.error) throw employeesResult.error;
+
+  var attendanceResult = await supabaseClient
+    .from("hr_attendance")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("attendance_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (attendanceResult.error) throw attendanceResult.error;
+
+  var paymentsResult = await supabaseClient
+    .from("hr_payments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("payment_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (paymentsResult.error) throw paymentsResult.error;
+
+  return {
+    employees: employeesResult.data || [],
+    attendance: attendanceResult.data || [],
+    payments: paymentsResult.data || []
+  };
+}
+
+function mapRhHistoryRows(data) {
+  data = data || {};
+  var rows = [];
+
+  (data.employees || []).forEach(function(emp) {
+    rows.push({
+      kind: "employees",
+      type: "Funcionario",
+      date: emp.start_date || String(emp.created_at || "").slice(0, 10),
+      employee: emp.name || "",
+      detail: (emp.role || "Sem funcao") + " - " + getRhEmployeeStatusLabel(emp.status),
+      amount: Number(emp.base_salary) || 0,
+      created_at: emp.created_at || "",
+      user_name: emp.user_name || ""
+    });
+  });
+
+  (data.attendance || []).forEach(function(row) {
+    rows.push({
+      kind: "attendance",
+      type: "Presenca",
+      date: row.attendance_date || "",
+      employee: row.employee_name || "",
+      detail: getRhAttendanceStatusLabel(row.status) + (row.note ? " - " + row.note : ""),
+      amount: 0,
+      created_at: row.created_at || "",
+      user_name: row.user_name || ""
+    });
+  });
+
+  (data.payments || []).forEach(function(row) {
+    rows.push({
+      kind: "payments",
+      type: "Pagamento",
+      date: row.payment_date || "",
+      employee: row.employee_name || "",
+      detail: getRhPaymentTypeLabel(row.payment_type) + (row.note ? " - " + row.note : ""),
+      amount: Number(row.amount) || 0,
+      created_at: row.created_at || "",
+      user_name: row.user_name || ""
+    });
+  });
+
+  rows.sort(function(a, b) {
+    var ak = String(a.date || "") + " " + String(a.created_at || "");
+    var bk = String(b.date || "") + " " + String(b.created_at || "");
+    return bk.localeCompare(ak);
+  });
+
+  return rows;
+}
+
+function renderRhHistoryRows(rows) {
+  var body = document.getElementById("rhHistoryBody");
+  var cards = document.getElementById("rhHistoryCards");
+
+  rows = rows || [];
+
+  if (body) {
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">Nenhum registo RH encontrado.</td></tr>';
+    } else {
+      body.innerHTML = rows.map(function(row) {
+        return '<tr>' +
+          '<td>' + escapeDepenseHtml(row.type) + '</td>' +
+          '<td>' + escapeDepenseHtml(row.date || '') + '</td>' +
+          '<td>' + escapeDepenseHtml(row.employee || '') + '</td>' +
+          '<td>' + escapeDepenseHtml(row.detail || '') + '</td>' +
+          '<td style="font-weight:700;color:var(--blue);">' + (row.amount ? fmt(row.amount) : '-') + '</td>' +
+          '<td>' + renderActionAuthor(row) + '</td>' +
+        '</tr>';
+      }).join("");
+    }
+  }
+
+  if (cards) {
+    if (!rows.length) {
+      cards.innerHTML = '<div class="empty">Nenhum registo RH encontrado.</div>';
+    } else {
+      cards.innerHTML = rows.map(function(row) {
+        return '<div class="mobile-rh-card">' +
+          '<div class="mobile-card-top">' +
+            '<div>' +
+              '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.type || 'RH') + '</div>' +
+              '<div class="mobile-card-title">' + escapeDepenseHtml(row.employee || '') + '</div>' +
+              '<div class="mobile-card-sub">' + escapeDepenseHtml(row.detail || '') + '</div>' +
+              '<div class="mobile-card-sub">' + escapeDepenseHtml(row.date || '') + '</div>' +
+              '<div class="mobile-card-sub">' + renderActionAuthor(row) + '</div>' +
+            '</div>' +
+            '<div class="mobile-card-amount">' + (row.amount ? fmt(row.amount) : '-') + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join("");
+    }
+  }
+}
+
+async function loadRhHistory() {
+  if (rhHistoryLoading) return;
+  rhHistoryLoading = true;
+
+  try {
+    var data = await getRhHistoryFromSupabase();
+    var rows = mapRhHistoryRows(data);
+    var type = (document.getElementById("rh-filter-type") || {}).value || "all";
+    var search = String((document.getElementById("rh-filter-search") || {}).value || "").trim().toLowerCase();
+
+    if (type !== "all") {
+      rows = rows.filter(function(row) { return row.kind === type; });
+    }
+
+    if (search) {
+      rows = rows.filter(function(row) {
+        return [row.type, row.employee, row.detail, row.user_name].join(" ").toLowerCase().indexOf(search) >= 0;
+      });
+    }
+
+    renderRhHistoryRows(rows);
+  } catch (e) {
+    var body = document.getElementById("rhHistoryBody");
+    if (body) body.innerHTML = '<tr><td colspan="6" class="empty">Erro RH: ' + escapeDepenseHtml(e.message || e) + '</td></tr>';
+    toast("Erro RH: " + (e.message || e), "error");
+  } finally {
+    rhHistoryLoading = false;
+  }
+}
+
+async function loadRhDashboard() {
+  try {
+    var data = await getRhHistoryFromSupabase();
+    var today = new Date().toISOString().split("T")[0];
+    var monthKey = today.slice(0, 7);
+    var activeEmployees = (data.employees || []).filter(function(emp) {
+      return String(emp.status || "active").toLowerCase() === "active";
+    });
+    var todayPresent = (data.attendance || []).filter(function(row) {
+      return row.attendance_date === today && String(row.status || "").toLowerCase() === "present";
+    }).length;
+    var monthPaid = (data.payments || []).filter(function(row) {
+      return String(row.payment_date || "").slice(0, 7) === monthKey;
+    }).reduce(function(sum, row) {
+      return sum + (Number(row.amount) || 0);
+    }, 0);
+    var payroll = activeEmployees.reduce(function(sum, emp) {
+      return sum + (Number(emp.base_salary) || 0);
+    }, 0);
+
+    if (document.getElementById("rh-kpi-active")) document.getElementById("rh-kpi-active").textContent = activeEmployees.length;
+    if (document.getElementById("rh-kpi-present")) document.getElementById("rh-kpi-present").textContent = todayPresent;
+    if (document.getElementById("rh-kpi-paid")) document.getElementById("rh-kpi-paid").textContent = fmt(monthPaid);
+    if (document.getElementById("rh-kpi-payroll")) document.getElementById("rh-kpi-payroll").textContent = fmt(payroll);
+
+    await renderRhEmployeeDatalist();
+    renderRhHistoryRows(mapRhHistoryRows(data).slice(0, 80));
+  } catch (e) {
+    console.warn("Dashboard RH indisponivel:", e);
+  }
+}
+
+function initRhPage() {
+  var today = new Date().toISOString().split("T")[0];
+  ["rh-emp-start", "rh-att-date", "rh-pay-date"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && !el.value) el.value = today;
+  });
+
+  switchRhTab("employee", document.getElementById("rh-tab-employee"));
+  loadRhDashboard();
 }
 // Enregistrement par cle de license
 
