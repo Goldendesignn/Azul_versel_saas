@@ -6075,6 +6075,20 @@ textarea,
   font-size: 12px;
 }
 
+.action-author {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--blue) 7%, #fff);
+  color: var(--muted);
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .team-permissions {
   display: flex;
   flex-wrap: wrap;

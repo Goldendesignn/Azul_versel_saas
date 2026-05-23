@@ -39,6 +39,19 @@ function getAzulCurrentUserName() {
   return localStorage.getItem("azul_user_name") || "Utilizador";
 }
 
+function getActionAuthorName(row) {
+  row = row || {};
+  return String(row.user_name || row.created_by_name || row.actor_name || "").trim();
+}
+
+function getActionAuthorLabel(row) {
+  return getActionAuthorName(row) || "Autor antigo";
+}
+
+function renderActionAuthor(row) {
+  return '<span class="action-author">Criado por ' + escapeDepenseHtml(getActionAuthorLabel(row)) + '</span>';
+}
+
 async function getAzulAuditFields() {
   if (azulAuditCache) return azulAuditCache;
 
@@ -174,7 +187,8 @@ var AZUL_TABLE_ACTIONS = {
   expenses: "expense:create",
   client_payments: "client_payment:create",
   supplier_payments: "supplier_payment:create",
-  corrections_log: "correction:create"
+  corrections_log: "correction:create",
+  treasury_entries: "cash:create"
 };
 
 async function logAzulAction(action, moduleName, status, details) {
@@ -1185,7 +1199,8 @@ async function getSalesHistoryFromSupabase(params) {
       punit: Number(item.unit_price) || 0,
       total: Number(item.total) || 0,
       pay: sale.payment_summary || "",
-      recibo: sale.receipt_no || "-"
+      recibo: sale.receipt_no || "-",
+      user_name: sale.user_name || ""
     };
   });
 
@@ -1194,7 +1209,8 @@ async function getSalesHistoryFromSupabase(params) {
       return (
         String(row.prod || "").toLowerCase().indexOf(search) >= 0 ||
         String(row.client || "").toLowerCase().indexOf(search) >= 0 ||
-        String(row.recibo || "").toLowerCase().indexOf(search) >= 0
+        String(row.recibo || "").toLowerCase().indexOf(search) >= 0 ||
+        String(row.user_name || "").toLowerCase().indexOf(search) >= 0
       );
     });
   }
@@ -1900,6 +1916,7 @@ function renderMobileSalesHistory(rows) {
           '<div class="mobile-card-title">' + escapeDepenseHtml(v.prod || '') + '</div>' +
           '<div class="mobile-card-sub">' + escapeDepenseHtml(v.client || 'Anonimo') + ' • Qtd ' + (v.qty || 0) + '</div>' +
           '<div class="mobile-card-sub">' + escapeDepenseHtml(v.date || '') + '</div>' +
+          '<div class="mobile-card-sub">' + renderActionAuthor(v) + '</div>' +
         '</div>' +
         '<div style="text-align:right;">' +
           '<div class="mobile-card-amount">' + fmt(v.total || 0) + '</div>' +
@@ -6308,7 +6325,8 @@ async function getAchatHistoriqueFromSupabase() {
       paid: Number(purchase.paid_amount) || 0,
       debt: Number(purchase.remaining_amount) || 0,
       purchaseTotal: Number(purchase.total) || 0,
-      purchaseId: purchase.id || ""
+      purchaseId: purchase.id || "",
+      user_name: purchase.user_name || ""
     };
 
     rows.push(row);
@@ -6320,7 +6338,8 @@ async function getAchatHistoriqueFromSupabase() {
         String(row.supplier || "").toLowerCase().indexOf(search) >= 0 ||
         String(row.product || "").toLowerCase().indexOf(search) >= 0 ||
         String(row.code || "").toLowerCase().indexOf(search) >= 0 ||
-        String(row.variation || "").toLowerCase().indexOf(search) >= 0
+        String(row.variation || "").toLowerCase().indexOf(search) >= 0 ||
+        String(row.user_name || "").toLowerCase().indexOf(search) >= 0
       );
     });
   }
@@ -6371,7 +6390,7 @@ async function loadAchatHistorique() {
       body.innerHTML = rows.map(function(row) {
         return '<tr>' +
           '<td>' + escapeDepenseHtml(row.date) + '</td>' +
-          '<td>' + escapeDepenseHtml(row.supplier) + '</td>' +
+          '<td>' + escapeDepenseHtml(row.supplier) + '<div>' + renderActionAuthor(row) + '</div></td>' +
           '<td>' + escapeDepenseHtml(row.product) + '</td>' +
           '<td>' + escapeDepenseHtml(row.code || "-") + '</td>' +
           '<td>' + escapeDepenseHtml(row.variation || "-") + '</td>' +
@@ -6391,6 +6410,7 @@ async function loadAchatHistorique() {
             '<div>' +
               '<strong>' + escapeDepenseHtml(row.product) + '</strong>' +
               '<span>' + escapeDepenseHtml(row.supplier || "Fornecedor") + '</span>' +
+              renderActionAuthor(row) +
             '</div>' +
             '<b>' + fmt(row.total) + '</b>' +
           '</div>' +
@@ -7111,7 +7131,10 @@ async function loadHist() {
         "<td>" + fmt(v.punit) + "</td>" +
         '<td style="color:var(--blue);font-weight:600">' + fmt(v.total) + "</td>" +
         '<td><span class="tbadge ' + payClass + '">' + escapeDepenseHtml(v.pay || "-") + "</span></td>" +
-        '<td style="font-size:10px;color:var(--muted)">' + escapeDepenseHtml(v.recibo || "-") + "</td>";
+        '<td style="font-size:10px;color:var(--muted)">' +
+          '<div>' + escapeDepenseHtml(v.recibo || "-") + '</div>' +
+          renderActionAuthor(v) +
+        "</td>";
 
       tb.appendChild(tr);
     });
@@ -8852,6 +8875,7 @@ function renderMobileDepenseHistory(rows) {
           '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.category || 'Depense') + '</div>' +
           '<div class="mobile-card-title">' + escapeDepenseHtml(row.description || 'Sans description') + '</div>' +
           '<div class="mobile-card-sub">' + escapeDepenseHtml(row.date || '') + '</div>' +
+          '<div class="mobile-card-sub">' + renderActionAuthor(row) + '</div>' +
         '</div>' +
         '<div class="mobile-expense-amount">-' + fmt(row.amount || 0) + '</div>' +
       '</div>' +
@@ -8874,7 +8898,7 @@ function renderDepenseHistory(rows) {
     return '<tr>' +
       '<td>' + escapeDepenseHtml(row.date || '') + '</td>' +
       '<td>' + escapeDepenseHtml(row.category || '') + '</td>' +
-      '<td>' + escapeDepenseHtml(row.description || '') + '</td>' +
+      '<td>' + escapeDepenseHtml(row.description || '') + '<div>' + renderActionAuthor(row) + '</div></td>' +
       '<td style="font-weight:600;color:var(--red);">-' + fmt(row.amount || 0) + '</td>' +
     '</tr>';
   }).join('');
@@ -9005,7 +9029,8 @@ function mapExpensesToHistoryRows(rows) {
       date: row.expense_date || "",
       category: row.category || "",
       description: row.description || "",
-      amount: Number(row.amount) || 0
+      amount: Number(row.amount) || 0,
+      user_name: row.user_name || ""
     };
   });
 }
@@ -9196,6 +9221,7 @@ function renderMobileTreasuryHistory(rows) {
           '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.type || 'Mouvement') + '</div>' +
           '<div class="mobile-card-title">' + escapeDepenseHtml(row.desc || 'Sans description') + '</div>' +
           '<div class="mobile-card-sub">' + escapeDepenseHtml(row.date || '') + '</div>' +
+          '<div class="mobile-card-sub">' + renderActionAuthor(row) + '</div>' +
         '</div>' +
         '<div style="text-align:right;">' +
           '<div class="mobile-treasury-amount ' + (isIn ? 'in' : 'out') + '">' +
@@ -9243,7 +9269,7 @@ async function loadTresorerie() {
       body.innerHTML += "<tr>" +
         "<td>" + escapeDepenseHtml(row.date || "") + "</td>" +
         "<td>" + escapeDepenseHtml(row.type || "") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.desc || "") + "</td>" +
+        "<td>" + escapeDepenseHtml(row.desc || "") + "<div>" + renderActionAuthor(row) + "</div></td>" +
         '<td style="color:var(--green);font-weight:600;">' + ((row.income || 0) ? fmt(row.income) : "-") + "</td>" +
         '<td style="color:var(--red);font-weight:600;">' + ((row.expense || 0) ? fmt(row.expense) : "-") + "</td>" +
         '<td style="font-weight:700;color:var(--blue);">' + fmt(row.balance || 0) + "</td>" +
@@ -9259,9 +9285,7 @@ async function loadTresorerie() {
 async function saveTreasuryManualEntryToSupabase(data) {
   var organizationId = getAzulOrganizationId();
 
-  var result = await supabaseClient
-    .from("treasury_entries")
-    .insert({
+  var result = await insertSingleWithAzulAudit("treasury_entries", {
       organization_id: organizationId,
       entry_date: data.date || new Date().toISOString().split("T")[0],
       movement: data.mouvement || "entrada",
@@ -9320,6 +9344,7 @@ salesRows.forEach(function(sale) {
         desc: "Venda " + (sale.receipt_no || "") + " - valores recebidos",
         income: cashIn,
         expense: 0,
+        user_name: sale.user_name || "",
         created_at: sale.created_at || ""
       });
     }
@@ -9339,6 +9364,7 @@ if (isExternal) {
       desc: "Custo fornecedor da venda " + (sale.receipt_no || ""),
       income: 0,
       expense: supplierCost,
+      user_name: sale.user_name || "",
       created_at: sale.created_at || ""
     });
   }
@@ -9368,6 +9394,7 @@ if (isExternal) {
         desc: "Achat fornecedor " + (purchase.supplier || ""),
         income: 0,
         expense: paid,
+        user_name: purchase.user_name || "",
         created_at: purchase.created_at || ""
       });
     }
@@ -9391,6 +9418,7 @@ if (isExternal) {
       desc: expense.description || expense.category || "",
       income: 0,
       expense: Number(expense.amount) || 0,
+      user_name: expense.user_name || "",
       created_at: expense.created_at || ""
     });
   });
@@ -9413,6 +9441,7 @@ if (isExternal) {
       desc: (pay.client_name || "") + (pay.note ? " - " + pay.note : ""),
       income: Number(pay.amount) || 0,
       expense: 0,
+      user_name: pay.user_name || "",
       created_at: pay.created_at || ""
     });
   });
@@ -9435,6 +9464,7 @@ if (isExternal) {
       desc: (pay.supplier || "") + (pay.note ? " - " + pay.note : ""),
       income: 0,
       expense: Number(pay.amount) || 0,
+      user_name: pay.user_name || "",
       created_at: pay.created_at || ""
     });
   });
@@ -9459,6 +9489,7 @@ if (isExternal) {
       desc: row.description || "",
       income: isIncome ? Number(row.amount) || 0 : 0,
       expense: isIncome ? 0 : Number(row.amount) || 0,
+      user_name: row.user_name || "",
       created_at: row.created_at || ""
     });
   });
@@ -9490,6 +9521,7 @@ if (isExternal) {
       income: row.income,
       expense: row.expense,
       balance: running,
+      user_name: row.user_name || "",
       created_at: row.created_at
     };
   });
@@ -10458,6 +10490,7 @@ async function loadSupplierFiche(name) {
               '<div>' +
                 '<strong>Achat #' + escapeDepenseHtml(String(purchase.id || "").slice(0, 8)) + '</strong>' +
                 '<small>' + escapeDepenseHtml(String(purchase.created_at || "").slice(0, 10)) + '</small>' +
+                renderActionAuthor(purchase) +
               '</div>' +
               '<div class="supplier-history-total">' + fmt(Number(purchase.total) || 0) + '</div>' +
             '</div>' +
@@ -10476,6 +10509,7 @@ async function loadSupplierFiche(name) {
             '<div>' +
               '<strong>' + fmt(Number(payment.amount) || 0) + '</strong>' +
               '<small>' + escapeDepenseHtml(payment.note || "Paiement fournisseur") + '</small>' +
+              renderActionAuthor(payment) +
             '</div>' +
             '<span>' + escapeDepenseHtml(payment.payment_date || "") + '</span>' +
           '</div>';
@@ -12939,6 +12973,7 @@ async function loadCorrections() {
           '<div class="correction-type">' + correctionSafe(correctionSourceLabel(row.sourceType)) + '</div>' +
           '<h3>' + correctionSafe(row.title) + '</h3>' +
           '<p>' + correctionSafe(row.subtitle) + '</p>' +
+          renderActionAuthor(row.raw || {}) +
           '<div class="correction-meta">' +
             '<span>' + correctionSafe(row.date || "-") + '</span>' +
             '<strong>' + fmt(row.amount || 0) + '</strong>' +

@@ -1,5 +1,54 @@
 create extension if not exists pgcrypto;
 
+alter table public.sales
+  add column if not exists created_by uuid,
+  add column if not exists user_name text;
+
+alter table public.purchases
+  add column if not exists created_by uuid,
+  add column if not exists user_name text;
+
+alter table public.expenses
+  add column if not exists created_by uuid,
+  add column if not exists user_name text;
+
+alter table public.client_payments
+  add column if not exists created_by uuid,
+  add column if not exists user_name text;
+
+alter table public.supplier_payments
+  add column if not exists created_by uuid,
+  add column if not exists user_name text;
+
+alter table public.corrections_log
+  add column if not exists created_by uuid,
+  add column if not exists user_name text;
+
+alter table public.treasury_entries
+  add column if not exists created_by uuid,
+  add column if not exists user_name text;
+
+create index if not exists sales_created_by_idx
+  on public.sales (organization_id, created_by);
+
+create index if not exists purchases_created_by_idx
+  on public.purchases (organization_id, created_by);
+
+create index if not exists expenses_created_by_idx
+  on public.expenses (organization_id, created_by);
+
+create index if not exists client_payments_created_by_idx
+  on public.client_payments (organization_id, created_by);
+
+create index if not exists supplier_payments_created_by_idx
+  on public.supplier_payments (organization_id, created_by);
+
+create index if not exists corrections_log_created_by_idx
+  on public.corrections_log (organization_id, created_by);
+
+create index if not exists treasury_entries_created_by_idx
+  on public.treasury_entries (organization_id, created_by);
+
 create table if not exists public.role_definitions (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid null,
