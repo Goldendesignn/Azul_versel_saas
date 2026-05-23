@@ -169,6 +169,10 @@ function isProfileActive(profile) {
   return String(profile && profile.status ? profile.status : "active").toLowerCase() === "active";
 }
 
+function isProfilePending(profile) {
+  return String(profile && profile.status ? profile.status : "").toLowerCase() === "pending";
+}
+
 async function getProfileByIdentifier(identifier) {
   var result = await supabaseClient.rpc("get_login_profile_v2", {
     p_identifier: identifier
@@ -243,9 +247,9 @@ async function restoreSessionFromAuth() {
     return false;
   }
 
-  if (!isProfileActive(profile)) {
+  if (!isProfileActive(profile) && !isProfilePending(profile)) {
     await supabaseClient.auth.signOut();
-    showMessage(getProfileAccessMessage(profile), profile.status === "pending" ? "success" : "");
+    showMessage(getProfileAccessMessage(profile));
     return false;
   }
 
@@ -292,9 +296,9 @@ async function loginAccount() {
       return;
     }
 
-    if (!isProfileActive(profile)) {
+    if (!isProfileActive(profile) && !isProfilePending(profile)) {
       await supabaseClient.auth.signOut();
-      showMessage(getProfileAccessMessage(profile), profile.status === "pending" ? "success" : "");
+      showMessage(getProfileAccessMessage(profile));
       btn.disabled = false;
       btn.textContent = "Entrar";
       return;
@@ -416,14 +420,9 @@ if (signInResult.error) {
   return;
 }
 
-    if (!isProfileActive(profile)) {
+    if (!isProfileActive(profile) && !isProfilePending(profile)) {
       await supabaseClient.auth.signOut();
-      showMessage("Conta criada. Aguarde autorizacao do proprietario para entrar no ERP.", "success");
-      showLoginMode("login");
-
-      var pendingLoginIdentifier = document.getElementById("login-identifier");
-      if (pendingLoginIdentifier) pendingLoginIdentifier.value = data.email;
-
+      showMessage(getProfileAccessMessage(profile));
       btn.disabled = false;
       btn.textContent = "Ativar o meu ERP";
       return;
@@ -433,8 +432,8 @@ if (signInResult.error) {
 
     document.body.innerHTML = `
       <div style="font-family: Arial; text-align:center; padding:40px;">
-        <h1>Conta ativada</h1>
-        <p>Bem-vindo ao Azul Gestao</p>
+        <h1>${isProfilePending(profile) ? "Conta criada" : "Conta ativada"}</h1>
+        <p>${isProfilePending(profile) ? "A abrir a tela de autorizacao..." : "Bem-vindo ao Azul Gestao"}</p>
         <p>A abrir o sistema...</p>
       </div>
     `;

@@ -2,15 +2,46 @@ alter table public.profiles
   add column if not exists role text,
   add column if not exists status text,
   add column if not exists auth_user_id uuid,
-  add column if not exists last_seen_at timestamp with time zone;
+  add column if not exists last_seen_at timestamp with time zone,
+  add column if not exists created_at timestamp with time zone default now();
 
+with ranked_profiles as (
+  select
+    p.organization_id,
+    lower(p.email) as email_key,
+    row_number() over (
+      partition by p.organization_id
+      order by coalesce(p.created_at, p.last_seen_at, now()) asc, lower(p.email) asc
+    ) as position_in_org,
+    coalesce(nullif(p.role, ''), 'member') as current_role
+  from public.profiles p
+  where p.organization_id is not null
+    and p.email is not null
+    and trim(p.email) <> ''
+)
 update public.profiles p
-set role = 'owner',
-    status = 'active'
-from public.organizations o
-where p.organization_id = o.id
-  and lower(p.email) = lower(coalesce(o.owner_email, ''))
-  and (p.role is null or trim(p.role) = '' or p.status is null or trim(p.status) = '');
+set
+  role = case
+    when r.position_in_org = 1 then 'owner'
+    when r.current_role = 'owner' then 'member'
+    else coalesce(nullif(p.role, ''), 'member')
+  end,
+  status = case
+    when r.position_in_org = 1 then 'active'
+    when r.current_role = 'owner' then 'pending'
+    else coalesce(nullif(p.status, ''), 'pending')
+  end
+from ranked_profiles r
+where p.organization_id = r.organization_id
+  and lower(p.email) = r.email_key
+  and (
+    r.position_in_org = 1
+    or r.current_role = 'owner'
+    or p.role is null
+    or trim(p.role) = ''
+    or p.status is null
+    or trim(p.status) = ''
+  );
 
 update public.profiles
 set role = 'member'
@@ -84,7 +115,7 @@ as $$
 declare
   v_license record;
   v_email text := lower(trim(coalesce(p_email, '')));
-  v_owner_count integer := 0;
+  v_profile_count integer := 0;
   v_existing record;
   v_role text;
   v_status text;
@@ -121,11 +152,9 @@ begin
   end if;
 
   select count(*)
-    into v_owner_count
+    into v_profile_count
   from public.profiles p
-  where p.organization_id = v_license.organization_id
-    and coalesce(nullif(p.role, ''), 'member') = 'owner'
-    and coalesce(nullif(p.status, ''), 'pending') = 'active';
+  where p.organization_id = v_license.organization_id;
 
   select *
     into v_existing
@@ -134,10 +163,20 @@ begin
     and lower(p.email) = v_email
   limit 1;
 
-  if v_owner_count = 0 then
+  if v_profile_count = 0 then
     v_role := 'owner';
     v_status := 'active';
+  else
+    v_role := coalesce(nullif(v_existing.role, ''), 'member');
+    v_status := coalesce(nullif(v_existing.status, ''), 'pending');
 
+    if v_existing.email is null then
+      v_role := 'member';
+      v_status := 'pending';
+    end if;
+  end if;
+
+  if v_role = 'owner' and v_status = 'active' then
     update public.organizations
     set
       name = coalesce(nullif(p_store_name, ''), name),
@@ -151,14 +190,6 @@ begin
     set status = 'used',
         used_at = coalesce(used_at, now())
     where id = v_license.license_id;
-  else
-    v_role := coalesce(nullif(v_existing.role, ''), 'member');
-    v_status := coalesce(nullif(v_existing.status, ''), 'pending');
-
-    if v_existing.email is null then
-      v_role := 'member';
-      v_status := 'pending';
-    end if;
   end if;
 
   if v_existing.email is null then

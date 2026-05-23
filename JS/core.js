@@ -388,12 +388,21 @@ async function verifyCurrentLicense() {
       return false;
     }
 
-    var deviceOk = await verifyDeviceAccess(organization.id);
+    var profileForDevice = null;
+    try {
+      profileForDevice = await getCurrentCoreProfile();
+    } catch (profileError) {
+      profileForDevice = null;
+    }
 
-    if (!deviceOk) {
-      clearAzulSession();
-      window.location.replace("index.html");
-      return false;
+    if (profileForDevice && String(profileForDevice.status || "active").toLowerCase() !== "pending") {
+      var deviceOk = await verifyDeviceAccess(organization.id);
+
+      if (!deviceOk) {
+        clearAzulSession();
+        window.location.replace("index.html");
+        return false;
+      }
     }
 
     localStorage.removeItem("azul_offline_mode");
@@ -13619,6 +13628,61 @@ function getCoreProfileAccessMessage(profile) {
   return "Acesso do utilizador invalido.";
 }
 
+function approvalSafeText(value) {
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function showPendingApprovalScreen(profile) {
+  var existing = document.getElementById("approval-lock-screen");
+  if (existing) existing.remove();
+
+  document.body.classList.add("approval-locked");
+
+  var name = approvalSafeText((profile && profile.name) || localStorage.getItem("azul_user_name") || "Utilizador");
+  var email = approvalSafeText((profile && profile.email) || "");
+  var organizationName = approvalSafeText(localStorage.getItem("azul_organization_name") || "a loja");
+
+  var screen = document.createElement("div");
+  screen.id = "approval-lock-screen";
+  screen.className = "approval-lock-screen";
+  screen.innerHTML = `
+    <div class="approval-lock-card" role="dialog" aria-modal="true" aria-labelledby="approval-lock-title">
+      <div class="approval-lock-mark">!</div>
+      <p class="approval-lock-eyebrow">Conta em analise</p>
+      <h1 id="approval-lock-title">Aguardando autorizacao</h1>
+      <p class="approval-lock-text">
+        A tua conta foi criada para <strong>${organizationName}</strong>, mas ainda precisa ser aprovada pelo proprietario da loja.
+      </p>
+      <div class="approval-lock-user">
+        <strong>${name}</strong>
+        <span>${email}</span>
+      </div>
+      <p class="approval-lock-hint">
+        Pede ao proprietario para abrir Definicoes > Equipe, aceitar a tua conexao e escolher o teu papel.
+      </p>
+      <button type="button" onclick="logoutPendingApproval()">Voltar ao login</button>
+    </div>
+  `;
+
+  document.body.appendChild(screen);
+}
+
+async function logoutPendingApproval() {
+  try {
+    await supabaseClient.auth.signOut();
+  } catch (e) {
+    console.warn("Erro ao terminar sessao pendente:", e);
+  }
+
+  clearAzulSession();
+  window.location.replace("index.html");
+}
+
 async function getCurrentCoreProfile() {
   var organizationId = localStorage.getItem("azul_organization_id");
   var userResult = await supabaseClient.auth.getUser();
@@ -13671,6 +13735,11 @@ async function verifyCurrentUserAccess() {
     localStorage.setItem("azul_user_role", profile.role || "member");
     localStorage.setItem("azul_user_status", status);
 
+    if (status === "pending") {
+      showPendingApprovalScreen(profile);
+      return false;
+    }
+
     if (status !== "active") {
       alert(getCoreProfileAccessMessage(profile));
       await supabaseClient.auth.signOut();
@@ -13688,6 +13757,8 @@ async function verifyCurrentUserAccess() {
     return false;
   }
 }
+
+window.logoutPendingApproval = logoutPendingApproval;
 
 async function touchCurrentTeamUser() {
   var organizationId = localStorage.getItem("azul_organization_id");
