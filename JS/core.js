@@ -13703,7 +13703,14 @@ async function getCurrentCoreProfile() {
     .ilike("email", email)
     .maybeSingle();
 
-  if (result.error) {
+  if (result.error || !result.data) {
+    result = await supabaseClient.rpc("get_login_profile_for_org", {
+      p_organization_id: organizationId,
+      p_identifier: email
+    }).maybeSingle();
+  }
+
+  if (result.error && String(result.error.message || "").indexOf("get_login_profile_for_org") >= 0) {
     result = await supabaseClient.rpc("get_login_profile_v2", {
       p_identifier: email
     }).maybeSingle();

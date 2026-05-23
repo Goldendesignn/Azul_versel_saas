@@ -91,6 +91,43 @@ $$;
 
 grant execute on function public.get_login_profile_v2(text) to anon, authenticated;
 
+drop function if exists public.get_login_profile_for_org(uuid, text);
+
+create or replace function public.get_login_profile_for_org(
+  p_organization_id uuid,
+  p_identifier text
+)
+returns table (
+  organization_id uuid,
+  name text,
+  email text,
+  phone text,
+  role text,
+  status text
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    p.organization_id,
+    p.name,
+    p.email,
+    p.phone,
+    coalesce(nullif(p.role, ''), 'member') as role,
+    coalesce(nullif(p.status, ''), 'pending') as status
+  from public.profiles p
+  where p.organization_id = p_organization_id
+    and (
+      lower(p.email) = lower(trim(coalesce(p_identifier, '')))
+      or regexp_replace(coalesce(p.phone, ''), '[^0-9]', '', 'g') =
+         regexp_replace(coalesce(p_identifier, ''), '[^0-9]', '', 'g')
+    )
+  limit 1;
+$$;
+
+grant execute on function public.get_login_profile_for_org(uuid, text) to anon, authenticated;
+
 drop function if exists public.register_license_access(text, text, text, text, text);
 
 create or replace function public.register_license_access(
