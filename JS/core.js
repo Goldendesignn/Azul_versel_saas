@@ -13172,7 +13172,9 @@ async function renderSettingsUserCard() {
 
   var userName = localStorage.getItem("azul_user_name") || "";
   var userRole = localStorage.getItem("azul_user_role") || "owner";
+  var userStatus = "active";
   var orgName = localStorage.getItem("azul_organization_name") || "";
+  var organizationId = localStorage.getItem("azul_organization_id") || "";
   var licenseKey = localStorage.getItem("azul_license_key") || "";
   var plan = localStorage.getItem("azul_plan") || "starter";
   var email = "";
@@ -13189,6 +13191,22 @@ async function renderSettingsUserCard() {
       phone = meta.phone || meta.numero || "";
       userName = userName || meta.name || meta.nome || "";
       userRole = userRole || meta.role || "owner";
+
+      if (organizationId && email) {
+        var profileResult = await supabaseClient
+          .from("profiles")
+          .select("name, phone, role, status")
+          .eq("organization_id", organizationId)
+          .eq("email", email)
+          .maybeSingle();
+
+        if (!profileResult.error && profileResult.data) {
+          userName = profileResult.data.name || userName;
+          phone = profileResult.data.phone || phone;
+          userRole = profileResult.data.role || userRole;
+          userStatus = profileResult.data.status || userStatus;
+        }
+      }
     }
   } catch (e) {
     console.warn("Nao foi possivel carregar o utilizador:", e);
@@ -13200,7 +13218,8 @@ async function renderSettingsUserCard() {
   setSettingsUserText("settings-user-name", userName || "Utilizador");
   setSettingsUserText("settings-user-email", email || "-");
   setSettingsUserText("settings-user-phone", phone || "-");
-  setSettingsUserText("settings-user-role", userRole || "owner");
+  setSettingsUserText("settings-user-role", getTeamRoleLabel(userRole || "owner"));
+  setSettingsUserText("settings-user-status", getTeamStatusLabel(userStatus));
   setSettingsUserText("settings-user-org", orgName || "-");
   setSettingsUserText("settings-user-plan", plan || "-");
   setSettingsUserText("settings-user-license", licenseKey || "-");
@@ -13239,6 +13258,19 @@ function getTeamRoleLabel(role) {
   return map[role] || role;
 }
 
+function getTeamStatusLabel(status) {
+  status = String(status || "active").toLowerCase();
+
+  var map = {
+    active: "Activo",
+    inactive: "Inactivo",
+    suspended: "Suspenso",
+    blocked: "Bloqueado"
+  };
+
+  return map[status] || status;
+}
+
 function getTeamInitial(name, email) {
   return String(name || email || "U").trim().charAt(0).toUpperCase();
 }
@@ -13261,18 +13293,28 @@ async function touchCurrentTeamUser() {
 
     if (!email) return;
 
-    await supabaseClient
-      .from("profiles")
-      .update({
-        auth_user_id: user.id,
-        name: name || email,
-        phone: phone || "",
-        role: role || "member",
-        status: "active",
-        last_seen_at: new Date().toISOString()
-      })
-      .eq("organization_id", organizationId)
-      .eq("email", email);
+    var result = await supabaseClient.rpc("touch_team_user", {
+      p_organization_id: organizationId,
+      p_name: name || email,
+      p_phone: phone || "",
+      p_email: email,
+      p_role: role || "member"
+    });
+
+    if (result.error) {
+      await supabaseClient
+        .from("profiles")
+        .update({
+          auth_user_id: user.id,
+          name: name || email,
+          phone: phone || "",
+          role: role || "member",
+          status: "active",
+          last_seen_at: new Date().toISOString()
+        })
+        .eq("organization_id", organizationId)
+        .eq("email", email);
+    }
   } catch (e) {
     console.warn("Presenca da equipa nao actualizada:", e);
   }
@@ -13308,7 +13350,7 @@ async function renderSettingsTeamCard() {
       var phone = user.phone || "-";
       var role = getTeamRoleLabel(user.role);
       var status = String(user.status || "active").toLowerCase();
-      var statusText = status === "active" ? "Activo" : "Inactivo";
+      var statusText = getTeamStatusLabel(status);
       var initial = getTeamInitial(name, email);
 
       return `

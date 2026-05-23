@@ -353,6 +353,10 @@ if (profileResult.error) {
 }
 
 var profile = profileResult.data;
+if (profile) {
+  profile.role = "owner";
+  profile.status = "active";
+}
 
 var signInResult = await supabaseClient.auth.signInWithPassword({
   email: data.email,
