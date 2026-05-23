@@ -229,6 +229,11 @@ function saveSession(organization, profile, licenseKey) {
   localStorage.setItem("azul_plan", organization.plan || "starter");
 }
 
+function openCoreSession(organization, profile, licenseKey) {
+  saveSession(organization, profile, licenseKey);
+  window.location.replace("core.html");
+}
+
 async function restoreSessionFromAuth() {
   var userResult = await supabaseClient.auth.getUser();
 
@@ -255,8 +260,7 @@ async function restoreSessionFromAuth() {
 
   var organization = await checkOrganizationAccess(profile.organization_id);
 
-  saveSession(organization, profile, organization.license_key);
-  window.location.href = "core.html";
+  openCoreSession(organization, profile, organization.license_key);
   return true;
 }
 
@@ -306,8 +310,7 @@ async function loginAccount() {
 
     var organization = await checkOrganizationAccess(profile.organization_id);
 
-    saveSession(organization, profile, organization.license_key);
-    window.location.href = "core.html";
+    openCoreSession(organization, profile, organization.license_key);
 
   } catch (e) {
     showMessage(getLicenseErrorMessage(e));
@@ -398,26 +401,34 @@ if (signUpResult.error) {
   return;
 }
 
-var signInResult = await supabaseClient.auth.signInWithPassword({
-  email: data.email,
-  password: data.password
-});
+var hasSession = !!(signUpResult.data && signUpResult.data.session);
 
-if (signInResult.error) {
-  console.warn("Entrada automatica falhou:", signInResult.error);
+if (!hasSession) {
+  var signInResult = await supabaseClient.auth.signInWithPassword({
+    email: data.email,
+    password: data.password
+  });
 
-  showMessage("Conta criada e perfil guardado. Clique em Entrar e use o email e a palavra-passe. Detalhe: " + signInResult.error.message);
-  showLoginMode("login");
+  if (signInResult.error) {
+    var currentSession = await supabaseClient.auth.getSession();
 
-  var loginIdentifier = document.getElementById("login-identifier");
-  var loginPassword = document.getElementById("login-password");
+    if (!(currentSession.data && currentSession.data.session)) {
+      console.warn("Entrada automatica falhou:", signInResult.error);
 
-  if (loginIdentifier) loginIdentifier.value = data.email;
-  if (loginPassword) loginPassword.value = "";
+      showMessage("Conta criada, mas nao foi possivel abrir automaticamente. Entre com o email e a palavra-passe.", "success");
+      showLoginMode("login");
 
-  btn.disabled = false;
-  btn.textContent = "Ativar o meu ERP";
-  return;
+      var loginIdentifier = document.getElementById("login-identifier");
+      var loginPassword = document.getElementById("login-password");
+
+      if (loginIdentifier) loginIdentifier.value = data.email;
+      if (loginPassword) loginPassword.value = "";
+
+      btn.disabled = false;
+      btn.textContent = "Ativar o meu ERP";
+      return;
+    }
+  }
 }
 
     if (!isProfileActive(profile) && !isProfilePending(profile)) {
@@ -428,19 +439,7 @@ if (signInResult.error) {
       return;
     }
 
-    saveSession(organization, profile, organization.license_key);
-
-    document.body.innerHTML = `
-      <div style="font-family: Arial; text-align:center; padding:40px;">
-        <h1>${isProfilePending(profile) ? "Conta criada" : "Conta ativada"}</h1>
-        <p>${isProfilePending(profile) ? "A abrir a tela de autorizacao..." : "Bem-vindo ao Azul Gestao"}</p>
-        <p>A abrir o sistema...</p>
-      </div>
-    `;
-
-    setTimeout(function () {
-      window.location.href = "core.html";
-    }, 800);
+    openCoreSession(organization, profile, organization.license_key);
 
   } catch (e) {
     showMessage(getLicenseErrorMessage(e));
