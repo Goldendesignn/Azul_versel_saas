@@ -6903,6 +6903,7 @@ function getText(key) {
       tab_settings: 'Definições',
       tab_tresorerie: 'Tesouraria',
       tab_comptabilite: 'Contabilidade',
+      tab_corrections: 'Correcoes',
       tab_revendeurs: 'Revendedores',
       save_settings: 'Guardar configurações',
       reset_setup: 'Reiniciar configuração',
@@ -7044,6 +7045,7 @@ function getText(key) {
       tab_settings: 'Parametres',
       tab_tresorerie: 'Tresorerie',
       tab_comptabilite: 'Comptabilite',
+      tab_corrections: 'Corrections',
       tab_revendeurs: 'Revendeurs',
       save_settings: 'Enregistrer les parametres',
       reset_setup: 'Relancer la configuration',
@@ -7185,6 +7187,7 @@ function getText(key) {
       tab_settings: 'Settings',
       tab_tresorerie: 'Treasury',
       tab_comptabilite: 'Comptabilite',
+      tab_corrections: 'Corrections',
       tab_revendeurs: 'Resellers',
       save_settings: 'Save Settings',
       reset_setup: 'Restart setup',
@@ -7333,6 +7336,7 @@ function syncPageTitles() {
   setPageTitle('page-tresorerie', getText('treasury_title'));
   setPageTitle('page-forn', getText('suppliers_title'));
   setPageTitle('page-comptabilite', getText('tab_comptabilite'));
+  setPageTitle('page-corrections', getText('tab_corrections'));
 }
 //appl
 function applyLanguage() {
@@ -7341,7 +7345,7 @@ function applyLanguage() {
   try {
     document.documentElement.lang = lang;
     var tabs = document.querySelectorAll('.nav .tab');
-    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_forn','tab_tresorerie','tab_comptabilite','tab_revendeurs','tab_settings'];
+    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_settings'];
     tabs.forEach(function(tab, index) {
       if (keys[index]) tab.textContent = getText(keys[index]);
     });
