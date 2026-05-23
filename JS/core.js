@@ -7628,7 +7628,7 @@ function applyLanguage() {
 
     syncPageTitles();
 
-    var settingsCards = document.querySelectorAll('#page-settings .card-title');
+    var settingsCards = document.querySelectorAll('#page-settings .card:not(.user-settings-card):not(.team-settings-card) > .card-title');
     settingsCards.forEach(function(el, i) { if (ui.settingsCards[i]) el.textContent = ui.settingsCards[i]; });
     var themeLight = document.getElementById('cfg-theme-light');
     if (themeLight) themeLight.textContent = getText('light_theme');
