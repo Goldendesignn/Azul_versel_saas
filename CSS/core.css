@@ -6179,32 +6179,44 @@ body.approval-locked header {
   display: grid;
   place-items: center;
   padding: 22px;
-  background: rgba(10, 18, 35, .56);
-  backdrop-filter: blur(10px);
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--blue) 16%, transparent), transparent 36%),
+    #f6f8fc;
 }
 
 .approval-lock-card {
-  width: min(440px, 100%);
-  border: 1px solid rgba(255, 255, 255, .22);
+  width: min(398px, 100%);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--blue) 10%, var(--border));
   border-radius: 24px;
-  background: var(--surface);
+  background: #fff;
   color: var(--text);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
-  padding: 28px;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, .18);
   text-align: center;
 }
 
-.approval-lock-mark {
-  width: 52px;
-  height: 52px;
-  border-radius: 18px;
+.approval-lock-head {
+  min-height: 124px;
   display: grid;
   place-items: center;
-  margin: 0 auto 14px;
-  background: color-mix(in srgb, var(--blue) 14%, white);
-  color: var(--blue);
-  font-size: 26px;
+  background: linear-gradient(135deg, var(--blue), color-mix(in srgb, var(--blue) 76%, #38bdf8));
+}
+
+.approval-lock-mark {
+  width: 74px;
+  height: 74px;
+  border: 4px solid rgba(255, 255, 255, .94);
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 42px;
   font-weight: 900;
+  line-height: 1;
+}
+
+.approval-lock-body {
+  padding: 28px;
 }
 
 .approval-lock-eyebrow {
@@ -6218,7 +6230,7 @@ body.approval-locked header {
 
 .approval-lock-card h1 {
   margin: 0;
-  color: var(--text);
+  color: #20263a;
   font-family: inherit;
   font-size: 28px;
   line-height: 1.1;
@@ -6235,9 +6247,9 @@ body.approval-locked header {
   display: grid;
   gap: 3px;
   margin: 18px 0 0;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--blue) 12%, var(--border));
   border-radius: 16px;
-  background: var(--surface2);
+  background: color-mix(in srgb, var(--blue) 6%, #fff);
   padding: 14px;
 }
 
@@ -6252,14 +6264,16 @@ body.approval-locked header {
 }
 
 .approval-lock-card button {
-  width: 100%;
-  height: 46px;
+  min-width: 150px;
+  height: 40px;
   margin-top: 22px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 999px;
   background: var(--blue);
   color: var(--accent-text);
   font: inherit;
   font-weight: 900;
   cursor: pointer;
+  padding: 0 20px;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--blue) 25%, transparent);
 }

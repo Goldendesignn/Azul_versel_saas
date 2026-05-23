@@ -13652,20 +13652,24 @@ function showPendingApprovalScreen(profile) {
   screen.className = "approval-lock-screen";
   screen.innerHTML = `
     <div class="approval-lock-card" role="dialog" aria-modal="true" aria-labelledby="approval-lock-title">
-      <div class="approval-lock-mark">!</div>
-      <p class="approval-lock-eyebrow">Conta em analise</p>
-      <h1 id="approval-lock-title">Aguardando autorizacao</h1>
-      <p class="approval-lock-text">
-        A tua conta foi criada para <strong>${organizationName}</strong>, mas ainda precisa ser aprovada pelo proprietario da loja.
-      </p>
-      <div class="approval-lock-user">
-        <strong>${name}</strong>
-        <span>${email}</span>
+      <div class="approval-lock-head">
+        <div class="approval-lock-mark">!</div>
       </div>
-      <p class="approval-lock-hint">
-        Pede ao proprietario para abrir Definicoes > Equipe, aceitar a tua conexao e escolher o teu papel.
-      </p>
-      <button type="button" onclick="logoutPendingApproval()">Voltar ao login</button>
+      <div class="approval-lock-body">
+        <p class="approval-lock-eyebrow">Primeira utilizacao</p>
+        <h1 id="approval-lock-title">Sessao em validacao</h1>
+        <p class="approval-lock-text">
+          A tua conta esta pronta para <strong>${organizationName}</strong>, mas a entrada ainda precisa ser aprovada pelo proprietario.
+        </p>
+        <div class="approval-lock-user">
+          <strong>${name}</strong>
+          <span>${email}</span>
+        </div>
+        <p class="approval-lock-hint">
+          Pede ao proprietario para validar a tua sessao em Definicoes > Equipe. Assim que for aprovado, volta a entrar normalmente.
+        </p>
+        <button type="button" onclick="logoutPendingApproval()">Voltar ao login</button>
+      </div>
     </div>
   `;
 
