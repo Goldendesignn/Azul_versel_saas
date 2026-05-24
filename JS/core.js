@@ -7348,8 +7348,9 @@ function getText(key) {
       tab_transfert: 'Estoque',
       tab_clientes: 'Clientes',
       tab_depenses: 'Despesas',
+      tab_rh: 'Recursos Humanos',
       tab_forn: 'Fornecedores',
-      tab_settings: 'Definições',
+      tab_settings: 'Definicoes',
       tab_tresorerie: 'Tesouraria',
       tab_comptabilite: 'Contabilidade',
       tab_corrections: 'Correcoes',
@@ -7361,6 +7362,7 @@ function getText(key) {
       search_product: 'Pesquisar produto...',
       client_placeholder: 'Nome do cliente (deixa vazio = Anonimo)',
       treasury_title: 'Tesouraria',
+      rh_title: 'Recursos Humanos',
       resellers_title: 'Revendedores',
       clients_title: 'Ficha Clientes',
       expenses_title: 'Registar Despesa',
@@ -7490,6 +7492,7 @@ function getText(key) {
       tab_transfert: 'Stock',
       tab_clientes: 'Clients',
       tab_depenses: 'Depenses',
+      tab_rh: 'RH',
       tab_forn: 'Fournisseurs',
       tab_settings: 'Parametres',
       tab_tresorerie: 'Tresorerie',
@@ -7503,6 +7506,7 @@ function getText(key) {
       search_product: 'Rechercher un produit...',
       client_placeholder: 'Nom du client (laisser vide = Anonyme)',
       treasury_title: 'Tresorerie',
+      rh_title: 'RH',
       resellers_title: 'Revendeurs',
       clients_title: 'Fiche Client',
       expenses_title: 'Enregistrer Depense',
@@ -7632,6 +7636,7 @@ function getText(key) {
       tab_transfert: 'Stock',
       tab_clientes: 'Customers',
       tab_depenses: 'Expenses',
+      tab_rh: 'HR',
       tab_forn: 'Suppliers',
       tab_settings: 'Settings',
       tab_tresorerie: 'Treasury',
@@ -7645,6 +7650,7 @@ function getText(key) {
       search_product: 'Search product...',
       client_placeholder: 'Customer name (leave blank = Anonymous)',
       treasury_title: 'Treasury',
+      rh_title: 'HR',
       resellers_title: 'Resellers',
       clients_title: 'Customer File',
       expenses_title: 'Register Expense',
@@ -7782,6 +7788,7 @@ function syncPageTitles() {
   setPageTitle('page-clientes', getText('clients_title'));
   setPageTitle('page-depenses', getText('expenses_title'));
   setPageTitle('page-revendeurs', getText('resellers_title'));
+  setPageTitle('page-rh', getText('rh_title'));
   setPageTitle('page-tresorerie', getText('treasury_title'));
   setPageTitle('page-forn', getText('suppliers_title'));
   setPageTitle('page-comptabilite', getText('tab_comptabilite'));
@@ -7794,7 +7801,7 @@ function applyLanguage() {
   try {
     document.documentElement.lang = lang;
     var tabs = document.querySelectorAll('.nav .tab');
-    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_settings'];
+    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_rh','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_settings'];
     tabs.forEach(function(tab, index) {
       if (keys[index]) tab.textContent = getText(keys[index]);
     });
