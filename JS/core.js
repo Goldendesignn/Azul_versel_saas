@@ -1491,6 +1491,34 @@ function switchRevendeurTab(tab, btn) {
     loadRevHistory();
   }
 }
+
+function getStockMode() {
+  var mode = (config && config.stockMode) || (config && config.armazem ? "armazem" : "boutique");
+  return mode === "armazem" ? "armazem" : "boutique";
+}
+
+function isWarehouseStockMode() {
+  return getStockMode() === "armazem";
+}
+
+function getPurchaseStockUpdate(currentWarehouse, currentShop, quantity) {
+  currentWarehouse = Number(currentWarehouse) || 0;
+  currentShop = Number(currentShop) || 0;
+  quantity = Number(quantity) || 0;
+
+  if (isWarehouseStockMode()) {
+    return {
+      stock_warehouse: currentWarehouse + quantity,
+      stock_shop: currentShop
+    };
+  }
+
+  return {
+    stock_warehouse: currentWarehouse,
+    stock_shop: currentShop + quantity
+  };
+}
+
 async function upsertProductFromPurchase(item, supplier) {
   var organizationId = getAzulOrganizationId();
 
@@ -1537,6 +1565,8 @@ async function upsertProductFromPurchase(item, supplier) {
 
   if (existingProduct) {
     var currentWarehouse = Number(existingProduct.stock_warehouse) || 0;
+    var currentShop = Number(existingProduct.stock_shop) || 0;
+    var stockUpdate = getPurchaseStockUpdate(currentWarehouse, currentShop, quantity);
 
     var updateResult = await supabaseClient
       .from("products")
@@ -1549,7 +1579,8 @@ async function upsertProductFromPurchase(item, supplier) {
         variations: variations.length ? variations : existingProduct.variations || [],
         purchase_price: purchasePrice || Number(existingProduct.purchase_price) || 0,
         sale_price: salePrice || Number(existingProduct.sale_price) || 0,
-        stock_warehouse: currentWarehouse + quantity
+        stock_warehouse: stockUpdate.stock_warehouse,
+        stock_shop: stockUpdate.stock_shop
       })
       .eq("id", existingProduct.id)
       .select()
@@ -1575,8 +1606,8 @@ async function upsertProductFromPurchase(item, supplier) {
       variations: variations,
       purchase_price: purchasePrice,
       sale_price: salePrice,
-      stock_warehouse: quantity,
-      stock_shop: 0,
+      stock_warehouse: isWarehouseStockMode() ? quantity : 0,
+      stock_shop: isWarehouseStockMode() ? 0 : quantity,
       min_stock: 0
     })
     .select()
@@ -1867,7 +1898,10 @@ function goTo(page, btn) {
     if (page === 'tresorerie') loadTresorerie();
     if (page === 'comptabilite') loadComptabilite();
     if (page === 'corrections') loadCorrections();
-    if (page === 'transfert') loadProducts(true);
+    if (page === 'transfert') {
+      applyStockModeUi();
+      loadProducts(true);
+    }
     if (page === 'revendeurs') {
       renderRevProducts(products);
       renderRevCart();
@@ -7123,6 +7157,7 @@ function finishSetup() {
 }
 
 function setCfgStockMode(mode) {
+  mode = mode === 'armazem' ? 'armazem' : 'boutique';
   config.stockMode = mode;
   config.armazem   = mode === 'armazem';
   var toggle = document.getElementById('toggleArmazem');
@@ -7135,7 +7170,9 @@ function setCfgStockMode(mode) {
   // Sync radio
   var radios = document.querySelectorAll('input[name="cfgStockMode"]');
   radios.forEach(function(r) { r.checked = r.value === mode; });
+  saveConfig();
   applyConfig();
+  applyStockModeUi();
 }
 
 function applyReceiptFont() {
@@ -7628,7 +7665,15 @@ function saveAllSettings() {
 }
 
 function saveSettings() {
-  config.armazem = document.getElementById('toggleArmazem').checked;
+  var modeRadio = document.querySelector('input[name="cfgStockMode"]:checked');
+  if (modeRadio) {
+    config.stockMode = modeRadio.value === 'armazem' ? 'armazem' : 'boutique';
+    config.armazem = config.stockMode === 'armazem';
+  } else {
+    var toggle = document.getElementById('toggleArmazem');
+    config.armazem = !!(toggle && toggle.checked);
+    config.stockMode = config.armazem ? 'armazem' : 'boutique';
+  }
   saveConfig();
   applyConfig();
 }
@@ -7857,19 +7902,40 @@ function applyConfig() {
   var toggle = document.getElementById('toggleArmazem');
   if (toggle) toggle.checked = config.armazem;
 
-  // Afficher/cacher l'onglet Transferencia selon le mode de stock
-  // En mode boutique uniquement -> pas besoin de transferts
-  document.querySelectorAll('.tab').forEach(function(t) {
-    if (t.textContent.indexOf('Transferencia') >= 0) {
-      t.style.display = (config.armazem || config.stockMode === 'armazem') ? 'inline-block' : 'none';
-    }
-  });
+  applyStockModeUi();
+}
+
+function applyStockModeUi() {
+  var warehouseMode = isWarehouseStockMode();
+  var singleBtn = document.getElementById("modeSingle");
+  var tudoBtn = document.getElementById("modeTudo");
+  var stockBtn = document.getElementById("modestock");
+  var singlePanel = document.getElementById("transferSingle");
+  var tudoPanel = document.getElementById("transferTudo");
+  var stockPanel = document.getElementById("stock");
+
+  if (singleBtn) singleBtn.style.display = warehouseMode ? "" : "none";
+  if (tudoBtn) tudoBtn.style.display = warehouseMode ? "" : "none";
+
+  if (!warehouseMode) {
+    if (singlePanel) singlePanel.style.display = "none";
+    if (tudoPanel) tudoPanel.style.display = "none";
+    if (stockPanel) stockPanel.style.display = "block";
+    if (singleBtn) singleBtn.classList.remove("active");
+    if (tudoBtn) tudoBtn.classList.remove("active");
+    if (stockBtn) stockBtn.classList.add("active");
+  }
 }
 
 // ===== TRANSFERENCIA MODO TOGGLE =====
 function switchMode(mode, btn) {
-  document.querySelectorAll('.mode-btn').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
+  if (!isWarehouseStockMode() && mode !== 'stock') {
+    mode = 'stock';
+    btn = document.getElementById('modestock') || btn;
+  }
+
+  document.querySelectorAll('#page-transfert .mode-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn && btn.classList) btn.classList.add('active');
   document.getElementById('transferSingle').style.display = mode === 'single' ? 'block' : 'none';
   document.getElementById('transferTudo').style.display = mode === 'tudo' ? 'block' : 'none';
    document.getElementById('stock').style.display = mode === 'stock' ? 'block' : 'none';
@@ -7877,6 +7943,8 @@ function switchMode(mode, btn) {
   if (mode === 'stock') {
     loadProducts(true);
   }
+
+  applyStockModeUi();
 }
 
 var stockArmazem = [];
@@ -11259,6 +11327,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
     var existing = existingProducts[key];
 
     if (existing) {
+      var stockUpdate = getPurchaseStockUpdate(existing.stock_warehouse, existing.stock_shop, group.quantity);
       productIdByKey[key] = existing.id;
 
       updateProducts.push({
@@ -11273,8 +11342,8 @@ async function savePurchaseImportBatchToSupabase(rows) {
         variations: group.variations.length ? group.variations : existing.variations || [],
         purchase_price: group.purchasePrice || Number(existing.purchase_price) || 0,
         sale_price: group.salePrice || Number(existing.sale_price) || 0,
-        stock_warehouse: (Number(existing.stock_warehouse) || 0) + group.quantity,
-        stock_shop: Number(existing.stock_shop) || 0,
+        stock_warehouse: stockUpdate.stock_warehouse,
+        stock_shop: stockUpdate.stock_shop,
         min_stock: Number(existing.min_stock) || 0
       });
     } else {
@@ -11289,8 +11358,8 @@ async function savePurchaseImportBatchToSupabase(rows) {
         variations: group.variations || [],
         purchase_price: group.purchasePrice || 0,
         sale_price: group.salePrice || 0,
-        stock_warehouse: group.quantity,
-        stock_shop: 0,
+        stock_warehouse: isWarehouseStockMode() ? group.quantity : 0,
+        stock_shop: isWarehouseStockMode() ? 0 : group.quantity,
         min_stock: 0
       });
     }
@@ -13081,7 +13150,11 @@ async function cancelPurchaseWithCorrection(purchaseId, reason) {
   }
 
   for (var i = 0; i < items.length; i++) {
-    await updateProductStockDelta(items[i].product_id, "stock_warehouse", -(Number(items[i].quantity) || 0));
+    await updateProductStockDelta(
+      items[i].product_id,
+      isWarehouseStockMode() ? "stock_warehouse" : "stock_shop",
+      -(Number(items[i].quantity) || 0)
+    );
   }
 
   await reverseAccountingForSource("purchase", purchaseId, "purchase_correction", correction.id, correctionToday(), "Annulation achat " + (purchase.supplier || ""));
