@@ -56,19 +56,25 @@ Deno.serve(async (req) => {
     auth: { persistSession: false }
   });
 
-  const { data: notification, error: notificationError } = await supabase
-    .from("notifications")
-    .select("*")
-    .eq("id", notificationId)
-    .single();
+  let notification = body.record || null;
 
-  if (notificationError || !notification) {
-    return jsonResponse({ error: "NOTIFICATION_NOT_FOUND", detail: notificationError?.message || "" }, 404);
+  if (!notification || !notification.organization_id) {
+    const { data, error: notificationError } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("id", notificationId)
+      .single();
+
+    if (notificationError || !data) {
+      return jsonResponse({ error: "NOTIFICATION_NOT_FOUND", detail: notificationError?.message || "" }, 404);
+    }
+
+    notification = data;
   }
 
   const { data: subscriptions, error: subscriptionError } = await supabase
     .from("push_subscriptions")
-    .select("*")
+    .select("id,user_id,user_role,endpoint,p256dh,auth")
     .eq("organization_id", notification.organization_id)
     .eq("active", true);
 
@@ -78,15 +84,16 @@ Deno.serve(async (req) => {
 
   const targetRoles = Array.isArray(notification.target_roles) ? notification.target_roles : [];
   const actorUserId = notification.actor_user_id ? String(notification.actor_user_id) : "";
+  const notificationIdText = String(notification.id || notificationId);
   const payload = JSON.stringify({
     title: notification.title || "Azul Gestao",
     body: notification.message || "Nova notificacao",
     icon: "/Assets/icon-192.png",
     badge: "/Assets/icon-192.png",
-    tag: `azul-${notification.id}`,
+    tag: `azul-${notificationIdText}`,
     data: {
       url: "/core.html",
-      notificationId: notification.id,
+      notificationId: notificationIdText,
       sourceType: notification.source_type || ""
     }
   });
@@ -112,7 +119,11 @@ Deno.serve(async (req) => {
     };
 
     try {
-      await webpush.sendNotification(pushSubscription, payload);
+      await webpush.sendNotification(pushSubscription, payload, {
+        TTL: 300,
+        urgency: "high",
+        topic: `azul-${notificationIdText}`.slice(0, 32)
+      });
       sent += 1;
     } catch (error) {
       const pushError = error as { statusCode?: number; status?: number };

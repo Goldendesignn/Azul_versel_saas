@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v52";
+const AZUL_CACHE = "azul-pwa-v53";
 
 const AZUL_STATIC_ASSETS = [
   "/",
@@ -61,18 +61,19 @@ self.addEventListener("notificationclick", function(event) {
 
   var data = event.notification && event.notification.data ? event.notification.data : {};
   var targetUrl = data.url || "/core.html";
+  var targetHref = new URL(targetUrl, self.registration.scope).href;
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clientList) {
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
-        if (client.url && client.url.indexOf(targetUrl) >= 0 && "focus" in client) {
+        if (client.url && client.url.indexOf(targetHref) === 0 && "focus" in client) {
           return client.focus();
         }
       }
 
       if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
+        return self.clients.openWindow(targetHref);
       }
 
       return Promise.resolve();
@@ -107,7 +108,7 @@ self.addEventListener("push", function(event) {
       icon: payload.icon || "/Assets/icon-192.png",
       badge: payload.badge || "/Assets/icon-192.png",
       tag: payload.tag || "azul-push",
-      renotify: false,
+      renotify: true,
       data: payload.data || { url: "/core.html" }
     })
   );

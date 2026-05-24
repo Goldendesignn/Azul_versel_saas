@@ -337,10 +337,7 @@ async function registerAzulPushSubscription(showFeedback) {
     var subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-      });
+      subscription = await createAzulPushSubscription(registration, vapidPublicKey);
     }
 
     await saveAzulPushSubscription(subscription);
@@ -350,6 +347,29 @@ async function registerAzulPushSubscription(showFeedback) {
     console.warn("Subscricao push indisponivel:", e);
     if (showFeedback) toast("Erro ao registar Push. Verifique a chave VAPID.", "error");
     return null;
+  }
+}
+
+async function createAzulPushSubscription(registration, vapidPublicKey) {
+  try {
+    return await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+    });
+  } catch (e) {
+    var oldSubscription = await registration.pushManager.getSubscription();
+    if (oldSubscription) {
+      try {
+        await oldSubscription.unsubscribe();
+      } catch (ignored) {}
+
+      return await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      });
+    }
+
+    throw e;
   }
 }
 

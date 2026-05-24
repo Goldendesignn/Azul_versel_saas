@@ -32,12 +32,18 @@ supabase functions deploy send-push-notification --no-verify-jwt
 Dans Supabase SQL Editor, execute:
 
 ```sql
--- D'abord le fichier SQL/push_notifications.sql
-
-alter database postgres set app.edge_send_push_url = 'https://TON-PROJET.supabase.co/functions/v1/send-push-notification';
-alter database postgres set app.edge_function_secret = 'LE_MEME_SECRET_EDGE_FUNCTION_SECRET';
-select pg_reload_conf();
+-- Colle le fichier SQL/push_notifications.sql entier.
 ```
+
+Dans la derniere partie du fichier, remplace:
+
+```sql
+'EDGE_FUNCTION_SECRET'
+```
+
+par le meme secret que tu as mis dans Supabase Secrets.
+
+Tu n'as pas besoin de `alter database ...`, car Supabase bloque souvent cette permission.
 
 ## 5. Tester
 

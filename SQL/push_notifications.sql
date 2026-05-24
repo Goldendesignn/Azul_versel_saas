@@ -27,6 +27,9 @@ create unique index if not exists push_subscriptions_endpoint_key
 create index if not exists push_subscriptions_org_active_idx
   on public.push_subscriptions (organization_id, active);
 
+create index if not exists push_subscriptions_org_role_active_idx
+  on public.push_subscriptions (organization_id, user_role, active);
+
 alter table public.push_subscriptions enable row level security;
 
 drop policy if exists push_subscriptions_public_select on public.push_subscriptions;
@@ -52,15 +55,29 @@ to public
 using (true)
 with check (true);
 
+create table if not exists public.push_settings (
+  id boolean primary key default true check (id = true),
+  edge_url text not null,
+  edge_secret text not null,
+  updated_at timestamp with time zone not null default now()
+);
+
+alter table public.push_settings enable row level security;
+
 create or replace function public.trigger_send_push_notification()
 returns trigger
 language plpgsql
 security definer
 as $$
 declare
-  edge_url text := current_setting('app.edge_send_push_url', true);
-  edge_secret text := current_setting('app.edge_function_secret', true);
+  edge_url text;
+  edge_secret text;
 begin
+  select ps.edge_url, ps.edge_secret
+  into edge_url, edge_secret
+  from public.push_settings ps
+  where ps.id = true;
+
   if coalesce(edge_url, '') = '' then
     return new;
   end if;
@@ -71,8 +88,11 @@ begin
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || coalesce(edge_secret, '')
     ),
-    body := jsonb_build_object('notification_id', new.id),
-    timeout_milliseconds := 5000
+    body := jsonb_build_object(
+      'notification_id', new.id,
+      'record', to_jsonb(new)
+    ),
+    timeout_milliseconds := 2000
   );
 
   return new;
@@ -85,7 +105,15 @@ after insert on public.notifications
 for each row
 execute function public.trigger_send_push_notification();
 
--- Configure ces deux valeurs APRES le deploy de la Edge Function:
--- alter database postgres set app.edge_send_push_url = 'https://TON-PROJET.supabase.co/functions/v1/send-push-notification';
--- alter database postgres set app.edge_function_secret = 'TON_SECRET_LONG_ALEATOIRE';
--- select pg_reload_conf();
+-- Configure ces deux valeurs APRES le deploy de la Edge Function.
+-- Remplace EDGE_FUNCTION_SECRET par le meme secret defini dans Supabase Edge Function Secrets.
+insert into public.push_settings (id, edge_url, edge_secret)
+values (
+  true,
+  'https://gtgfdxdximyshlusgyit.supabase.co/functions/v1/send-push-notification',
+  'EDGE_FUNCTION_SECRET'
+)
+on conflict (id) do update set
+  edge_url = excluded.edge_url,
+  edge_secret = excluded.edge_secret,
+  updated_at = now();
