@@ -128,6 +128,7 @@ async function insertSingleWithAzulAudit(tableName, row) {
       source_table: tableName,
       source_id: result.data.id || null
     });
+    await notifyAzulTableInsert(tableName, result.data);
   }
 
   return result;
@@ -193,6 +194,329 @@ var AZUL_TABLE_ACTIONS = {
   hr_attendance: "hr:create",
   hr_payments: "hr:create"
 };
+
+var azulNotificationsCache = [];
+var azulNotificationsOpen = false;
+var azulNotificationsTimer = null;
+
+function canReceiveAzulNotifications() {
+  var role = getAzulCurrentRole();
+  return role === "owner" || role === "manager";
+}
+
+function getAzulNotificationTargetRoles(actorRole) {
+  actorRole = String(actorRole || "").toLowerCase();
+
+  if (actorRole === "owner") return [];
+  if (actorRole === "manager") return ["owner"];
+  return ["owner", "manager"];
+}
+
+function getAzulNotificationReadList(row) {
+  var readBy = row && row.read_by;
+  if (Array.isArray(readBy)) return readBy;
+
+  if (typeof readBy === "string") {
+    try {
+      var parsed = JSON.parse(readBy);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function isAzulNotificationRead(row, userId) {
+  if (!userId) return false;
+  return getAzulNotificationReadList(row).indexOf(userId) >= 0;
+}
+
+function formatAzulNotificationTime(value) {
+  if (!value) return "";
+
+  try {
+    return new Date(value).toLocaleString("pt-PT", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (e) {
+    return String(value);
+  }
+}
+
+function getAzulNotificationFromTable(tableName, row) {
+  row = row || {};
+  var actor = getAzulCurrentUserName();
+
+  if (tableName === "sales") {
+    return {
+      actionType: "sale:create",
+      title: actor + " registou uma venda",
+      message: "Total: " + fmt(Number(row.total) || 0),
+      sourceType: "sale"
+    };
+  }
+
+  if (tableName === "expenses") {
+    return {
+      actionType: "expense:create",
+      title: actor + " registou uma despesa",
+      message: (row.category || "Despesa") + " - " + fmt(Number(row.amount) || 0),
+      sourceType: "expense"
+    };
+  }
+
+  if (tableName === "client_payments") {
+    return {
+      actionType: "client_payment:create",
+      title: actor + " registou um pagamento de cliente",
+      message: (row.client_name || "Cliente") + " - " + fmt(Number(row.amount) || 0),
+      sourceType: "client_payment"
+    };
+  }
+
+  if (tableName === "supplier_payments") {
+    return {
+      actionType: "supplier_payment:create",
+      title: actor + " registou um pagamento a fornecedor",
+      message: (row.supplier || "Fornecedor") + " - " + fmt(Number(row.amount) || 0),
+      sourceType: "supplier_payment"
+    };
+  }
+
+  if (tableName === "treasury_entries") {
+    return {
+      actionType: "cash:create",
+      title: actor + " registou movimento de tesouraria",
+      message: (row.type || "Movimento") + " - " + fmt(Number(row.amount) || 0),
+      sourceType: "treasury"
+    };
+  }
+
+  if (tableName === "hr_payments") {
+    return {
+      actionType: "hr:create",
+      title: actor + " registou pagamento RH",
+      message: (row.employee_name || "Funcionario") + " - " + fmt(Number(row.amount) || 0),
+      sourceType: "hr_payment"
+    };
+  }
+
+  return null;
+}
+
+async function createAzulNotification(options) {
+  try {
+    options = options || {};
+    var organizationId = localStorage.getItem("azul_organization_id");
+    if (!organizationId || !options.title) return;
+
+    var audit = await getAzulAuditFields();
+    var actorRole = getAzulCurrentRole();
+    var targetRoles = options.targetRoles || getAzulNotificationTargetRoles(actorRole);
+    if (!targetRoles.length) return;
+
+    var result = await supabaseClient.from("notifications").insert({
+      organization_id: organizationId,
+      actor_user_id: audit.created_by || null,
+      actor_name: audit.user_name || getAzulCurrentUserName(),
+      actor_role: actorRole,
+      action_type: options.actionType || "action",
+      title: options.title,
+      message: options.message || "",
+      source_type: options.sourceType || "",
+      source_id: options.sourceId || null,
+      target_roles: targetRoles,
+      details: options.details || {}
+    });
+
+    if (result.error) throw result.error;
+    loadAzulNotifications(true);
+  } catch (e) {
+    console.warn("Notification nao registada:", e);
+  }
+}
+
+async function notifyAzulTableInsert(tableName, row) {
+  var notification = getAzulNotificationFromTable(tableName, row);
+  if (!notification) return;
+
+  notification.sourceId = row && row.id ? row.id : null;
+  notification.details = {
+    source_table: tableName
+  };
+
+  await createAzulNotification(notification);
+}
+
+async function getAzulCurrentUserId() {
+  try {
+    var audit = await getAzulAuditFields();
+    if (audit && audit.created_by) return audit.created_by;
+  } catch (e) {}
+
+  return "";
+}
+
+function setAzulNotificationBadge(count) {
+  var badge = document.getElementById("notificationBadge");
+  var subtitle = document.getElementById("notificationSubtitle");
+
+  if (badge) {
+    badge.textContent = count > 99 ? "99+" : String(count || 0);
+    badge.style.display = count > 0 ? "grid" : "none";
+  }
+
+  if (subtitle) {
+    subtitle.textContent = count > 0
+      ? count + " nova(s) notificacao(oes)"
+      : "Sem novas notificacoes";
+  }
+}
+
+async function renderAzulNotifications() {
+  var list = document.getElementById("notificationList");
+  if (!list) return;
+
+  var userId = await getAzulCurrentUserId();
+  var currentRows = azulNotificationsCache || [];
+  var unread = currentRows.filter(function(row) {
+    return !isAzulNotificationRead(row, userId);
+  }).length;
+
+  setAzulNotificationBadge(unread);
+
+  if (!currentRows.length) {
+    list.innerHTML = '<div class="notification-empty">Nenhuma notificacao.</div>';
+    return;
+  }
+
+  list.innerHTML = currentRows.map(function(row) {
+    var read = isAzulNotificationRead(row, userId);
+
+    return '<div class="notification-item ' + (read ? 'read' : 'unread') + '">' +
+      '<div class="notification-dot"></div>' +
+      '<div class="notification-content">' +
+        '<div class="notification-title">' + escapeDepenseHtml(row.title || "Notificacao") + '</div>' +
+        '<div class="notification-message">' + escapeDepenseHtml(row.message || "") + '</div>' +
+        '<div class="notification-time">' + escapeDepenseHtml(formatAzulNotificationTime(row.created_at)) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+async function loadAzulNotifications(silent) {
+  var wrap = document.getElementById("notificationWrap");
+  if (!wrap) return;
+
+  if (!canReceiveAzulNotifications()) {
+    wrap.style.display = "none";
+    return;
+  }
+
+  wrap.style.display = "block";
+
+  try {
+    var organizationId = localStorage.getItem("azul_organization_id");
+    if (!organizationId) return;
+
+    var role = getAzulCurrentRole();
+    var userId = await getAzulCurrentUserId();
+
+    var result = await supabaseClient
+      .from("notifications")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (result.error) throw result.error;
+
+    azulNotificationsCache = (result.data || []).filter(function(row) {
+      var targets = Array.isArray(row.target_roles) ? row.target_roles : [];
+      var actorId = row.actor_user_id ? String(row.actor_user_id) : "";
+      return targets.indexOf(role) >= 0 && (!userId || actorId !== userId);
+    });
+
+    await renderAzulNotifications();
+  } catch (e) {
+    if (!silent) console.warn("Notificacoes indisponiveis:", e);
+    if (wrap) wrap.style.display = "none";
+  }
+}
+
+function toggleAzulNotifications() {
+  var panel = document.getElementById("notificationPanel");
+  if (!panel) return;
+
+  azulNotificationsOpen = !panel.classList.contains("open");
+  panel.classList.toggle("open", azulNotificationsOpen);
+
+  if (azulNotificationsOpen) {
+    loadAzulNotifications(true);
+  }
+}
+
+async function markAllAzulNotificationsRead() {
+  try {
+    var userId = await getAzulCurrentUserId();
+    if (!userId) return;
+
+    var unreadRows = (azulNotificationsCache || []).filter(function(row) {
+      return !isAzulNotificationRead(row, userId);
+    });
+
+    for (var i = 0; i < unreadRows.length; i++) {
+      var row = unreadRows[i];
+      var readBy = getAzulNotificationReadList(row);
+      if (readBy.indexOf(userId) < 0) readBy.push(userId);
+
+      var result = await supabaseClient
+        .from("notifications")
+        .update({ read_by: readBy })
+        .eq("id", row.id);
+
+      if (result.error) throw result.error;
+      row.read_by = readBy;
+    }
+
+    await renderAzulNotifications();
+  } catch (e) {
+    toast("Erro notificacoes: " + (e.message || e), "error");
+  }
+}
+
+function startAzulNotifications() {
+  if (!canReceiveAzulNotifications()) {
+    var wrap = document.getElementById("notificationWrap");
+    if (wrap) wrap.style.display = "none";
+    return;
+  }
+
+  loadAzulNotifications(true);
+
+  if (azulNotificationsTimer) clearInterval(azulNotificationsTimer);
+  azulNotificationsTimer = setInterval(function() {
+    loadAzulNotifications(true);
+  }, 45000);
+}
+
+document.addEventListener("click", function(event) {
+  var panel = document.getElementById("notificationPanel");
+  var wrap = document.getElementById("notificationWrap");
+  if (!panel || !wrap || !panel.classList.contains("open")) return;
+  if (wrap.contains(event.target)) return;
+
+  panel.classList.remove("open");
+  azulNotificationsOpen = false;
+});
+
+window.toggleAzulNotifications = toggleAzulNotifications;
+window.markAllAzulNotificationsRead = markAllAzulNotificationsRead;
 
 async function logAzulAction(action, moduleName, status, details) {
   try {
@@ -1716,6 +2040,19 @@ async function savePurchaseToSupabase(data) {
     purchaseLinesAccounting
   );
 
+  await createAzulNotification({
+    actionType: "purchase:create",
+    title: getAzulCurrentUserName() + " registou uma compra",
+    message: supplier + " - " + fmt(total),
+    sourceType: "purchase",
+    sourceId: purchase.id,
+    details: {
+      supplier: supplier,
+      total: total,
+      remaining_amount: remainingAmount
+    }
+  });
+
   return purchase;
 }
 
@@ -1801,6 +2138,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   await renderSettingsUserCard();
   renderSettingsTeamCard();
   applyAzulRolePermissions();
+  startAzulNotifications();
   initPaymentLines();
   initAchatLines();
   cleanupLegacyCartFooter();
@@ -6972,6 +7310,16 @@ async function saveTransfer() {
 
   try {
     await transferProductToShop(data.prod, data.qty);
+    await createAzulNotification({
+      actionType: "stock:transfer",
+      title: getAzulCurrentUserName() + " transferiu stock",
+      message: data.prod + " - " + data.qty + " unidade(s)",
+      sourceType: "stock_transfer",
+      details: {
+        product: data.prod,
+        quantity: data.qty
+      }
+    });
 
     toast("Transferencia registada!", "success");
 
@@ -7997,6 +8345,16 @@ async function transferirTudoBoutique() {
 
   try {
     var count = await transferAllProductsToShop();
+    await createAzulNotification({
+      actionType: "stock:transfer",
+      title: getAzulCurrentUserName() + " transferiu todo o stock",
+      message: count + " produto(s) enviados para a Boutique",
+      sourceType: "stock_transfer",
+      details: {
+        count: count,
+        type: "all_to_shop"
+      }
+    });
 
     stockArmazem = [];
     document.getElementById("tudo-preview").innerHTML =
@@ -12719,6 +13077,18 @@ async function insertCorrectionLog(sourceType, sourceId, correctionType, correct
       }]);
 
     if (result.error) throw result.error;
+    await createAzulNotification({
+      actionType: "correction:create",
+      title: getAzulCurrentUserName() + " registou uma correcao",
+      message: correctionSourceLabel(sourceType) + " - " + (reason || "Annulacao"),
+      sourceType: sourceType,
+      sourceId: sourceId,
+      details: {
+        correction_type: correctionType,
+        correction_id: correctionId || null,
+        reason: reason || ""
+      }
+    });
   } catch (e) {
     console.warn("Correction log non enregistre:", e);
   }

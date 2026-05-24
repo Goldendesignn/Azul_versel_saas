@@ -27,7 +27,27 @@
     </button>
   
     <div class="logo">Azul</div>
-    <div class="date-txt" id="dateTxt"></div>
+    <div class="header-actions">
+      <div class="notification-wrap" id="notificationWrap">
+        <button class="notification-btn" type="button" onclick="toggleAzulNotifications()" aria-label="Notificacoes">
+          <span class="notification-symbol">!</span>
+          <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
+        </button>
+        <div class="notification-panel" id="notificationPanel">
+          <div class="notification-panel-head">
+            <div>
+              <strong>Notificacoes</strong>
+              <span id="notificationSubtitle">Sem novas notificacoes</span>
+            </div>
+            <button type="button" onclick="markAllAzulNotificationsRead()">Marcar lidas</button>
+          </div>
+          <div class="notification-list" id="notificationList">
+            <div class="notification-empty">A carregar...</div>
+          </div>
+        </div>
+      </div>
+      <div class="date-txt" id="dateTxt"></div>
+    </div>
   </div>
 
   <div class="mobile-nav-backdrop" id="mobileNavBackdrop" onclick="closeMobileMenu()"></div>
