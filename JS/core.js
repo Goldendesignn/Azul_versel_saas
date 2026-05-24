@@ -207,7 +207,28 @@ function canReceiveAzulNotifications() {
 }
 
 function supportsAzulPwaNotifications() {
-  return "Notification" in window && "serviceWorker" in navigator;
+  return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+}
+
+function getAzulVapidPublicKey() {
+  return String(window.AZUL_VAPID_PUBLIC_KEY || localStorage.getItem("azul_vapid_public_key") || "").trim();
+}
+
+function hasAzulVapidPublicKey() {
+  return getAzulVapidPublicKey().length > 20;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  var padding = "=".repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+
+  for (var i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+
+  return outputArray;
 }
 
 function getAzulPwaNotificationStorageKey(userId) {
@@ -249,9 +270,14 @@ function syncAzulPwaNotificationButton() {
   }
 
   if (Notification.permission === "granted") {
-    btn.textContent = "PWA ativo";
-    btn.classList.add("active");
-    btn.disabled = true;
+    if (hasAzulVapidPublicKey()) {
+      btn.textContent = "Push ativo";
+      btn.classList.add("active");
+      btn.disabled = true;
+    } else {
+      btn.textContent = "Configurar Push";
+      btn.disabled = false;
+    }
     return;
   }
 
@@ -279,11 +305,12 @@ async function requestAzulPwaNotificationPermission() {
 
     if (permission === "granted") {
       azulPwaNotificationsReady = true;
+      await registerAzulPushSubscription(true);
       toast("Notificacoes PWA ativadas.", "success");
       await showAzulPwaNotification({
         id: "azul-test-" + Date.now(),
         title: "Notificacoes ativadas",
-        message: "Vais receber alertas quando houver novas acoes importantes.",
+        message: "Vais receber alertas mesmo com a app fechada quando o Web Push estiver configurado.",
         source_type: "settings"
       }, true);
     } else if (permission === "denied") {
@@ -292,6 +319,72 @@ async function requestAzulPwaNotificationPermission() {
   } catch (e) {
     toast("Erro ao ativar notificacoes PWA.", "error");
   }
+}
+
+async function registerAzulPushSubscription(showFeedback) {
+  if (!supportsAzulPwaNotifications()) return null;
+  if (Notification.permission !== "granted") return null;
+
+  var vapidPublicKey = getAzulVapidPublicKey();
+  if (!vapidPublicKey) {
+    if (showFeedback) toast("Falta configurar a chave publica VAPID em JS/push-config.js.", "error");
+    syncAzulPwaNotificationButton();
+    return null;
+  }
+
+  try {
+    var registration = await navigator.serviceWorker.ready;
+    var subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      });
+    }
+
+    await saveAzulPushSubscription(subscription);
+    syncAzulPwaNotificationButton();
+    return subscription;
+  } catch (e) {
+    console.warn("Subscricao push indisponivel:", e);
+    if (showFeedback) toast("Erro ao registar Push. Verifique a chave VAPID.", "error");
+    return null;
+  }
+}
+
+async function saveAzulPushSubscription(subscription) {
+  if (!subscription || !supabaseClient) return;
+
+  var organizationId = localStorage.getItem("azul_organization_id");
+  if (!organizationId) return;
+
+  var json = subscription.toJSON ? subscription.toJSON() : {};
+  var keys = json.keys || {};
+  var userResult = await supabaseClient.auth.getUser();
+  var user = userResult && userResult.data ? userResult.data.user : null;
+  var meta = user && user.user_metadata ? user.user_metadata : {};
+
+  var row = {
+    organization_id: organizationId,
+    user_id: user && user.id ? user.id : null,
+    user_name: localStorage.getItem("azul_user_name") || meta.name || meta.nome || "Utilizador",
+    user_email: user && user.email ? user.email : "",
+    user_role: getAzulCurrentRole(),
+    device_id: localStorage.getItem("azul_device_id") || "",
+    endpoint: subscription.endpoint,
+    p256dh: keys.p256dh || "",
+    auth: keys.auth || "",
+    browser_name: typeof getCurrentDeviceNameForSettings === "function" ? getCurrentDeviceNameForSettings() : navigator.userAgent,
+    active: true,
+    last_seen_at: new Date().toISOString()
+  };
+
+  var result = await supabaseClient
+    .from("push_subscriptions")
+    .upsert(row, { onConflict: "endpoint" });
+
+  if (result.error) throw result.error;
 }
 
 async function showAzulPwaNotification(row, force) {
@@ -752,6 +845,7 @@ function startAzulNotifications() {
   }
 
   azulPwaNotificationsReady = supportsAzulPwaNotifications() && Notification.permission === "granted";
+  if (azulPwaNotificationsReady) registerAzulPushSubscription(false);
   loadAzulNotifications(true);
   startAzulNotificationsRealtime();
 

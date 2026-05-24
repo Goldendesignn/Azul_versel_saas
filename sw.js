@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v51";
+const AZUL_CACHE = "azul-pwa-v52";
 
 const AZUL_STATIC_ASSETS = [
   "/",
@@ -11,6 +11,7 @@ const AZUL_STATIC_ASSETS = [
   "/CSS/admin.css",
   "/JS/pwa.js",
   "/JS/supabase.js",
+  "/JS/push-config.js",
   "/JS/login.js",
   "/JS/core.js",
   "/JS/admin.js",
@@ -75,6 +76,39 @@ self.addEventListener("notificationclick", function(event) {
       }
 
       return Promise.resolve();
+    })
+  );
+});
+
+self.addEventListener("push", function(event) {
+  var payload = {
+    title: "Azul Gestao",
+    body: "Nova notificacao",
+    icon: "/Assets/icon-192.png",
+    badge: "/Assets/icon-192.png",
+    data: {
+      url: "/core.html"
+    }
+  };
+
+  if (event.data) {
+    try {
+      var incoming = event.data.json();
+      payload = Object.assign(payload, incoming || {});
+      payload.data = Object.assign({ url: "/core.html" }, incoming && incoming.data ? incoming.data : {});
+    } catch (e) {
+      payload.body = event.data.text() || payload.body;
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "Azul Gestao", {
+      body: payload.body || "Nova notificacao",
+      icon: payload.icon || "/Assets/icon-192.png",
+      badge: payload.badge || "/Assets/icon-192.png",
+      tag: payload.tag || "azul-push",
+      renotify: false,
+      data: payload.data || { url: "/core.html" }
     })
   );
 });
