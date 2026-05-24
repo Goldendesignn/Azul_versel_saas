@@ -199,6 +199,7 @@ var azulNotificationsCache = [];
 var azulNotificationsOpen = false;
 var azulNotificationsTimer = null;
 var azulPwaNotificationsReady = false;
+var azulNotificationsRealtimeChannel = null;
 
 function canReceiveAzulNotifications() {
   var role = getAzulCurrentRole();
@@ -346,6 +347,78 @@ async function showNewAzulPwaNotifications(rows, userId) {
   saveAzulPwaSeenNotificationIds(userId, rows);
 }
 
+async function handleAzulRealtimeNotification(payload) {
+  try {
+    if (!payload || !canReceiveAzulNotifications()) return;
+
+    var row = payload.new || null;
+    if (!row) return;
+
+    var role = getAzulCurrentRole();
+    var userId = await getAzulCurrentUserId();
+
+    if (!isAzulNotificationVisibleForCurrentUser(row, role, userId)) return;
+
+    upsertAzulNotificationCache(row);
+    await renderAzulNotifications();
+
+    if (payload.eventType === "INSERT") {
+      await showAzulPwaNotification(row, false);
+      saveAzulPwaSeenNotificationIds(userId, azulNotificationsCache);
+    }
+  } catch (e) {
+    console.warn("Realtime notificacoes indisponivel:", e);
+  }
+}
+
+function stopAzulNotificationsRealtime() {
+  try {
+    if (azulNotificationsRealtimeChannel && supabaseClient && supabaseClient.removeChannel) {
+      supabaseClient.removeChannel(azulNotificationsRealtimeChannel);
+    }
+  } catch (e) {}
+
+  azulNotificationsRealtimeChannel = null;
+}
+
+function startAzulNotificationsRealtime() {
+  if (!canReceiveAzulNotifications()) return false;
+  if (!supabaseClient || !supabaseClient.channel) return false;
+
+  var organizationId = localStorage.getItem("azul_organization_id");
+  if (!organizationId) return false;
+
+  stopAzulNotificationsRealtime();
+
+  try {
+    azulNotificationsRealtimeChannel = supabaseClient
+      .channel("azul-notifications-" + organizationId)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: "organization_id=eq." + organizationId
+      }, handleAzulRealtimeNotification)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "notifications",
+        filter: "organization_id=eq." + organizationId
+      }, handleAzulRealtimeNotification)
+      .subscribe(function(status) {
+        if (status === "SUBSCRIBED") {
+          loadAzulNotifications(true);
+        }
+      });
+
+    return true;
+  } catch (e) {
+    console.warn("Realtime notificacoes nao iniciado:", e);
+    stopAzulNotificationsRealtime();
+    return false;
+  }
+}
+
 function getAzulNotificationTargetRoles(actorRole) {
   actorRole = String(actorRole || "").toLowerCase();
 
@@ -373,6 +446,44 @@ function getAzulNotificationReadList(row) {
 function isAzulNotificationRead(row, userId) {
   if (!userId) return false;
   return getAzulNotificationReadList(row).indexOf(userId) >= 0;
+}
+
+function isAzulNotificationVisibleForCurrentUser(row, role, userId) {
+  if (!row) return false;
+
+  var organizationId = localStorage.getItem("azul_organization_id") || "";
+  if (organizationId && row.organization_id && String(row.organization_id) !== String(organizationId)) {
+    return false;
+  }
+
+  var targets = Array.isArray(row.target_roles) ? row.target_roles : [];
+  var actorId = row.actor_user_id ? String(row.actor_user_id) : "";
+
+  return targets.indexOf(role) >= 0 && (!userId || actorId !== String(userId));
+}
+
+function sortAzulNotificationsCache() {
+  azulNotificationsCache.sort(function(a, b) {
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
+}
+
+function upsertAzulNotificationCache(row) {
+  if (!row || !row.id) return;
+
+  var found = false;
+  azulNotificationsCache = (azulNotificationsCache || []).map(function(item) {
+    if (String(item.id) === String(row.id)) {
+      found = true;
+      return row;
+    }
+    return item;
+  });
+
+  if (!found) azulNotificationsCache.unshift(row);
+
+  sortAzulNotificationsCache();
+  azulNotificationsCache = azulNotificationsCache.slice(0, 50);
 }
 
 function formatAzulNotificationTime(value) {
@@ -579,9 +690,7 @@ async function loadAzulNotifications(silent) {
     if (result.error) throw result.error;
 
     azulNotificationsCache = (result.data || []).filter(function(row) {
-      var targets = Array.isArray(row.target_roles) ? row.target_roles : [];
-      var actorId = row.actor_user_id ? String(row.actor_user_id) : "";
-      return targets.indexOf(role) >= 0 && (!userId || actorId !== userId);
+      return isAzulNotificationVisibleForCurrentUser(row, role, userId);
     });
 
     await renderAzulNotifications();
@@ -644,11 +753,12 @@ function startAzulNotifications() {
 
   azulPwaNotificationsReady = supportsAzulPwaNotifications() && Notification.permission === "granted";
   loadAzulNotifications(true);
+  startAzulNotificationsRealtime();
 
   if (azulNotificationsTimer) clearInterval(azulNotificationsTimer);
   azulNotificationsTimer = setInterval(function() {
     loadAzulNotifications(true);
-  }, 45000);
+  }, 120000);
 }
 
 document.addEventListener("click", function(event) {
