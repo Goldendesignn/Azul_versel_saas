@@ -39,7 +39,10 @@
               <strong>Notificacoes</strong>
               <span id="notificationSubtitle">Sem novas notificacoes</span>
             </div>
-            <button type="button" onclick="markAllAzulNotificationsRead()">Marcar lidas</button>
+            <div class="notification-actions">
+              <button type="button" id="pwaNotificationBtn" onclick="requestAzulPwaNotificationPermission()">Ativar PWA</button>
+              <button type="button" onclick="markAllAzulNotificationsRead()">Marcar lidas</button>
+            </div>
           </div>
           <div class="notification-list" id="notificationList">
             <div class="notification-empty">A carregar...</div>

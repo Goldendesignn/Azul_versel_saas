@@ -198,10 +198,152 @@ var AZUL_TABLE_ACTIONS = {
 var azulNotificationsCache = [];
 var azulNotificationsOpen = false;
 var azulNotificationsTimer = null;
+var azulPwaNotificationsReady = false;
 
 function canReceiveAzulNotifications() {
   var role = getAzulCurrentRole();
   return role === "owner" || role === "manager";
+}
+
+function supportsAzulPwaNotifications() {
+  return "Notification" in window && "serviceWorker" in navigator;
+}
+
+function getAzulPwaNotificationStorageKey(userId) {
+  var organizationId = localStorage.getItem("azul_organization_id") || "global";
+  return "azul_pwa_seen_notifications_" + organizationId + "_" + (userId || "user");
+}
+
+function readAzulPwaSeenNotificationIds(userId) {
+  try {
+    var raw = localStorage.getItem(getAzulPwaNotificationStorageKey(userId));
+    var parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveAzulPwaSeenNotificationIds(userId, rows) {
+  try {
+    var ids = (rows || [])
+      .map(function(row) { return row && row.id ? String(row.id) : ""; })
+      .filter(Boolean)
+      .slice(0, 80);
+
+    localStorage.setItem(getAzulPwaNotificationStorageKey(userId), JSON.stringify(ids));
+  } catch (e) {}
+}
+
+function syncAzulPwaNotificationButton() {
+  var btn = document.getElementById("pwaNotificationBtn");
+  if (!btn) return;
+
+  btn.classList.remove("active", "blocked");
+
+  if (!supportsAzulPwaNotifications()) {
+    btn.textContent = "Indisponivel";
+    btn.disabled = true;
+    return;
+  }
+
+  if (Notification.permission === "granted") {
+    btn.textContent = "PWA ativo";
+    btn.classList.add("active");
+    btn.disabled = true;
+    return;
+  }
+
+  if (Notification.permission === "denied") {
+    btn.textContent = "Bloqueado";
+    btn.classList.add("blocked");
+    btn.disabled = true;
+    return;
+  }
+
+  btn.textContent = "Ativar PWA";
+  btn.disabled = false;
+}
+
+async function requestAzulPwaNotificationPermission() {
+  if (!supportsAzulPwaNotifications()) {
+    toast("Este navegador nao suporta notificacoes PWA.", "error");
+    syncAzulPwaNotificationButton();
+    return;
+  }
+
+  try {
+    var permission = await Notification.requestPermission();
+    syncAzulPwaNotificationButton();
+
+    if (permission === "granted") {
+      azulPwaNotificationsReady = true;
+      toast("Notificacoes PWA ativadas.", "success");
+      await showAzulPwaNotification({
+        id: "azul-test-" + Date.now(),
+        title: "Notificacoes ativadas",
+        message: "Vais receber alertas quando houver novas acoes importantes.",
+        source_type: "settings"
+      }, true);
+    } else if (permission === "denied") {
+      toast("Permissao bloqueada no navegador. Ative nas definicoes do site.", "error");
+    }
+  } catch (e) {
+    toast("Erro ao ativar notificacoes PWA.", "error");
+  }
+}
+
+async function showAzulPwaNotification(row, force) {
+  if (!supportsAzulPwaNotifications()) return;
+  if (Notification.permission !== "granted") return;
+  if (!force && azulNotificationsOpen) return;
+
+  try {
+    var registration = await navigator.serviceWorker.ready;
+    if (!registration || !registration.showNotification) return;
+
+    var title = row && row.title ? String(row.title) : "Azul Gestao";
+    var message = row && row.message ? String(row.message) : "Nova notificacao";
+
+    await registration.showNotification(title, {
+      body: message,
+      icon: "/Assets/icon-192.png",
+      badge: "/Assets/icon-192.png",
+      tag: row && row.id ? "azul-" + row.id : "azul-notification",
+      renotify: false,
+      data: {
+        url: "/core.html",
+        notificationId: row && row.id ? row.id : "",
+        sourceType: row && row.source_type ? row.source_type : ""
+      }
+    });
+  } catch (e) {
+    console.warn("Notificacao PWA indisponivel:", e);
+  }
+}
+
+async function showNewAzulPwaNotifications(rows, userId) {
+  if (!supportsAzulPwaNotifications() || Notification.permission !== "granted") return;
+
+  var seenIds = readAzulPwaSeenNotificationIds(userId);
+  if (seenIds === null) {
+    saveAzulPwaSeenNotificationIds(userId, rows);
+    return;
+  }
+
+  var seenMap = {};
+  seenIds.forEach(function(id) { seenMap[id] = true; });
+
+  var unreadNewRows = (rows || []).filter(function(row) {
+    if (!row || !row.id || seenMap[String(row.id)]) return false;
+    return !isAzulNotificationRead(row, userId);
+  });
+
+  unreadNewRows.reverse().slice(0, 3).forEach(function(row) {
+    showAzulPwaNotification(row, false);
+  });
+
+  saveAzulPwaSeenNotificationIds(userId, rows);
 }
 
 function getAzulNotificationTargetRoles(actorRole) {
@@ -443,6 +585,7 @@ async function loadAzulNotifications(silent) {
     });
 
     await renderAzulNotifications();
+    await showNewAzulPwaNotifications(azulNotificationsCache, userId);
   } catch (e) {
     if (!silent) console.warn("Notificacoes indisponiveis:", e);
     if (wrap) wrap.style.display = "none";
@@ -491,12 +634,15 @@ async function markAllAzulNotificationsRead() {
 }
 
 function startAzulNotifications() {
+  syncAzulPwaNotificationButton();
+
   if (!canReceiveAzulNotifications()) {
     var wrap = document.getElementById("notificationWrap");
     if (wrap) wrap.style.display = "none";
     return;
   }
 
+  azulPwaNotificationsReady = supportsAzulPwaNotifications() && Notification.permission === "granted";
   loadAzulNotifications(true);
 
   if (azulNotificationsTimer) clearInterval(azulNotificationsTimer);
@@ -517,6 +663,7 @@ document.addEventListener("click", function(event) {
 
 window.toggleAzulNotifications = toggleAzulNotifications;
 window.markAllAzulNotificationsRead = markAllAzulNotificationsRead;
+window.requestAzulPwaNotificationPermission = requestAzulPwaNotificationPermission;
 
 async function logAzulAction(action, moduleName, status, details) {
   try {
