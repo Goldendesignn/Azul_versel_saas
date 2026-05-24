@@ -2369,14 +2369,8 @@ function setQuickTreasuryText(id, value) {
   if (el) el.textContent = fmt(value || 0);
 }
 
-function getDashboardLang() {
-  return ((config && config.language) || 'pt');
-}
-
 function getMainDashboardText(key) {
-  var lang = getDashboardLang();
   var dict = {
-    pt: {
       period: 'Periodo', from: 'De', to: 'Ate', product: 'Produto', supplier: 'Fornecedor',
       today: 'Hoje', week: 'Esta semana', month: 'Este mes', custom: 'Personalizado',
       all: 'Todos', apply: 'Aplicar', print: 'Imprimir', refresh: 'Atualizar', seeAll: 'Ver tudo',
@@ -2440,139 +2434,8 @@ function getMainDashboardText(key) {
       topProducts: 'Top Produtos', paymentMethods: 'Meios de Pagamento',
       lowStockAlerts: 'Alertas de Stock Baixo', latestExpenses: 'Ultimas Despesas',
       noData: 'Sem dados', noExpenses: 'Sem despesas', unit: 'un'
-    },
-    fr: {
-      period: 'Periode', from: 'De', to: 'A', product: 'Produit', supplier: 'Fournisseur',
-      today: 'Aujourd hui', week: 'Cette semaine', month: 'Ce mois', custom: 'Personnalise',
-      all: 'Tous', apply: 'Appliquer', print: 'Imprimer', refresh: 'Actualiser', seeAll: 'Tout voir',
-      sales: 'Ventes', profit: 'Benefice', expenses: 'Depenses', stockAlerts: 'Alertes Stock',
-      revenueCost: 'Recette - Cout', missingProducts: 'produits en manque',
-      treasury: 'Tresorerie', quickTreasury: 'Tresorerie rapide', availableBalance: 'Solde disponible',
-      monthlyBalance: 'Solde du mois', todayIn: "Entrees aujourd'hui", todayOut: "Sorties aujourd'hui",
-      monthIn: 'Entrees du mois', monthOut: 'Sorties du mois', monthResult: 'Resultat du mois',
-      cash: 'Cash', express: 'Express', card: 'Carte', registos: 'registres',
-      loadingMovements: 'Chargement des mouvements...', noMovement: 'Aucun mouvement trouve',
-      debts: 'Dettes', debtSituation: 'Situation des dettes',
-      debtIntro: 'Clients a recevoir et fournisseurs a payer.', clients: 'Clients',
-      suppliers: 'Fournisseurs', clientsReceivable: 'Clients a recevoir', suppliersPayable: 'Fournisseurs a payer',
-      netBalance: 'Solde net', receivablePayable: 'A recevoir - a payer',
-      openFiles: 'Dossiers ouverts', dossierUnit: 'dossiers', clientSupplier: 'clients + fournisseurs',
-      debtorClients: 'Clients debiteurs', noClientDebt: 'Aucune dette client',
-      noSupplierDebt: 'Aucune dette fournisseur', debtUnit: 'dette(s)', purchaseUnit: 'achat(s)',
-      purchases: 'Achats', purchaseOverview: 'Vue achats',
-      purchaseIntro: 'Suivi des achats, fournisseurs et credits.',
-      newPurchase: 'Nouvel achat', todayPurchases: "Achats aujourd'hui", monthPurchases: 'Achats du mois',
-      creditPurchases: 'Achats a credit', supplierDebt: 'Dette fournisseurs',
-      remainingToPay: 'Reste a payer', mainSupplier: 'Fournisseur principal', latestPurchases: 'Derniers achats',
-      noPurchase: 'Aucun achat trouve', remaining: 'Reste',
-      stock: 'Stock', smartStock: 'Stock intelligent',
-      stockIntro: 'Valeur, ruptures, alertes et produits dormants.', viewStock: 'Voir stock',
-      totalStockValue: 'Valeur totale stock', shopWarehouse: 'Boutique + depot',
-      outProducts: 'Produits finis', totalStockZero: 'stock total a 0',
-      lowStock: 'Stock faible', belowMinimum: 'sous le minimum',
-      dormantProducts: 'Produits dormants', notSoldPeriod: 'pas vendus sur la periode',
-      priorityAlerts: 'Alertes prioritaires', stockOk: 'Stock OK',
-      shop: 'Boutique', warehouse: 'Depot', stockValue: 'Valeur stock',
-      noDormantProduct: 'Aucun produit dormant',
-      commercialPerformance: 'Performance commerciale',
-      commercialIntro: 'Ticket moyen, marge, clients et rythme des ventes.',
-      newSale: 'Nouvelle vente', averageTicket: 'Ticket moyen',
-      salesTransactions: 'total ventes / transactions', salesCount: 'Nombre de ventes',
-      transactions: 'transactions', soldItems: 'Articles vendus', totalQuantity: 'quantite totale',
-      averageMargin: 'Marge moyenne', profitSales: 'profit / ventes',
-      bestClient: 'Meilleur client', bestSeller: 'Meilleur vendeur',
-      dominantOrigin: 'Origine dominante', biggestCart: 'Plus gros panier',
-      topClients: 'Top clients', salesOrigin: 'Origine des ventes',
-      noClientFound: 'Aucun client trouve', noOriginFound: 'Aucune origine trouvee',
-      saleUnit: 'vente(s)',
-      fiscalAccounting: 'Fiscal / Comptable', accountingSummary: 'Resume fiscal/comptable',
-      accountingIntro: 'Vue simplifiee du resultat, stock, creances et dettes.',
-      accounting: 'Comptabilite', revenue: "Chiffre d'affaires", periodSales: 'Ventes de la periode',
-      cogs: 'Cout marchandises', purchaseCostSold: "Prix d'achat vendus",
-      grossMargin: 'Marge brute', periodCharges: 'Charges de la periode',
-      estimatedNetResult: 'Resultat net estime', netMargin: 'Marge nette',
-      valuedStock: 'Stock valorise', treasuryAsset: 'Tresorerie', simplifiedAssets: 'Actif simplifie',
-      simplifiedLiabilities: 'Passif simplifie', netPosition: 'Situation nette',
-      alerts: 'Alertes', importantAlerts: 'Alertes importantes',
-      importantIntro: 'Ce qui demande ton attention avant de continuer a vendre.',
-      critical: 'Critiques', handleFast: 'a traiter vite', watch: 'A surveiller',
-      mediumRisk: 'risque moyen', totalAlerts: 'Total alertes', inPeriod: 'sur la periode',
-      negativeTreasury: 'Tresorerie du mois negative', treasuryResult: 'Resultat tresorerie',
-      negativeNetResult: 'Resultat net negatif', estimatedResult: 'Resultat estime',
-      lowMargin: 'Marge faible', avgMargin: 'Marge moyenne', creditPurchaseRemain: 'Reste a payer sur achats',
-      currentStock: 'Stock actuel', loadingAlerts: 'Chargement des alertes...',
-      noImportantAlert: 'Aucune alerte importante. Situation propre.',
-      topProducts: 'Top Produits', paymentMethods: 'Moyens de paiement',
-      lowStockAlerts: 'Alertes de stock faible', latestExpenses: 'Dernieres depenses',
-      noData: 'Aucune donnee', noExpenses: 'Aucune depense', unit: 'un'
-    },
-    en: {
-      period: 'Period', from: 'From', to: 'To', product: 'Product', supplier: 'Supplier',
-      today: 'Today', week: 'This week', month: 'This month', custom: 'Custom',
-      all: 'All', apply: 'Apply', print: 'Print', refresh: 'Refresh', seeAll: 'View all',
-      sales: 'Sales', profit: 'Profit', expenses: 'Expenses', stockAlerts: 'Stock Alerts',
-      revenueCost: 'Revenue - Cost', missingProducts: 'missing products',
-      treasury: 'Treasury', quickTreasury: 'Quick Treasury', availableBalance: 'Available Balance',
-      monthlyBalance: 'Monthly balance', todayIn: "Today's inflows", todayOut: "Today's outflows",
-      monthIn: 'Monthly inflows', monthOut: 'Monthly outflows', monthResult: 'Monthly result',
-      cash: 'Cash', express: 'Express', card: 'Card', registos: 'records',
-      loadingMovements: 'Loading movements...', noMovement: 'No movement found',
-      debts: 'Debts', debtSituation: 'Debt Situation',
-      debtIntro: 'Client receivables and supplier payables.', clients: 'Clients',
-      suppliers: 'Suppliers', clientsReceivable: 'Client receivables', suppliersPayable: 'Supplier payables',
-      netBalance: 'Net balance', receivablePayable: 'Receivable - payable',
-      openFiles: 'Open files', dossierUnit: 'files', clientSupplier: 'clients + suppliers',
-      debtorClients: 'Debtor clients', noClientDebt: 'No client debt',
-      noSupplierDebt: 'No supplier debt', debtUnit: 'debt(s)', purchaseUnit: 'purchase(s)',
-      purchases: 'Purchases', purchaseOverview: 'Purchase Overview',
-      purchaseIntro: 'Purchases, suppliers and credit tracking.',
-      newPurchase: 'New purchase', todayPurchases: "Today's purchases", monthPurchases: 'Monthly purchases',
-      creditPurchases: 'Credit purchases', supplierDebt: 'Supplier debt',
-      remainingToPay: 'Remaining to pay', mainSupplier: 'Main supplier', latestPurchases: 'Latest purchases',
-      noPurchase: 'No purchase found', remaining: 'Remaining',
-      stock: 'Stock', smartStock: 'Smart Stock',
-      stockIntro: 'Value, shortages, alerts and dormant products.', viewStock: 'View stock',
-      totalStockValue: 'Total stock value', shopWarehouse: 'Shop + warehouse',
-      outProducts: 'Out of stock', totalStockZero: 'total stock at 0',
-      lowStock: 'Low stock', belowMinimum: 'below minimum',
-      dormantProducts: 'Dormant products', notSoldPeriod: 'not sold in the period',
-      priorityAlerts: 'Priority Alerts', stockOk: 'Stock OK',
-      shop: 'Shop', warehouse: 'Warehouse', stockValue: 'Stock value',
-      noDormantProduct: 'No dormant product',
-      commercialPerformance: 'Sales Performance',
-      commercialIntro: 'Average ticket, margin, clients and sales pace.',
-      newSale: 'New sale', averageTicket: 'Average ticket',
-      salesTransactions: 'total sales / transactions', salesCount: 'Sales count',
-      transactions: 'transactions', soldItems: 'Items sold', totalQuantity: 'total quantity',
-      averageMargin: 'Average margin', profitSales: 'profit / sales',
-      bestClient: 'Best client', bestSeller: 'Best seller',
-      dominantOrigin: 'Dominant origin', biggestCart: 'Biggest cart',
-      topClients: 'Top clients', salesOrigin: 'Sales origin',
-      noClientFound: 'No client found', noOriginFound: 'No origin found',
-      saleUnit: 'sale(s)',
-      fiscalAccounting: 'Tax / Accounting', accountingSummary: 'Tax/accounting summary',
-      accountingIntro: 'Simplified view of result, stock, receivables and debts.',
-      accounting: 'Accounting', revenue: 'Revenue', periodSales: 'Period sales',
-      cogs: 'Cost of goods', purchaseCostSold: 'Purchase cost sold',
-      grossMargin: 'Gross margin', periodCharges: 'Period expenses',
-      estimatedNetResult: 'Estimated net result', netMargin: 'Net margin',
-      valuedStock: 'Valued stock', treasuryAsset: 'Treasury', simplifiedAssets: 'Simplified assets',
-      simplifiedLiabilities: 'Simplified liabilities', netPosition: 'Net position',
-      alerts: 'Alerts', importantAlerts: 'Important Alerts',
-      importantIntro: 'What needs attention before selling more.',
-      critical: 'Critical', handleFast: 'handle quickly', watch: 'To watch',
-      mediumRisk: 'medium risk', totalAlerts: 'Total alerts', inPeriod: 'in the period',
-      negativeTreasury: 'Negative monthly treasury', treasuryResult: 'Treasury result',
-      negativeNetResult: 'Negative net result', estimatedResult: 'Estimated result',
-      lowMargin: 'Low margin', avgMargin: 'Average margin', creditPurchaseRemain: 'Remaining on purchases',
-      currentStock: 'Current stock', loadingAlerts: 'Loading alerts...',
-      noImportantAlert: 'No important alert. Situation is clean.',
-      topProducts: 'Top Products', paymentMethods: 'Payment Methods',
-      lowStockAlerts: 'Low Stock Alerts', latestExpenses: 'Latest Expenses',
-      noData: 'No data', noExpenses: 'No expenses', unit: 'units'
-    }
-  };
-  return (dict[lang] && dict[lang][key]) || (dict.pt && dict.pt[key]) || key;
+    };
+  return dict[key] || key;
 }
 
 function setMainDashboardText(selector, key) {
@@ -3643,19 +3506,18 @@ function printDashboardTicket() {
   var credito = Number(pg.Credito || 0);
   var totalPagamentos = cash + express + cartao + credito;
   var periodText = getDashboardPrintPeriod();
-  var lang = (config && config.language) || 'pt';
-  var title = lang === 'fr' ? 'Resume Dashboard' : (lang === 'en' ? 'Dashboard Summary' : 'Resumo Dashboard');
-  var salesLabel = lang === 'fr' ? 'Ventes totales' : (lang === 'en' ? 'Total Sales' : 'Vendas totais');
-  var salesCountLabel = lang === 'fr' ? 'Transactions' : (lang === 'en' ? 'Transactions' : 'Transacoes');
-  var profitLabel = lang === 'fr' ? 'Benefice total' : (lang === 'en' ? 'Total Profit' : 'Lucro total');
-  var expenseLabel = lang === 'fr' ? 'Depenses totales' : (lang === 'en' ? 'Total Expenses' : 'Despesas totais');
-  var alertsLabel = lang === 'fr' ? 'Alertes stock' : (lang === 'en' ? 'Stock Alerts' : 'Alertas stock');
-  var paymentLabel = lang === 'fr' ? 'Ventes par paiement' : (lang === 'en' ? 'Sales by Payment' : 'Vendas por pagamento');
-  var topLabel = lang === 'fr' ? 'Top produits' : (lang === 'en' ? 'Top products' : 'Top produtos');
-  var periodLabel = lang === 'fr' ? 'Periode' : (lang === 'en' ? 'Period' : 'Periodo');
-  var printedLabel = lang === 'fr' ? 'Imprime le' : (lang === 'en' ? 'Printed on' : 'Impresso em');
-  var noDataLabel = lang === 'fr' ? 'Aucune donnee' : (lang === 'en' ? 'No data' : 'Sem dados');
-  var depCountLabel = lang === 'fr' ? 'Registres depenses' : (lang === 'en' ? 'Expense records' : 'Registos despesas');
+  var title = 'Resumo Dashboard';
+  var salesLabel = 'Vendas totais';
+  var salesCountLabel = 'Transacoes';
+  var profitLabel = 'Lucro total';
+  var expenseLabel = 'Despesas totais';
+  var alertsLabel = 'Alertas stock';
+  var paymentLabel = 'Vendas por pagamento';
+  var topLabel = 'Top produtos';
+  var periodLabel = 'Periodo';
+  var printedLabel = 'Impresso em';
+  var noDataLabel = 'Sem dados';
+  var depCountLabel = 'Registos despesas';
 
   var logoImage = (config && config.receiptLogo) ? '<img src="' + escapeDashboardTicketText(config.receiptLogo) + '" style="display:block;max-width:100%;height:auto;margin:0 auto 8px auto;object-fit:contain;width:' + escapeDashboardTicketText((config.receiptLogoSize || '16') + 'mm') + ';">' : '';
   var shopName = escapeDashboardTicketText((config && config.name) || 'Azul Gestão');
@@ -3765,7 +3627,7 @@ dashboardLoadingTimer = setTimeout(function() {
     }
 
     renderDashboardData(data);
-    applyLanguage();
+    applyPortugueseText();
 
   } catch (e) {
     console.error("Erro dashboard:", e);
@@ -4220,7 +4082,7 @@ function saveProductProfileCard() {
     if (btn) {
       btn.disabled = false;
       btn.style.opacity = '1';
-      btn.textContent = getText('save_product_profile') || 'Enregistrer la fiche produit';
+      btn.textContent = getText('save_product_profile') || 'Guardar ficha do produto';
     }
   });
 }
@@ -5293,7 +5155,7 @@ async function loadRevendeurConsignations() {
     revOpenConsignations = [];
     box.innerHTML = '<div class="empty">' + getText("revendeurselcttext") + "</div>";
     updateRevActionPanel([]);
-    applyLanguage();
+    applyPortugueseText();
     return;
   }
 
@@ -7164,7 +7026,6 @@ var config = {
   name: 'Azul',
   slogan: 'O sistema de gestão que o seu negocio merece',
   currency: 'Kz',
-  language: 'pt',
   color: '#0b3d91',
   color2: '#071e4f',
   theme: 'light',
@@ -7198,7 +7059,7 @@ function loadSettings() {
   selectedSetupColor = config.color || selectedSetupColor || '#0b3d91';
   selectedSetupColor2 = config.color2 || selectedSetupColor2 || '#071e4f';
   selectedSetupTheme = config.theme || selectedSetupTheme || 'light';
-  if (['pt','fr','en'].indexOf(config.language) === -1) config.language = 'pt';
+
   applyConfig();
   var overlay = document.getElementById('setupOverlay');
   if (overlay) overlay.style.display = 'none';
@@ -7315,31 +7176,15 @@ function handleReceiptLogoFile(event) {
   reader.readAsDataURL(file);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////Debut de la fonction de la traduction ///////////////////////////////////////////////////////
+////////////////////////////// Textos fixos em portugues /////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-function getCurrentLanguage() {
-  return (config && config.language) || 'pt';
-}
-
 function getLocale() {
-  var lang = (config && config.language) || 'pt';
-  if (lang === 'fr') return 'fr-FR';
-  if (lang === 'en') return 'en-US';
   return 'pt-PT';
 }
 
-function tr(key, vars) {
-  var text = getText(key);
-  Object.keys(vars || {}).forEach(function(k) {
-    text = text.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]);
-  });
-  return text;
-}
 
 function getText(key) {
-  var lang = (config && config.language) || 'pt';
   var dict = {
-    pt: {
       revconsselect : 'Selecione um consignação.',
       revendeurselcttext: 'Escolha um revendedor para ver os seus registos em curso',
       tab_dashboard: 'Dashboard',
@@ -7482,301 +7327,8 @@ function getText(key) {
       create_consignment_button: 'Criar Consignação',
       confirm_payment_button: 'Confirmar pagamento',
       confirm_return_button: 'Confirmar retorno'
-    },
-    fr: {
-      revconsselect : 'Selectionne une consignation.',
-      revendeurselcttext: 'Choisis un revendeur pour afficher ses consignations en cours',
-      tab_dashboard: 'Dashboard',
-      tab_venda: 'Nouvelle Vente',
-      tab_achat: 'Nouvel Achat',
-      tab_transfert: 'Stock',
-      tab_clientes: 'Clients',
-      tab_depenses: 'Depenses',
-      tab_rh: 'RH',
-      tab_forn: 'Fournisseurs',
-      tab_settings: 'Parametres',
-      tab_tresorerie: 'Tresorerie',
-      tab_comptabilite: 'Comptabilite',
-      tab_corrections: 'Corrections',
-      tab_revendeurs: 'Revendeurs',
-      save_settings: 'Enregistrer les parametres',
-      reset_setup: 'Relancer la configuration',
-      clear_cart: 'Vider',
-      payment: 'Paiement',
-      search_product: 'Rechercher un produit...',
-      client_placeholder: 'Nom du client (laisser vide = Anonyme)',
-      treasury_title: 'Tresorerie',
-      rh_title: 'RH',
-      resellers_title: 'Revendeurs',
-      clients_title: 'Fiche Client',
-      expenses_title: 'Enregistrer Depense',
-      suppliers_title: 'Enregistrer Fournisseur',
-      rev_create: 'Creer Consignation',
-      rev_pay: 'Confirmer Paiement',
-      rev_return: 'Retour Marchandise',
-      rev_open: 'Consignation ouverte',
-      rev_name: 'Nom du revendeur',
-      rev_search: 'Rechercher un produit...',
-      rev_price_placeholder: 'Prix consignation...',
-      sale_price_placeholder: 'Prix de vente...',
-      anonymous: 'Anonyme',
-      receipt_thanks: 'Merci d avoir choisi ',
-      receipt_footer_default: 'Merci pour votre preference!',
-      settings_saved: 'Parametres enregistres !',
-      loading: 'Chargement...',
-      no_data: 'Aucune donnee',
-      no_products: 'Aucun produit',
-      loading_products: 'Chargement des produits...',
-      cart_empty: 'Ajoute des produits au panier',
-      add_products: 'Ajoute des produits',
-      add_payment_method: '+ Ajouter moyen de paiement',
-      payment_status: 'Paye: {paid} / Total: {total}',
-      confirm_sale: 'Confirmer Vente',
-      register_sale: 'Enregistrement de la vente...',
-      stock_ok: 'Stock OK',
-      no_expenses: 'Aucune depense',
-      no_open_consignment: 'Aucune consignation ouverte',
-      reseller_required: 'Entre le nom du revendeur !',
-      add_one_product: 'Ajoute au moins un produit !',
-      enter_price_for: 'Entre le prix pour {name}',
-      consignment_created: 'Consignation creee: {id}',
-      consignment_paid: 'Consignation payee avec succes !',
-      goods_returned: 'Marchandise retournee.',
-      reseller_not_found: 'Revendeur introuvable',
-      no_history: 'Aucun historique',
-      in_possession: 'En possession',
-      open_count: 'Ouvertes',
-      empty_cart_error: 'Panier vide !',
-      enter_sale_price: 'Entre le prix de vente pour : {name}',
-      payment_total_mismatch: 'Le total des paiements doit etre egal au total de la vente.',
-      sale_registered: 'Vente enregistree avec succes !',
-      at_least_one_payment: 'Au moins un moyen de paiement !',
-      stock_insufficient_max: 'Stock insuffisant ! Max : {stock} un. Passe en Commande pour depasser.',
-      stock_insufficient_order: 'Stock insuffisant ! Max disponible : {stock} un. Passe en "Commande" pour depasser.',
-      stock_insufficient_consignment: 'Stock insuffisant pour la consignation.',
-      stock_insufficient_product: 'Stock insuffisant pour ce produit.',
-      at_least_one_line: 'Il faut au moins une ligne !',
-      purchase_fully_paid: 'Le total est deja paye !',
-      fill_supplier_name: 'Entre le nom du fournisseur !',
-      fill_all_product_fields: 'Remplis tous les champs de chaque produit !',
-      purchase_payment_too_high: 'Le total des paiements depasse le total de la commande !',
-      purchase_registered: 'Achat enregistre avec succes !',
-      fill_supplier_and_amount: 'Remplis fournisseur et montant !',
-      supplier_payment_registered: 'Paiement enregistre !',
-      no_supplier_debts: 'Aucune dette enregistree',
-      fill_product_and_quantity: 'Remplis produit et quantite !',
-      transfer_registered: 'Transfert enregistre !',
-      no_sales_found: 'Aucune vente trouvee',
-      finish_setup_name_required: 'Merci d entrer le nom de la boutique !',
-      setup_saved: 'Configuration enregistree !',
-      warehouse_empty: 'Entrepot vide - rien a transferer',
-      products_to_transfer: '{count} produits a transferer',
-      no_warehouse_stock: 'Aucun stock dans l entrepot !',
-      transferring: 'Transfert en cours...',
-      transferred: 'Transfere !',
-      transfer_done_reload: 'Transfert termine ! Recharge le stock pour confirmer.',
-      all_stock_transferred: 'Tout le stock a ete transfere vers la Boutique !',
-      activating: 'Activation...',
-      edit_mode_error: 'Erreur lors de l activation du mode edition',
-      edit_mode_button: 'Activer Mode Edition (1 min)',
-      edit_mode_active: 'Mode Edition ACTIF',
-      edit_mode_active_toast: 'Mode edition actif pendant 1 minute !',
-      edit_mode_lock_in: 'Blocage dans {seconds}s...',
-      sheets_locked_again: 'Les feuilles sont de nouveau bloquees.',
-      fill_description_and_amount: 'Remplis description et montant !',
-      expense_registered: 'Depense enregistree !',
-      valid_amount: 'Entre un montant valide !',
-      treasury_registered: 'Mouvement de tresorerie enregistre !',
-      no_movements_found: 'Aucun mouvement trouve',
-      supplier_registered: 'Fournisseur enregistre !',
-      enter_customer_name: 'Entre un nom de client !',
-      client_not_found: 'Client introuvable',
-      th_balance: 'Solde',
-      light_theme: 'Clair',
-      dark_theme: 'Sombre',
-      stock_shop_only: 'Stock boutique uniquement',
-      stock_shop_only_desc: 'Les achats entrent directement en boutique. Pas de transferts.',
-      stock_shop_warehouse: 'Stock Boutique + Entrepot',
-      stock_shop_warehouse_desc: 'Les achats entrent en entrepot, puis tu transferes vers la boutique.',
-      receipt_customization: 'Personnalisation du recu',
-      receipt_logo_image: 'Image du logo du recu',
-      receipt_logo_remove: 'Supprimer image',
-      receipt_logo_size: 'Taille du logo du recu',
-      receipt_show: 'Afficher sur le recu',
-      direct_edit_mode: 'Mode edition directe',
-      direct_edit_desc: 'Debloque les feuilles pendant 1 minute pour corriger ou supprimer des lignes. Blocage automatique ensuite.',
-      client_file_tab: 'Fiche client',
-      client_payment_tab: 'Enregistrer paiement',
-      search_client_placeholder: 'Nom du client...',
-      search_button: 'Rechercher',
-      client_search_empty: 'Recherche un client pour voir sa fiche',
-      client_payment_title: 'Enregistrer Paiement Client',
-      amount_paid: 'Montant paye',
-      amount_remaining: 'Montant restant',
-      credit_limit_warning: 'vous avez depasse la limite du credit',
-      new_expense_tab: 'Nouvelle Depense',
-      expense_dashboard_tab: 'Dashboard Depenses',
-      expense_history_tab: 'Historique Depenses',
-      expense_category_new: 'Nouvelle categorie...',
-      add_button: 'Ajouter',
-      register_expense_button: 'Enregistrer Depense',
-      register_purchase_button: 'Enregistrer Achat',
-      save_product_profile: 'Enregistrer la fiche produit',
-      registering: 'Enregistrement...',
-      create_consignment_button: 'Creer Consignation',
-      confirm_payment_button: 'Confirmer paiement',
-      confirm_return_button: 'Confirmer retour'
-    },
-    en: {
-      revconsselect : 'Select a consignment.',
-      revendeurselcttext: 'Select a dealer to view their current consignments',
-      tab_dashboard: 'Dashboard',
-      tab_venda: 'New Sale',
-      tab_achat: 'New Purchase',
-      tab_transfert: 'Stock',
-      tab_clientes: 'Customers',
-      tab_depenses: 'Expenses',
-      tab_rh: 'HR',
-      tab_forn: 'Suppliers',
-      tab_settings: 'Settings',
-      tab_tresorerie: 'Treasury',
-      tab_comptabilite: 'Comptabilite',
-      tab_corrections: 'Corrections',
-      tab_revendeurs: 'Resellers',
-      save_settings: 'Save Settings',
-      reset_setup: 'Restart setup',
-      clear_cart: 'Clear',
-      payment: 'Payment',
-      search_product: 'Search product...',
-      client_placeholder: 'Customer name (leave blank = Anonymous)',
-      treasury_title: 'Treasury',
-      rh_title: 'HR',
-      resellers_title: 'Resellers',
-      clients_title: 'Customer File',
-      expenses_title: 'Register Expense',
-      suppliers_title: 'Register Supplier',
-      rev_create: 'Create Consignment',
-      rev_pay: 'Confirm Payment',
-      rev_return: 'Return Goods',
-      rev_open: 'Open consignment',
-      rev_name: 'Reseller name',
-      rev_search: 'Search product...',
-      rev_price_placeholder: 'Consignment price...',
-      sale_price_placeholder: 'Sale price...',
-      anonymous: 'Anonymous',
-      receipt_thanks: 'Thanks for choosing ',
-      receipt_footer_default: 'Thanks for your preference!',
-      settings_saved: 'Settings saved!',
-      loading: 'Loading...',
-      no_data: 'No data',
-      no_products: 'No products',
-      loading_products: 'Loading products...',
-      cart_empty: 'Add products to cart',
-      add_products: 'Add products',
-      add_payment_method: '+ Add payment method',
-      payment_status: 'Paid: {paid} / Total: {total}',
-      confirm_sale: 'Confirm Sale',
-      register_sale: 'Registering sale...',
-      stock_ok: 'Stock OK',
-      no_expenses: 'No expenses',
-      no_open_consignment: 'No open consignment',
-      reseller_required: 'Enter the reseller name!',
-      add_one_product: 'Add at least one product!',
-      enter_price_for: 'Enter the price for {name}',
-      consignment_created: 'Consignment created: {id}',
-      consignment_paid: 'Consignment paid successfully!',
-      goods_returned: 'Goods returned.',
-      reseller_not_found: 'Reseller not found',
-      no_history: 'No history',
-      in_possession: 'In possession',
-      open_count: 'Open',
-      empty_cart_error: 'Cart is empty!',
-      enter_sale_price: 'Enter the sale price for: {name}',
-      payment_total_mismatch: 'The total payment must match the sale total.',
-      sale_registered: 'Sale registered successfully!',
-      at_least_one_payment: 'At least one payment method is required!',
-      stock_insufficient_max: 'Insufficient stock! Max: {stock} units. Switch to Order to continue.',
-      stock_insufficient_order: 'Insufficient stock! Max available: {stock} units. Switch to "Order" to continue.',
-      stock_insufficient_consignment: 'Insufficient stock for consignment.',
-      stock_insufficient_product: 'Insufficient stock for this product.',
-      at_least_one_line: 'At least one line is required!',
-      purchase_fully_paid: 'Purchase is already fully paid!',
-      fill_supplier_name: 'Enter the supplier name!',
-      fill_all_product_fields: 'Fill every field for each product!',
-      purchase_payment_too_high: 'Payment total exceeds the purchase total!',
-      purchase_registered: 'Purchase registered successfully!',
-      fill_supplier_and_amount: 'Fill supplier and amount!',
-      supplier_payment_registered: 'Payment registered!',
-      no_supplier_debts: 'No debts recorded',
-      fill_product_and_quantity: 'Fill product and quantity!',
-      transfer_registered: 'Transfer registered!',
-      no_sales_found: 'No sales found',
-      finish_setup_name_required: 'Please enter the shop name!',
-      setup_saved: 'Setup saved!',
-      warehouse_empty: 'Warehouse empty - nothing to transfer',
-      products_to_transfer: '{count} products to transfer',
-      no_warehouse_stock: 'No stock in warehouse!',
-      transferring: 'Transferring...',
-      transferred: 'Transferred!',
-      transfer_done_reload: 'Transfer completed! Refresh stock to confirm.',
-      all_stock_transferred: 'All stock transferred to the shop!',
-      activating: 'Activating...',
-      edit_mode_error: 'Error enabling edit mode',
-      edit_mode_button: 'Enable Edit Mode (1 min)',
-      edit_mode_active: 'Edit Mode ACTIVE',
-      edit_mode_active_toast: 'Edit mode enabled for 1 minute!',
-      edit_mode_lock_in: 'Locks in {seconds}s...',
-      sheets_locked_again: 'Sheets locked again.',
-      fill_description_and_amount: 'Fill description and amount!',
-      expense_registered: 'Expense registered!',
-      valid_amount: 'Enter a valid amount!',
-      treasury_registered: 'Treasury movement registered!',
-      no_movements_found: 'No movements found',
-      supplier_registered: 'Supplier registered!',
-      enter_customer_name: 'Enter a customer name!',
-      client_not_found: 'Customer not found',
-      th_balance: 'Balance',
-      light_theme: 'Light',
-      dark_theme: 'Dark',
-      stock_shop_only: 'Shop stock only',
-      stock_shop_only_desc: 'Purchases go directly to the shop. No transfers.',
-      stock_shop_warehouse: 'Shop + Warehouse stock',
-      stock_shop_warehouse_desc: 'Purchases go to the warehouse, then you transfer them to the shop.',
-      receipt_customization: 'Receipt Customization',
-      receipt_logo_image: 'Receipt logo image',
-      receipt_logo_remove: 'Remove image',
-      receipt_logo_size: 'Receipt logo size',
-      receipt_show: 'Show on receipt',
-      direct_edit_mode: 'Direct edit mode',
-      direct_edit_desc: 'Unlocks sheets for 1 minute to correct or delete rows. Locks automatically after.',
-      client_file_tab: 'Customer file',
-      client_payment_tab: 'Register payment',
-      search_client_placeholder: 'Customer name...',
-      search_button: 'Search',
-      client_search_empty: 'Search a customer to view the file',
-      client_payment_title: 'Register Customer Payment',
-      amount_paid: 'Amount paid',
-      amount_remaining: 'Remaining amount',
-      credit_limit_warning: 'you exceeded the credit limit',
-      new_expense_tab: 'New Expense',
-      expense_dashboard_tab: 'Expense Dashboard',
-      expense_history_tab: 'Expense History',
-      expense_category_new: 'New category...',
-      add_button: 'Add',
-      register_expense_button: 'Register Expense',
-      register_purchase_button: 'Register Purchase',
-      save_product_profile: 'Save product profile',
-      registering: 'Registering...',
-      create_consignment_button: 'Create Consignment',
-      confirm_payment_button: 'Confirm payment',
-      confirm_return_button: 'Confirm return'
-    }
-  };
-  var fallback = (dict[lang] && dict[lang][key]) || dict.pt[key] || key;
-  if (window.AzulI18n && typeof window.AzulI18n.t === "function") {
-    return window.AzulI18n.t(key, fallback, lang);
-  }
-  return fallback;
+    };
+  return dict[key] || key;
 }
 
 function setPageTitle(pageId, text) {
@@ -7795,11 +7347,10 @@ function syncPageTitles() {
   setPageTitle('page-corrections', getText('tab_corrections'));
 }
 //appl
-function applyLanguage() {
+function applyPortugueseText() {
   window._applyingLanguage = true;
-  var lang = (config && config.language) || 'pt';
   try {
-    document.documentElement.lang = lang;
+    document.documentElement.lang = 'pt';
     var tabs = document.querySelectorAll('.nav .tab');
     var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_rh','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_settings'];
     tabs.forEach(function(tab, index) {
@@ -7807,100 +7358,6 @@ function applyLanguage() {
     });
 
     var ui = {
-      pt: {
-        dashLabels: ['Periodo','De','Ate','Produto','Fornecedor'],
-        dashOptions: ['Hoje','Esta semana','Este mes','Personalizado'],
-        kpiLabels: ['Vendas','Lucro','Despesas','Alertas Stock'],
-        kpiSubProfit: 'Receita - Custo',
-        kpiSubAlerts: 'produtos em falta',
-        dashCards: ['Top Produtos','Meios de Pagamento','Alertas de Stock Baixo','Ultimas Despesas'],
-        payLabels: ['Cash','Express','Cartao'],
-        achatTabs: ['Nova Compra','Registar Pagamento','Resumo de Dívidas'],
-        histHeaders: ['Data','Produto','Cliente','Qtd','P.Unit','Total','Pagamento','N Recibo'],
-        settingsCards: ['Identidade da Boutique','Moeda','Língua','Tema','Modo de Stock','Personalização do Recibo','Segurança'],
-        resellerCards: ['Nova Consignação','Artigos em consignação','Ações','Ficha Revendedor'],
-        treasuryCards: ['Novo Movimento','Filtros','Historico dos Movimentos'],
-        kpiLabelTreso: ['Saldo atual','Entradas','Saidas'],
-        tresoformlabel: ['Data','Movimento','Tipo','Montante','Descrições','de','a','O tipo contém'],
-        tresotabletext: ['Data','Tipo','Descrição','Entradas','Saídas','Saldo'],
-        tresobuttontext: ['Atualizar','Registar Movimento','Aplicar filtros'],
-        dashtext: ['Dashboard de Despesas','De','Até','Categoria','Total de Despesas','Média','Por despesa','Máximo','Categoria','Hoje','Despesas do dia','Por categoria','Evolução diária'],
-        histdeptext: ['Histórico de Despesas','Data','Categoria','Descrição','Montante'],
-        ongletrevtext: ['Nova','Pagamento / Retorno','Histórico do Revendedor'],
-        paiementlabeltext: ['Data','Fornecedor','Montante pago','Montante restante: ','Nota (opcional)'],
-        enredepensetext: ['Data','Tipo','Descrição','Montante'],
-        titreconsigntiontext: 'Registar um registo',
-        revFormLabels : ['Data','Nome do revendedor','Revendedor','Data da ação','Ação','Revendedor','De','A'],
-        revTableHeaders : ['ID','Data','Revendedor','Estado','Artigos','Total','Pagamento','Recibo'],
-        revModeBtnTexts : ['Nova Consignação','Pagamento / Retorno','Histórico do Revendedor'],
-        revSectionTitleTexts :  ['Revendedores','Registar Uma Consignação','Pagamento E Retorno','Histórico do Revendedor'],
-        inventairetabletext: ['Designação','Fornecedor','Entradas','Saídas','Stock da Loja','Stock do Depósito','Total','Preço de Compra','Valor'],
-        kpiInventairetext : ['Stock Total','Valor Total do Stock','Stock em Armazém','Valor do Stock em Armazém','Stock da Loja','Valor do Stock da Loja'],
-        inventairetitretext : ['inventários']
-      },
-      fr: {
-        dashLabels: ['Periode','De','A','Produit','Fournisseur'],
-        dashOptions: ['Aujourd hui','Cette semaine','Ce mois','Personnalise'],
-        kpiLabels: ['Ventes','Benefice','Depenses','Alertes Stock'],
-        kpiSubProfit: 'Recette - Cout',
-        kpiSubAlerts: 'produits en manque',
-        dashCards: ['Top Produits','Moyens de paiement','Alertes de stock faible','Dernieres depenses'],
-        payLabels: ['Cash','Express','Carte'],
-        achatTabs: ['Nouvel Achat','Enregistrer Paiement','Resume Dettes'],
-        histHeaders: ['Date','Produit','Client','Qte','P.Unit','Total','Paiement','N Recu'],
-        settingsCards: ['Identite de la Boutique','Monnaie','Langue','Theme','Mode de stock','Personnalisation du recu','Securite'],
-        resellerCards: ['Nouvelle Consignation','Articles en consignation','Actions','Fiche Revendeur'],
-        treasuryCards: ['Nouveau Mouvement','Filtres','Historique des mouvements'],
-        kpiLabelTreso: ['Solde actuel','entrées','sorties'],
-        tresoformlabel: ['Date','Mouvement','Type','Montant','Description','de','a','Type contient'],
-        tresotabletext: ['Date','Type','Description','Entrees','Sorties','Solde'],
-        tresobuttontext: ['Actualiser','Enregistrer Mouvement','Appliquer les filtres'],
-        dashtext: ['Dashboard Dépenses','De','À','Catégorie','Total Dépenses','Moyenne','Par dépense','Maximum','Catégorie','Aujourd hui','Dépenses du jour','Par catégorie','À charger...','Évolution journalière','À charger...'],
-        histdeptext: ['Historique des Dépenses','Date','Catégorie','Description','Montant'],
-        ongletrevtext: ['Nouvelle','Paiement / Retour','Historique Revendeur'],
-        paiementlabeltext: ['Date','Fournisseur','Montant Paye','Montant restant : ','Note (optionel)'],
-        enredepensetext: ['Date','Type','Description','Montant'],
-        titreconsigntiontext: 'Enregistrer Une Consignation',
-        revFormLabels: ['Date','Nom du revendeur','Revendeur',"Date de l'action",'Action','Revendeur','De','A'],
-        revTableHeaders : ['ID','Date','Revendeur','Statut','Articles','Total','Paiement','Recu'],
-        revModeBtnTexts : ['Nouvelle Consignation','Paiement / Retour','Historique Revendeur'],
-        revSectionTitleTexts : ['Revendeurs','Enregistrer Une Consignation','Paiement Et Retour','Historique Revendeur'],
-        inventairetabletext : ['Designation','Fournisseur','Entrees','Sorties','Stock boutique','Stock Magasin','total','Prix dachat','Valeur'],
-        kpiInventairetext : ['Stock Total','Valeur Totale du Stock','Stock en Magasin','Valeur du Stock Magasin','Stock en Boutique','Valeur du Stock Boutique'],
-        inventairetitretext : ['Inventaires']
-      },
-      en: {
-        dashLabels: ['Period','From','To','Product','Supplier'],
-        dashOptions: ['Today','This week','This month','Custom'],
-        kpiLabels: ['Sales','Profit','Expenses','Stock Alerts'],
-        kpiSubProfit: 'Revenue - Cost',
-        kpiSubAlerts: 'missing products',
-        dashCards: ['Top Products','Payment Methods','Low Stock Alerts','Latest Expenses'],
-        payLabels: ['Cash','Express','Card'],
-        achatTabs: ['New Purchase','Register Payment','Debt Summary'],
-        histHeaders: ['Date','Product','Customer','Qty','Unit Price','Total','Payment','Receipt No.'],
-        settingsCards: ['Shop Identity','Currency','Language','Theme','Stock Mode','Receipt Customization','Security'],
-        resellerCards: ['New Consignment','Consignment items','Actions','Reseller File'],
-        treasuryCards: ['New Movement','Filters','Movement History'],
-        kpiLabelTreso: ['Current balance','Entries','Outings'],
-        tresoformlabel: ['Date','Transaction','Type','Amount','Description','of','a','Type contains'],
-        tresotabletext: ['Date','Type','Description','Income','Expenses','Balance'],
-        tresobuttontext: ['Refresh','Record Movement','Apply Filters'],
-        dashtext: ['Expenses Dashboard','From','To','Category','Total Expenses','Average','Per expense','Maximum','Category','Today','Today s expenses','By category','Loading...','Daily evolution','Loading...'],
-        histdeptext: ['Expense History','Date','Category','Description','Amount'],
-        ongletrevtext: ['New','Payment / Return','Reseller History'],
-        paymentlabeltext: ['Date','Supplier','Amount Paid','Amount Remaining: ','Note (optional)'],
-        enredepensetext: ['Date', 'Type', 'Description', 'Amount'],
-        titreconsigntiontext: 'Save a Log',
-        revFormLabels: ['Date','Reseller name','Reseller','Action date','Action','Reseller','From','To'],
-        revTableHeaders : ['ID','Date','Reseller','Status','Items','Total','Payment','Receipt'],
-        revModeBtnTexts : ['New Consignment','Payment / Return','Reseller History'],
-        revSectionTitleTexts : ['Resellers','Register A Consignment','Payment And Return','Reseller History'],
-        inventairetabletext: ['Designação','Fornecedor','Entradas','Saídas','Stock da Loja','Stock do Depósito','Total','Preço de Compra','Valor'],
-        kpiInventairetext : ['Total Stock','Total Stock Value','Warehouse Stock','Warehouse Stock Value','Store Stock','Store Stock Value'],
-        inventairetitretext : ['inventories']
-      }
-    }[lang] || {
       dashLabels: ['Periodo','De','Ate','Produto','Fornecedor'],
       dashOptions: ['Hoje','Esta semana','Este mes','Personalizado'],
       kpiLabels: ['Vendas','Lucro','Despesas','Alertas Stock'],
@@ -7908,28 +7365,28 @@ function applyLanguage() {
       kpiSubAlerts: 'produtos em falta',
       dashCards: ['Top Produtos','Meios de Pagamento','Alertas de Stock Baixo','Ultimas Despesas'],
       payLabels: ['Cash','Express','Cartao'],
-      achatTabs: ['Nova Compra','Registar Pagamento','Resumo de Dívidas'],
+      achatTabs: ['Nova Compra','Registar Pagamento','Resumo de Dividas'],
       histHeaders: ['Data','Produto','Cliente','Qtd','P.Unit','Total','Pagamento','N Recibo'],
-      settingsCards: ['Identidade da Boutique','Moeda','Língua','Tema','Modo de Stock','Personalização do Recibo','Segurança'],
-      resellerCards: ['Nova Consignação','Artigos em consignação','Ações','Ficha Revendedor'],
+      settingsCards: ['Identidade da Boutique','Moeda','Tema','Modo de Stock','Personalizacao do Recibo','Seguranca'],
+      resellerCards: ['Nova Consignacao','Artigos em consignacao','Acoes','Ficha Revendedor'],
       treasuryCards: ['Novo Movimento','Filtros','Historico dos Movimentos'],
       kpiLabelTreso: ['Saldo atual','Entradas','Saidas'],
-      tresoformlabel: ['Data','Movimento','Tipo','Montante','Descrições'],
-      tresotabletext: ['Data','Tipo','Descrição','Entradas','Saídas','Saldo'],
-      tresobuttontext: ['Atualizar','Registar Movimento','Aplicar filtros','de','a','O tipo contém'],
-      dashtext: ['Dashboard de Despesas','De','Até','Categoria','Total de Despesas','Média','Por despesa','Máximo','Categoria','Hoje','Despesas do dia','Por categoria','A carregar...','Evolução diária','A carregar...'],
-      histdeptext: ['Histórico de Despesas','Data','Categoria','Descrição','Montante'],
-      ongletrevtext: ['Nova','Pagamento / Retorno','Histórico do Revendedor'],
+      tresoformlabel: ['Data','Movimento','Tipo','Montante','Descricao','De','A','O tipo contem'],
+      tresotabletext: ['Data','Tipo','Descricao','Entradas','Saidas','Saldo'],
+      tresobuttontext: ['Atualizar','Registar Movimento','Aplicar filtros'],
+      dashtext: ['Dashboard de Despesas','De','Ate','Categoria','Total de Despesas','Media','Por despesa','Maximo','Categoria','Hoje','Despesas do dia','Por categoria','Evolucao diaria'],
+      histdeptext: ['Historico de Despesas','Data','Categoria','Descricao','Montante'],
+      ongletrevtext: ['Nova','Pagamento / Retorno','Historico do Revendedor'],
       paiementlabeltext: ['Data','Fornecedor','Montante pago','Montante restante: ','Nota (opcional)'],
-      enredepensetext: ['Data','Tipo','Descrição','Montante'],
-      titreconsigntiontext: 'Registar um registo',
-      revFormLabels : ['Data','Nome do revendedor','Revendedor','Data da ação','Ação','Revendedor','De','A'],
-      revTableHeaders : ['ID','Data','Revendedor','Estado','Artigos','Total','Pagamento','Recibo'],
-      revModeBtnTexts : ['Nova Consignação','Pagamento / Retorno','Histórico do Revendedor'],
-      revSectionTitleTexts :  ['Revendedores','Registar Uma Consignação','Pagamento E Retorno','Histórico do Revendedor'],
-      inventairetabletext: ['Designation','Supplier','Entries','Outflows','Shop Stock','Store Stock','Total','Purchase Price','Value'],
-      kpiInventairetext : ['Stock Total','Valor Total do Stock','Stock em Armazém','Valor do Stock em Armazém','Stock da Loja','Valor do Stock da Loja'],
-      inventairetitretext : ['inventários']
+      enredepensetext: ['Data','Tipo','Descricao','Montante'],
+      titreconsigntiontext: 'Registar consignacao',
+      revFormLabels: ['Data','Nome do revendedor','Revendedor','Data da acao','Acao','Revendedor','De','A'],
+      revTableHeaders: ['ID','Data','Revendedor','Estado','Artigos','Total','Pagamento','Recibo'],
+      revModeBtnTexts: ['Nova Consignacao','Pagamento / Retorno','Historico do Revendedor'],
+      revSectionTitleTexts: ['Revendedores','Registar Consignacao','Pagamento e Retorno','Historico do Revendedor'],
+      inventairetabletext: ['Designacao','Fornecedor','Entradas','Saidas','Stock da Loja','Stock do Deposito','Total','Preco de Compra','Valor'],
+      kpiInventairetext: ['Stock Total','Valor Total do Stock','Stock em Armazem','Valor do Stock em Armazem','Stock da Loja','Valor do Stock da Loja'],
+      inventairetitretext: ['Inventarios']
     };
 
     var inventairetable = document.querySelectorAll('#stock th');
@@ -7946,63 +7403,35 @@ function applyLanguage() {
 
     var revModeBtnText = document.querySelectorAll('#page-revendeurs .mode-btn');
     revModeBtnText.forEach(function(el, i) { if (ui.revModeBtnTexts[i]) el.textContent = ui.revModeBtnTexts[i]; });
-    var revModeBtnText = document.querySelectorAll('#page-revendeurs .mode-btn');
-    revModeBtnText.forEach(function(el, i) { if (ui.revModeBtnTexts[i]) el.textContent = ui.revModeBtnTexts[i]; });
     var revFormLabel = document.querySelectorAll('#page-revendeurs .form-label');
     revFormLabel.forEach(function(el, i) { if (ui.revFormLabels[i]) el.textContent = ui.revFormLabels[i]; });
     var revTableHeader = document.querySelectorAll('#page-revendeurs th');
     revTableHeader.forEach(function(el, i) { if (ui.revTableHeaders[i]) el.textContent = ui.revTableHeaders[i]; });
-    if (document.getElementById('rev-name')) document.getElementById('rev-name').placeholder = (lang === 'fr') ? 'Entre le nom du revendeur' : (lang === 'en' ? 'Enter the reseller name' : 'Insere o nome do revendedor');
-    if (document.getElementById('rev-search')) document.getElementById('rev-search').placeholder = (lang === 'fr') ? 'Rechercher un produit...' : (lang === 'en' ? 'Search product...' : 'Pesquisar produto...');
-    if (document.getElementById('rev-history-name')) document.getElementById('rev-history-name').placeholder = (lang === 'fr') ? 'Nom du revendeur' : (lang === 'en' ? 'Reseller name' : 'Nome do revendedor');
+
+    if (document.getElementById('rev-name')) document.getElementById('rev-name').placeholder = 'Insere o nome do revendedor';
+    if (document.getElementById('rev-search')) document.getElementById('rev-search').placeholder = 'Pesquisar produto...';
+    if (document.getElementById('rev-history-name')) document.getElementById('rev-history-name').placeholder = 'Nome do revendedor';
     var revActionType = document.getElementById('rev-action-type');
     if (revActionType) {
-      if (revActionType.options[0]) {
-        revActionType.options[0].text = lang === 'fr'
-          ? 'Paiement'
-          : (lang === 'en' ? 'Payment' : 'Pagamento');
-      }
-
-      if (revActionType.options[1]) {
-        revActionType.options[1].text = lang === 'fr'
-          ? 'Retour marchandise'
-          : (lang === 'en' ? 'Return goods' : 'Retorno de mercadoria');
-      }
+      if (revActionType.options[0]) revActionType.options[0].text = 'Pagamento';
+      if (revActionType.options[1]) revActionType.options[1].text = 'Retorno de mercadoria';
     }
-
     var revAddPayBtn = document.querySelector('#rev-payment-panel button[onclick="addRevPayLine()"]');
-    if (revAddPayBtn) {
-      revAddPayBtn.textContent = lang === 'fr'
-        ? '+ Ajouter moyen de paiement'
-        : (lang === 'en' ? '+ Add payment method' : '+ Adicionar meio de pagamento');
-    }
-
+    if (revAddPayBtn) revAddPayBtn.textContent = '+ Adicionar meio de pagamento';
     var revTotalPayLabel = document.querySelector('#rev-payment-total');
-    if (revTotalPayLabel && revTotalPayLabel.previousElementSibling) {
-      revTotalPayLabel.previousElementSibling.textContent = lang === 'fr'
-        ? 'Total a payer'
-        : (lang === 'en' ? 'Total to pay' : 'Total a pagar');
-    }
+    if (revTotalPayLabel && revTotalPayLabel.previousElementSibling) revTotalPayLabel.previousElementSibling.textContent = 'Total a pagar';
     var revManageName = document.getElementById('rev-manage-name');
+    if (revManageName && revManageName.options[0]) revManageName.options[0].text = 'Escolher um revendedor';
 
-    if (revManageName && revManageName.options[0]) {
-      revManageName.options[0].text = lang === 'fr'
-        ? 'Choisir un revendeur'
-        : (lang === 'en' ? 'Choose a reseller' : 'Escolher um revendedor');
-    }
-
-    var histdepense = document.querySelectorAll('.section-title .revendeur button');
-    histdepense.forEach(function(el, i) { if (ui.histdeptext[i]) el.textContent = ui.histdeptext[i]; });
     var enredepense = document.querySelectorAll('#dep-panel-new .form-label');
     enredepense.forEach(function(el, i) { if (ui.enredepensetext[i]) el.textContent = ui.enredepensetext[i]; });
-    if (document.getElementById('dep-desc')) document.getElementById('dep-desc').placeholder = (lang === 'fr') ? 'Description de la depense...' : (lang === 'en' ? 'Description of the expense...' : 'Descrição da despesa...');
+    if (document.getElementById('dep-desc')) document.getElementById('dep-desc').placeholder = 'Descricao da despesa...';
 
     var paiementlabel = document.querySelectorAll('#achat-panel-pagamento .form-label');
     paiementlabel.forEach(function(el, i) { if (ui.paiementlabeltext[i]) el.textContent = ui.paiementlabeltext[i]; });
 
     var dashFormLabels = document.querySelectorAll('#page-dashboard .form-label');
     dashFormLabels.forEach(function(el, i) { if (ui.dashLabels[i]) el.textContent = ui.dashLabels[i]; });
-    //treso
     var tresobutton = document.querySelectorAll('#page-tresorerie button');
     tresobutton.forEach(function(el, i) { if (ui.tresobuttontext[i]) el.textContent = ui.tresobuttontext[i]; });
     var tresokpilabels = document.querySelectorAll('#page-tresorerie .kpi-label');
@@ -8011,26 +7440,17 @@ function applyLanguage() {
     tresoformlabels.forEach(function(el, i) { if (ui.tresoformlabel[i]) el.textContent = ui.tresoformlabel[i]; });
     var tresotable = document.querySelectorAll('#page-tresorerie .data-table th');
     tresotable.forEach(function(el, i) { if (ui.tresotabletext[i]) el.textContent = ui.tresotabletext[i]; });
-    if (document.getElementById('tre-desc')) document.getElementById('tre-desc').placeholder = (lang === 'fr') ? 'Description du mouvement...' : (lang === 'en' ? 'Description of the movement...' : 'Descrição do movimento...');
-    if (document.getElementById('tre-filter-type')) document.getElementById('tre-filter-type').placeholder = (lang === 'fr') ? 'Ex: Vente, Depense, Achat...' : (lang === 'en' ? 'Ex: Sales, Expenses, Purchases...' : 'Ex: Venda, Despesa, Compra...');
+    if (document.getElementById('tre-desc')) document.getElementById('tre-desc').placeholder = 'Descricao do movimento...';
+    if (document.getElementById('tre-filter-type')) document.getElementById('tre-filter-type').placeholder = 'Ex: Venda, Despesa, Compra...';
 
     var periodSelect = document.getElementById('df-period');
     if (periodSelect) ui.dashOptions.forEach(function(txt, i) { if (periodSelect.options[i]) periodSelect.options[i].text = txt; });
-
-    if (document.getElementById('df-prod')) document.getElementById('df-prod').placeholder = (lang === 'fr') ? 'Tous' : (lang === 'en' ? 'All' : 'Todos');
-    if (document.getElementById('df-forn')) document.getElementById('df-forn').placeholder = (lang === 'fr') ? 'Tous' : (lang === 'en' ? 'All' : 'Todos');
-
-    var cfgLang = document.getElementById('cfg-language');
-    if (cfgLang) {
-      if (cfgLang.options[0]) cfgLang.options[0].text = 'Português';
-      if (cfgLang.options[1]) cfgLang.options[1].text = 'Français';
-      if (cfgLang.options[2]) cfgLang.options[2].text = 'English';
-    }
-
+    if (document.getElementById('df-prod')) document.getElementById('df-prod').placeholder = 'Todos';
+    if (document.getElementById('df-forn')) document.getElementById('df-forn').placeholder = 'Todos';
     var dashBtn = document.getElementById('dashApplyBtn');
-    if (dashBtn) dashBtn.textContent = lang === 'en' ? 'Apply' : (lang === 'fr' ? 'Appliquer' : 'Aplicar');
+    if (dashBtn) dashBtn.textContent = 'Aplicar';
     var dashPrintBtn = document.getElementById('dashPrintBtn');
-    if (dashPrintBtn) dashPrintBtn.textContent = lang === 'en' ? 'Print' : (lang === 'fr' ? 'Imprimer' : 'Imprimir');
+    if (dashPrintBtn) dashPrintBtn.textContent = 'Imprimir';
     var kpiLabels = document.querySelectorAll('#page-dashboard .kpi-label');
     kpiLabels.forEach(function(el, i) { if (ui.kpiLabels[i]) el.textContent = ui.kpiLabels[i]; });
     var kpiSubs = document.querySelectorAll('#page-dashboard .kpi-sub');
@@ -8050,113 +7470,88 @@ function applyLanguage() {
     document.querySelectorAll('.ci-price-input').forEach(function(input) {
       if ((input.id || '').indexOf('rev-price-') !== 0) input.placeholder = getText('sale_price_placeholder');
     });
-
-    var confirmBtn = document.getElementById('confirmBtn');
-    if (confirmBtn) confirmBtn.textContent = lang === 'en' ? 'Payment' : (lang === 'fr' ? 'Paiement' : 'pagamento');
-    var clearBtn = document.querySelector('.cart-clear');
+    var clearBtn = document.querySelector('.cart-actions .ghost');
     if (clearBtn) clearBtn.textContent = getText('clear_cart');
-    var vendaLabel = document.querySelector('#page-venda .form-label');
-    if (vendaLabel) vendaLabel.textContent = lang === 'en' ? 'Sale date' : (lang === 'fr' ? 'Date de vente' : 'Data da venda');
-    var saleAddPay = document.querySelector('#page-venda button[onclick="addPaymentLine()"]');
+    var saleAddPay = document.querySelector('.payment-box button[onclick="addSalePaymentLine()"]');
     if (saleAddPay) saleAddPay.textContent = getText('add_payment_method');
-    var saleProgress = document.getElementById('progressLabel');
+    var saleProgress = document.getElementById('sale-progress');
     if (saleProgress) saleProgress.textContent = getText('register_sale');
-    var paymentConfirmBtn = document.getElementById('paymentConfirmBtn');
+    var paymentConfirmBtn = document.querySelector('#payment-modal .payment-confirm');
     if (paymentConfirmBtn) paymentConfirmBtn.textContent = getText('confirm_sale');
-    var paymentProgress = document.getElementById('paymentProgressLabel');
+    var paymentProgress = document.getElementById('payment-progress');
     if (paymentProgress) paymentProgress.textContent = getText('register_sale');
-    var paymentModalTitle = document.querySelector('.payment-modal-title');
+    var paymentModalTitle = document.querySelector('#payment-modal .payment-title');
     if (paymentModalTitle) paymentModalTitle.textContent = getText('payment');
-    var paymentModalAdd = document.querySelector('.payment-modal-add');
+    var paymentModalAdd = document.querySelector('#payment-modal button[onclick="addSalePaymentLine()"]');
     if (paymentModalAdd) paymentModalAdd.textContent = getText('add_payment_method');
 
     ['achat-tab-novo','achat-tab-pagamento','achat-tab-resumo'].forEach(function(id, i) {
       var el = document.getElementById(id);
       if (el) el.textContent = ui.achatTabs[i];
     });
-
-    var histHeaders = document.querySelectorAll('#page-historique th');
+    var histHeaders = document.querySelectorAll('#histBody').length ? document.querySelectorAll('#page-venda th') : [];
     histHeaders.forEach(function(el, i) { if (ui.histHeaders[i]) el.textContent = ui.histHeaders[i]; });
-    var histEmpty = document.querySelector('#histBody .empty');
-    if (histEmpty) histEmpty.textContent = lang === 'en' ? 'Click Filter to load' : (lang === 'fr' ? 'Clique sur Filtrer pour charger' : 'Clica em Filtrar para carregar');
-
-    syncPageTitles();
-
-    var settingsCards = document.querySelectorAll('#page-settings .card:not(.user-settings-card):not(.team-settings-card) > .card-title');
-    settingsCards.forEach(function(el, i) { if (ui.settingsCards[i]) el.textContent = ui.settingsCards[i]; });
     var themeLight = document.getElementById('cfg-theme-light');
     if (themeLight) themeLight.textContent = getText('light_theme');
     var themeDark = document.getElementById('cfg-theme-dark');
     if (themeDark) themeDark.textContent = getText('dark_theme');
-    var stockBoutique = document.querySelector('#cfg-stock-boutique div div:first-child');
+    var stockBoutique = document.querySelector('#cfg-stock-boutique strong');
     if (stockBoutique) stockBoutique.textContent = getText('stock_shop_only');
-    var stockBoutiqueDesc = document.querySelector('#cfg-stock-boutique div div:nth-child(2)');
+    var stockBoutiqueDesc = document.querySelector('#cfg-stock-boutique small');
     if (stockBoutiqueDesc) stockBoutiqueDesc.textContent = getText('stock_shop_only_desc');
-    var stockArmazem = document.querySelector('#cfg-stock-armazem div div:first-child');
+    var stockArmazem = document.querySelector('#cfg-stock-armazem strong');
     if (stockArmazem) stockArmazem.textContent = getText('stock_shop_warehouse');
-    var stockArmazemDesc = document.querySelector('#cfg-stock-armazem div div:nth-child(2)');
+    var stockArmazemDesc = document.querySelector('#cfg-stock-armazem small');
     if (stockArmazemDesc) stockArmazemDesc.textContent = getText('stock_shop_warehouse_desc');
-    var settingsLabels = document.querySelectorAll('#page-settings .form-label');
-    var settingsLabelTexts = [
-      lang === 'en' ? 'Name' : (lang === 'fr' ? 'Nom' : 'Nome'),
-      'Slogan',
-      lang === 'en' ? 'Address / Location' : (lang === 'fr' ? 'Adresse / Localisation' : 'Endereço / Localização'),
-      lang === 'en' ? 'Phone' : (lang === 'fr' ? 'Téléphone' : 'Telefone'),
-      lang === 'en' ? 'Receipt footer message' : (lang === 'fr' ? 'Message de pied du reçu' : 'Mensagem de rodapé do recibo'),
-      lang === 'en' ? 'Text font' : (lang === 'fr' ? 'Police du texte' : 'Fonte do texto'),
-      getText('receipt_logo_image'),
-      getText('receipt_logo_size'),
-      getText('receipt_show')
-    ];
-    settingsLabels.forEach(function(el, i) { if (settingsLabelTexts[i]) el.textContent = settingsLabelTexts[i]; });
-    var clearLogoBtn = document.querySelector('#page-settings button[onclick="clearReceiptLogo()"]');
+    var settingsCards = document.querySelectorAll('#page-settings .settings-grid .card > .card-title');
+    settingsCards.forEach(function(el, i) { if (ui.settingsCards[i]) el.textContent = ui.settingsCards[i]; });
+    var receiptLabels = document.querySelectorAll('#page-settings .settings-grid .card:nth-child(5) .form-label');
+    [getText('receipt_logo_image'), getText('receipt_logo_size'), getText('receipt_show')].forEach(function(txt, i) {
+      if (receiptLabels[i]) receiptLabels[i].textContent = txt;
+    });
+    var clearLogoBtn = document.getElementById('cfg-logo-clear');
     if (clearLogoBtn) clearLogoBtn.textContent = getText('receipt_logo_remove');
-    var editModeTitle = document.querySelector('#editModeBtn') && document.querySelector('#editModeBtn').parentNode.querySelector('div div div:first-child');
+    var editModeTitle = document.querySelector('#page-settings .settings-grid .card:nth-child(6) .card-title');
     if (editModeTitle) editModeTitle.textContent = getText('direct_edit_mode');
-    var editModeDesc = document.querySelector('#editModeBtn') && document.querySelector('#editModeBtn').parentNode.querySelector('div div div:nth-child(2)');
+    var editModeDesc = document.querySelector('#page-settings .settings-grid .card:nth-child(6) p');
     if (editModeDesc) editModeDesc.textContent = getText('direct_edit_desc');
-    var saveSettingsBtn = document.querySelector('[onclick="saveAllSettings()"]');
+    var saveSettingsBtn = document.querySelector('button[onclick="saveSettings()"]');
     if (saveSettingsBtn) saveSettingsBtn.textContent = getText('save_settings');
     var productProfileBtn = document.getElementById('product-profile-save-btn');
     if (productProfileBtn && !productProfileBtn.disabled) productProfileBtn.textContent = getText('save_product_profile');
-    var resetSetupBtn = document.querySelector('[onclick="showSetup()"]');
+    var resetSetupBtn = document.querySelector('button[onclick="resetSetup()"]');
     if (resetSetupBtn) resetSetupBtn.textContent = getText('reset_setup');
     var editModeBtn = document.getElementById('editModeBtn');
     if (editModeBtn && !editModeBtn.disabled && editModeBtn.textContent.indexOf('ACT') === -1) editModeBtn.textContent = getText('edit_mode_button');
-
-    var revSaveBtn = document.getElementById('revSaveBtn');
+    var revSaveBtn = document.getElementById('rev-save-btn');
     if (revSaveBtn) revSaveBtn.textContent = getText('rev_create');
     var revCards = document.querySelectorAll('#page-revendeurs .card-title');
     revCards.forEach(function(el, i) { if (ui.resellerCards[i]) el.textContent = ui.resellerCards[i]; });
-    var pageRev = document.getElementById('page-revendeurs');
-    if (pageRev) {
-      var labels = pageRev.querySelectorAll('.form-label');
+    var revAction = document.querySelector('#rev-action-card');
+    if (revAction) {
+      var labels = revAction.querySelectorAll('.form-label');
       if (labels[1]) labels[1].textContent = getText('rev_name');
       if (labels[2]) labels[2].textContent = getText('rev_open');
-      var actions = pageRev.querySelectorAll('.form-submit');
+      var actions = revAction.querySelectorAll('button');
       if (actions[0]) actions[0].textContent = getText('rev_create');
       if (actions[1]) actions[1].textContent = getText('rev_pay');
       if (actions[2]) actions[2].textContent = getText('rev_return');
     }
-
-    //traduction tresorie
     var treasuryCards = document.querySelectorAll('#page-tresorerie .card-title');
     treasuryCards.forEach(function(el, i) { if (ui.treasuryCards[i]) el.textContent = ui.treasuryCards[i]; });
-
     var clientTabFiche = document.getElementById('client-tab-pagamento');
     if (clientTabFiche) clientTabFiche.textContent = getText('client_file_tab');
     var clientTabPayment = document.getElementById('client-tab-fiche');
     if (clientTabPayment) clientTabPayment.textContent = getText('client_payment_tab');
-    var clientSearch = document.getElementById('cli-search');
+    var clientSearch = document.getElementById('clientSearch');
     if (clientSearch) clientSearch.placeholder = getText('search_client_placeholder');
-    var clientSearchBtn = document.querySelector('#client-panel-fiche .filter-btn');
+    var clientSearchBtn = document.querySelector('#page-clientes button[onclick="searchClientFicha()"]');
     if (clientSearchBtn) clientSearchBtn.textContent = getText('search_button');
-    var clientInitialEmpty = document.querySelector('#cli-result .empty');
+    var clientInitialEmpty = document.querySelector('#clientFichaResult .empty');
     if (clientInitialEmpty) clientInitialEmpty.textContent = getText('client_search_empty');
     setPageTitle('client-panel-pagamento', getText('client_payment_title'));
     var clientPayLabels = document.querySelectorAll('#client-panel-pagamento .form-label');
     if (clientPayLabels[2]) clientPayLabels[2].textContent = getText('amount_paid');
-
     var depNew = document.getElementById('dep-tab-new');
     if (depNew) depNew.textContent = getText('new_expense_tab');
     var depDash = document.getElementById('dep-tab-dashboard');
@@ -8167,69 +7562,45 @@ function applyLanguage() {
     if (depNewCat) depNewCat.placeholder = getText('expense_category_new');
     var depAddCat = document.querySelector('button[onclick="addDepenseCategory()"]');
     if (depAddCat) depAddCat.textContent = getText('add_button');
-    var depBtn = document.getElementById('depBtn');
+    var depBtn = document.getElementById('dep-btn');
     if (depBtn && !depBtn.disabled) depBtn.textContent = getText('register_expense_button');
 
-    var receiptLines = [
-      { id: 'r-num-line', label: lang === 'en' ? 'Receipt No.' : (lang === 'fr' ? 'N Recu' : 'N Recibo') },
-      { id: 'r-date-line', label: lang === 'en' ? 'Date' : 'Data' },
-      { id: 'r-client-line', label: lang === 'en' ? 'Customer' : (lang === 'fr' ? 'Client' : 'Cliente') },
-      { id: 'r-pay-line', label: lang === 'en' ? 'Payment' : (lang === 'fr' ? 'Paiement' : 'Pagamento') }
-    ];
-    receiptLines.forEach(function(item) {
-      var el = document.getElementById(item.id);
-      if (el && el.childNodes[0]) el.childNodes[0].textContent = item.label + ': ';
-    });
-
-    var cartEmpty = document.querySelector('#cartBody .empty');
+    var cartEmpty = document.querySelector('#cartItems .empty');
     if (cartEmpty) cartEmpty.textContent = getText('cart_empty');
-    var prodEmpty = document.querySelector('#prodGrid .empty');
+    var prodEmpty = document.querySelector('#productsGrid .empty');
     if (prodEmpty && !productsLoading) prodEmpty.textContent = getText('no_products');
-    var topEmpty = document.querySelector('#top-list .empty');
+    var topEmpty = document.querySelector('#topProdutos .empty');
     if (topEmpty) topEmpty.textContent = getText('no_data');
-    var depEmpty = document.querySelector('#depenses-list .empty');
+    var depEmpty = document.querySelector('#ultimasDespesas .empty');
     if (depEmpty) depEmpty.textContent = getText('no_expenses');
-    var revProdEmpty = document.querySelector('#revProdGrid .empty');
+    var revProdEmpty = document.querySelector('#revProducts .empty');
     if (revProdEmpty) revProdEmpty.textContent = getText('no_products');
-    var revCartEmpty = document.querySelector('#revCartBody .empty');
+    var revCartEmpty = document.querySelector('#revCart .empty');
     if (revCartEmpty) revCartEmpty.textContent = getText('add_products');
-    var revDetailEmpty = document.querySelector('#rev-detail .empty');
+    var revDetailEmpty = document.querySelector('#revOpenDetail .empty');
     if (revDetailEmpty) revDetailEmpty.textContent = getText('loading');
-    var resumoEmpty = document.querySelector('#resumo-dettes .empty');
+    var resumoEmpty = document.querySelector('#resumoDividas .empty');
     if (resumoEmpty && resumoEmpty.textContent.indexOf('dettes') >= 0) resumoEmpty.textContent = getText('no_supplier_debts');
     var tresoEmpty = document.querySelector('#tresoBody .empty');
     if (tresoEmpty) tresoEmpty.textContent = getText('loading');
-    var clientEmpty = document.querySelector('#cli-result .empty');
+    var clientEmpty = document.querySelector('#clientFichaResult .empty');
     if (clientEmpty && clientEmpty.textContent.indexOf('cliente') >= 0) clientEmpty.textContent = getText('loading');
-    var payStatus = document.getElementById('paymentModalStatus');
-    if (payStatus) {
-      var total = getCartTotal();
-      var paid = paymentLines.reduce(function(sum, p) { return sum + (parseFloat(p.montant) || 0); }, 0);
-      payStatus.textContent = tr('payment_status', { paid: fmt(paid), total: fmt(total) });
-    }
+    syncPageTitles();
   } catch (e) {
-    if (typeof console !== 'undefined' && console.error) {
-      console.error('applyLanguage failed', e);
-    }
+    console.error('applyPortugueseText failed', e);
   } finally {
     window._applyingLanguage = false;
-    if (window.AzulI18n && typeof window.AzulI18n.bindLanguageSelect === "function") {
-      window.AzulI18n.bindLanguageSelect();
-    }
-    if (window.AzulI18n && typeof window.AzulI18n.scheduleStaticDictionary === "function") {
-      window.AzulI18n.scheduleStaticDictionary(document, lang);
-    }
   }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////Fin de la fonction de la traduction /////////////////////////////////////////////////////////
+////////////////////////////// Fim dos textos fixos em portugues /////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Language is applied only by explicit config/load calls to avoid UI loops.
+// Textos fixos aplicados apenas por configuracao/carregamento para evitar loops de UI.
 function saveAllSettings() {
   config.name     = document.getElementById('cfg-name').value.trim() || config.name;
   config.slogan   = document.getElementById('cfg-slogan').value.trim() || config.slogan;
   config.currency = document.getElementById('cfg-currency').value;
-  config.language = (document.getElementById('cfg-language') || {}).value || config.language || 'pt';
+
   // Champs du recibo
   config.address     = document.getElementById('cfg-address').value.trim();
   config.phone       = document.getElementById('cfg-phone').value.trim();
@@ -8420,9 +7791,8 @@ function applyConfig() {
   if (cfgSlogan) cfgSlogan.value = config.slogan || '';
   var cfgCurr = document.getElementById('cfg-currency');
   if (cfgCurr) cfgCurr.value = config.currency || 'Kz';
-  var cfgLanguage = document.getElementById('cfg-language');
-  if (cfgLanguage) cfgLanguage.value = config.language || 'pt';
-  applyLanguage();
+
+  applyPortugueseText();
   // Sync champs recu
   var cfgAddr = document.getElementById('cfg-address');
   if (cfgAddr) cfgAddr.value = config.address || '';

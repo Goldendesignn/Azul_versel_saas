@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v45";
+const AZUL_CACHE = "azul-pwa-v46";
 
 const AZUL_STATIC_ASSETS = [
   "/",
@@ -11,7 +11,6 @@ const AZUL_STATIC_ASSETS = [
   "/CSS/admin.css",
   "/JS/pwa.js",
   "/JS/supabase.js",
-  "/JS/i18n-extra.js",
   "/JS/login.js",
   "/JS/core.js",
   "/JS/admin.js",
