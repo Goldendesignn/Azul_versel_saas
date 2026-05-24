@@ -4478,18 +4478,20 @@ function renderProds(list) {
     var out = p.stockBoutique <= 0;
     var low = p.stockBoutique > 0 && p.stockBoutique <= 3;
     var meta = parseVariationList(p.variation || p.variations);
+    var safeName = escapeDepenseHtml(p.name || '');
+    var safePhoto = escapeDepenseHtml(p.photo || '');
     var div = document.createElement('div');
     div.className = 'prod-card' + (out ? ' out' : '');
     div.innerHTML =
-      '<img class="prod-img" src="' + (p.photo || '') + '" alt="Description">' +
-      '<div class="prod-name"> ' + p.name + '</div>' +
-      '<div class="prod-price" style="margin-left:8px;margin-top:4px;">' + fmt(p.salePrice || p.price || 0) + '</div>' +
+      '<img class="prod-img" src="' + safePhoto + '" alt="Produto">' +
+      '<div class="prod-name" title="' + safeName + '">' + safeName + '</div>' +
+      '<div class="prod-price" title="' + fmt(p.salePrice || p.price || 0) + '">' + fmt(p.salePrice || p.price || 0) + '</div>' +
       (meta && meta.some(function(item) { return item && item.trim() !== ''; })
       ? '<div class="prod-variation">' 
         + meta
             .filter(function(item) { return item && item.trim() !== ''; })
             .map(function(item) {
-              return "<span style='border:0.5px solid var(--muted);border-radius:5px;padding:5px;margin-right:10px;'>" + item + "</span>";
+              return "<span style='border:0.5px solid var(--muted);border-radius:5px;padding:5px;margin-right:10px;'>" + escapeDepenseHtml(item) + "</span>";
             }).join('')
         + '</div>'
       : "<span style='font-size: 12px; color: var(--muted); margin-top: 3px; margin-left: 8px;'>sans variable</span>") +
@@ -4564,18 +4566,19 @@ function renderCart() {
     total += item.price * item.qty;
     var checks = (item.availableVariations || []).map(function(v) {
       var checked = (item.selectedVariations || []).indexOf(v) >= 0 ? 'checked' : '';
-      return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface2);cursor:pointer;"><input type="checkbox" ' + checked + ' onclick="event.stopPropagation();" onchange="toggleCartVariation(event, ' + i + ',\'' + encodeURIComponent(v) + '\')">' + v + '</label>';
+      return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface2);cursor:pointer;"><input type="checkbox" ' + checked + ' onclick="event.stopPropagation();" onchange="toggleCartVariation(event, ' + i + ',\'' + encodeURIComponent(v) + '\')">' + escapeDepenseHtml(v) + '</label>';
     }).join('');
+    var safeItemName = escapeDepenseHtml(item.name || '');
     var div = document.createElement('div');
     div.className = 'cart-item';
     div.setAttribute('data-index', i);
     div.innerHTML =
       '<div style="width:100%;">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
-          '<div class="ci-name" style="flex:1;padding-right:8px;">' + item.name + '</div>' +
+        '<div class="cart-item-head">' +
+          '<div class="ci-name" title="' + safeItemName + '">' + safeItemName + '</div>' +
           '<button class="ci-del" onclick="removeItem(' + i + ')">x</button>' +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<div class="cart-item-main">' +
           '<div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 6px;">' +
             '<button class="qbtn" style="background:none;width:18px;height:18px;" onclick="chgQty(' + i + ',-1)">-</button>' +
             '<span class="qnum">' + item.qty + '</span>' +
@@ -4584,7 +4587,7 @@ function renderCart() {
           '<input type="number" class="ci-price-input" placeholder="' + getText('sale_price_placeholder') + '" value="' + (item.price||'') + '" min="0" onchange="updatePrice(' + i + ', this.value)" oninput="updatePrice(' + i + ', this.value)">' +
           '<div class="ci-total" id="ci-total-' + i + '" style="white-space:nowrap;">' + (item.price > 0 ? fmt(item.price * item.qty) : '-') + '</div>' +
         '</div>' +
-        (checks ? '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;">' + checks + '</div>' : '') +
+        (checks ? '<div class="cart-variation-row">' + checks + '</div>' : '') +
       '</div>';
     el.appendChild(div);
   });
@@ -5093,20 +5096,25 @@ function renderRevProducts(list) {
     var out = p.stockBoutique <= 0;
     var low = p.stockBoutique > 0 && p.stockBoutique <= 3;
     var meta = parseVariationList(p.variation || p.variations);
+    var safeName = escapeDepenseHtml(p.name || '');
+    var safePhoto = escapeDepenseHtml(p.photo || '');
     var div = document.createElement('div');
     div.className = 'prod-card' + (out ? ' out' : '');
     div.innerHTML =
-      '<img class="prod-img" src="' + p.photo + '" alt="Description">' +
-      '<div class="prod-name"> ' + p.name + '</div>' +
-      (meta && meta.some(item => item && item.trim() !== '')
+      '<img class="prod-img" src="' + safePhoto + '" alt="Produto">' +
+      '<div class="prod-name" title="' + safeName + '">' + safeName + '</div>' +
+      (meta && meta.some(function(item) { return item && item.trim() !== ''; })
       ? '<div class="prod-variation">' 
         + meta
-            .filter(item => item && item.trim() !== '')
-            .map(item =>
+            .filter(function(item) { return item && item.trim() !== ''; })
+            .map(function(item) {
+              var safeVariation = escapeDepenseHtml(item);
+              return (
               "<span style='border:0.5px solid var(--muted);border-radius:5px;padding:5px;margin-right:10px;'>"
-              + item +
+              + safeVariation +
               "</span>"
-            ).join('')
+              );
+            }).join('')
         + '</div>'
       : "<span style='font-size: 12px; color: var(--muted); margin-top: 3px; margin-left: 8px;'>sans variable</span>") +
       '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
@@ -5179,17 +5187,18 @@ function renderRevCart() {
     total += (item.price || 0) * item.qty;
     var checks = (item.availableVariations || []).map(function(v) {
       var checked = (item.selectedVariations || []).indexOf(v) >= 0 ? 'checked' : '';
-      return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface2);cursor:pointer;"><input type="checkbox" ' + checked + ' onchange="toggleRevVariation(' + i + ',\'' + encodeURIComponent(v) + '\')">' + v + '</label>';
+      return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface2);cursor:pointer;"><input type="checkbox" ' + checked + ' onchange="toggleRevVariation(' + i + ',\'' + encodeURIComponent(v) + '\')">' + escapeDepenseHtml(v) + '</label>';
     }).join('');
+    var safeItemName = escapeDepenseHtml(item.name || '');
     var div = document.createElement('div');
     div.className = 'cart-item';
     div.style.marginBottom = '8px';
     div.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
-        '<div class="ci-name">' + item.name + '</div>' +
+      '<div class="cart-item-head">' +
+        '<div class="ci-name" title="' + safeItemName + '">' + safeItemName + '</div>' +
         '<button class="ci-del" onclick="removeRevItem(' + i + ')">x</button>' +
       '</div>' +
-      '<div style="display:flex;align-items:center;gap:8px;">' +
+      '<div class="cart-item-main">' +
         '<div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 6px;">' +
           '<button class="qbtn" style="background:none;width:18px;height:18px;" onclick="chgRevQty(' + i + ',-1)">-</button>' +
           '<span class="qnum">' + item.qty + '</span>' +
@@ -5198,7 +5207,7 @@ function renderRevCart() {
         '<input type="number" class="ci-price-input" id="rev-price-' + i + '" placeholder="' + getText('rev_price_placeholder') + '" value="' + (item.price || '') + '" min="0" oninput="updateRevPrice(' + i + ', this.value)" onchange="updateRevPrice(' + i + ', this.value)">' +
         '<div class="ci-total" id="rev-line-total-' + i + '" style="white-space:nowrap;">' + ((item.price || 0) > 0 ? fmt(item.price * item.qty) : '-') + '</div>' +
       '</div>' +
-      (checks ? '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;">' + checks + '</div>' : '');
+      (checks ? '<div class="cart-variation-row">' + checks + '</div>' : '');
     el.appendChild(div);
   });
   document.getElementById('revTotal').textContent = fmt(total);
