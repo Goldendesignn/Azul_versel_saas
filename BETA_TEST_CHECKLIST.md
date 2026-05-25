@@ -28,6 +28,216 @@ Quand une section est terminee, coche les cases. Quand tu trouves un probleme, n
 
 ---
 
+# Donnees de test a utiliser
+
+Utilise ces donnees pour tester comme un vrai client. Tu peux les copier directement dans l'ERP.
+Important: garde les memes noms pendant tout le test pour que les historiques, dettes, stock et rapports soient faciles a verifier.
+
+## Boutique beta
+
+```txt
+Nom de la boutique: Boutique Kiala Fashion
+Slogan: Moda, stock e caixa num so lugar
+Adresse: Rua da Missao, Luanda
+Telephone boutique: +244 923 450 900
+Devise: Kz
+Mode de stock 1: Apenas Stock Boutique
+Mode de stock 2: Stock Boutique + Armazem
+```
+
+## Licences de test
+
+Utilise de vraies cles generees dans ton admin. Les valeurs ci-dessous sont seulement des noms de reference pour organiser le test.
+
+```txt
+Licence proprietaire: AZUL-BETA-OWNER-001
+Licence mobile: AZUL-BETA-MOBILE-001
+Licence suspendue: AZUL-BETA-SUSPEND-001
+Licence multi-utilisateur: AZUL-BETA-TEAM-001
+```
+
+## Utilisateurs de test
+
+Le premier utilisateur doit devenir proprietaire naturellement. Les autres doivent attendre validation dans Equipe.
+
+| Role a tester | Nom | Email | Telephone | Mot de passe |
+|---|---|---|---|---|
+| Proprietaire | Ana Kiala | ana.kiala.beta@gmail.com | +244 923 450 901 | AzulBeta@2026 |
+| Gerant | Paulo Mateus | paulo.mateus.beta@gmail.com | +244 923 450 902 | AzulBeta@2026 |
+| Vendeur | Carla Mendes | carla.mendes.beta@gmail.com | +244 923 450 903 | AzulBeta@2026 |
+| Stock | Edson Silva | edson.silva.beta@gmail.com | +244 923 450 904 | AzulBeta@2026 |
+| Utilisateur suspendu | Bruno Costa | bruno.costa.beta@gmail.com | +244 923 450 905 | AzulBeta@2026 |
+
+## Fournisseurs
+
+| Nom fournisseur | Telephone | Pays | Note |
+|---|---|---|---|
+| Guangzhou Moda Import | +86 138 0000 1001 | China | Fornecedor principal roupa |
+| Mercado Kikolo Atacado | +244 923 100 200 | Angola | Reforco rapido local |
+| Dubai Shoes Center | +971 55 100 2000 | UAE | Calcados importados |
+| Luanda Embalagens | +244 923 777 900 | Angola | Sacos, etiquetas e caixas |
+
+## Clients
+
+| Nom client | Telephone | Email | Situation a tester |
+|---|---|---|---|
+| Joao Pedro | +244 923 501 001 | joao.pedro.beta@gmail.com | Cliente normal |
+| Maria Lopes | +244 923 501 002 | maria.lopes.beta@gmail.com | Cliente a credito |
+| Restaurante Sol Nascente | +244 923 501 003 | compras.solnascente@gmail.com | Cliente com compras grandes |
+| Cliente Anonimo | | | Venda sem nome |
+
+## Produits pour achats et stock
+
+| Produit | Code | Categoria | Variacao | Fornecedor | Qtd | P. compra | P. venda | Stock min |
+|---|---|---|---|---|---:|---:|---:|---:|
+| Tshirt Gucci Premium Preto | TSH-GUC-PRETO | Roupa | S,M,L,XL | Guangzhou Moda Import | 24 | 8500 | 15000 | 5 |
+| Sapatilhas Adidas XLG Branco | SAP-ADI-XLG-BR | Calcado | 39,40,41,42,43 | Dubai Shoes Center | 15 | 18000 | 29990 | 3 |
+| Calca Jeans Azul Slim | CAL-JEA-AZ-SLIM | Roupa | 32,34,36,38 | Guangzhou Moda Import | 18 | 12000 | 22000 | 4 |
+| Bolsa Feminina Castanha | BOL-FEM-CAST | Acessorio | Unico | Mercado Kikolo Atacado | 10 | 9500 | 17500 | 2 |
+| Perfume Oud Royal 100ml | PERF-OUD-100 | Perfume | 100ml | Dubai Shoes Center | 8 | 14500 | 28000 | 2 |
+| Relogio Digital Sport | REL-DIG-SPORT | Acessorio | Preto,Azul | Mercado Kikolo Atacado | 12 | 7000 | 13500 | 3 |
+| Camisa Social Branca | CAM-SOC-BR | Roupa | M,L,XL | Guangzhou Moda Import | 20 | 9000 | 16500 | 5 |
+| Chinelo Praia Azul | CHI-PRA-AZ | Calcado | 40,41,42 | Mercado Kikolo Atacado | 30 | 2500 | 5000 | 8 |
+
+## Achats a enregistrer
+
+### Achat comptant
+
+```txt
+Data: date du jour
+Fornecedor: Guangzhou Moda Import
+Produto: Tshirt Gucci Premium Preto
+Quantidade: 24
+Preco compra: 8500
+Preco venda: 15000
+Pagamento: Cash total
+```
+
+### Achat a credit fournisseur
+
+```txt
+Data: date du jour
+Fornecedor: Dubai Shoes Center
+Produto: Sapatilhas Adidas XLG Branco
+Quantidade: 15
+Preco compra: 18000
+Preco venda: 29990
+Total: 270000 Kz
+Pago agora: 100000 Kz
+Reste a payer: 170000 Kz
+```
+
+### Paiement fournisseur plus tard
+
+```txt
+Fornecedor: Dubai Shoes Center
+Data: date du jour + 1
+Montant paye: 70000 Kz
+Note: Pagamento parcial teste beta
+```
+
+## Ventes a enregistrer
+
+### Vente interne cash
+
+```txt
+Cliente: Joao Pedro
+Produto: Tshirt Gucci Premium Preto
+Quantidade: 2
+Preco venda: 15000
+Pagamento: Cash 30000 Kz
+Type: Interno
+Attendu: stock diminue de 2
+```
+
+### Vente interne multi-paiement
+
+```txt
+Cliente: Restaurante Sol Nascente
+Produit 1: Camisa Social Branca, Qtd 3, Prix 16500
+Produit 2: Bolsa Feminina Castanha, Qtd 1, Prix 17500
+Total: 67000 Kz
+Cash: 30000 Kz
+Express: 37000 Kz
+Type: Interno
+```
+
+### Vente a credit client
+
+```txt
+Cliente: Maria Lopes
+Produto: Sapatilhas Adidas XLG Branco
+Quantidade: 1
+Preco venda: 29990
+Cash: 10000 Kz
+Credito: 19990 Kz
+Type: Interno
+Attendu: dette client Maria Lopes = 19990 Kz
+```
+
+### Vente externe
+
+```txt
+Cliente: Cliente Anonimo
+Produto: Perfume Oud Royal 100ml
+Quantidade: 2
+Preco venda: 28000
+Type: Externo
+Pagamento: Express 56000 Kz
+Attendu: stock boutique ne diminue pas
+```
+
+## Depenses
+
+| Data | Categoria | Descricao | Valor | Metodo |
+|---|---|---|---:|---|
+| Date du jour | Transporte | Taxi para buscar mercadoria | 3500 | Cash |
+| Date du jour | Internet | Pacote mensal internet loja | 12000 | Express |
+| Date du jour | Renda | Renda mensal loja | 85000 | Transferencia |
+| Date du jour | Embalagem | Sacos personalizados | 15000 | Cash |
+| Date du jour | Marketing | Publicidade Instagram | 20000 | Cartao |
+
+## Revendeurs
+
+| Nom revendeur | Telephone | Produits a confier | Condition |
+|---|---|---|---|
+| Neide Revendas | +244 923 600 100 | 3 Tshirt, 2 Chinelo | Paiement apres vente |
+| Carlos Boutique Bairro | +244 923 600 101 | 2 Camisa, 1 Relogio | Paiement partiel |
+
+## Tresorerie manuelle
+
+```txt
+Entree manuelle: Capital inicial, 500000 Kz
+Sortie manuelle: Manutencao loja, 7500 Kz
+Transfert caisse: Cash vers banco, 100000 Kz
+```
+
+## Corrections a tester
+
+```txt
+Correction vente: corriger quantite Tshirt de 2 a 1
+Correction achat: corriger prix achat Sapatilhas de 18000 a 17500
+Correction depense: corriger Internet de 12000 a 10000
+Correction paiement client: corriger paiement Maria de 10000 a 12000
+```
+
+## Donnees pour tester les textes longs
+
+Utilise ce produit pour verifier que les cartes ne cassent pas:
+
+```txt
+Produit: SAPATILHAS_ADIDAS_XLG_2.0_Branco_HQ7468_00_plp_standard_edicao_limitada_luanda_beta
+Code: SAP-LONG-TEST-2026
+Categorie: Calcado Especial Premium Importado
+Variation: 39,40,41,42,43,44,45
+Fornecedor: Dubai Shoes Center
+Qtd: 99
+Preco compra: 10000
+Preco venda: 14999.99
+```
+
+---
+
 # 1. Preparation
 
 But: verifier que l'environnement de test est propre avant de commencer.
@@ -611,4 +821,3 @@ Decision:
 [ ] Pret pour beta limitee
 [ ] Pret pour beta publique
 ```
-
