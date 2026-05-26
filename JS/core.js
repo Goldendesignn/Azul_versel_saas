@@ -2231,6 +2231,7 @@ async function getDashboardDataFromSupabase(filters) {
   if (productsResult.error) throw productsResult.error;
 
   var productRows = productsResult.data || [];
+  var dashboardProductRows = filterDashboardProducts(productRows, prodFilter, fornFilter);
   var productByName = {};
 
   productRows.forEach(function(product) {
@@ -2305,7 +2306,7 @@ async function getDashboardDataFromSupabase(filters) {
     }
   });
 
-  var stockAlertas = productRows
+  var stockAlertas = dashboardProductRows
     .map(function(product) {
       var stock = Number(product.stock_shop) || 0;
       var min = Number(product.min_stock) || 3;
@@ -2346,16 +2347,16 @@ var latestDespesas = expenseRows.slice(0, 5).map(function(row) {
     valor: Number(row.amount) || 0
   };
 });
-  var quickTreasury = await getDashboardQuickTreasuryFromSupabase();
-  var debts = await getDashboardDebtsFromSupabase();
-  var purchases = await getDashboardPurchasesFromSupabase();
-  var smartStock = getDashboardSmartStock(productRows, items);
+  var quickTreasury = await getDashboardQuickTreasuryFromSupabase(filters);
+  var debts = await getDashboardDebtsFromSupabase(filters);
+  var purchases = await getDashboardPurchasesFromSupabase(filters);
+  var smartStock = getDashboardSmartStock(dashboardProductRows, items);
   var salesPerformance = getDashboardSalesPerformance(sales, items);
   var accountingSummary = getDashboardAccountingSummary(
     sales,
     items,
     expenseRows,
-    productRows,
+    dashboardProductRows,
     debts,
     quickTreasury
   );
@@ -3307,28 +3308,30 @@ function summarizeTreasuryEntries(entries, from, to) {
   };
 }
 
-async function getDashboardQuickTreasuryFromSupabase() {
+async function getDashboardQuickTreasuryFromSupabase(filters) {
+  filters = filters || {};
   var now = new Date();
   var today = localDateKey(now);
   var monthStart = localDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+  var from = filters.from || monthStart;
+  var to = filters.to || today;
 
   var allTreasury = await getTreasuryFromSupabase({
-  from: monthStart,
-  to: today,
-  limit: 5
+    from: from,
+    to: to,
+    limit: 5
     });
   var entries = allTreasury.entries || [];
 
-  var todaySummary = summarizeTreasuryEntries(entries, today, today);
-  var monthSummary = summarizeTreasuryEntries(entries, monthStart, today);
+  var periodSummary = summarizeTreasuryEntries(entries, from, to);
 
   return {
     balance: Number(allTreasury.balance) || 0,
-    todayIn: todaySummary.totalIn,
-    todayOut: todaySummary.totalOut,
-    monthIn: monthSummary.totalIn,
-    monthOut: monthSummary.totalOut,
-    monthNet: monthSummary.net,
+    todayIn: periodSummary.totalIn,
+    todayOut: periodSummary.totalOut,
+    monthIn: periodSummary.totalIn,
+    monthOut: periodSummary.totalOut,
+    monthNet: periodSummary.net,
     latest: entries.slice(0, 5)
   };
 }
@@ -3345,9 +3348,9 @@ function getMainDashboardText(key) {
       all: 'Todos', apply: 'Aplicar', print: 'Imprimir', refresh: 'Atualizar', seeAll: 'Ver tudo',
       sales: 'Vendas', profit: 'Lucro', expenses: 'Despesas', stockAlerts: 'Alertas Stock',
       revenueCost: 'Receita - Custo', missingProducts: 'produtos em falta',
-      treasury: 'Tesouraria', quickTreasury: 'Tesouraria rapida', availableBalance: 'Saldo disponivel',
-      monthlyBalance: 'Saldo do mes', todayIn: 'Entradas hoje', todayOut: 'Saidas hoje',
-      monthIn: 'Entradas do mes', monthOut: 'Saidas do mes', monthResult: 'Resultado do mes',
+      treasury: 'Tesouraria', quickTreasury: 'Tesouraria rapida', availableBalance: 'Saldo do periodo',
+      monthlyBalance: 'Entradas - saidas no filtro', todayIn: 'Entradas do periodo', todayOut: 'Saidas do periodo',
+      monthIn: 'Receitas filtradas', monthOut: 'Custos filtrados', monthResult: 'Resultado do periodo',
       cash: 'Cash', express: 'Express', card: 'Cartao', registos: 'registos',
       loadingMovements: 'A carregar movimentos...', noMovement: 'Nenhum movimento encontrado',
       debts: 'Dividas', debtSituation: 'Situacao das dividas',
@@ -3359,8 +3362,8 @@ function getMainDashboardText(key) {
       noSupplierDebt: 'Nenhuma divida de fornecedor', debtUnit: 'divida(s)', purchaseUnit: 'compra(s)',
       purchases: 'Compras', purchaseOverview: 'Visao de compras',
       purchaseIntro: 'Acompanhamento de compras, fornecedores e creditos.',
-      newPurchase: 'Nova compra', todayPurchases: 'Compras hoje', monthPurchases: 'Compras do mes',
-      creditPurchases: 'Compras a credito', supplierDebt: 'Divida fornecedores',
+      newPurchase: 'Nova compra', todayPurchases: 'Compras no periodo', monthPurchases: 'Pago no periodo',
+      creditPurchases: 'Credito do periodo', supplierDebt: 'Divida do periodo',
       remainingToPay: 'Resta pagar', mainSupplier: 'Fornecedor principal', latestPurchases: 'Ultimas compras',
       noPurchase: 'Nenhuma compra encontrada', remaining: 'Resta',
       stock: 'Stock', smartStock: 'Stock inteligente',
@@ -3556,24 +3559,37 @@ function renderDashboardQuickTreasury(data, pagamentos) {
   }).join("");
 }
 
-async function getDashboardDebtsFromSupabase() {
+async function getDashboardDebtsFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
+  filters = filters || {};
+  var from = filters.from || "";
+  var to = filters.to || "";
 
-  var clientResult = await supabaseClient
+  var clientQuery = supabaseClient
     .from("client_debts")
     .select("*")
     .eq("organization_id", organizationId)
     .gt("remaining_amount", 0)
     .order("created_at", { ascending: false });
 
+  if (from) clientQuery = clientQuery.gte("created_at", from + "T00:00:00");
+  if (to) clientQuery = clientQuery.lte("created_at", to + "T23:59:59");
+
+  var clientResult = await clientQuery;
+
   if (clientResult.error) throw clientResult.error;
 
-  var supplierResult = await supabaseClient
+  var supplierQuery = supabaseClient
     .from("purchases")
     .select("id,supplier,total,paid_amount,remaining_amount,created_at")
     .eq("organization_id", organizationId)
     .gt("remaining_amount", 0)
     .order("created_at", { ascending: false });
+
+  if (from) supplierQuery = supplierQuery.gte("created_at", from + "T00:00:00");
+  if (to) supplierQuery = supplierQuery.lte("created_at", to + "T23:59:59");
+
+  var supplierResult = await supplierQuery;
 
   if (supplierResult.error) throw supplierResult.error;
 
@@ -3699,43 +3715,48 @@ function renderDashboardDebts(data) {
   }
 }
 
-async function getDashboardPurchasesFromSupabase() {
+async function getDashboardPurchasesFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
-
+  filters = filters || {};
   var now = new Date();
   var today = localDateKey(now);
   var monthStart = localDateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+  var from = filters.from || monthStart;
+  var to = filters.to || today;
 
-  var result = await supabaseClient
+  var query = supabaseClient
     .from("purchases")
     .select("*")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(300);
 
+  if (from) query = query.gte("created_at", from + "T00:00:00");
+  if (to) query = query.lte("created_at", to + "T23:59:59");
+
+  var result = await query;
+
   if (result.error) throw result.error;
 
   var rows = result.data || [];
 
-  var todayRows = rows.filter(function(row) {
-    return String(row.created_at || "").slice(0, 10) === today;
-  });
-
-  var monthRows = rows.filter(function(row) {
+  var periodRows = rows.filter(function(row) {
     var date = String(row.created_at || "").slice(0, 10);
-    return date >= monthStart && date <= today;
+    if (from && date < from) return false;
+    if (to && date > to) return false;
+    return true;
   });
 
-  var creditRows = rows.filter(function(row) {
+  var creditRows = periodRows.filter(function(row) {
     return (Number(row.remaining_amount) || 0) > 0;
   });
 
-  var todayTotal = todayRows.reduce(function(sum, row) {
+  var periodTotal = periodRows.reduce(function(sum, row) {
     return sum + (Number(row.total) || 0);
   }, 0);
 
-  var monthTotal = monthRows.reduce(function(sum, row) {
-    return sum + (Number(row.total) || 0);
+  var paidTotal = periodRows.reduce(function(sum, row) {
+    return sum + (Number(row.paid_amount) || 0);
   }, 0);
 
   var creditTotal = creditRows.reduce(function(sum, row) {
@@ -3744,7 +3765,7 @@ async function getDashboardPurchasesFromSupabase() {
 
   var supplierMap = {};
 
-  monthRows.forEach(function(row) {
+  periodRows.forEach(function(row) {
     var supplier = String(row.supplier || "Fornecedor").trim();
 
     if (!supplierMap[supplier]) {
@@ -3771,7 +3792,7 @@ async function getDashboardPurchasesFromSupabase() {
     count: 0
   };
 
-  var latest = rows.slice(0, 6).map(function(row) {
+  var latest = periodRows.slice(0, 6).map(function(row) {
     return {
       date: String(row.created_at || "").slice(0, 10),
       supplier: row.supplier || "Fornecedor",
@@ -3782,10 +3803,10 @@ async function getDashboardPurchasesFromSupabase() {
   });
 
   return {
-    todayTotal: todayTotal,
-    todayCount: todayRows.length,
-    monthTotal: monthTotal,
-    monthCount: monthRows.length,
+    todayTotal: periodTotal,
+    todayCount: periodRows.length,
+    monthTotal: paidTotal,
+    monthCount: periodRows.length,
     creditTotal: creditTotal,
     creditCount: creditRows.length,
     debtTotal: creditTotal,
@@ -3836,6 +3857,33 @@ function renderDashboardPurchases(data) {
       '</div>' +
     '</div>';
   }).join("");
+}
+
+function filterDashboardProducts(productRows, prodFilter, fornFilter) {
+  prodFilter = String(prodFilter || "").trim().toLowerCase();
+  fornFilter = String(fornFilter || "").trim().toLowerCase();
+
+  if (!prodFilter && !fornFilter) {
+    return productRows || [];
+  }
+
+  return (productRows || []).filter(function(product) {
+    var productText = [
+      product.name,
+      product.code,
+      product.category,
+      product.variation,
+      product.supplier,
+      product.mainSupplier
+    ].join(" ").toLowerCase();
+
+    var supplierText = String(product.supplier || product.mainSupplier || "").toLowerCase();
+
+    if (prodFilter && productText.indexOf(prodFilter) < 0) return false;
+    if (fornFilter && supplierText.indexOf(fornFilter) < 0) return false;
+
+    return true;
+  });
 }
 
 function getDashboardSmartStock(productRows, saleItems) {
