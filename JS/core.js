@@ -1921,15 +1921,11 @@ async function getSalesHistoryFromSupabase(params) {
 
   var sales = salesResult.data || [];
 
-  if (!sales.length) {
-    return [];
-  }
-
   var saleIds = sales.map(function(sale) {
     return sale.id;
   });
 
-  var saleItems = await fetchSaleItemsBySaleIds(saleIds);
+  var saleItems = saleIds.length ? await fetchSaleItemsBySaleIds(saleIds) : [];
 
   var saleById = {};
   sales.forEach(function(sale) {
@@ -1948,9 +1944,27 @@ async function getSalesHistoryFromSupabase(params) {
       total: Number(item.total) || 0,
       pay: sale.payment_summary || "",
       recibo: sale.receipt_no || "-",
-      user_name: sale.user_name || ""
+      user_name: sale.user_name || "",
+      created_at: sale.created_at || ""
     };
   });
+
+  var resellerProjection = await getResellerSalesProjectionFromSupabase(params);
+  var resellerRows = (resellerProjection.historyRows || []).map(function(row) {
+    return {
+      date: row.date || "",
+      prod: row.prod || "",
+      client: "Revendedor: " + (row.client || ""),
+      qty: row.qty || 0,
+      punit: row.punit || 0,
+      total: row.total || 0,
+      pay: row.pay || "Consignacao",
+      recibo: row.recibo || "-",
+      user_name: row.user_name || ""
+    };
+  });
+
+  rows = rows.concat(resellerRows);
 
   if (search) {
     rows = rows.filter(function(row) {
@@ -1963,7 +1977,167 @@ async function getSalesHistoryFromSupabase(params) {
     });
   }
 
+  rows.sort(function(a, b) {
+    var ak = String(a.date || "") + " " + String(a.created_at || "");
+    var bk = String(b.date || "") + " " + String(b.created_at || "");
+    return bk.localeCompare(ak);
+  });
+
   return rows;
+}
+
+function getResellerSalesDate(row) {
+  return String(row && (row.closed_at || row.consignment_date || row.created_at) || "").slice(0, 10);
+}
+
+function parsePaymentSummaryToLines(summary, fallbackTotal) {
+  summary = String(summary || "").trim();
+  var lines = [];
+
+  if (summary) {
+    summary.split("+").forEach(function(part) {
+      var pieces = part.split(":");
+      var method = String(pieces[0] || "Cash").trim() || "Cash";
+      var rawAmount = pieces.slice(1).join(":");
+      var amount = parsePaymentAmount(rawAmount || "0");
+
+      if (amount > 0) {
+        lines.push({
+          method: method,
+          montant: amount
+        });
+      }
+    });
+  }
+
+  if (!lines.length && Number(fallbackTotal) > 0) {
+    lines.push({
+      method: "Cash",
+      montant: Number(fallbackTotal) || 0
+    });
+  }
+
+  return lines;
+}
+
+async function getResellerSalesProjectionFromSupabase(params) {
+  var organizationId = getAzulOrganizationId();
+
+  params = params || {};
+  var from = params.from || "";
+  var to = params.to || "";
+
+  var result = await supabaseClient
+    .from("reseller_consignments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gt("paid_amount", 0)
+    .neq("status", "returned");
+
+  if (result.error) {
+    console.warn("Historico revendedores indisponivel:", result.error);
+    return {
+      sales: [],
+      items: [],
+      historyRows: []
+    };
+  }
+
+  var consignments = (result.data || []).filter(function(row) {
+    var date = getResellerSalesDate(row);
+    if (from && date < from) return false;
+    if (to && date > to) return false;
+    return true;
+  });
+
+  if (!consignments.length) {
+    return {
+      sales: [],
+      items: [],
+      historyRows: []
+    };
+  }
+
+  var ids = consignments.map(function(row) {
+    return row.id;
+  });
+
+  var itemsById = await getRevItemsForConsignments(ids);
+  var flatItems = [];
+
+  Object.keys(itemsById).forEach(function(id) {
+    flatItems = flatItems.concat(itemsById[id] || []);
+  });
+
+  var costMap = await getRevProductCostMap(flatItems);
+  var sales = [];
+  var items = [];
+  var historyRows = [];
+
+  consignments.forEach(function(row) {
+    var paid = Number(row.paid_amount) || 0;
+    var total = Number(row.total) || 0;
+    var ratio = total > 0 ? Math.min(1, paid / total) : 1;
+    var date = getResellerSalesDate(row);
+    var paymentLines = parsePaymentSummaryToLines(row.payment_summary, paid);
+    var consignmentItems = itemsById[row.id] || [];
+    var pseudoSaleId = "reseller:" + row.id;
+
+    sales.push({
+      id: pseudoSaleId,
+      client_name: row.reseller_name || "Revendedor",
+      sale_date: date,
+      sale_type: "Revendedor",
+      total: paid,
+      profit: 0,
+      payment_summary: row.payment_summary || "Consignacao",
+      payment_lines: paymentLines,
+      receipt_no: row.receipt_no || row.consignment_no || "-",
+      user_name: row.user_name || "",
+      created_at: row.closed_at || row.created_at || ""
+    });
+
+    consignmentItems.forEach(function(item) {
+      var qty = Number(item.quantity) || 0;
+      var unitPrice = Number(item.unit_price) || 0;
+      var projectedQty = qty * ratio;
+      var projectedTotal = (Number(item.total) || (qty * unitPrice)) * ratio;
+      var purchasePrice = Number(costMap[item.product_id]) || 0;
+      var projectedProfit = projectedTotal - (purchasePrice * projectedQty);
+
+      items.push({
+        sale_id: pseudoSaleId,
+        product_id: item.product_id || "",
+        product_name: item.product_name || "",
+        quantity: projectedQty,
+        unit_price: unitPrice,
+        total: projectedTotal,
+        purchase_price: purchasePrice,
+        profit: projectedProfit,
+        variation: item.variation || "",
+        variations: item.variations || []
+      });
+
+      historyRows.push({
+        date: date,
+        prod: item.product_name || "",
+        client: row.reseller_name || "Revendedor",
+        qty: qty,
+        punit: unitPrice,
+        total: projectedTotal,
+        pay: row.payment_summary || "Consignacao",
+        recibo: row.receipt_no || row.consignment_no || "-",
+        user_name: row.user_name || "",
+        created_at: row.closed_at || row.created_at || ""
+      });
+    });
+  });
+
+  return {
+    sales: sales,
+    items: items,
+    historyRows: historyRows
+  };
 }
 
 function normalizePaymentMethod(method) {
@@ -2044,6 +2218,10 @@ async function getDashboardDataFromSupabase(filters) {
   if (saleIds.length) {
        items = await fetchSaleItemsBySaleIds(saleIds);
   }
+
+  var resellerProjection = await getResellerSalesProjectionFromSupabase(filters);
+  sales = sales.concat(resellerProjection.sales || []);
+  items = items.concat(resellerProjection.items || []);
 
   var productsResult = await supabaseClient
     .from("products")
@@ -4404,7 +4582,7 @@ async function loadDashboard() {
 dashboardLoadingTimer = setTimeout(function() {
   if (requestId !== dashboardRequestSeq) return;
   setDashboardFilterLoading(false);
-  toast("Dashboard encore en chargement...", "info");
+  toast("Dashboard ainda a carregar...", "info");
 }, 30000);
 
   try {
@@ -6116,6 +6294,22 @@ function getCartTotal() {
 function formatPaymentAmount(value) {
   var rounded = Math.round((parseFloat(value) || 0) * 100) / 100;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function parsePaymentAmount(value) {
+  var text = String(value == null ? "" : value)
+    .replace(/[^\d,.-]/g, "")
+    .replace(/\s/g, "");
+
+  if (!text) return 0;
+
+  if (text.indexOf(",") >= 0 && text.indexOf(".") >= 0) {
+    text = text.replace(/\./g, "").replace(",", ".");
+  } else if (text.indexOf(",") >= 0) {
+    text = text.replace(",", ".");
+  }
+
+  return Number(text) || 0;
 }
 
 function updatePaymentStatus() {
@@ -9869,6 +10063,27 @@ if (isExternal) {
 }
   });
 
+  var resellerProjection = await getResellerSalesProjectionFromSupabase({
+    from: from,
+    to: to
+  });
+
+  (resellerProjection.sales || []).forEach(function(sale) {
+    var cashIn = getCashInAmountFromPaymentLines(sale.payment_lines || [], sale.total);
+
+    if (cashIn > 0) {
+      entries.push({
+        date: sale.sale_date || "",
+        type: "Venda Revendedor",
+        desc: "Pagamento revendedor " + (sale.client_name || "") + " - " + (sale.receipt_no || ""),
+        income: cashIn,
+        expense: 0,
+        user_name: sale.user_name || "",
+        created_at: sale.created_at || ""
+      });
+    }
+  });
+
   
 
   var purchasesQuery = supabaseClient
@@ -10302,9 +10517,9 @@ renderMobileAccountingRows("acctBalanceBody", balanceRowsMobile, "Nenhum balanco
     });
 
   } catch (e) {
-    console.error("Erro comptabilite:", e);
-    body.innerHTML = '<tr><td colspan="6" class="empty">Erro ao carregar comptabilite</td></tr>';
-    toast("Erro comptabilite: " + (e.message || e), "error");
+    console.error("Erro contabilidade:", e);
+    body.innerHTML = '<tr><td colspan="6" class="empty">Erro ao carregar contabilidade</td></tr>';
+    toast("Erro contabilidade: " + (e.message || e), "error");
   }
 }
 async function getContabilidadeFromSupabase(params) {
@@ -10409,7 +10624,7 @@ async function getContabilidadeFromSupabase(params) {
   var marge = vendas > 0 ? (beneficeBrut / vendas) * 100 : 0;
 
   var vendasCount = entries.filter(function(entry) {
-    return entry.source_type === "sale";
+    return entry.source_type === "sale" || entry.source_type === "reseller_payment";
   }).length;
 
   var journal = [];
