@@ -17,6 +17,9 @@ var purchaseSaveInProgress = false;
 var expenseSaveInProgress = false;
 var clientPaymentInProgress = false;
 var supplierPaymentInProgress = false;
+var revSaveInProgress = false;
+var revActionInProgress = false;
+var revLastSelectionKey = "";
 
 function getAzulOrganizationId() {
   var id = localStorage.getItem("azul_organization_id");
@@ -195,6 +198,7 @@ var AZUL_TABLE_ACTIONS = {
   supplier_payments: "supplier_payment:create",
   corrections_log: "correction:create",
   treasury_entries: "cash:create",
+  reseller_consignments: "reseller:create",
   hr_employees: "hr:create",
   hr_attendance: "hr:create",
   hr_payments: "hr:create"
@@ -665,6 +669,15 @@ function getAzulNotificationFromTable(tableName, row) {
       title: actor + " registou movimento de tesouraria",
       message: (row.type || "Movimento") + " - " + fmt(Number(row.amount) || 0),
       sourceType: "treasury"
+    };
+  }
+
+  if (tableName === "reseller_consignments") {
+    return {
+      actionType: "reseller:create",
+      title: actor + " criou uma consignacao",
+      message: (row.reseller_name || "Revendedor") + " - " + fmt(Number(row.total) || 0),
+      sourceType: "reseller_consignment"
     };
   }
 
@@ -2701,7 +2714,7 @@ function renderMobileSalesHistory(rows) {
         '<div>' +
           '<div class="mobile-card-kicker">Sale #' + escapeDepenseHtml(v.recibo || '-') + '</div>' +
           '<div class="mobile-card-title">' + escapeDepenseHtml(v.prod || '') + '</div>' +
-          '<div class="mobile-card-sub">' + escapeDepenseHtml(v.client || 'Anonimo') + ' • Qtd ' + (v.qty || 0) + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(v.client || 'Anonimo') + ' â€¢ Qtd ' + (v.qty || 0) + '</div>' +
           '<div class="mobile-card-sub">' + escapeDepenseHtml(v.date || '') + '</div>' +
           '<div class="mobile-card-sub">' + renderActionAuthor(v) + '</div>' +
         '</div>' +
@@ -2721,7 +2734,7 @@ function renderMobileInventory(rows) {
   rows = rows || [];
 
   if (!rows.length) {
-    list.innerHTML = '<div class="empty">Aucun produit trouvé</div>';
+    list.innerHTML = '<div class="empty">Aucun produit trouvÃ©</div>';
     return;
   }
 
@@ -2768,12 +2781,12 @@ document.addEventListener('click', function(e) {
 
 function getActionLoadingText(btn, fn) {
   var label = ((btn && (btn.textContent || btn.innerText)) || '').trim().toLowerCase();
-  if (label.indexOf('filtr') >= 0 || label.indexOf('aplicar') >= 0 || label.indexOf('appliquer') >= 0) return 'Aplicação do filtro...';
+  if (label.indexOf('filtr') >= 0 || label.indexOf('aplicar') >= 0 || label.indexOf('appliquer') >= 0) return 'AplicaÃ§Ã£o do filtro...';
   if (label.indexOf('pesquisar') >= 0 || label.indexOf('rechercher') >= 0 || label.indexOf('search') >= 0) return 'Pesquisa em curso...';
   if (label.indexOf('registar') >= 0 || label.indexOf('enregistrer') >= 0 || label.indexOf('guardar') >= 0 || label.indexOf('save') >= 0) return 'A registar...';
-  if (label.indexOf('confirm') >= 0 || label.indexOf('paiement') >= 0 || label.indexOf('pagamento') >= 0) return 'Confirmação em curso...';
+  if (label.indexOf('confirm') >= 0 || label.indexOf('paiement') >= 0 || label.indexOf('pagamento') >= 0) return 'ConfirmaÃ§Ã£o em curso...';
   if (label.indexOf('actualizar') >= 0 || label.indexOf('recharger') >= 0 || label.indexOf('refresh') >= 0) return 'A atualizar...';
-  if (fn === 'getDashboardData') return 'Aplicação do filtro...';
+  if (fn === 'getDashboardData') return 'AplicaÃ§Ã£o do filtro...';
   return '';
 }
 
@@ -3795,7 +3808,7 @@ function getDashboardSalesPerformance(sales, saleItems) {
   sales.forEach(function(sale) {
     var total = Number(sale.total) || 0;
     var client = String(sale.client_name || "Anonimo").trim() || "Anonimo";
-    var seller = String(sale.seller || sale.vendor || sale.created_by || "Não informado").trim() || "Não informado";
+    var seller = String(sale.seller || sale.vendor || sale.created_by || "NÃ£o informado").trim() || "NÃ£o informado";
     seller = String(sale.user_name || seller || "Nao informado").trim() || "Nao informado";
     var origin = String(sale.sale_type || sale.origin || "Interno").trim() || "Interno";
 
@@ -4172,7 +4185,7 @@ function renderDashboardImportantAlerts(data) {
         '<small>' + escapeDepenseHtml(alert.desc || "") + '</small>' +
       '</div>' +
       '<button class="important-alert-action" aria-label="Voir plus" onclick="goTo(\'' + escapeDepenseHtml(alert.page || "dashboard") + '\', null)">' +
-        '<span>›</span>' +
+        '<span>â€º</span>' +
     '</button>' +
     '</div>';
   }).join("");
@@ -4298,7 +4311,7 @@ function printDashboardTicket() {
   var depCountLabel = 'Registos despesas';
 
   var logoImage = (config && config.receiptLogo) ? '<img src="' + escapeDashboardTicketText(config.receiptLogo) + '" style="display:block;max-width:100%;height:auto;margin:0 auto 8px auto;object-fit:contain;width:' + escapeDashboardTicketText((config.receiptLogoSize || '16') + 'mm') + ';">' : '';
-  var shopName = escapeDashboardTicketText((config && config.name) || 'Azul Gestão');
+  var shopName = escapeDashboardTicketText((config && config.name) || 'Azul GestÃ£o');
   var shopSub = escapeDashboardTicketText((config && config.slogan) || '');
   var address = escapeDashboardTicketText((config && config.receiptAddress) || '');
   var phone = escapeDashboardTicketText((config && config.receiptPhone) || '');
@@ -4552,7 +4565,7 @@ function renderAchatProductDatalist() {
   var list = document.getElementById('prodList');
   if (!list) return;
 
-  // 1. récupérer les nom des fournisseurs
+  // 1. rÃ©cupÃ©rer les nom des fournisseurs
   var name = (products || [])
     .map(p => p.name)
     .filter(f => f && f.trim() !== '');
@@ -4560,7 +4573,7 @@ function renderAchatProductDatalist() {
   // 2. enlever les doublons
   var uniques = [...new Set(name)];
 
-  // 3. générer les options
+  // 3. gÃ©nÃ©rer les options
   list.innerHTML = uniques.map(function(f) {
     return '<option value="' + escapeDepenseHtml(f) + '"></option>';
   }).join('');
@@ -4615,14 +4628,14 @@ function renderClientDatalist() {
     var list = document.getElementById('list-client');
     if (!list) return;
 
-    // 1. récupérer les fournisseurs
+    // 1. rÃ©cupÃ©rer les fournisseurs
     var clients = [...new Set(
       data
         .map(a => (a.client || '').trim().toLowerCase())
         .filter(c => c !== '')
     )];
 
-    // 3. générer les options
+    // 3. gÃ©nÃ©rer les options
     list.innerHTML = clients.map(function(client) {
   return '<option value="' + client + '">' + client + '</option>';
   }).join('');
@@ -4633,7 +4646,7 @@ function rendertransfertDatalist() {
   var list = document.getElementById('transProdList');
   if (!list) return;
 
-  // 1. récupérer les fournisseurs
+  // 1. rÃ©cupÃ©rer les fournisseurs
   var name = (products || [])
     .map(p => p.name)
     .filter(f => f && f.trim() !== '');
@@ -4641,7 +4654,7 @@ function rendertransfertDatalist() {
   // 2. enlever les doublons
   var uniques = [...new Set(name)];
 
-  // 3. générer les options
+  // 3. gÃ©nÃ©rer les options
   list.innerHTML = uniques.map(function(f) {
     return '<option value="' + escapeDepenseHtml(f) + '"></option>';
   }).join('');
@@ -5050,136 +5063,420 @@ function generateConsignmentNo() {
     String(now.getSeconds()).padStart(2, "0");
 }
 
-function getRevSelectionIds() {
-  return Array.prototype.slice.call(document.querySelectorAll(".rev-open-check:checked"))
-    .map(function(input) { return input.value; })
-    .filter(Boolean);
+// ===== REVENDEDORES CLEAN MODULE =====
+function getRevTodayDate() {
+  return new Date().toISOString().split("T")[0];
 }
 
-function groupRevCartQuantityByProduct(items) {
-  var grouped = {};
+function getRevProductById(id) {
+  return (products || []).find(function(product) {
+    return String(product.id) === String(id);
+  }) || null;
+}
 
-  (items || []).forEach(function(item) {
-    var key = getCartProductKey(item);
-    if (!key) return;
+function getRevCartProductQty(productId) {
+  return (revCart || []).reduce(function(sum, item) {
+    return sum + (String(item.productId) === String(productId) ? (Number(item.qty) || 0) : 0);
+  }, 0);
+}
 
-    grouped[key] = (grouped[key] || 0) + (Number(item.qty) || 0);
+function getRevLineName(item) {
+  var variations = item && item.selectedVariations && item.selectedVariations.length
+    ? " (" + item.selectedVariations.join(" / ") + ")"
+    : "";
+  return String(item && item.name ? item.name : "") + variations;
+}
+
+function getRevLineTotal(item) {
+  return (Number(item && item.qty) || 0) * (Number(item && item.price) || 0);
+}
+
+function switchRevendeurTab(tab, btn) {
+  ["create", "manage", "history"].forEach(function(name) {
+    var panel = document.getElementById("rev-panel-" + name);
+    var tabBtn = document.getElementById("rev-tab-" + name);
+    if (panel) panel.style.display = name === tab ? "" : "none";
+    if (tabBtn) tabBtn.classList.toggle("active", name === tab);
   });
 
-  return grouped;
+  if (btn && btn.classList) btn.classList.add("active");
+
+  if (tab === "create") {
+    renderRevProducts(products || []);
+    renderRevCart();
+  }
+
+  if (tab === "manage") {
+    loadRevendeurNames();
+    loadRevendeurConsignations();
+    renderRevPayLines();
+  }
+
+  if (tab === "history") {
+    loadRevendeurNames();
+    loadRevHistory();
+  }
 }
 
-async function createConsignmentInSupabase(data) {
-  var organizationId = getAzulOrganizationId();
-  var items = data.items || [];
-  var consignmentNo = generateConsignmentNo();
+function renderRevProducts(list) {
+  var grid = document.getElementById("revProdGrid");
+  if (!grid) return;
 
-  if (!data.revendeur) throw new Error("Revendeur obrigatorio.");
-  if (!items.length) throw new Error("Ajoute au moins un produit.");
+  list = (Array.isArray(list) ? list : []).filter(function(product) {
+    return product && product.name;
+  });
 
-  var total = items.reduce(function(sum, item) {
-    return sum + (Number(item.qty) || 0) * (Number(item.price) || 0);
-  }, 0);
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty">Sem produtos disponiveis</div>';
+    return;
+  }
 
-  var qtyByProduct = groupRevCartQuantityByProduct(items);
+  grid.innerHTML = "";
 
-Object.keys(qtyByProduct).forEach(function(productKey) {
-  var product = (products || []).find(function(p) {
-    return String(p.id) === String(productKey) || p.name === productKey;
+  list.forEach(function(product) {
+    var stock = Number(product.stockBoutique) || 0;
+    var out = stock <= 0;
+    var variations = parseVariationList(product.variation || product.variations);
+    var card = document.createElement("button");
+    card.type = "button";
+    card.className = "reseller-product-card" + (out ? " is-out" : "");
+    card.disabled = out;
+    card.onclick = function() {
+      addToRevCart(product.id, stock);
+    };
+
+    var img = product.photo
+      ? '<img src="' + escapeDepenseHtml(product.photo) + '" alt="Produto" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\';"><span class="reseller-product-placeholder" style="display:none;">A</span>'
+      : '<span class="reseller-product-placeholder">A</span>';
+
+    card.innerHTML =
+      '<div class="reseller-product-img">' + img + '</div>' +
+      '<div class="reseller-product-info">' +
+        '<strong title="' + escapeDepenseHtml(product.name || "") + '">' + escapeDepenseHtml(product.name || "") + '</strong>' +
+        '<span>' + escapeDepenseHtml(product.code || product.category || "Produto") + '</span>' +
+        '<em>' + escapeDepenseHtml(variations.length ? variations.join(" / ") : "Sem variacao") + '</em>' +
+      '</div>' +
+      '<div class="reseller-product-side">' +
+        '<b>' + fmt(product.price || product.salePrice || 0) + '</b>' +
+        '<small>' + (out ? "Esgotado" : stock + " un") + '</small>' +
+      '</div>';
+
+    grid.appendChild(card);
+  });
+}
+
+function filterRevProducts() {
+  var input = document.getElementById("rev-search");
+  var q = String(input && input.value || "").trim().toLowerCase();
+  var source = products || [];
+  var list = q ? source.filter(function(product) {
+    return productSearchText(product).indexOf(q) >= 0;
+  }) : source;
+  renderRevProducts(list);
+}
+
+function addToRevCart(productIdOrName, stock) {
+  var product = getRevProductById(productIdOrName) || (products || []).find(function(row) {
+    return row.name === productIdOrName;
   });
 
   if (!product) {
-    throw new Error("Produto nao encontrado: " + productKey);
+    toast("Produto nao encontrado.", "error");
+    return;
   }
 
-  var qty = qtyByProduct[productKey];
-  var stock = Number(product.stockBoutique) || 0;
+  var available = Number(stock != null ? stock : product.stockBoutique) || 0;
+  var reserved = getRevCartProductQty(product.id);
 
-  if (stock < qty) {
-    throw new Error("Stock insuficiente para " + product.name + ". Disponivel: " + stock);
-  }
-});
-
-  var consignmentResult = await supabaseClient
-    .from("reseller_consignments")
-    .insert({
-      organization_id: organizationId,
-      consignment_no: consignmentNo,
-      reseller_name: data.revendeur,
-      consignment_date: data.date || new Date().toISOString().split("T")[0],
-      status: "open",
-      total: total,
-      paid_amount: 0
-    })
-    .select()
-    .single();
-
-  if (consignmentResult.error) throw consignmentResult.error;
-
-  var consignment = consignmentResult.data;
-  var itemRows = [];
-
-  for (var j = 0; j < items.length; j++) {
-    var item = items[j];
-    var productRow = findProductForCartItem(item);
-
-    if (!productRow) {
-      throw new Error("Produto nao encontrado: " + item.name);
-    }
-    var qtyItem = Number(item.qty) || 0;
-
-    itemRows.push({
-      organization_id: organizationId,
-      consignment_id: consignment.id,
-      product_id: productRow.id,
-      product_name: item.name,
-      quantity: qtyItem,
-      unit_price: Number(item.price) || 0,
-      total: qtyItem * (Number(item.price) || 0),
-      variation: (item.selectedVariations || []).join(" | "),
-      variations: item.selectedVariations || []
-    });
-
-    // Le stock est diminue plus bas une seule fois par produit,
-  // apres avoir additionne toutes les lignes de la consignation.
+  if (reserved >= available) {
+    toast("Stock insuficiente para consignacao. Disponivel: " + available, "error");
+    return;
   }
 
-  var itemsResult = await supabaseClient
-    .from("reseller_consignment_items")
-    .insert(itemRows);
-
-  if (itemsResult.error) throw itemsResult.error;
-
-  var groupedStock = groupRevCartQuantityByProduct(items);
-
-for (var stockKey in groupedStock) {
-  var stockProduct = (products || []).find(function(p) {
-    return String(p.id) === String(stockKey) || p.name === stockKey;
+  revCart.push({
+    productId: product.id || "",
+    name: product.name || "",
+    baseName: product.name || "",
+    supplier: product.supplier || product.mainSupplier || "",
+    purchasePrice: Number(product.purchasePrice) || 0,
+    price: Number(product.price || product.salePrice) || 0,
+    qty: 1,
+    stock: available,
+    availableVariations: parseVariationList(product.variation || product.variations),
+    selectedVariations: []
   });
 
-  if (!stockProduct) continue;
-
-  var newShopStock = Math.max(
-    0,
-    (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockKey]) || 0)
-  );
-
-  var stockResult = await supabaseClient
-    .from("products")
-    .update({
-      stock_shop: newShopStock
-    })
-    .eq("id", stockProduct.id);
-
-  if (stockResult.error) throw stockResult.error;
+  renderRevCart();
 }
 
-  return consignment;
+function renderRevCart() {
+  var body = document.getElementById("revCartBody");
+  var totalEl = document.getElementById("revTotal");
+  if (!body) return;
+
+  if (!revCart.length) {
+    body.innerHTML = '<div class="empty">Adiciona produtos</div>';
+    if (totalEl) totalEl.textContent = fmt(0);
+    return;
+  }
+
+  var total = 0;
+  body.innerHTML = "";
+
+  revCart.forEach(function(item, index) {
+    total += getRevLineTotal(item);
+    var variations = (item.availableVariations || []).map(function(variation) {
+      var checked = (item.selectedVariations || []).indexOf(variation) >= 0 ? " checked" : "";
+      return '<label><input type="checkbox"' + checked + ' onchange="toggleRevVariation(' + index + ',\'' + encodeURIComponent(variation) + '\')">' + escapeDepenseHtml(variation) + '</label>';
+    }).join("");
+
+    var row = document.createElement("div");
+    row.className = "reseller-cart-line";
+    row.innerHTML =
+      '<div class="reseller-cart-line-head">' +
+        '<strong title="' + escapeDepenseHtml(item.name || "") + '">' + escapeDepenseHtml(item.name || "") + '</strong>' +
+        '<button type="button" onclick="removeRevItem(' + index + ')">x</button>' +
+      '</div>' +
+      (variations ? '<div class="reseller-variation-row">' + variations + '</div>' : '<div class="reseller-line-muted">Sem variacao</div>') +
+      '<div class="reseller-cart-controls">' +
+        '<div class="reseller-qty">' +
+          '<button type="button" onclick="chgRevQty(' + index + ',-1)">-</button>' +
+          '<span>' + (item.qty || 0) + '</span>' +
+          '<button type="button" onclick="chgRevQty(' + index + ',1)">+</button>' +
+        '</div>' +
+        '<input type="number" min="0" value="' + (item.price || "") + '" oninput="updateRevPrice(' + index + ', this.value)" placeholder="Preco">' +
+        '<b>' + fmt(getRevLineTotal(item)) + '</b>' +
+      '</div>';
+
+    body.appendChild(row);
+  });
+
+  if (totalEl) totalEl.textContent = fmt(total);
+}
+
+function toggleRevVariation(index, encodedVariation) {
+  if (!revCart[index]) return;
+  var value = decodeURIComponent(encodedVariation || "");
+  var selected = revCart[index].selectedVariations || [];
+  var pos = selected.indexOf(value);
+  if (pos >= 0) selected.splice(pos, 1);
+  else selected.push(value);
+  revCart[index].selectedVariations = selected;
+  renderRevCart();
+}
+
+function chgRevQty(index, delta) {
+  if (!revCart[index]) return;
+
+  var next = (Number(revCart[index].qty) || 0) + delta;
+  if (next <= 0) {
+    revCart.splice(index, 1);
+    renderRevCart();
+    return;
+  }
+
+  var productId = revCart[index].productId;
+  var otherQty = (revCart || []).reduce(function(sum, item, itemIndex) {
+    return sum + (itemIndex !== index && String(item.productId) === String(productId) ? (Number(item.qty) || 0) : 0);
+  }, 0);
+
+  if (otherQty + next > (Number(revCart[index].stock) || 0)) {
+    toast("Stock insuficiente para consignacao. Disponivel: " + revCart[index].stock, "error");
+    return;
+  }
+
+  revCart[index].qty = next;
+  renderRevCart();
+}
+
+function updateRevPrice(index, value) {
+  if (!revCart[index]) return;
+  revCart[index].price = Number(value) || 0;
+  renderRevCart();
+}
+
+function removeRevItem(index) {
+  revCart.splice(index, 1);
+  renderRevCart();
+}
+
+function clearRevCart() {
+  revCart = [];
+  var search = document.getElementById("rev-search");
+  if (search) search.value = "";
+  renderRevCart();
+  renderRevProducts(products || []);
+}
+
+function validateRevCartStock() {
+  var grouped = {};
+
+  (revCart || []).forEach(function(item) {
+    grouped[item.productId] = (grouped[item.productId] || 0) + (Number(item.qty) || 0);
+  });
+
+  Object.keys(grouped).forEach(function(productId) {
+    var product = getRevProductById(productId);
+    var stock = Number(product && product.stockBoutique) || 0;
+    if (!product) throw new Error("Produto nao encontrado.");
+    if (grouped[productId] > stock) {
+      throw new Error("Stock insuficiente para " + product.name + ". Disponivel: " + stock);
+    }
+  });
+}
+
+async function updateRevProductStocksAfterConsignment() {
+  var grouped = {};
+
+  (revCart || []).forEach(function(item) {
+    grouped[item.productId] = (grouped[item.productId] || 0) + (Number(item.qty) || 0);
+  });
+
+  for (var productId in grouped) {
+    var product = getRevProductById(productId);
+    if (!product) continue;
+
+    var result = await supabaseClient
+      .from("products")
+      .update({ stock_shop: Math.max(0, (Number(product.stockBoutique) || 0) - grouped[productId]) })
+      .eq("id", productId);
+
+    if (result.error) throw result.error;
+  }
+}
+
+async function createConsignmentsInSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+  var resellerName = String(data.revendeur || "").trim();
+  var date = data.date || getRevTodayDate();
+  var items = data.items || [];
+  var batchNo = generateConsignmentNo();
+
+  if (!resellerName) throw new Error("Nome do revendedor obrigatorio.");
+  if (!items.length) throw new Error("Adiciona pelo menos um produto.");
+
+  validateRevCartStock();
+
+  var created = [];
+
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var product = getRevProductById(item.productId);
+    if (!product) throw new Error("Produto nao encontrado: " + item.name);
+
+    var qty = Number(item.qty) || 0;
+    var price = Number(item.price) || 0;
+    var total = qty * price;
+    var consignmentNo = batchNo + "-" + String(i + 1).padStart(2, "0");
+
+    var consignmentResult = await insertSingleWithAzulAudit("reseller_consignments", {
+      organization_id: organizationId,
+      consignment_no: consignmentNo,
+      reseller_name: resellerName,
+      consignment_date: date,
+      status: "open",
+      total: total,
+      paid_amount: 0,
+      payment_summary: "",
+      receipt_no: ""
+    });
+
+    if (consignmentResult.error) throw consignmentResult.error;
+
+    var consignment = consignmentResult.data;
+    var itemResult = await insertRowsWithAzulAudit("reseller_consignment_items", [{
+      organization_id: organizationId,
+      consignment_id: consignment.id,
+      product_id: product.id,
+      product_name: getRevLineName(item),
+      quantity: qty,
+      unit_price: price,
+      total: total,
+      variation: (item.selectedVariations || []).join(" | "),
+      variations: item.selectedVariations || []
+    }]);
+
+    if (itemResult.error) throw itemResult.error;
+    created.push(consignment);
+  }
+
+  await updateRevProductStocksAfterConsignment();
+
+  return {
+    batchNo: batchNo,
+    count: created.length,
+    rows: created
+  };
+}
+
+async function saveConsignation() {
+  if (revSaveInProgress) {
+    toast("Consignacao ja esta a ser registada. Aguarde...", "error");
+    return;
+  }
+
+  var resellerName = String((document.getElementById("rev-name") || {}).value || "").trim();
+  var btn = document.getElementById("revSaveBtn");
+
+  if (!resellerName) {
+    toast("Entra o nome do revendedor.", "error");
+    return;
+  }
+
+  if (!revCart.length) {
+    toast("Adiciona pelo menos um produto.", "error");
+    return;
+  }
+
+  var invalid = revCart.find(function(item) {
+    return !item.qty || item.qty <= 0 || !item.price || item.price <= 0;
+  });
+
+  if (invalid) {
+    toast("Verifica quantidade e preco de " + invalid.name + ".", "error");
+    return;
+  }
+
+  revSaveInProgress = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A registar...";
+  }
+
+  try {
+    var result = await createConsignmentsInSupabase({
+      date: (document.getElementById("rev-date") || {}).value || getRevTodayDate(),
+      revendeur: resellerName,
+      items: revCart.map(function(item) {
+        return Object.assign({}, item);
+      })
+    });
+
+    toast("Consignacao criada: " + result.batchNo + " (" + result.count + " item/ns).", "success");
+    clearRevCart();
+    await loadProducts(true);
+    await loadRevendeurNames();
+
+    var manage = document.getElementById("rev-manage-name");
+    var hist = document.getElementById("rev-history-name");
+    if (manage) manage.value = resellerName;
+    if (hist) hist.value = resellerName;
+    await loadRevendeurConsignations();
+    loadRevHistory();
+  } catch (e) {
+    console.error("Erro consignacao revendedor:", e);
+    toast("Erro consignacao: " + (e.message || e), "error");
+  } finally {
+    revSaveInProgress = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Criar consignacao";
+    }
+  }
 }
 
 async function getResellerNamesFromSupabase() {
   var organizationId = getAzulOrganizationId();
-
   var result = await supabaseClient
     .from("reseller_consignments")
     .select("reseller_name")
@@ -5199,8 +5496,45 @@ async function getResellerNamesFromSupabase() {
   });
 }
 
+async function loadRevendeurNames() {
+  var select = document.getElementById("rev-manage-name");
+  var datalist = document.getElementById("revendeur-list");
+
+  try {
+    var names = await getResellerNamesFromSupabase();
+    var current = select ? select.value : "";
+
+    if (select) {
+      select.innerHTML = '<option value="">Escolher revendedor</option>' + names.map(function(name) {
+        return '<option value="' + escapeDepenseHtml(name) + '">' + escapeDepenseHtml(name) + '</option>';
+      }).join("");
+      if (current && names.indexOf(current) >= 0) select.value = current;
+    }
+
+    if (datalist) {
+      datalist.innerHTML = names.map(function(name) {
+        return '<option value="' + escapeDepenseHtml(name) + '"></option>';
+      }).join("");
+    }
+  } catch (e) {
+    console.error("Erro ao carregar revendedores:", e);
+  }
+}
+
+function loadOpenConsignations() {
+  loadRevendeurNames();
+  if (document.getElementById("rev-panel-manage") && document.getElementById("rev-panel-manage").style.display !== "none") {
+    loadRevendeurConsignations();
+  }
+  if (document.getElementById("rev-panel-history") && document.getElementById("rev-panel-history").style.display !== "none") {
+    loadRevHistory();
+  }
+}
+
 async function getConsignmentsByResellerFromSupabase(name) {
   var organizationId = getAzulOrganizationId();
+
+  if (!name) return [];
 
   var result = await supabaseClient
     .from("reseller_consignments")
@@ -5208,15 +5542,15 @@ async function getConsignmentsByResellerFromSupabase(name) {
     .eq("organization_id", organizationId)
     .eq("reseller_name", name)
     .eq("status", "open")
-    .order("consignment_date", { ascending: false });
+    .order("consignment_date", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (result.error) throw result.error;
 
-  var consignments = result.data || [];
-  if (!consignments.length) return [];
+  var rows = result.data || [];
+  if (!rows.length) return [];
 
-  var ids = consignments.map(function(c) { return c.id; });
-
+  var ids = rows.map(function(row) { return row.id; });
   var itemsResult = await supabaseClient
     .from("reseller_consignment_items")
     .select("*")
@@ -5224,199 +5558,340 @@ async function getConsignmentsByResellerFromSupabase(name) {
 
   if (itemsResult.error) throw itemsResult.error;
 
-  var itemsByConsignment = {};
+  var itemsById = {};
   (itemsResult.data || []).forEach(function(item) {
-    if (!itemsByConsignment[item.consignment_id]) itemsByConsignment[item.consignment_id] = [];
-    itemsByConsignment[item.consignment_id].push(item);
+    if (!itemsById[item.consignment_id]) itemsById[item.consignment_id] = [];
+    itemsById[item.consignment_id].push(item);
   });
 
-  return consignments.map(function(c) {
-    var items = itemsByConsignment[c.id] || [];
+  return rows.map(function(row) {
+    var items = itemsById[row.id] || [];
+    var paid = Number(row.paid_amount) || 0;
+    var total = Number(row.total) || 0;
     return {
-      id: c.id,
-      displayId: c.consignment_no,
-      date: c.consignment_date,
-      revendeur: c.reseller_name,
-      status: c.status,
-      total: Number(c.total) || 0,
+      id: row.id,
+      displayId: row.consignment_no || row.id,
+      date: row.consignment_date || "",
+      created_at: row.created_at || "",
+      revendeur: row.reseller_name || "",
+      status: row.status || "open",
+      total: total,
+      paid: paid,
+      due: Math.max(0, total - paid),
       qty: items.reduce(function(sum, item) { return sum + (Number(item.quantity) || 0); }, 0),
-      items: items.map(function(item) {
-        return {
-          prod: item.product_name,
-          name: item.product_name,
-          qty: Number(item.quantity) || 0,
-          total: Number(item.total) || 0,
-          product_id: item.product_id
-        };
-      })
+      items: items
     };
   });
 }
 
+function getRevSelectionIds() {
+  return Array.prototype.slice.call(document.querySelectorAll(".rev-open-check:checked"))
+    .map(function(input) { return input.value; })
+    .filter(Boolean);
+}
+
+function getSelectedRevOpenList() {
+  var ids = getRevSelectionIds();
+  return (revOpenConsignations || []).filter(function(item) {
+    return ids.indexOf(String(item.id)) >= 0;
+  });
+}
+
+async function loadRevendeurConsignations() {
+  var select = document.getElementById("rev-manage-name");
+  var box = document.getElementById("rev-open-list");
+  var name = String(select && select.value || "").trim();
+
+  if (!box) return;
+
+  revLastSelectionKey = "";
+  revOpenConsignations = [];
+  box.innerHTML = '<div class="empty">A carregar...</div>';
+
+  if (!name) {
+    box.innerHTML = '<div class="empty">Escolhe um revendedor para ver consignacoes abertas.</div>';
+    updateRevActionPanel();
+    return;
+  }
+
+  try {
+    var list = await getConsignmentsByResellerFromSupabase(name);
+    revOpenConsignations = list;
+
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">Nenhuma consignacao aberta.</div>';
+      updateRevActionPanel();
+      return;
+    }
+
+    box.innerHTML = list.map(function(row) {
+      var itemSummary = (row.items || []).map(function(item) {
+        return (item.product_name || "-") + " x" + (item.quantity || 0);
+      }).join(", ");
+
+      return '<label class="reseller-open-card">' +
+        '<input type="checkbox" class="rev-open-check" value="' + escapeDepenseHtml(row.id) + '" onchange="updateRevActionPanel()">' +
+        '<span>' +
+          '<strong>' + escapeDepenseHtml(row.displayId) + '</strong>' +
+          '<em>' + escapeDepenseHtml(row.date) + ' | ' + escapeDepenseHtml(itemSummary) + '</em>' +
+          '<small>Pago: ' + fmt(row.paid) + ' | Resto: ' + fmt(row.due) + '</small>' +
+        '</span>' +
+        '<b>' + fmt(row.total) + '</b>' +
+      '</label>';
+    }).join("");
+
+    updateRevActionPanel();
+  } catch (e) {
+    console.error("Erro consignacoes revendedor:", e);
+    box.innerHTML = '<div class="empty">Erro ao carregar consignacoes.</div>';
+    toast("Erro revendedor: " + (e.message || e), "error");
+  }
+}
+
+function renderRevPayLines() {
+  var wrap = document.getElementById("rev-pay-lines");
+  if (!wrap) return;
+
+  var methods = ["Cash", "Express", "Cartao"];
+  wrap.innerHTML = (revPaymentLines || []).map(function(line, index) {
+    var options = methods.map(function(method) {
+      return '<option value="' + method + '"' + (line.method === method ? " selected" : "") + '>' + method + '</option>';
+    }).join("");
+
+    return '<div class="reseller-pay-line">' +
+      '<select onchange="revPaymentLines[' + index + '].method=this.value">' + options + '</select>' +
+      '<input type="number" min="0" value="' + (line.montant || "") + '" placeholder="Montante" oninput="revPaymentLines[' + index + '].montant=Number(this.value)||0">' +
+      (revPaymentLines.length > 1 ? '<button type="button" onclick="removeRevPayLine(' + index + ')">x</button>' : '<span></span>') +
+    '</div>';
+  }).join("");
+}
+
+function addRevPayLine() {
+  revPaymentLines.push({ method: "Express", montant: 0 });
+  renderRevPayLines();
+}
+
+function removeRevPayLine(index) {
+  if (revPaymentLines.length <= 1) return;
+  revPaymentLines.splice(index, 1);
+  renderRevPayLines();
+}
+
+function updateRevActionPanel() {
+  var action = String((document.getElementById("rev-action-type") || {}).value || "payment");
+  var paymentPanel = document.getElementById("rev-payment-panel");
+  var returnPanel = document.getElementById("rev-return-panel");
+  var confirmBtn = document.getElementById("revActionConfirmBtn");
+  var paymentSummary = document.getElementById("rev-payment-summary");
+  var returnSummary = document.getElementById("rev-return-summary");
+  var totalEl = document.getElementById("rev-payment-total");
+  var selected = getSelectedRevOpenList();
+  var selectionKey = selected.map(function(row) { return row.id; }).sort().join("|");
+  var totalDue = selected.reduce(function(sum, row) { return sum + (Number(row.due) || 0); }, 0);
+
+  if (paymentPanel) paymentPanel.style.display = action === "payment" ? "" : "none";
+  if (returnPanel) returnPanel.style.display = action === "return" ? "" : "none";
+  if (confirmBtn) confirmBtn.textContent = action === "return" ? "Confirmar devolucao" : "Confirmar pagamento";
+  if (totalEl) totalEl.textContent = fmt(totalDue);
+
+  var summaryHtml = selected.length ? selected.map(function(row) {
+    return '<div class="reseller-summary-row">' +
+      '<span><strong>' + escapeDepenseHtml(row.displayId) + '</strong><small>' + escapeDepenseHtml(row.date) + '</small></span>' +
+      '<b>' + fmt(row.due) + '</b>' +
+    '</div>';
+  }).join("") : '<div class="empty">Seleciona uma consignacao.</div>';
+
+  if (paymentSummary) paymentSummary.innerHTML = summaryHtml;
+  if (returnSummary) {
+    var hasPaid = selected.some(function(row) { return Number(row.paid) > 0; });
+    returnSummary.innerHTML = summaryHtml + (hasPaid ? '<div class="reseller-warning">Consignacoes com pagamento nao podem ser devolvidas directamente.</div>' : "");
+  }
+
+  if (selectionKey !== revLastSelectionKey) {
+    revPaymentLines = [{ method: "Cash", montant: totalDue }];
+    revLastSelectionKey = selectionKey;
+    renderRevPayLines();
+  }
+}
+
+function getRevPaymentSummary(lines) {
+  return (lines || []).map(function(line) {
+    return line.method + ": " + formatPaymentAmount(line.montant || 0);
+  }).join(" + ");
+}
+
+async function getRevItemsForConsignments(ids) {
+  if (!ids.length) return {};
+
+  var result = await supabaseClient
+    .from("reseller_consignment_items")
+    .select("*")
+    .in("consignment_id", ids);
+
+  if (result.error) throw result.error;
+
+  var byId = {};
+  (result.data || []).forEach(function(item) {
+    if (!byId[item.consignment_id]) byId[item.consignment_id] = [];
+    byId[item.consignment_id].push(item);
+  });
+  return byId;
+}
+
+async function getRevProductCostMap(items) {
+  var ids = (items || []).map(function(item) { return item.product_id; }).filter(Boolean);
+  var unique = Array.from(new Set(ids));
+  var map = {};
+
+  if (!unique.length) return map;
+
+  var result = await supabaseClient
+    .from("products")
+    .select("id,purchase_price")
+    .in("id", unique);
+
+  if (result.error) throw result.error;
+
+  (result.data || []).forEach(function(product) {
+    map[product.id] = Number(product.purchase_price) || 0;
+  });
+  return map;
+}
+
 async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) {
   var organizationId = getAzulOrganizationId();
-
-  ids = ids || [];
-
-  if (!ids.length) {
-    throw new Error("Seleciona pelo menos uma consignacao.");
-  }
-
-  var activeLines = (paymentLines || []).filter(function(p) {
-    return Number(p.montant) > 0;
+  var activeLines = (paymentLines || []).filter(function(line) {
+    return Number(line.montant) > 0;
   });
 
-  var totalPaid = activeLines.reduce(function(sum, p) {
-    return sum + (Number(p.montant) || 0);
+  if (!ids.length) throw new Error("Seleciona pelo menos uma consignacao.");
+  if (!activeLines.length) throw new Error("Adiciona um pagamento.");
+
+  var totalPaid = activeLines.reduce(function(sum, line) {
+    return sum + (Number(line.montant) || 0);
   }, 0);
 
-  if (totalPaid <= 0) {
-    throw new Error("Montante de pagamento invalido.");
-  }
-
-  var paymentSummary = getRevPaymentSummary(activeLines);
-  var recibo = "REV-" + Date.now();
-
-  var consignmentsResult = await supabaseClient
+  var result = await supabaseClient
     .from("reseller_consignments")
     .select("*")
     .eq("organization_id", organizationId)
     .in("id", ids)
+    .eq("status", "open")
     .order("consignment_date", { ascending: true })
     .order("created_at", { ascending: true });
 
-  if (consignmentsResult.error) throw consignmentsResult.error;
+  if (result.error) throw result.error;
 
-  var consignments = consignmentsResult.data || [];
+  var rows = result.data || [];
+  var totalDue = rows.reduce(function(sum, row) {
+    return sum + Math.max(0, (Number(row.total) || 0) - (Number(row.paid_amount) || 0));
+  }, 0);
+
+  if (totalPaid > totalDue + 0.01) {
+    throw new Error("Pagamento maior que a divida selecionada. Divida: " + fmt(totalDue));
+  }
+
+  var itemsById = await getRevItemsForConsignments(rows.map(function(row) { return row.id; }));
+  var receiptNo = "REV-" + Date.now();
   var remainingPayment = totalPaid;
 
-  for (var i = 0; i < consignments.length && remainingPayment > 0; i++) {
-    var consignment = consignments[i];
+  for (var i = 0; i < rows.length && remainingPayment > 0; i++) {
+    var row = rows[i];
+    var currentPaid = Number(row.paid_amount) || 0;
+    var total = Number(row.total) || 0;
+    var due = Math.max(0, total - currentPaid);
+    if (due <= 0) continue;
 
-    var total = Number(consignment.total) || 0;
-    var alreadyPaid = Number(consignment.paid_amount) || 0;
-    var remainingDue = Math.max(0, total - alreadyPaid);
-
-    if (remainingDue <= 0) continue;
-
-    var applied = Math.min(remainingDue, remainingPayment);
-    var newPaid = alreadyPaid + applied;
-    var isFullyPaid = newPaid >= total - 0.01;
+    var applied = Math.min(due, remainingPayment);
+    var newPaid = currentPaid + applied;
+    var fullyPaid = newPaid >= total - 0.01;
+    var items = itemsById[row.id] || [];
+    var costMap = await getRevProductCostMap(items);
+    var cost = items.reduce(function(sum, item) {
+      return sum + ((Number(item.quantity) || 0) * (costMap[item.product_id] || 0));
+    }, 0);
 
     var updateResult = await supabaseClient
       .from("reseller_consignments")
       .update({
-        status: isFullyPaid ? "paid" : "open",
         paid_amount: newPaid,
-        payment_summary: paymentSummary,
-        receipt_no: recibo,
-        closed_at: isFullyPaid ? new Date().toISOString() : null
+        status: fullyPaid ? "paid" : "open",
+        payment_summary: getRevPaymentSummary(activeLines),
+        receipt_no: receiptNo,
+        closed_at: fullyPaid ? new Date().toISOString() : null
       })
       .eq("organization_id", organizationId)
-      .eq("id", consignment.id);
+      .eq("id", row.id);
 
     if (updateResult.error) throw updateResult.error;
 
-    var resellerItemsResult = await supabaseClient
-  .from("reseller_consignment_items")
-  .select("*")
-  .eq("consignment_id", consignment.id);
+    var accountingLines = [
+      { account: "11", debit: applied, credit: 0 },
+      { account: "71", debit: 0, credit: applied }
+    ];
 
-if (resellerItemsResult.error) throw resellerItemsResult.error;
+    if (fullyPaid && cost > 0) {
+      accountingLines.push({ account: "61", debit: cost, credit: 0 });
+      accountingLines.push({ account: "13", debit: 0, credit: cost });
+    }
 
-var consignmentItems = resellerItemsResult.data || [];
-
-var productIds = consignmentItems
-  .map(function(item) { return item.product_id; })
-  .filter(Boolean);
-
-var productCostMap = {};
-
-if (productIds.length) {
-  var productsResult = await supabaseClient
-    .from("products")
-    .select("id, purchase_price")
-    .in("id", productIds);
-
-  if (productsResult.error) throw productsResult.error;
-
-  (productsResult.data || []).forEach(function(product) {
-    productCostMap[product.id] = Number(product.purchase_price) || 0;
-  });
-}
-
-var costOfGoods = consignmentItems.reduce(function(sum, item) {
-  var qty = Number(item.quantity) || 0;
-  var purchasePrice = productCostMap[item.product_id] || 0;
-  return sum + (qty * purchasePrice);
-}, 0);
-    
-   var accountingLines = [
-  { account: "11", debit: applied, credit: 0 },
-  { account: "71", debit: 0, credit: applied }
-];
-
-if (isFullyPaid && costOfGoods > 0) {
-  accountingLines.push({ account: "61", debit: costOfGoods, credit: 0 });
-  accountingLines.push({ account: "13", debit: 0, credit: costOfGoods });
-}
-
-await createAccountingEntry(
-  "reseller_payment",
-  generateLocalUuid(),
-  actionDate || new Date().toISOString().split("T")[0],
-  "Pagamento revendedor " + (consignment.reseller_name || ""),
-  accountingLines
-);
+    await createAccountingEntry(
+      "reseller_payment",
+      row.id,
+      actionDate || getRevTodayDate(),
+      "Pagamento revendedor " + (row.reseller_name || ""),
+      accountingLines
+    );
 
     remainingPayment -= applied;
   }
 
-  if (remainingPayment > 0.01) {
-    toast("Pagamento maior que a divida selecionada. Sobra: " + fmt(remainingPayment), "error");
-  }
-
-  return true;
-}
-function generateLocalUuid() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0;
-    var v = c === "x" ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return {
+    paid: totalPaid,
+    due: totalDue,
+    partial: totalPaid < totalDue - 0.01
+  };
 }
 
 async function returnSelectedConsignmentsInSupabase(ids) {
   var organizationId = getAzulOrganizationId();
 
-  for (var i = 0; i < ids.length; i++) {
-    var itemsResult = await supabaseClient
-      .from("reseller_consignment_items")
-      .select("*")
-      .eq("consignment_id", ids[i]);
+  if (!ids.length) throw new Error("Seleciona pelo menos uma consignacao.");
 
-    if (itemsResult.error) throw itemsResult.error;
+  var result = await supabaseClient
+    .from("reseller_consignments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .in("id", ids)
+    .eq("status", "open");
 
-    for (var j = 0; j < (itemsResult.data || []).length; j++) {
-      var item = itemsResult.data[j];
+  if (result.error) throw result.error;
 
+  var rows = result.data || [];
+
+  if (rows.some(function(row) { return Number(row.paid_amount) > 0; })) {
+    throw new Error("Uma consignacao ja tem pagamento. Faca uma correcao antes da devolucao.");
+  }
+
+  var itemsById = await getRevItemsForConsignments(rows.map(function(row) { return row.id; }));
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var items = itemsById[row.id] || [];
+
+    for (var j = 0; j < items.length; j++) {
+      var item = items[j];
       var productResult = await supabaseClient
         .from("products")
-        .select("*")
+        .select("id,stock_shop")
         .eq("id", item.product_id)
         .single();
 
       if (productResult.error) throw productResult.error;
 
-      var currentShop = Number(productResult.data.stock_shop) || 0;
-
       var stockResult = await supabaseClient
         .from("products")
-        .update({ stock_shop: currentShop + (Number(item.quantity) || 0) })
+        .update({ stock_shop: (Number(productResult.data.stock_shop) || 0) + (Number(item.quantity) || 0) })
         .eq("id", item.product_id);
 
       if (stockResult.error) throw stockResult.error;
@@ -5426,10 +5901,11 @@ async function returnSelectedConsignmentsInSupabase(ids) {
       .from("reseller_consignments")
       .update({
         status: "returned",
+        payment_summary: "Devolucao",
         closed_at: new Date().toISOString()
       })
       .eq("organization_id", organizationId)
-      .eq("id", ids[i]);
+      .eq("id", row.id);
 
     if (updateResult.error) throw updateResult.error;
   }
@@ -5437,9 +5913,80 @@ async function returnSelectedConsignmentsInSupabase(ids) {
   return true;
 }
 
+async function confirmRevAction() {
+  if (revActionInProgress) {
+    toast("Accao em curso. Aguarde...", "error");
+    return;
+  }
+
+  var action = String((document.getElementById("rev-action-type") || {}).value || "payment");
+  var ids = getRevSelectionIds();
+  var btn = document.getElementById("revActionConfirmBtn");
+
+  if (!ids.length) {
+    toast("Seleciona pelo menos uma consignacao.", "error");
+    return;
+  }
+
+  revActionInProgress = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A processar...";
+  }
+
+  try {
+    if (action === "return") {
+      await returnSelectedConsignmentsInSupabase(ids);
+      await createAzulNotification({
+        actionType: "reseller:return",
+        title: getAzulCurrentUserName() + " registou devolucao de revendedor",
+        message: ids.length + " consignacao(oes)",
+        sourceType: "reseller"
+      });
+      toast("Mercadoria devolvida ao stock.", "success");
+    } else {
+      var paymentResult = await paySelectedConsignmentsInSupabase(
+        ids,
+        revPaymentLines,
+        (document.getElementById("rev-action-date") || {}).value || getRevTodayDate()
+      );
+      await createAzulNotification({
+        actionType: "reseller:payment",
+        title: getAzulCurrentUserName() + " registou pagamento de revendedor",
+        message: ids.length + " consignacao(oes) - " + fmt(paymentResult.paid || 0),
+        sourceType: "reseller"
+      });
+      toast(paymentResult.partial ? "Pagamento parcial registado." : "Pagamento registado.", "success");
+    }
+
+    revPaymentLines = [{ method: "Cash", montant: 0 }];
+    revLastSelectionKey = "";
+    await loadProducts(true);
+    await loadRevendeurConsignations();
+    loadRevHistory();
+    loadDashboard();
+  } catch (e) {
+    console.error("Erro accao revendedor:", e);
+    toast("Erro revendedor: " + (e.message || e), "error");
+  } finally {
+    revActionInProgress = false;
+    if (btn) {
+      btn.disabled = false;
+    }
+    updateRevActionPanel();
+  }
+}
+
+function getRevStatusLabel(status) {
+  var value = String(status || "").toLowerCase();
+  if (value === "paid") return "Pago";
+  if (value === "returned") return "Devolvido";
+  if (value === "cancelled") return "Cancelado";
+  return "Aberto";
+}
+
 async function getResellerHistoryFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
-
   filters = filters || {};
 
   var query = supabaseClient
@@ -5458,760 +6005,26 @@ async function getResellerHistoryFromSupabase(filters) {
   var rows = result.data || [];
   if (!rows.length) return [];
 
-  var ids = rows.map(function(row) { return row.id; });
-
-  var itemsResult = await supabaseClient
-    .from("reseller_consignment_items")
-    .select("*")
-    .in("consignment_id", ids);
-
-  if (itemsResult.error) throw itemsResult.error;
-
-  var itemsById = {};
-  (itemsResult.data || []).forEach(function(item) {
-    if (!itemsById[item.consignment_id]) itemsById[item.consignment_id] = [];
-    itemsById[item.consignment_id].push(item);
-  });
+  var itemsById = await getRevItemsForConsignments(rows.map(function(row) { return row.id; }));
 
   return rows.map(function(row) {
     var items = itemsById[row.id] || [];
     return {
-      id: row.consignment_no,
-      actionDate: row.consignment_date,
-      revendeur: row.reseller_name,
-      status: row.status,
+      id: row.consignment_no || row.id,
+      actionDate: row.consignment_date || "",
+      created_at: row.created_at || "",
+      revendeur: row.reseller_name || "",
+      status: row.status || "open",
+      statusLabel: getRevStatusLabel(row.status),
       itemsSummary: items.map(function(item) {
-        return item.product_name + " x" + item.quantity;
+        return (item.product_name || "-") + " x" + (item.quantity || 0);
       }).join(", "),
       total: Number(row.total) || 0,
+      paid: Number(row.paid_amount) || 0,
       payment: row.payment_summary || "",
       recibo: row.receipt_no || ""
     };
   });
-}
-function renderRevProducts(list) {
-  var g = document.getElementById('revProdGrid');
-  if (!g) return;
-  if (!list || list.length === 0) {
-    g.innerHTML = '<div class="empty" style="grid-column:1/-1">Sem produtos '+list+'</div>';
-    return;
-  }
-
-  g.innerHTML = '';
-  list.forEach(function(p) {
-    var out = p.stockBoutique <= 0;
-    var low = p.stockBoutique > 0 && p.stockBoutique <= 3;
-    var meta = parseVariationList(p.variation || p.variations);
-    var safeName = escapeDepenseHtml(p.name || '');
-    var safePhoto = escapeDepenseHtml(p.photo || '');
-    var div = document.createElement('div');
-    div.className = 'prod-card' + (out ? ' out' : '');
-    div.innerHTML =
-      '<img class="prod-img" src="' + safePhoto + '" alt="Produto">' +
-      '<div class="prod-name" title="' + safeName + '">' + safeName + '</div>' +
-      (meta && meta.some(function(item) { return item && item.trim() !== ''; })
-      ? '<div class="prod-variation">' 
-        + meta
-            .filter(function(item) { return item && item.trim() !== ''; })
-            .map(function(item) {
-              var safeVariation = escapeDepenseHtml(item);
-              return (
-              "<span style='border:0.5px solid var(--muted);border-radius:5px;padding:5px;margin-right:10px;'>"
-              + safeVariation +
-              "</span>"
-              );
-            }).join('')
-        + '</div>'
-      : "<span style='font-size: 12px; color: var(--muted); margin-top: 3px; margin-left: 8px;'>sans variable</span>") +
-      '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
-        (out ? ' Esgotado' : 'Stock : ' + p.stockBoutique + ' un') +
-      '</div>';
-  if (!out) {
-    div.onclick = function() {
-      addToRevCart(p.id, p.stockBoutique);
-    };
-  }
-    g.appendChild(div);
-  });
-}
-
-function filterRevProducts() {
-  var q = (document.getElementById('rev-search').value || '').toLowerCase();
-  renderRevProducts(products.filter(function(p) {
-    return [p.name, p.code, p.category, p.mainSupplier, p.variation].join(' ').toLowerCase().indexOf(q) >= 0;
-  }));
-}
-
-function addToRevCart(productIdOrName, stock) {
-  var product = (products || []).find(function(p) {
-    return String(p.id) === String(productIdOrName);
-  }) || (products || []).find(function(p) {
-    return p.name === productIdOrName;
-  }) || {};
-
-  var qtyAlreadyReserved = revCart.reduce(function(sum, item) {
-    return sum + (String(item.productId) === String(product.id) ? (parseFloat(item.qty) || 0) : 0);
-  }, 0);
-
-  if (qtyAlreadyReserved >= stock) {
-    toast("Stock insuffisant pour consignation.", "error");
-    return;
-  }
-
-  revCart.push({
-    productId: product.id || "",
-    name: product.name || String(productIdOrName || ""),
-    baseName: product.name || String(productIdOrName || ""),
-    supplier: product.supplier || product.mainSupplier || "",
-    purchasePrice: parseFloat(product.purchasePrice) || 0,
-    price: product.price || product.salePrice || 0,
-    qty: 1,
-    stock: stock,
-    availableVariations: parseVariationList(product.variation || product.variations),
-    selectedVariations: []
-  });
-
-  renderRevCart();
-
-  setTimeout(function() {
-    var input = document.getElementById("rev-price-" + (revCart.length - 1));
-    if (input) input.focus();
-  }, 50);
-}
-
-function renderRevCart() {
-  var el = document.getElementById('revCartBody');
-  if (!el) return;
-  if (!revCart.length) {
-    el.innerHTML = '<div class="empty">Adiciona produtos</div>';
-    document.getElementById('revTotal').textContent = '0 Kz';
-    return;
-  }
-  el.innerHTML = '';
-  var total = 0;
-  revCart.forEach(function(item, i) {
-    total += (item.price || 0) * item.qty;
-    var checks = (item.availableVariations || []).map(function(v) {
-      var checked = (item.selectedVariations || []).indexOf(v) >= 0 ? 'checked' : '';
-      return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface2);cursor:pointer;"><input type="checkbox" ' + checked + ' onchange="toggleRevVariation(' + i + ',\'' + encodeURIComponent(v) + '\')">' + escapeDepenseHtml(v) + '</label>';
-    }).join('');
-    var safeItemName = escapeDepenseHtml(item.name || '');
-    var div = document.createElement('div');
-    div.className = 'cart-item';
-    div.style.marginBottom = '8px';
-    div.innerHTML =
-      '<div class="cart-item-head">' +
-        '<div class="ci-name" title="' + safeItemName + '">' + safeItemName + '</div>' +
-        '<button class="ci-del" onclick="removeRevItem(' + i + ')">x</button>' +
-      '</div>' +
-      '<div class="cart-item-main">' +
-        '<div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 6px;">' +
-          '<button class="qbtn" style="background:none;width:18px;height:18px;" onclick="chgRevQty(' + i + ',-1)">-</button>' +
-          '<span class="qnum">' + item.qty + '</span>' +
-          '<button class="qbtn" style="background:none;width:18px;height:18px;" onclick="chgRevQty(' + i + ',1)">+</button>' +
-        '</div>' +
-        '<input type="number" class="ci-price-input" id="rev-price-' + i + '" placeholder="' + getText('rev_price_placeholder') + '" value="' + (item.price || '') + '" min="0" oninput="updateRevPrice(' + i + ', this.value)" onchange="updateRevPrice(' + i + ', this.value)">' +
-        '<div class="ci-total" id="rev-line-total-' + i + '" style="white-space:nowrap;">' + ((item.price || 0) > 0 ? fmt(item.price * item.qty) : '-') + '</div>' +
-      '</div>' +
-      (checks ? '<div class="cart-variation-row">' + checks + '</div>' : '');
-    el.appendChild(div);
-  });
-  document.getElementById('revTotal').textContent = fmt(total);
-}
-
-function chgRevQty(i, d) {
-  if (!revCart[i]) return;
-
-  var newQty = (parseFloat(revCart[i].qty) || 0) + d;
-
-  if (newQty <= 0) {
-    revCart.splice(i, 1);
-    renderRevCart();
-    return;
-  }
-
-  var productName = revCart[i].name;
-  var qtyOtherLines = revCart.reduce(function(sum, item, index) {
-    return sum + (index !== i && item.name === productName ? (parseFloat(item.qty) || 0) : 0);
-  }, 0);
-
-  if (qtyOtherLines + newQty > revCart[i].stock) {
-    toast("Stock insuficiente para consignation. Disponivel: " + revCart[i].stock, "error");
-    return;
-  }
-
-  revCart[i].qty = newQty;
-  renderRevCart();
-}
-
-function updateRevPrice(i, value) {
-  revCart[i].price = parseFloat(value) || 0;
-  var lineTotal = document.getElementById('rev-line-total-' + i);
-  if (lineTotal) {
-    lineTotal.textContent = revCart[i].price > 0 ? fmt(revCart[i].price * revCart[i].qty) : '-';
-  }
-  document.getElementById('revTotal').textContent = fmt(revCart.reduce(function(sum, item) {
-    return sum + ((item.price || 0) * item.qty);
-  }, 0));
-}
-
-function removeRevItem(i) {
-  revCart.splice(i, 1);
-  renderRevCart();
-}
-
-function clearRevCart() {
-  revCart = [];
-  document.getElementById('rev-name').value = '';
-  renderRevCart();
-}
-
-async function saveConsignation() {
-  var revendeur = document.getElementById("rev-name").value.trim();
-
-  if (!revendeur) {
-    toast("Entra o nome do revendeur!", "error");
-    return;
-  }
-
-  if (!revCart.length) {
-    toast("Ajoute au moins un produit!", "error");
-    return;
-  }
-
-  var invalid = revCart.find(function(item) {
-    return !item.price || item.price <= 0;
-  });
-
-  if (invalid) {
-    toast("Entra o prix pour " + invalid.name, "error");
-    return;
-  }
-
-  var btn = document.getElementById("revSaveBtn");
-
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "A registar...";
-  }
-
-  try {
-    var res = await createConsignmentInSupabase({
-      date: document.getElementById("rev-date").value,
-      revendeur: revendeur,
-      items: revCart.map(function(item) {
-        return {
-          baseName: item.name,
-          name: getItemDisplayName(item),
-          qty: item.qty,
-          price: item.price,
-          selectedVariations: item.selectedVariations || []
-        };
-      })
-    });
-
-    toast("Consignation creee: " + (res.consignment_no || ""), "success");
-
-    clearRevCart();
-
-    await loadProducts(true);
-    loadRevendeurNames();
-
-    document.getElementById("rev-manage-name").value = revendeur;
-    document.getElementById("rev-history-name").value = revendeur;
-
-    loadRevendeurConsignations();
-    loadRevHistory();
-
-  } catch (e) {
-    console.error("Erro consignation:", e);
-    toast("Erro consignation: " + (e.message || e), "error");
-
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = getText("create_consignment_button");
-    }
-  }
-}
-
-function renderRevPayLines() {
-  var wrap = document.getElementById('rev-pay-lines');
-  if (!wrap) return;
-  var methods = ['Cash','Express','Cartao','Credito'];
-  wrap.innerHTML = '';
-  revPaymentLines.forEach(function(p, i) {
-    var div = document.createElement('div');
-    div.className = 'payment-line';
-    var sel = '<select class="payment-select" onchange="revPaymentLines[' + i + '].method=this.value;">';
-    methods.forEach(function(m) { sel += '<option value="' + m + '"' + (p.method === m ? ' selected' : '') + '>' + m + '</option>'; });
-    sel += '</select>';
-    div.innerHTML = sel +
-      '<input type="number" class="payment-input" placeholder="Montant" value="' + (p.montant || '') + '" min="0" oninput="revPaymentLines[' + i + '].montant=parseFloat(this.value)||0;">' +
-      (revPaymentLines.length > 1 ? '<button class="payment-remove" onclick="removeRevPayLine(' + i + ')">x</button>' : '<span></span>');
-    wrap.appendChild(div);
-  });
-}
-
-function addRevPayLine() {
-  revPaymentLines.push({ method: 'Express', montant: 0 });
-  renderRevPayLines();
-}
-
-function removeRevPayLine(i) {
-  if (revPaymentLines.length <= 1) return;
-  revPaymentLines.splice(i, 1);
-  renderRevPayLines();
-}
-
-function loadOpenConsignations() {
-  var select = document.getElementById('rev-open-select');
-  if (!select) return;
-  gsCall('getConsignationsOpen', {}, function(list) {
-    list = Array.isArray(list) ? list : [];
-    select.innerHTML = '';
-    if (!list.length) {
-      select.innerHTML = '<option value="">Aucune consignation ouverte</option>';
-      return;
-    }
-    list.forEach(function(c) {
-      var opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.id + ' - ' + c.revendeur + ' - ' + fmt(c.total);
-      select.appendChild(opt);
-    });
-  });
-}
-
-function getRevPaymentSummary(lines) {
-  return lines.map(function(p) {
-    return p.method + ': ' + (parseFloat(p.montant) || 0);
-  }).join(' + ');
-}
-
-function confirmRevPayment() {
-  var id = document.getElementById('rev-open-select').value;
-  if (!id) { toast('Choisis une consignation.', 'error'); return; }
-  var active = revPaymentLines.filter(function(p) { return (parseFloat(p.montant) || 0) > 0; });
-  if (!active.length) { toast('Ajoute un paiement.', 'error'); return; }
-  var now = new Date();
-  var recibo = 'REV-' + now.getFullYear().toString().slice(-2) + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(Math.floor(Math.random()*9000)+1000);
-  gsCall('confirmerPaiementConsignation', {
-    id: id,
-    date: document.getElementById('rev-action-date').value,
-    pagamento: getRevPaymentSummary(active),
-    paymentLines: active,
-    recibo: recibo
-  }, function() {
-    toast('Consignation payee avec succes!', 'success');
-    revPaymentLines = [{ method: 'Cash', montant: 0 }];
-    renderRevPayLines();
-    loadProducts();
-    loadOpenConsignations();
-    loadRevendeurDetail();
-    loadDashboard();
-  });
-}
-
-function returnRevConsignation() {
-  var id = document.getElementById('rev-open-select').value;
-  if (!id) { toast('Choisis une consignation.', 'error'); return; }
-  gsCall('retornarConsignacao', {
-    id: id,
-    date: document.getElementById('rev-action-date').value
-  }, function() {
-    toast('Marchandise retournee.', 'success');
-    loadProducts();
-    loadOpenConsignations();
-    loadRevendeurDetail();
-  });
-}
-
-function loadRevendeurDetail() {
-  var name = (document.getElementById('rev-detail-name').value || document.getElementById('rev-name').value || '').trim();
-  var el = document.getElementById('rev-detail');
-  if (!el) return;
-  if (!name) { el.innerHTML = '<div class="empty">Entra o nome do revendeur</div>'; return; }
-  el.innerHTML = '<div class="empty">A carregar...</div>';
-  gsCall('getRevendeurDetail', name, function(data) {
-    if (!data || !data.nom) { el.innerHTML = '<div class="empty">Revendeur introuvable</div>'; return; }
-    var html = '<div class="card" style="margin-bottom:10px;padding:12px;background:var(--surface2);">' +
-      '<div style="font-family:Playfair Display,serif;font-size:18px;margin-bottom:6px;">' + data.nom + '</div>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-      '<div style="flex:1;min-width:120px;"><div class="kpi-label">En possession</div><div style="font-weight:700;color:var(--blue);">' + fmt(data.totalPossession || 0) + '</div></div>' +
-      '<div style="flex:1;min-width:120px;"><div class="kpi-label">Ouvertes</div><div style="font-weight:700;">' + (data.openCount || 0) + '</div></div>' +
-      '</div></div>';
-    html += '<div class="card-title">Consignations ouvertes</div>';
-    if (!data.ouvertes || !data.ouvertes.length) html += '<div class="empty" style="margin-bottom:12px;">Aucune consignation ouverte</div>';
-    else data.ouvertes.forEach(function(c) {
-      html += '<div class="top-item"><div class="top-name">' + c.id + '  ' + c.date + '</div><div class="top-total">' + fmt(c.total) + '</div></div>';
-    });
-    html += '<div class="card-title" style="margin-top:12px;">Historique</div>';
-    if (!data.historique || !data.historique.length) html += '<div class="empty">Sem historique</div>';
-    else {
-      html += '<table class="data-table"><thead><tr><th>ID</th><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>';
-      data.historique.forEach(function(c) {
-        html += '<tr><td>' + c.id + '</td><td>' + c.date + '</td><td>' + c.status + '</td><td>' + fmt(c.total) + '</td></tr>';
-      });
-      html += '</tbody></table>';
-    }
-    el.innerHTML = html;
-  });
-}
-async function loadRevendeurNames() {
-  var select = document.getElementById("rev-manage-name");
-  var dataList = document.getElementById("revendeur-list");
-
-  if (!select || !dataList) return;
-
-  try {
-    var list = await getResellerNamesFromSupabase();
-
-    var current = select.value;
-
-    select.innerHTML = '<option value="">Choisir un revendeur</option>';
-    dataList.innerHTML = "";
-
-    list.forEach(function(name) {
-      var opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      select.appendChild(opt);
-
-      var dl = document.createElement("option");
-      dl.value = name;
-      dataList.appendChild(dl);
-    });
-
-    if (current && list.indexOf(current) >= 0) {
-      select.value = current;
-    }
-
-  } catch (e) {
-    console.error("Erro revendeur names:", e);
-  }
-}
-function saveConsignation() {
-  var revendeur = document.getElementById('rev-name').value.trim();
-  if (!revendeur) { toast('Entra o nome do revendeur!', 'error'); return; }
-  if (!revCart.length) { toast('Ajoute au moins un produit!', 'error'); return; }
-  var invalid = revCart.find(function(item) { return !item.price || item.price <= 0; });
-  if (invalid) { toast('Entra o prix pour ' + invalid.name, 'error'); return; }
-
-  var btn = document.getElementById('revSaveBtn');
-  btn.disabled = true;
-  btn.textContent = 'A registar...';
-
-  gsCall('registarConsignacao', {
-    date: document.getElementById('rev-date').value,
-    revendeur: revendeur,
-    items: revCart.map(function(item) {
-      return { name: getItemDisplayName(item), qty: item.qty, price: item.price };
-    })
-  }, function(res) {
-    toast('Consignation creee: ' + (res && res.id ? res.id : ''), 'success');
-    clearRevCart();
-    btn.disabled = false;
-    btn.textContent = getText('create_consignment_button');
-    loadProducts();
-    loadRevendeurNames();
-    document.getElementById('rev-manage-name').value = revendeur;
-    document.getElementById('rev-history-name').value = revendeur;
-    loadRevendeurConsignations();
-    loadRevHistory();
-  });
-}
-
-function loadOpenConsignations() {
-  loadRevendeurNames();
-}
-
-async function loadRevendeurConsignations() {
-  var name = (document.getElementById("rev-manage-name").value || "").trim();
-  var box = document.getElementById("rev-open-list");
-
-  if (!box) return;
-
-  var payPanel = document.getElementById("rev-payment-panel");
-  var returnPanel = document.getElementById("rev-return-panel");
-
-  if (payPanel) payPanel.style.display = "none";
-  if (returnPanel) returnPanel.style.display = "none";
-
-  if (!name) {
-    revOpenConsignations = [];
-    box.innerHTML = '<div class="empty">' + getText("revendeurselcttext") + "</div>";
-    updateRevActionPanel([]);
-    applyPortugueseText();
-    return;
-  }
-
-  box.innerHTML = '<div class="empty">' + getText("loading") + "</div>";
-
-  try {
-    var list = await getConsignmentsByResellerFromSupabase(name);
-
-    revOpenConsignations = list;
-
-    if (!list.length) {
-      box.innerHTML = '<div class="empty">' + getText("no_open_consignment") + "</div>";
-      updateRevActionPanel([]);
-      return;
-    }
-
-    var html = "";
-
-    list.forEach(function(c) {
-      html += '<label style="display:block;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;background:var(--surface2);">' +
-        '<div style="display:flex;gap:10px;align-items:flex-start;">' +
-          '<input type="checkbox" class="rev-open-check" value="' + c.id + '" onchange="updateRevActionPanel()" style="margin-top:3px;accent-color:var(--blue);">' +
-          '<div style="flex:1;">' +
-            '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">' +
-              '<div style="font-weight:600;">' + escapeDepenseHtml(c.displayId || c.id) + "</div>" +
-              '<div style="font-family:Playfair Display,serif;color:var(--blue);">' + fmt(c.total) + "</div>" +
-            "</div>" +
-            '<div style="font-size:12px;color:var(--muted);margin-top:3px;">' + escapeDepenseHtml(c.date || "") + "  " + c.qty + " un</div>" +
-            '<div style="font-size:12px;margin-top:6px;line-height:1.5;">' +
-              (c.items || []).map(function(it) { return escapeDepenseHtml((it.prod || it.name || "") + " x" + (it.qty || 0)); }).join(", ") +
-            "</div>" +
-          "</div>" +
-        "</div>" +
-      "</label>";
-    });
-
-    box.innerHTML = html;
-    updateRevActionPanel();
-
-  } catch (e) {
-    console.error("Erro consignations revendeur:", e);
-    box.innerHTML = '<div class="empty">Erro ao carregar consignations</div>';
-    toast("Erro consignations: " + (e.message || e), "error");
-  }
-}
-function getCheckedRevConsignationIds() {
-  return Array.prototype.slice.call(document.querySelectorAll('.rev-open-check:checked')).map(function(el) {
-    return el.value;
-  });
-}
-
-function getRevSelectionData(cb) {
-  var ids = getCheckedRevConsignationIds();
-  if (!ids.length) { toast('Choisis au moins une consignation.', 'error'); return; }
-  var name = (document.getElementById('rev-manage-name').value || '').trim();
-  gsCall('getConsignationsByRevendeur', name, function(list) {
-    list = (Array.isArray(list) ? list : []).filter(function(item) { return ids.indexOf(item.id) >= 0; });
-    cb(list, ids);
-  });
-}
-
-function getSelectedRevOpenList(source) {
-  var ids = getCheckedRevConsignationIds();
-  var list = Array.isArray(source) ? source : revOpenConsignations;
-  return (list || []).filter(function(item) { return ids.indexOf(item.id) >= 0; });
-}
-
-function renderRevActionSummaries(list) {
-  var paymentSummary = document.getElementById('rev-payment-summary');
-  var returnSummary = document.getElementById('rev-return-summary');
-  var totalEl = document.getElementById('rev-payment-total');
-  var selected = getSelectedRevOpenList(list);
-  var total = selected.reduce(function(sum, item) { return sum + (parseFloat(item.total) || 0); }, 0);
-
-  var empty = '<div class="empty">'+getText('revconsselect')+'</div>';
-  var paymentHtml = selected.length ? selected.map(function(item) {
-    return '<div class="top-item"><div class="top-name">' + item.id + '  ' + item.date + '</div><div class="top-total">' + fmt(item.total) + '</div></div>';
-  }).join('') : empty;
-  var returnHtml = selected.length ? selected.map(function(item) {
-    return '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface);">' +
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">' +
-        '<strong>' + item.id + '</strong><span style="color:var(--blue);font-family:Playfair Display,serif;">' + fmt(item.total) + '</span>' +
-      '</div>' +
-      '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' + item.date + '</div>' +
-      '<div style="font-size:12px;margin-top:6px;line-height:1.5;">' + (item.items || []).map(function(it) { return (it && typeof it === 'object') ? ((it.prod || it.name || '') + ' x' + (it.qty || 0)) : it; }).join(', ') + '</div>' +
-    '</div>';
-  }).join('') : empty;
-
-  if (paymentSummary) paymentSummary.innerHTML = paymentHtml;
-  if (returnSummary) returnSummary.innerHTML = returnHtml;
-  if (totalEl) totalEl.textContent = fmt(total);
-
-  if (selected.length && revPaymentLines.length === 1) {
-    revPaymentLines = [{ method: revPaymentLines[0].method || 'Cash', montant: total }];
-    renderRevPayLines();
-  }
-}
-
-function updateRevActionPanel(list) {
-  var action = (document.getElementById('rev-action-type') || {}).value || 'payment';
-  var payPanel = document.getElementById('rev-payment-panel');
-  var returnPanel = document.getElementById('rev-return-panel');
-  var confirmBtn = document.getElementById('revActionConfirmBtn');
-  if (payPanel) payPanel.style.display = action === 'payment' ? 'block' : 'none';
-  if (returnPanel) returnPanel.style.display = action === 'return' ? 'block' : 'none';
-  if (confirmBtn) confirmBtn.textContent = action === 'return' ? getText('confirm_return_button') : getText('confirm_payment_button');
-  renderRevActionSummaries(list);
-}
-
-async function confirmRevAction() {
-  var action = (document.getElementById("rev-action-type") || {}).value || "payment";
-  var ids = getRevSelectionIds();
-
-  if (!ids.length) {
-    toast("Selectionne une consignation.", "error");
-    return;
-  }
-
-  try {
-    if (action === "return") {
-      await returnSelectedConsignmentsInSupabase(ids);
-      toast("Marchandise retournee.", "success");
-    } else {
-      var active = revPaymentLines.filter(function(p) {
-        return (parseFloat(p.montant) || 0) > 0;
-      });
-
-      if (!active.length) {
-        toast("Ajoute un paiement.", "error");
-        return;
-      }
-
-      await paySelectedConsignmentsInSupabase(
-        ids,
-        active,
-        document.getElementById("rev-action-date").value
-      );
-
-      toast("Consignation payee avec succes!", "success");
-      revPaymentLines = [{ method: "Cash", montant: 0 }];
-      renderRevPayLines();
-    }
-
-    await loadProducts(true);
-    loadRevendeurConsignations();
-    loadRevHistory();
-    loadDashboard();
-
-  } catch (e) {
-    console.error("Erro action revendeur:", e);
-    toast("Erro revendeur: " + (e.message || e), "error");
-  }
-}
-
-function prepareRevPayment() {
-  getRevSelectionData(function(list) {
-    var panel = document.getElementById('rev-payment-panel');
-    var returnPanel = document.getElementById('rev-return-panel');
-    var summary = document.getElementById('rev-payment-summary');
-    var total = list.reduce(function(sum, item) { return sum + (parseFloat(item.total) || 0); }, 0);
-    if (returnPanel) returnPanel.style.display = 'none';
-    if (panel) panel.style.display = 'block';
-    if (summary) {
-      summary.innerHTML = list.map(function(item) {
-        return '<div class="top-item"><div class="top-name">' + item.id + '  ' + item.date + '</div><div class="top-total">' + fmt(item.total) + '</div></div>';
-      }).join('');
-    }
-    document.getElementById('rev-payment-total').textContent = fmt(total);
-    revPaymentLines = [{ method: 'Cash', montant: total }];
-    renderRevPayLines();
-  });
-}
-
-function prepareRevReturn() {
-  getRevSelectionData(function(list) {
-    var panel = document.getElementById('rev-return-panel');
-    var payPanel = document.getElementById('rev-payment-panel');
-    var summary = document.getElementById('rev-return-summary');
-    if (payPanel) payPanel.style.display = 'none';
-    if (panel) panel.style.display = 'block';
-    if (summary) {
-      summary.innerHTML = list.map(function(item) {
-        return '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface);">' +
-          '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">' +
-            '<strong>' + item.id + '</strong><span style="color:var(--blue);font-family:Playfair Display,serif;">' + fmt(item.total) + '</span>' +
-          '</div>' +
-          '<div style="font-size:12px;color:var(--muted);margin-top:4px;">' + item.date + '</div>' +
-          '<div style="font-size:12px;margin-top:6px;line-height:1.5;">' + (item.items || []).map(function(it) { return (it && typeof it === 'object') ? ((it.prod || it.name || '') + ' x' + (it.qty || 0)) : it; }).join(', ') + '</div>' +
-        '</div>';
-      }).join('');
-    }
-  });
-}
-
-function confirmSelectedRevPayments() {
-  getRevSelectionData(function(list, ids) {
-    var active = revPaymentLines.filter(function(p) { return (parseFloat(p.montant) || 0) > 0; });
-    if (!active.length) { toast('Ajoute un paiement.', 'error'); return; }
-    var total = list.reduce(function(sum, item) { return sum + (parseFloat(item.total) || 0); }, 0);
-    var paid = active.reduce(function(sum, p) { return sum + (parseFloat(p.montant) || 0); }, 0);
-    if (Math.abs(paid - total) > 0.01) {
-      toast('Le total des paiements doit etre egal au total selectionne.', 'error');
-      return;
-    }
-
-    var btn = document.getElementById('revPayConfirmBtn') || document.getElementById('revActionConfirmBtn');
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = 'A registar...';
-    }
-
-    var now = new Date();
-    var recibo = 'REV-' + now.getFullYear().toString().slice(-2) + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(Math.floor(Math.random()*9000)+1000);
-    gsCall('confirmerPaiementConsignations', {
-      ids: ids,
-      date: document.getElementById('rev-action-date').value,
-      pagamento: getRevPaymentSummary(active),
-      paymentLines: active,
-      recibo: recibo
-    }, function() {
-      toast('Paiement revendeur enregistre avec succes!', 'success');
-      revPaymentLines = [{ method: 'Cash', montant: 0 }];
-      renderRevPayLines();
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = getText('confirm_payment_button');
-      }
-      updateRevActionPanel([]);
-      loadProducts();
-      loadRevendeurNames();
-      loadRevendeurConsignations();
-      loadRevHistory();
-      loadDashboard();
-    });
-  });
-}
-
-function confirmRevPayment() {
-  confirmSelectedRevPayments();
-}
-
-function confirmSelectedRevReturn() {
-  getRevSelectionData(function(list, ids) {
-    var btn = document.getElementById('revReturnConfirmBtn') || document.getElementById('revActionConfirmBtn');
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = 'A registar...';
-    }
-    gsCall('retornarConsignacoes', {
-      ids: ids,
-      date: document.getElementById('rev-action-date').value
-    }, function() {
-      toast('Retour enregistre avec succes!', 'success');
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = getText('confirm_return_button');
-      }
-      updateRevActionPanel([]);
-      loadProducts();
-      loadRevendeurNames();
-      loadRevendeurConsignations();
-      loadRevHistory();
-      loadDashboard();
-    });
-  });
-}
-
-function returnRevConsignation() {
-  confirmSelectedRevReturn();
 }
 
 function renderMobileRevHistory(rows) {
@@ -6221,37 +6034,29 @@ function renderMobileRevHistory(rows) {
   rows = rows || [];
 
   if (!rows.length) {
-    list.innerHTML = '<div class="empty">Aucun historique revendeur</div>';
+    list.innerHTML = '<div class="empty">Sem historico revendedor</div>';
     return;
   }
 
   list.innerHTML = rows.map(function(row) {
-    var status = row.status || "-";
-    var statusText = String(status).toLowerCase();
-
-    var pillClass = "open";
-    if (statusText.indexOf("pay") >= 0 || statusText.indexOf("pago") >= 0) pillClass = "paid";
-    if (statusText.indexOf("retour") >= 0 || statusText.indexOf("return") >= 0) pillClass = "returned";
-
-    return '' +
-      '<div class="mobile-rev-history-card">' +
-        '<div class="mobile-card-top">' +
-          '<div>' +
-            '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.id || "-") + '</div>' +
-            '<div class="mobile-card-title">' + escapeDepenseHtml(row.revendeur || "Revendeur") + '</div>' +
-            '<div class="mobile-card-sub">' + escapeDepenseHtml(row.actionDate || row.date || "") + '</div>' +
-            '<div class="mobile-card-sub">' + escapeDepenseHtml(row.itemsSummary || "") + '</div>' +
-          '</div>' +
-          '<div style="text-align:right;">' +
-            '<div class="mobile-card-amount">' + fmt(row.total || 0) + '</div>' +
-            '<div class="mobile-rev-pill ' + pillClass + '">' + escapeDepenseHtml(status) + '</div>' +
-          '</div>' +
+    return '<div class="mobile-rev-history-card">' +
+      '<div class="mobile-card-top">' +
+        '<div>' +
+          '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.id || "-") + '</div>' +
+          '<div class="mobile-card-title">' + escapeDepenseHtml(row.revendeur || "Revendedor") + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(row.actionDate || "") + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(row.itemsSummary || "") + '</div>' +
         '</div>' +
-        '<div class="mobile-rev-extra">' +
-          '<span>Paiement: ' + escapeDepenseHtml(row.payment || "-") + '</span>' +
-          '<span>Recu: ' + escapeDepenseHtml(row.recibo || "-") + '</span>' +
+        '<div style="text-align:right;">' +
+          '<div class="mobile-card-amount">' + fmt(row.total || 0) + '</div>' +
+          '<div class="mobile-rev-pill ' + escapeDepenseHtml(String(row.status || "open").toLowerCase()) + '">' + escapeDepenseHtml(row.statusLabel || row.status || "") + '</div>' +
         '</div>' +
-      '</div>';
+      '</div>' +
+      '<div class="mobile-rev-extra">' +
+        '<span>Pago: ' + fmt(row.paid || 0) + '</span>' +
+        '<span>Recibo: ' + escapeDepenseHtml(row.recibo || "-") + '</span>' +
+      '</div>' +
+    '</div>';
   }).join("");
 }
 
@@ -6263,82 +6068,36 @@ async function loadRevHistory() {
   renderMobileRevHistory([]);
 
   try {
-    var list = await getResellerHistoryFromSupabase({
-      revendeur: document.getElementById("rev-history-name").value.trim(),
-      from: document.getElementById("rev-history-from").value,
-      to: document.getElementById("rev-history-to").value
+    var rows = await getResellerHistoryFromSupabase({
+      revendeur: String((document.getElementById("rev-history-name") || {}).value || "").trim(),
+      from: String((document.getElementById("rev-history-from") || {}).value || ""),
+      to: String((document.getElementById("rev-history-to") || {}).value || "")
     });
 
-    list = list || [];
-
-    if (!list.length) {
-      body.innerHTML = '<tr><td colspan="8" class="empty">Nenhum historique encontrado</td></tr>';
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty">Nenhum historico encontrado</td></tr>';
       renderMobileRevHistory([]);
       return;
     }
 
-    renderMobileRevHistory(list);
-
-    body.innerHTML = "";
-
-    list.forEach(function(row) {
-      body.innerHTML += "<tr>" +
-        "<td>" + escapeDepenseHtml(row.id || "") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.actionDate || row.date || "") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.revendeur || "") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.status || "") + "</td>" +
-        '<td style="font-size:11px;line-height:1.4;">' + escapeDepenseHtml(row.itemsSummary || "") + "</td>" +
-        '<td style="color:var(--blue);font-weight:600;">' + fmt(row.total || 0) + "</td>" +
-        "<td>" + escapeDepenseHtml(row.payment || "-") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.recibo || "-") + "</td>" +
-      "</tr>";
-    });
-
+    renderMobileRevHistory(rows);
+    body.innerHTML = rows.map(function(row) {
+      return '<tr>' +
+        '<td>' + escapeDepenseHtml(row.id || "") + '</td>' +
+        '<td>' + escapeDepenseHtml(row.actionDate || "") + '</td>' +
+        '<td>' + escapeDepenseHtml(row.revendeur || "") + '</td>' +
+        '<td>' + escapeDepenseHtml(row.statusLabel || "") + '</td>' +
+        '<td style="font-size:11px;line-height:1.4;">' + escapeDepenseHtml(row.itemsSummary || "") + '</td>' +
+        '<td style="font-weight:700;color:var(--blue);">' + fmt(row.total || 0) + '</td>' +
+        '<td>' + fmt(row.paid || 0) + '</td>' +
+        '<td>' + escapeDepenseHtml(row.recibo || "-") + '</td>' +
+      '</tr>';
+    }).join("");
   } catch (e) {
-    console.error("Erro historique revendeur:", e);
-    body.innerHTML = '<tr><td colspan="8" class="empty">Erro ao carregar historique</td></tr>';
+    console.error("Erro historico revendedor:", e);
+    body.innerHTML = '<tr><td colspan="8" class="empty">Erro ao carregar historico</td></tr>';
     renderMobileRevHistory([]);
-    toast("Erro historique revendeur: " + (e.message || e), "error");
-  }
-}
-
-async function loadRevHistory() {
-  var body = document.getElementById("revHistoryBody");
-  if (!body) return;
-
-  body.innerHTML = '<tr><td colspan="8" class="empty">A carregar...</td></tr>';
-
-  try {
-    var list = await getResellerHistoryFromSupabase({
-      revendeur: document.getElementById("rev-history-name").value.trim(),
-      from: document.getElementById("rev-history-from").value,
-      to: document.getElementById("rev-history-to").value
-    });
-
-    if (!list.length) {
-      body.innerHTML = '<tr><td colspan="8" class="empty">Nenhum historique encontrado</td></tr>';
-      return;
-    }
-
-    body.innerHTML = "";
-
-    list.forEach(function(row) {
-      body.innerHTML += "<tr>" +
-        "<td>" + escapeDepenseHtml(row.id || "") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.actionDate || row.date || "") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.revendeur || "") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.status || "") + "</td>" +
-        '<td style="font-size:11px;line-height:1.4;">' + escapeDepenseHtml(row.itemsSummary || "") + "</td>" +
-        '<td style="color:var(--blue);font-weight:600;">' + fmt(row.total || 0) + "</td>" +
-        "<td>" + escapeDepenseHtml(row.payment || "-") + "</td>" +
-        "<td>" + escapeDepenseHtml(row.recibo || "-") + "</td>" +
-      "</tr>";
-    });
-
-  } catch (e) {
-    console.error("Erro historique revendeur:", e);
-    body.innerHTML = '<tr><td colspan="8" class="empty">Erro ao carregar historique</td></tr>';
-    toast("Erro historique revendeur: " + (e.message || e), "error");
+    toast("Erro historico revendedor: " + (e.message || e), "error");
   }
 }
 function loadRevendeurDetail() {
@@ -6754,9 +6513,9 @@ function renderMobileCartPage() {
             '</div>' +
           '</div>' +
           '<div class="mobile-cart-actions">' +
-            '<button class="mobile-cart-delete" onclick="removeItem(' + index + '); renderMobileCartPage(); event.stopPropagation();">×</button>' +
+            '<button class="mobile-cart-delete" onclick="removeItem(' + index + '); renderMobileCartPage(); event.stopPropagation();">Ã—</button>' +
             '<div class="mobile-cart-qty">' +
-              '<button onclick="chgQty(' + index + ', -1); renderMobileCartPage(); event.stopPropagation();">−</button>' +
+              '<button onclick="chgQty(' + index + ', -1); renderMobileCartPage(); event.stopPropagation();">âˆ’</button>' +
               '<span>' + item.qty + '</span>' +
               '<button onclick="chgQty(' + index + ', 1); renderMobileCartPage(); event.stopPropagation();">+</button>' +
             '</div>' +
@@ -6773,13 +6532,13 @@ function renderMobileCartPage() {
         '<option value="Credito" ' + (line.method === "Credito" ? "selected" : "") + '>Credito</option>' +
       '</select>' +
       '<input type="number" value="' + (line.montant || 0) + '" oninput="updateMobilePaymentLine(' + index + ', \'montant\', this.value)">' +
-      '<button onclick="removeMobilePaymentLine(' + index + ')">×</button>' +
+      '<button onclick="removeMobilePaymentLine(' + index + ')">Ã—</button>' +
     '</div>';
   }).join("");
 
   page.innerHTML =
     '<div class="mobile-cart-head">' +
-      '<button class="mobile-cart-back" onclick="closeMobileCart()">‹</button>' +
+      '<button class="mobile-cart-back" onclick="closeMobileCart()">â€¹</button>' +
       '<div class="mobile-cart-title">Carrinho</div>' +
       '<button class="mobile-cart-clear" onclick="clearCart(); renderMobileCartPage(); renderMobileCartBar();">Limpar</button>' +
     '</div>' +
@@ -6807,7 +6566,7 @@ function showReceipt(d) {
   var cur = window._currency || 'Kz';
 
   var rlogo = document.getElementById('r-logo');
-  if (rlogo) rlogo.textContent = (config && config.name) || 'Azul Gestão';
+  if (rlogo) rlogo.textContent = (config && config.name) || 'Azul GestÃ£o';
 
   var rslogan = document.getElementById('r-slogan');
   if (rslogan) rslogan.textContent = (config && config.slogan) || '';
@@ -7047,8 +6806,8 @@ async function loadAchatHistorique() {
     document.getElementById("achatHistCount").textContent = (summary.count || 0) + " achats";
 
     if (!rows.length) {
-      if (body) body.innerHTML = '<tr><td colspan="10" class="empty">Aucun achat trouvé</td></tr>';
-      if (cards) cards.innerHTML = '<div class="empty">Aucun achat trouvé</div>';
+      if (body) body.innerHTML = '<tr><td colspan="10" class="empty">Aucun achat trouvÃ©</td></tr>';
+      if (cards) cards.innerHTML = '<div class="empty">Aucun achat trouvÃ©</div>';
       return;
     }
 
@@ -7095,9 +6854,9 @@ async function loadAchatHistorique() {
 
   } catch (e) {
     console.error("Erro historico achat:", e);
-    if (body) body.innerHTML = '<tr><td colspan="10" class="empty">Erro ao carregar histórico</td></tr>';
-    if (cards) cards.innerHTML = '<div class="empty">Erro ao carregar histórico</div>';
-    toast("Erro histórico achat: " + (e.message || e), "error");
+    if (body) body.innerHTML = '<tr><td colspan="10" class="empty">Erro ao carregar histÃ³rico</td></tr>';
+    if (cards) cards.innerHTML = '<div class="empty">Erro ao carregar histÃ³rico</div>';
+    toast("Erro histÃ³rico achat: " + (e.message || e), "error");
   }
 }
 
@@ -7208,7 +6967,7 @@ function renderAchatLines() {
           '<input type="text" class="form-input achat-cell-input prod al-prod" value="' + (line.prod || '') + '" placeholder="Produto..." list="prodList" oninput="achatLines[' + i + '].prod=this.value" onchange="applyAchatProductPreset(' + i + ', this.value)">' +
           '<div class="achat-mini-grid">' +
             //code du produit
-            '<input type="text" class="form-input achat-cell-input" value="' + (line.code || '') + '" placeholder="Código" oninput="achatLines[' + i + '].code=this.value">' +
+            '<input type="text" class="form-input achat-cell-input" value="' + (line.code || '') + '" placeholder="CÃ³digo" oninput="achatLines[' + i + '].code=this.value">' +
             //categorie
             '<input type="text" class="form-input achat-cell-input" value="' + (line.category || '') + '" placeholder="Categorie" oninput="achatLines[' + i + '].category=this.value">' +
           '</div>' +
@@ -7218,7 +6977,7 @@ function renderAchatLines() {
         '<div class="achat-variation-stack">'+
           '<div class="achat-variation-box">'+
             //variation
-            '<input type="text" class="form-input achat-cell-input" id="al-var-new-' + i + '" placeholder="Nova variação">' +
+            '<input type="text" class="form-input achat-cell-input" id="al-var-new-' + i + '" placeholder="Nova variaÃ§Ã£o">' +
             //bouton ajouter variable
             '<button type="button" onclick="addAchatVariation(' + i + ')" class="achat-add-var-btn">+</button>' +
           '</div>' +
@@ -7226,7 +6985,7 @@ function renderAchatLines() {
           variationChips +
           //selection image
           '<div class="achat-mini-grid">' +
-            '<input type="text" class="form-input achat-cell-input" value="' + (line.code || '') + '" placeholder="Código" oninput="achatLines[' + i + '].code=this.value">' +
+            '<input type="text" class="form-input achat-cell-input" value="' + (line.code || '') + '" placeholder="CÃ³digo" oninput="achatLines[' + i + '].code=this.value">' +
             '<input type="text" class="form-input achat-cell-input" value="' + (line.category || '') + '" placeholder="Categoria" oninput="achatLines[' + i + '].category=this.value">' +
           '</div>' +
         '</div>' +
@@ -7239,7 +6998,7 @@ function renderAchatLines() {
           //Quantite
           '<input type="number" class="form-input achat-cell-input qty" value="' + (line.qty || '') + '" placeholder="Qtd" min="1" oninput="achatLines[' + i + '].qty=parseFloat(this.value)||0;renderAchatTotals();">' +
           //prix de vente
-          '<input type="number" class="form-input achat-cell-input" value="' + (line.targetMargin || '') + '" placeholder="Preço venda" min="0" step="0.01" oninput="achatLines[' + i + '].targetMargin=this.value">' +
+          '<input type="number" class="form-input achat-cell-input" value="' + (line.targetMargin || '') + '" placeholder="PreÃ§o venda" min="0" step="0.01" oninput="achatLines[' + i + '].targetMargin=this.value">' +
         '</div>' +
         '</div>' +
       '</td>' +
@@ -7847,7 +7606,7 @@ async function loadHist() {
 // ===== CONFIG SYSTEM =====
 var config = {
   name: 'Azul',
-  slogan: 'O sistema de gestão que o seu negocio merece',
+  slogan: 'O sistema de gestÃ£o que o seu negocio merece',
   currency: 'Kz',
   color: '#0b3d91',
   color2: '#071e4f',
@@ -7931,7 +7690,7 @@ function finishSetup() {
   var name = document.getElementById('setup-name').value.trim();
   if (!name) { alert('Por favor insere o nome da boutique!'); return; }
   config.name = name;
-  config.slogan = document.getElementById('setup-slogan').value.trim() || 'O sistema de gestão que o seu negocio merece';
+  config.slogan = document.getElementById('setup-slogan').value.trim() || 'O sistema de gestÃ£o que o seu negocio merece';
   config.currency = document.getElementById('setup-currency').value;
   config.stockMode = document.querySelector('input[name="stockMode"]:checked').value; // 'boutique' ou 'armazem'
   config.armazem = config.stockMode === 'armazem'; // true si armazem, false si boutique only
@@ -8011,7 +7770,7 @@ function getLocale() {
 
 function getText(key) {
   var dict = {
-      revconsselect : 'Selecione um consignação.',
+      revconsselect : 'Selecione um consignaÃ§Ã£o.',
       revendeurselcttext: 'Escolha um revendedor para ver os seus registos em curso',
       tab_dashboard: 'Dashboard',
       tab_venda: 'Nova Venda',
@@ -8026,8 +7785,8 @@ function getText(key) {
       tab_comptabilite: 'Contabilidade',
       tab_corrections: 'Correcoes',
       tab_revendeurs: 'Revendedores',
-      save_settings: 'Guardar configurações',
-      reset_setup: 'Reiniciar configuração',
+      save_settings: 'Guardar configuraÃ§Ãµes',
+      reset_setup: 'Reiniciar configuraÃ§Ã£o',
       clear_cart: 'Limpar',
       payment: 'Pagamento',
       search_product: 'Pesquisar produto...',
@@ -8038,18 +7797,18 @@ function getText(key) {
       clients_title: 'Ficha Clientes',
       expenses_title: 'Registar Despesa',
       suppliers_title: 'Registar Fornecedor',
-      rev_create: 'Criar Consignação',
+      rev_create: 'Criar ConsignaÃ§Ã£o',
       rev_pay: 'Confirmar Pagamento',
       rev_return: 'Retornar Mercadoria',
-      rev_open: 'Consignação aberta',
+      rev_open: 'ConsignaÃ§Ã£o aberta',
       rev_name: 'Nome do revendedor',
       rev_search: 'Pesquisar produto...',
       rev_price_placeholder: 'Preco consignacao...',
       sale_price_placeholder: 'Preco venda...',
       anonymous: 'Anonimo',
       receipt_thanks: 'Obrigado por escolher ',
-      receipt_footer_default: 'Obrigado pela sua preferência!',
-      settings_saved: 'Configurações guardadas!',
+      receipt_footer_default: 'Obrigado pela sua preferÃªncia!',
+      settings_saved: 'ConfiguraÃ§Ãµes guardadas!',
       loading: 'A carregar...',
       no_data: 'Sem dados',
       no_products: 'Sem produtos',
@@ -8062,12 +7821,12 @@ function getText(key) {
       register_sale: 'A registar venda...',
       stock_ok: 'Stock OK',
       no_expenses: 'Sem despesas',
-      no_open_consignment: 'Nenhuma consignação aberta',
+      no_open_consignment: 'Nenhuma consignaÃ§Ã£o aberta',
       reseller_required: 'Entra o nome do revendedor!',
       add_one_product: 'Ajoute ao menos um produto!',
       enter_price_for: 'Entra o preco para {name}',
-      consignment_created: 'Consignação criada: {id}',
-      consignment_paid: 'Consignação paga com sucesso!',
+      consignment_created: 'ConsignaÃ§Ã£o criada: {id}',
+      consignment_paid: 'ConsignaÃ§Ã£o paga com sucesso!',
       goods_returned: 'Mercadoria retornada.',
       reseller_not_found: 'Revendedor nao encontrado',
       no_history: 'Sem historico',
@@ -8080,7 +7839,7 @@ function getText(key) {
       at_least_one_payment: 'Pelo menos um meio de pagamento!',
       stock_insufficient_max: 'Stock insuficiente! Max: {stock} un. Muda para Encomenda para ultrapassar.',
       stock_insufficient_order: 'Stock insuficiente! Max disponivel: {stock} un. Muda para "Encomenda" para ultrapassar.',
-      stock_insufficient_consignment: 'Stock insuficiente para consignação.',
+      stock_insufficient_consignment: 'Stock insuficiente para consignaÃ§Ã£o.',
       stock_insufficient_product: 'Stock insuficiente para este produto.',
       at_least_one_line: 'Tem que ter pelo menos uma linha!',
       purchase_fully_paid: 'Total ja pago integralmente!',
@@ -8090,18 +7849,18 @@ function getText(key) {
       purchase_registered: 'Compra registada com sucesso!',
       fill_supplier_and_amount: 'Preenche fornecedor e montante!',
       supplier_payment_registered: 'Pagamento registado!',
-      no_supplier_debts: 'Sem dívidas registadas',
+      no_supplier_debts: 'Sem dÃ­vidas registadas',
       fill_product_and_quantity: 'Preenche produto e quantidade!',
-      transfer_registered: 'Transferência registada!',
+      transfer_registered: 'TransferÃªncia registada!',
       no_sales_found: 'Nenhuma venda encontrada',
       finish_setup_name_required: 'Por favor insere o nome da boutique!',
-      setup_saved: 'Configuração guardada!',
+      setup_saved: 'ConfiguraÃ§Ã£o guardada!',
       warehouse_empty: 'Armazem vazio - nada a transferir',
       products_to_transfer: '{count} produtos a transferir',
       no_warehouse_stock: 'Nenhum stock no armazem!',
       transferring: 'A transferir...',
       transferred: 'Transferido!',
-      transfer_done_reload: 'Transferência concluída! Recarrega o stock para confirmar.',
+      transfer_done_reload: 'TransferÃªncia concluÃ­da! Recarrega o stock para confirmar.',
       all_stock_transferred: 'Todo o stock transferido para a Boutique!',
       activating: 'A activar...',
       edit_mode_error: 'Erro ao activar modo edicao',
@@ -8122,15 +7881,15 @@ function getText(key) {
       light_theme: 'Claro',
       dark_theme: 'Escuro',
       stock_shop_only: 'Stock apenas na boutique',
-      stock_shop_only_desc: 'Compras entram directamente na boutique. Sem transferências.',
-      stock_shop_warehouse: 'Stock Boutique + Armazém',
-      stock_shop_warehouse_desc: 'Compras entram no armazém, depois transferes para a boutique.',
-      receipt_customization: 'Personalização do recibo',
+      stock_shop_only_desc: 'Compras entram directamente na boutique. Sem transferÃªncias.',
+      stock_shop_warehouse: 'Stock Boutique + ArmazÃ©m',
+      stock_shop_warehouse_desc: 'Compras entram no armazÃ©m, depois transferes para a boutique.',
+      receipt_customization: 'PersonalizaÃ§Ã£o do recibo',
       receipt_logo_image: 'Imagem do logo do recibo',
       receipt_logo_remove: 'Remover imagem',
       receipt_logo_size: 'Tamanho do logo do recibo',
       receipt_show: 'Mostrar no recibo',
-      direct_edit_mode: 'Modo de edição directa',
+      direct_edit_mode: 'Modo de ediÃ§Ã£o directa',
       direct_edit_desc:'Desbloqueia as folhas por 1 minuto para corrigir ou eliminar linhas. Bloqueia automaticamente depois',
       client_file_tab: 'Ficha cliente',
       client_payment_tab: 'Registar pagamento',
@@ -8140,17 +7899,17 @@ function getText(key) {
       client_payment_title: 'Registar Pagamento do Cliente',
       amount_paid: 'Montante pago',
       amount_remaining: 'Montante restante',
-      credit_limit_warning: 'ultrapassou o limite do crédito',
+      credit_limit_warning: 'ultrapassou o limite do crÃ©dito',
       new_expense_tab: 'Nova Despesa',
       expense_dashboard_tab: 'Dashboard Despesas',
-      expense_history_tab: 'Histórico Despesas',
+      expense_history_tab: 'HistÃ³rico Despesas',
       expense_category_new: 'Nova categoria...',
       add_button: 'Adicionar',
       register_expense_button: 'Registar Despesa',
       register_purchase_button: 'Registar Compra',
       save_product_profile: 'Guardar ficha do produto',
       registering: 'A registar...',
-      create_consignment_button: 'Criar Consignação',
+      create_consignment_button: 'Criar ConsignaÃ§Ã£o',
       confirm_payment_button: 'Confirmar pagamento',
       confirm_return_button: 'Confirmar retorno'
     };
@@ -10425,7 +10184,7 @@ function renderMobileAccountingJournal(rows) {
         '<div>' +
           '<div class="mobile-card-kicker">' + escapeDepenseHtml(row.type || 'Comptabilite') + '</div>' +
           '<div class="mobile-card-title">' + escapeDepenseHtml(row.desc || 'Sans description') + '</div>' +
-          '<div class="mobile-card-sub">' + escapeDepenseHtml(row.date || '') + ' · ' + escapeDepenseHtml(row.source || '') + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(row.date || '') + ' Â· ' + escapeDepenseHtml(row.source || '') + '</div>' +
         '</div>' +
         '<div class="mobile-accounting-amount ' + (isDebit ? 'debit' : 'credit') + '">' +
           (isDebit ? '+' : '-') + fmt(amount || 0) +
@@ -11120,7 +10879,7 @@ async function renderSupplierDirectory() {
     }
 
     if (!suppliers.length) {
-      el.innerHTML = '<div class="empty">Aucun fournisseur trouvé.</div>';
+      el.innerHTML = '<div class="empty">Aucun fournisseur trouvÃ©.</div>';
       return;
     }
 
@@ -11271,7 +11030,7 @@ async function loadSupplierFiche(name) {
             '</div>' +
           '</div>';
         }).join("")
-      : '<div class="empty">Aucun achat trouvé.</div>';
+      : '<div class="empty">Aucun achat trouvÃ©.</div>';
 
     var paymentsHtml = data.payments.length
       ? data.payments.map(function(payment) {
@@ -11284,7 +11043,7 @@ async function loadSupplierFiche(name) {
             '<span>' + escapeDepenseHtml(payment.payment_date || "") + '</span>' +
           '</div>';
         }).join("")
-      : '<div class="empty">Aucun paiement trouvé.</div>';
+      : '<div class="empty">Aucun paiement trouvÃ©.</div>';
 
     el.innerHTML =
       '<div class="supplier-profile-card">' +
@@ -14214,7 +13973,7 @@ function injectLockSettingsCard() {
   card.style.boxShadow = "0 8px 24px rgba(0,0,0,.05)";
 
   card.innerHTML = `
-    <h3 style="margin:0 0 6px;color:#002f87;font-size:18px;">Segurança do ERP</h3>
+    <h3 style="margin:0 0 6px;color:#002f87;font-size:18px;">SeguranÃ§a do ERP</h3>
     <p style="margin:0 0 14px;color:#8a8177;font-size:13px;">
       Defina um mot de passe para bloquear o acesso ao sistema.
     </p>
@@ -14247,7 +14006,7 @@ function injectLockSettingsCard() {
 
       <button onclick="lockErpNow()"
         style="height:42px;border:0;border-radius:7px;padding:0 16px;background:#b91c1c;color:#fff;font-weight:700;cursor:pointer;">
-        Déconnexion / Verrouiller
+        DÃ©connexion / Verrouiller
       </button>
     </div>
   `;

@@ -1813,184 +1813,148 @@
       </div>
     </div>
 
-    <!-- REVENDEURS -->
+    <!-- REVENDEDORES -->
     <div class="page" id="page-revendeurs">
-      <div class="section-title revendeur">Revendeurs</div>
-
-      <div style="display:flex;gap:10px;margin-bottom:18px;max-width:980px;flex-wrap:wrap;">
-        <button class="mode-btn active" id="rev-tab-create" onclick="switchRevendeurTab('create', this)">Nouvelle Consignation</button>
-        <button class="mode-btn" id="rev-tab-manage" onclick="switchRevendeurTab('manage', this)">Paiement / Retour</button>
-        <button class="mode-btn" id="rev-tab-history" onclick="switchRevendeurTab('history', this)">Historique Revendeur</button>
+      <div class="reseller-head">
+        <div>
+          <div class="section-title revendeur">Revendedores</div>
+          <p class="reseller-subtitle">Consignacao, pagamentos, devolucoes e historico por revendedor.</p>
+        </div>
+        <button class="filter-btn" type="button" onclick="loadOpenConsignations()">Actualizar</button>
       </div>
 
-      <div id="rev-panel-create">
-        <div class="section-title">Enregistrer Une Consignation</div>
+      <div class="reseller-tabs">
+        <button class="mode-btn active" id="rev-tab-create" onclick="switchRevendeurTab('create', this)">Nova consignacao</button>
+        <button class="mode-btn" id="rev-tab-manage" onclick="switchRevendeurTab('manage', this)">Pagamento / Devolucao</button>
+        <button class="mode-btn" id="rev-tab-history" onclick="switchRevendeurTab('history', this)">Historico</button>
+      </div>
 
-        <div class="card" style="padding:18px 18px 16px;">
-          <div class="form-grid" style="max-width:none;grid-template-columns:1fr 1.2fr;">
-            <div class="form-group">
-              <label class="form-label">Date</label>
-              <input type="date" class="form-input" id="rev-date">
+      <datalist id="revendeur-list"></datalist>
+
+      <div id="rev-panel-create" class="reseller-panel">
+        <div class="reseller-layout">
+          <section class="reseller-card">
+            <div class="reseller-card-title">Dados da consignacao</div>
+            <div class="reseller-form-grid">
+              <label>
+                <span>Data</span>
+                <input type="date" class="form-input" id="rev-date">
+              </label>
+              <label>
+                <span>Revendedor</span>
+                <input type="text" class="form-input" id="rev-name" list="revendeur-list" placeholder="Nome do revendedor">
+              </label>
             </div>
-
-            <div class="form-group">
-              <label class="form-label">Nom du revendeur</label>
-              <input type="text" class="form-input" id="rev-name" placeholder="Entre le nom du revendeur">
+            <div class="reseller-search">
+              <input type="text" id="rev-search" placeholder="Pesquisar produto, codigo, categoria..." oninput="filterRevProducts()">
             </div>
-          </div>
-
-          <div class="card" style="margin-top:14px;padding:14px;background:linear-gradient(180deg,var(--surface2),rgba(212,175,55,0.04));">
-            <div class="search-wrap" style="margin-bottom:12px;">
-              <span></span>
-              <input type="text" id="rev-search" placeholder="Rechercher un produit..." oninput="filterRevProducts()">
+            <div class="reseller-product-grid" id="revProdGrid">
+              <div class="empty">A carregar produtos...</div>
             </div>
+          </section>
 
-            <div style="display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,1fr);gap:14px;align-items:start;">
-              <div class="prod-grid" id="revProdGrid" style="max-height:460px;min-height:360px;">
-                <div class="empty" style="grid-column:1/-1">Chargement des produits...</div>
-              </div>
-
-              <div class="card" style="margin:0;padding:14px;background:rgba(255,255,255,0.72);border-color:rgba(212,175,55,0.25);backdrop-filter:blur(6px);">
-                <div class="card-title" style="margin-bottom:10px;">Panier de consignation</div>
-
-                <div id="revCartBody" style="min-height:220px;">
-                  <div class="empty">Ajoute des produits</div>
-                </div>
-
-                <div class="total-row" style="margin:12px 0 0;">
-                  <span class="total-lbl">Valeur totale</span>
-                  <span class="total-val" id="revTotal">0 Kz</span>
-                </div>
-
-                <div style="display:flex;gap:8px;margin-top:12px;">
-                  <button class="form-submit" style="flex:1;" id="revSaveBtn" onclick="saveConsignation()">Enregistrer</button>
-                  <button class="filter-btn vider" onclick="clearRevCart()">Vider</button>
-                </div>
-              </div>
+          <aside class="reseller-cart-card">
+            <div class="reseller-card-title">Itens da consignacao</div>
+            <div id="revCartBody" class="reseller-cart-body">
+              <div class="empty">Adiciona produtos</div>
             </div>
-          </div>
+            <div class="reseller-total-row">
+              <span>Total</span>
+              <strong id="revTotal">0 Kz</strong>
+            </div>
+            <div class="reseller-actions">
+              <button class="form-submit" id="revSaveBtn" onclick="saveConsignation()">Criar consignacao</button>
+              <button class="filter-btn vider" type="button" onclick="clearRevCart()">Limpar</button>
+            </div>
+          </aside>
         </div>
       </div>
 
-      <div id="rev-panel-manage" style="display:none;">
-        <div class="section-title">Paiement Et Retour</div>
-
-        <div class="card" style="padding:18px;">
-          <div class="form-grid" style="max-width:none;grid-template-columns:1.2fr 0.8fr;">
-            <div class="form-group">
-              <label class="form-label">Revendeur</label>
-              <select class="form-input" id="rev-manage-name" onchange="loadRevendeurConsignations()">
-                <option value="">Choisir un revendeur</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Date de l'action</label>
-              <input type="date" class="form-input" id="rev-action-date">
-            </div>
-          </div>
-
-          <div class="card" style="margin-top:14px;padding:14px;background:linear-gradient(180deg,var(--surface2),rgba(212,175,55,0.04));">
-            <div class="card-title" style="margin-bottom:10px;">Consignations ouvertes</div>
-
-            <div id="rev-open-list" style="margin-top:6px;min-height:150px;">
-              <div class="empty">Choisis un revendeur pour afficher ses consignations en cours</div>
-            </div>
-
-            <div style="display:grid;grid-template-columns:minmax(180px,260px) minmax(180px,1fr);gap:10px;margin-top:14px;align-items:end;">
-              <div class="form-group" style="margin:0;">
-                <label class="form-label">Action</label>
-                <select class="form-input" id="rev-action-type" onchange="updateRevActionPanel()">
-                  <option value="payment">Paiement</option>
-                  <option value="return">Retour marchandise</option>
+      <div id="rev-panel-manage" class="reseller-panel" style="display:none;">
+        <div class="reseller-manage-grid">
+          <section class="reseller-card">
+            <div class="reseller-card-title">Consignacoes abertas</div>
+            <div class="reseller-form-grid">
+              <label>
+                <span>Revendedor</span>
+                <select class="form-input" id="rev-manage-name" onchange="loadRevendeurConsignations()">
+                  <option value="">Escolher revendedor</option>
                 </select>
+              </label>
+              <label>
+                <span>Data da accao</span>
+                <input type="date" class="form-input" id="rev-action-date">
+              </label>
+            </div>
+            <div id="rev-open-list" class="reseller-open-list">
+              <div class="empty">Escolhe um revendedor para ver consignacoes abertas.</div>
+            </div>
+          </section>
+
+          <aside class="reseller-card">
+            <div class="reseller-card-title">Accao</div>
+            <label class="reseller-field">
+              <span>Tipo de accao</span>
+              <select class="form-input" id="rev-action-type" onchange="updateRevActionPanel()">
+                <option value="payment">Registar pagamento</option>
+                <option value="return">Devolver mercadoria</option>
+              </select>
+            </label>
+
+            <div id="rev-payment-panel">
+              <div id="rev-payment-summary" class="reseller-summary-box">
+                <div class="empty">Seleciona uma consignacao.</div>
               </div>
-
-              <button class="form-submit" style="width:100%;" id="revActionConfirmBtn" onclick="confirmRevAction()">Confirmer</button>
-            </div>
-          </div>
-
-          <div id="rev-payment-panel" class="card" style="display:block;margin-top:14px;padding:14px;background:rgba(255,255,255,0.72);border-color:rgba(212,175,55,0.25);">
-            <div class="card-title" style="margin-bottom:10px;">Paiement des consignations selectionnees</div>
-
-            <div id="rev-payment-summary" style="margin-bottom:12px;">
-              <div class="empty">Selectionne une consignation.</div>
+              <div id="rev-pay-lines" class="reseller-pay-lines"></div>
+              <button class="filter-btn ghost" type="button" onclick="addRevPayLine()">+ Meio de pagamento</button>
+              <div class="reseller-total-row compact">
+                <span>Total selecionado</span>
+                <strong id="rev-payment-total">0 Kz</strong>
+              </div>
             </div>
 
-            <div id="rev-pay-lines" style="display:flex;flex-direction:column;gap:8px;"></div>
-
-            <button class="filter-btn" style="margin-top:10px;" onclick="addRevPayLine()">+ Ajouter moyen de paiement</button>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
-              <span class="rev" style="font-size:13px;font-weight:600;">Total a payer</span>
-              <span id="rev-payment-total" style="font-family:'Playfair Display',serif;font-size:22px;color:var(--blue);">0 Kz</span>
+            <div id="rev-return-panel" style="display:none;">
+              <div id="rev-return-summary" class="reseller-summary-box">
+                <div class="empty">Seleciona uma consignacao.</div>
+              </div>
             </div>
-          </div>
 
-          <div id="rev-return-panel" class="card" style="display:none;margin-top:14px;padding:14px;background:rgba(255,255,255,0.72);border-color:rgba(212,175,55,0.25);">
-            <div class="card-title" style="margin-bottom:10px;">Retour des consignations selectionnees</div>
-
-            <div id="rev-return-summary">
-              <div class="empty">Selectionne une consignation.</div>
-            </div>
-          </div>
+            <button class="form-submit" id="revActionConfirmBtn" onclick="confirmRevAction()">Confirmar pagamento</button>
+          </aside>
         </div>
       </div>
 
-      <div id="rev-panel-history" style="display:none;">
-        <div class="section-title">Historique Revendeur</div>
-
-        <div class="card" style="padding:18px;">
-          <div class="form-grid" style="max-width:none;grid-template-columns:1.2fr 0.8fr 0.8fr auto;">
-            <div class="form-group">
-              <label class="form-label">Revendeur</label>
-              <input type="text" class="form-input" id="rev-history-name" list="revendeur-list" placeholder="Nom du revendeur">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">De</label>
-              <input type="date" class="form-input" id="rev-history-from">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">A</label>
-              <input type="date" class="form-input" id="rev-history-to">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">&nbsp;</label>
-              <button class="form-submit" style="width:100%;min-width:170px;" onclick="loadRevHistory()">Filtrer</button>
-            </div>
+      <div id="rev-panel-history" class="reseller-panel" style="display:none;">
+        <section class="reseller-card">
+          <div class="reseller-card-title">Historico do revendedor</div>
+          <div class="reseller-history-filters">
+            <input type="text" class="form-input" id="rev-history-name" list="revendeur-list" placeholder="Nome do revendedor">
+            <input type="date" class="form-input" id="rev-history-from">
+            <input type="date" class="form-input" id="rev-history-to">
+            <button class="filter-btn" onclick="loadRevHistory()">Filtrar</button>
           </div>
-
-          <datalist id="revendeur-list"></datalist>
-
-          <div style="overflow-x:auto;margin-top:10px;">
+          <div class="reseller-table-wrap">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th class="rev">ID</th>
-                  <th class="rev">Date</th>
-                  <th class="rev">Revendeur</th>
-                  <th class="rev">Statut</th>
-                  <th class="rev">Articles</th>
-                  <th class="rev">Total</th>
-                  <th class="rev">Paiement</th>
-                  <th class="rev">Recu</th>
+                  <th>ID</th>
+                  <th>Data</th>
+                  <th>Revendedor</th>
+                  <th>Estado</th>
+                  <th>Itens</th>
+                  <th>Total</th>
+                  <th>Pago</th>
+                  <th>Recibo</th>
                 </tr>
               </thead>
               <tbody id="revHistoryBody">
-                <tr>
-                  <td colspan="8" class="empty">Filtre pour voir l'historique</td>
-                </tr>
+                <tr><td colspan="8" class="empty">Filtra para ver o historico</td></tr>
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       </div>
-
     </div>
-
     <!-- TRESORERIE -->
     <div class="page" id="page-tresorerie">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
