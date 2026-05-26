@@ -78,7 +78,11 @@ as $$
     coalesce(nullif(p.status, ''), 'pending') as status
   from public.profiles p
   where lower(p.email) = lower(trim(coalesce(p_identifier, '')))
-    or regexp_replace(coalesce(p.phone, ''), '[^0-9]', '', 'g') = regexp_replace(coalesce(p_identifier, ''), '[^0-9]', '', 'g')
+    or (
+      regexp_replace(coalesce(p_identifier, ''), '[^0-9]', '', 'g') <> ''
+      and regexp_replace(coalesce(p.phone, ''), '[^0-9]', '', 'g') =
+          regexp_replace(coalesce(p_identifier, ''), '[^0-9]', '', 'g')
+    )
   order by
     case coalesce(nullif(p.status, ''), 'pending')
       when 'active' then 1
@@ -120,8 +124,11 @@ as $$
   where p.organization_id = p_organization_id
     and (
       lower(p.email) = lower(trim(coalesce(p_identifier, '')))
-      or regexp_replace(coalesce(p.phone, ''), '[^0-9]', '', 'g') =
-         regexp_replace(coalesce(p_identifier, ''), '[^0-9]', '', 'g')
+      or (
+        regexp_replace(coalesce(p_identifier, ''), '[^0-9]', '', 'g') <> ''
+        and regexp_replace(coalesce(p.phone, ''), '[^0-9]', '', 'g') =
+            regexp_replace(coalesce(p_identifier, ''), '[^0-9]', '', 'g')
+      )
     )
   limit 1;
 $$;

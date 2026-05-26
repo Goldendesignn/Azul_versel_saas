@@ -1,21 +1,36 @@
 document.addEventListener("DOMContentLoaded", async function () {
   var organizationId = localStorage.getItem("azul_organization_id");
 
-  if (organizationId) {
-    window.location.href = "core.html";
-    return;
-  }
-
   try {
     var sessionResult = await supabaseClient.auth.getSession();
 
+    if (organizationId && sessionResult.data && sessionResult.data.session) {
+      window.location.href = "core.html";
+      return;
+    }
+
     if (sessionResult.data && sessionResult.data.session) {
       await restoreSessionFromAuth();
+      return;
+    }
+
+    if (organizationId) {
+      clearLoginSessionOnly();
     }
   } catch (e) {
     console.warn("Sessao nao restaurada:", e);
   }
 });
+
+function clearLoginSessionOnly() {
+  localStorage.removeItem("azul_organization_id");
+  localStorage.removeItem("azul_organization_name");
+  localStorage.removeItem("azul_user_name");
+  localStorage.removeItem("azul_user_role");
+  localStorage.removeItem("azul_user_status");
+  localStorage.removeItem("azul_license_key");
+  localStorage.removeItem("azul_plan");
+}
 
 function showMessage(text, type) {
   var box = document.getElementById("login-message");

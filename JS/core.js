@@ -12,6 +12,11 @@ var selectedPay = 'Cash';
 
 var products = [];
 var productsLoading = false;
+var saleSaveInProgress = false;
+var purchaseSaveInProgress = false;
+var expenseSaveInProgress = false;
+var clientPaymentInProgress = false;
+var supplierPaymentInProgress = false;
 
 function getAzulOrganizationId() {
   var id = localStorage.getItem("azul_organization_id");
@@ -964,7 +969,7 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   cashier: {
     name: "Caixa",
-    permissions: ["page:dashboard", "page:venda", "page:clientes", "page:tresorerie", "sale:create", "sale:view", "client:view", "client_payment:create"]
+    permissions: ["page:dashboard", "page:venda", "page:clientes", "sale:create", "sale:view", "client:view", "client_payment:create"]
   },
   stock: {
     name: "Stock",
@@ -1092,6 +1097,18 @@ function applyAzulRolePermissions() {
     var page = extractGoToPage(tab.getAttribute("onclick"));
     if (!page) return;
     tab.style.display = canAccessAzulPage(page) ? "" : "none";
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll("button[onclick*=\"goTo(\"]"), function(button) {
+    if (button.classList && button.classList.contains("tab")) return;
+    var page = extractGoToPage(button.getAttribute("onclick"));
+    if (!page) return;
+    button.style.display = canAccessAzulPage(page) ? "" : "none";
+  });
+
+  var treasuryCards = document.querySelectorAll(".quick-treasury-card");
+  Array.prototype.forEach.call(treasuryCards, function(card) {
+    card.style.display = canAccessAzulPage("tresorerie") ? "" : "none";
   });
 }
 
@@ -1730,6 +1747,7 @@ async function getClientFicheFromSupabase(clientName) {
   var saleIds = sales.map(function(sale) { return sale.id; });
 
   var items = [];
+  var payments = [];
 
   if (saleIds.length) {
     var itemsResult = await supabaseClient
@@ -1741,6 +1759,17 @@ async function getClientFicheFromSupabase(clientName) {
 
     items = itemsResult.data || [];
   }
+
+  var paymentsResult = await supabaseClient
+    .from("client_payments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("client_name", clientName)
+    .order("payment_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (paymentsResult.error) throw paymentsResult.error;
+  payments = paymentsResult.data || [];
 
   var totalAchat = sales.reduce(function(sum, sale) {
     return sum + (Number(sale.total) || 0);
@@ -1757,6 +1786,7 @@ async function getClientFicheFromSupabase(clientName) {
     var sale = saleById[item.sale_id] || {};
     return {
       date: sale.sale_date || "",
+      created_at: sale.created_at || "",
       prod: item.product_name || "",
       qty: Number(item.quantity) || 0,
       cash: 0,
@@ -1765,14 +1795,18 @@ async function getClientFicheFromSupabase(clientName) {
       credito: 0,
       total: Number(item.total) || 0
     };
+  }).sort(function(a, b) {
+    return String(b.date || "").localeCompare(String(a.date || "")) ||
+      String(b.created_at || "").localeCompare(String(a.created_at || ""));
   });
 
   return {
     name: clientName,
     totalAchat: totalAchat,
     totalDette: totalDette,
-    transactions: sales.length,
-    historique: historique
+    transactions: sales.length + payments.length,
+    historique: historique,
+    payments: payments
   };
 }
 
@@ -2703,6 +2737,7 @@ function renderMobileInventory(rows) {
         '<div>' +
           '<div class="mobile-card-kicker">' + escapeDepenseHtml(product.mainSupplier || 'Stock') + '</div>' +
           '<div class="mobile-card-title">' + escapeDepenseHtml(product.name || '') + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDepenseHtml(getProductVariationLabel(product)) + '</div>' +
           '<div class="mobile-card-sub">Prix achat: ' + fmt(purchasePrice) + '</div>' +
         '</div>' +
         '<div class="mobile-card-amount">' + fmt(valeur) + '</div>' +
@@ -6483,6 +6518,11 @@ function closePaymentModal() {
 async function confirmarVenda() {
   if (!requireAzulAction("sale:create", "registar venda")) return;
 
+  if (saleSaveInProgress) {
+    toast("Venda ja esta a ser registada. Aguarde...", "error");
+    return;
+  }
+
   if (!cart.length) {
     toast("Carrinho vazio!", "error");
     return;
@@ -6505,6 +6545,7 @@ if (hasCredit && !clientName) {
 }
 
   var btn = document.getElementById("paymentConfirmBtn") || document.getElementById("confirmBtn");
+  saleSaveInProgress = true;
 
   if (btn) {
     btn.disabled = true;
@@ -6567,6 +6608,7 @@ if (hasCredit && !clientName) {
     toast("Erro ao registar venda: " + (e.message || e), "error");
 
   } finally {
+    saleSaveInProgress = false;
     if (btn) {
       btn.disabled = false;
       btn.textContent = "Confirmar Venda";
@@ -6775,7 +6817,7 @@ function showReceipt(d) {
   document.getElementById('r-num').textContent = d.recibo;
   document.getElementById('r-date').textContent = d.date;
   document.getElementById('r-client').textContent = d.client;
-  document.getElementById('r-pay').textContent = d.pagamento;
+  document.getElementById('r-pay').textContent = d.pagamento || d.pay || "-";
   document.getElementById('r-total').textContent = fmt(d.total);
 
   // Produits
@@ -6807,11 +6849,11 @@ function showReceipt(d) {
   var phoneEl = document.getElementById('r-phone-line');
   if (addrEl) {
     addrEl.textContent = cfg.address || '';
-    addrEl.style.display = cfg.address ? 'block' : 'none';
+    addrEl.style.display = cfg.address && cfg.showAddress !== false ? 'block' : 'none';
   }
   if (phoneEl) {
     phoneEl.textContent = cfg.phone || '';
-    phoneEl.style.display = cfg.phone ? 'block' : 'none';
+    phoneEl.style.display = cfg.phone && cfg.showAddress !== false ? 'block' : 'none';
   }
 
   // Cases a cocher - afficher/cacher les lignes
@@ -7375,6 +7417,11 @@ function renderPaiementLines() {
 async function saveAchat() {
   if (!requireAzulAction("purchase:create", "registar achat")) return;
 
+  if (purchaseSaveInProgress) {
+    toast("Compra ja esta a ser registada. Aguarde...", "error");
+    return;
+  }
+
   var supplier = document.getElementById("a-forn").value.trim();
 
   if (!supplier) {
@@ -7404,6 +7451,7 @@ async function saveAchat() {
   }
 
   var btn = document.querySelector("#achat-panel-novo .form-submit");
+  purchaseSaveInProgress = true;
   if (btn) {
     btn.disabled = true;
     btn.textContent = "A registar...";
@@ -7444,6 +7492,7 @@ async function saveAchat() {
     toast("Erro ao registar achat: " + (e.message || e), "error");
 
   } finally {
+    purchaseSaveInProgress = false;
     if (btn) {
       btn.disabled = false;
       btn.textContent = " Registar Achat";
@@ -7475,6 +7524,11 @@ async function registerSupplierPaymentInSupabase(data) {
 
   if (!supplier) throw new Error("Fornecedor obrigatorio.");
   if (amount <= 0) throw new Error("Montante invalido.");
+
+  var debtTotal = await getSupplierDebtFromSupabase(supplier);
+  if (amount > debtTotal + 0.01) {
+    throw new Error("O pagamento nao pode ultrapassar a divida do fornecedor. Divida actual: " + fmt(debtTotal) + ".");
+  }
 
   var paymentResult = await insertSingleWithAzulAudit("supplier_payments", {
       organization_id: organizationId,
@@ -7577,6 +7631,11 @@ async function getResumoDettesFromSupabase() {
 async function savePagamentoForn() {
   if (!requireAzulAction("supplier_payment:create", "registar pagamento fornecedor")) return;
 
+  if (supplierPaymentInProgress) {
+    toast("Pagamento ja esta a ser registado. Aguarde...", "error");
+    return;
+  }
+
   var btn = document.getElementById("pg-forn-btn");
 
   var data = {
@@ -7591,6 +7650,7 @@ async function savePagamentoForn() {
     return;
   }
 
+  supplierPaymentInProgress = true;
   if (btn) {
     btn.disabled = true;
     btn.textContent = "A registar...";
@@ -7615,6 +7675,7 @@ async function savePagamentoForn() {
     toast("Erro ao registar pagamento: " + (e.message || e), "error");
 
   } finally {
+    supplierPaymentInProgress = false;
     if (btn) {
       btn.disabled = false;
       btn.textContent = " Registar Pagamento";
@@ -8304,9 +8365,9 @@ function applyPortugueseText() {
     }
     var treasuryCards = document.querySelectorAll('#page-tresorerie .card-title');
     treasuryCards.forEach(function(el, i) { if (ui.treasuryCards[i]) el.textContent = ui.treasuryCards[i]; });
-    var clientTabFiche = document.getElementById('client-tab-pagamento');
+    var clientTabFiche = document.getElementById('client-tab-fiche');
     if (clientTabFiche) clientTabFiche.textContent = getText('client_file_tab');
-    var clientTabPayment = document.getElementById('client-tab-fiche');
+    var clientTabPayment = document.getElementById('client-tab-pagamento');
     if (clientTabPayment) clientTabPayment.textContent = getText('client_payment_tab');
     var clientSearch = document.getElementById('clientSearch');
     if (clientSearch) clientSearch.placeholder = getText('search_client_placeholder');
@@ -8372,7 +8433,7 @@ function saveAllSettings() {
   config.footer      = document.getElementById('cfg-footer').value.trim() || 'Obrigado pela sua preferencia!';
   config.receiptFont = (document.getElementById('cfg-font') || {}).value || config.receiptFont || 'DM Sans';
   config.receiptFontSize = (document.getElementById('cfg-font-size') || {}).value || config.receiptFontSize || '10';
-  config.receiptLogo = (document.getElementById('cfg-logo-url') || {}).value || config.receiptLogo || '';
+  config.receiptLogo = ((document.getElementById('cfg-logo-url') || {}).value || '').trim();
   config.receiptLogoSize = (document.getElementById('cfg-logo-size') || {}).value || config.receiptLogoSize || '16';
   config.showDate    = document.getElementById('cfg-show-date').checked;
   config.showClient  = document.getElementById('cfg-show-client').checked;
@@ -8975,6 +9036,13 @@ function filterInventoryProducts(list) {
   });
 }
 
+function getProductVariationLabel(product) {
+  product = product || {};
+  var variations = Array.isArray(product.variations) ? product.variations : parseVariationList(product.variation || "");
+  var label = variations.length ? variations.join(" / ") : String(product.variation || "").trim();
+  return label || "Sem variacao";
+}
+
 function onInventorySearch() {
   renderinventaire(products || []);
 }
@@ -9031,7 +9099,7 @@ renderMobileInventory(products);
     totalstock += stockage;
 
     return '<tr>' +
-      '<td>' + escapeDepenseHtml(product.name || '') + '</td>' +
+      '<td><strong>' + escapeDepenseHtml(product.name || '') + '</strong><br><small class="stock-variation-label">' + escapeDepenseHtml(getProductVariationLabel(product)) + '</small></td>' +
       '<td>' + escapeDepenseHtml(product.mainSupplier || '') + '</td>' +
       '<td>' + entries + '</td>' +
       '<td>' + exits + '</td>' +
@@ -9275,6 +9343,11 @@ function initDepensesPage() {
 async function saveDepense() {
   if (!requireAzulAction("expense:create", "registar despesa")) return;
 
+  if (expenseSaveInProgress) {
+    toast("Despesa ja esta a ser registada. Aguarde...", "error");
+    return;
+  }
+
   var data = {
     date: document.getElementById("dep-date").value,
     tipo: document.getElementById("dep-tipo").value,
@@ -9288,6 +9361,7 @@ async function saveDepense() {
   }
 
   var btn = document.getElementById("depBtn");
+  expenseSaveInProgress = true;
 
   if (btn) {
     btn.disabled = true;
@@ -9329,6 +9403,7 @@ async function saveDepense() {
     toast("Erro depense: " + (e.message || e), "error");
 
   } finally {
+    expenseSaveInProgress = false;
     if (btn) {
       btn.disabled = false;
       btn.textContent = " Registar Depense";
@@ -10798,6 +10873,31 @@ async function loadClientDetail() {
       html += '<div class="empty">Nenhuma venda encontrada</div>';
     }
 
+    html += '</div>' +
+      '<div style="background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 12px 30px rgba(0,0,0,.04);">' +
+        '<div class="card-title">Pagamentos da divida</div>';
+
+    if (data.payments && data.payments.length > 0) {
+      html += '<div style="display:grid;gap:10px;">';
+
+      data.payments.forEach(function(payment) {
+        html +=
+          '<div style="display:flex;justify-content:space-between;gap:12px;padding:12px;border-radius:14px;background:var(--surface2);">' +
+            '<div>' +
+              '<div style="font-size:11px;color:var(--orange);font-weight:800;">' + escapeDepenseHtml(payment.payment_date || "") + '</div>' +
+              '<div style="margin-top:3px;font-size:14px;font-weight:800;">Pagamento recebido</div>' +
+              '<div style="margin-top:3px;font-size:12px;color:var(--muted);">' + escapeDepenseHtml(payment.note || "-") + '</div>' +
+              renderActionAuthor(payment) +
+            '</div>' +
+            '<div style="font-size:15px;font-weight:900;color:var(--green);white-space:nowrap;">' + fmt(payment.amount || 0) + '</div>' +
+          '</div>';
+      });
+
+      html += '</div>';
+    } else {
+      html += '<div class="empty">Nenhum pagamento de divida encontrado</div>';
+    }
+
     html += '</div></div>';
 
     el.innerHTML = html;
@@ -10810,6 +10910,11 @@ async function loadClientDetail() {
 }
 async function savePagamentoClient() {
   if (!requireAzulAction("client_payment:create", "registar pagamento cliente")) return;
+
+  if (clientPaymentInProgress) {
+    toast("Pagamento ja esta a ser registado. Aguarde...", "error");
+    return;
+  }
 
   var data = {
     date: document.getElementById("c-date").value,
@@ -10824,6 +10929,7 @@ async function savePagamentoClient() {
   }
 
   var btn = document.getElementById("pg-cl-btn");
+  clientPaymentInProgress = true;
 
   if (btn) {
     btn.disabled = true;
@@ -10846,6 +10952,7 @@ async function savePagamentoClient() {
     toast("Erro pagamento cliente: " + (e.message || e), "error");
 
   } finally {
+    clientPaymentInProgress = false;
     if (btn) {
       btn.disabled = false;
       btn.textContent = " Registar Pagamento";

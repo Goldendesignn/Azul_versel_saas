@@ -6557,6 +6557,19 @@ textarea,
   cursor: pointer;
 }
 
+.stock-variation-label {
+  display: inline-block;
+  max-width: 220px;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
 .custom-role-list {
   display: flex;
   flex-wrap: wrap;
