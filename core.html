@@ -63,7 +63,7 @@
     <button class="tab" onclick="goTo('achat', this)"> Nova Compra</button>
     <button class="tab" id="tab-transfert" onclick="goTo('transfert', this)"> Estoque</button>
     <button class="tab" onclick="goTo('clientes', this)"> Clientes</button>
-    <button class="tab" onclick="goTo('depenses', this)"> Depenses</button>
+    <button class="tab" onclick="goTo('depenses', this)"> Despesas</button>
     <button class="tab" onclick="goTo('rh', this)"> Recursos Humanos</button>
     <button class="tab" onclick="goTo('forn', this)"> Fornecedores</button>
     <button class="tab" onclick="goTo('tresorerie', this)">Tesouraria</button>
@@ -122,7 +122,7 @@
           <div class="kpi-sub">Receita - Custo</div>
         </div>
         <div class="kpi red">
-          <div class="kpi-label">Depenses</div>
+          <div class="kpi-label">Despesas</div>
           <div class="kpi-val" id="k-depenses">- Kz</div>
           <div class="kpi-sub" id="k-depenses-n">0 registos</div>
         </div>
@@ -136,10 +136,10 @@
   <div class="quick-treasury-card">
   <div class="quick-treasury-head">
     <div>
-      <div class="eyebrow">Tresorerie</div>
-      <h2>Trésorerie rapide</h2>
+      <div class="eyebrow">Tesouraria</div>
+      <h2>Tesouraria rapida</h2>
     </div>
-    <button class="filter-btn" onclick="loadDashboard()">Actualiser</button>
+    <button class="filter-btn" onclick="loadDashboard()">Atualizar</button>
   </div>
 
   <div class="quick-treasury-grid">
@@ -150,7 +150,7 @@
     </div>
 
     <div class="quick-treasury-mini green">
-      <span>Entrées aujourd’hui</span>
+      <span>Entradas hoje</span>
       <strong id="qt-today-in">0 Kz</strong>
     </div>
 
@@ -160,17 +160,17 @@
     </div>
 
     <div class="quick-treasury-mini green">
-      <span>Entrées du mois</span>
+      <span>Entradas do mes</span>
       <strong id="qt-month-in">0 Kz</strong>
     </div>
 
     <div class="quick-treasury-mini red">
-      <span>Sorties du mois</span>
+      <span>Saidas do mes</span>
       <strong id="qt-month-out">0 Kz</strong>
     </div>
 
     <div class="quick-treasury-mini">
-      <span>Résultat du mois</span>
+      <span>Resultado do mes</span>
       <strong id="qt-month-net">0 Kz</strong>
     </div>
   </div>
@@ -191,9 +191,9 @@
   </div>
 
    <div class="quick-treasury-list dashboard-preview-list" id="qt-latest">
-    <div class="empty">A carregar mouvements...</div>
+    <div class="empty">A carregar movimentos...</div>
   </div>
-  <button class="dashboard-see-all" onclick="goTo('tresorerie', null)">Tout voir</button>
+  <button class="dashboard-see-all" onclick="goTo('tresorerie', null)">Ver tudo</button>
 </div>
 
 <div class="debt-dashboard-card">
@@ -201,100 +201,100 @@
     <div>
       <div class="eyebrow">Dettes</div>
       <h2>Situation des dettes</h2>
-      <p>Clients à recevoir et fournisseurs à payer.</p>
+      <p>Clientes a receber e fornecedores a pagar.</p>
     </div>
     <div class="debt-actions">
       <button class="filter-btn" onclick="goTo('clientes', null)">Clients</button>
-      <button class="filter-btn" onclick="goTo('forn', null)">Fournisseurs</button>
+      <button class="filter-btn" onclick="goTo('forn', null)">Fornecedors</button>
     </div>
   </div>
 
   <div class="debt-kpi-grid">
     <div class="debt-kpi green">
-      <span>Clients à recevoir</span>
+      <span>Clientes a receber</span>
       <strong id="debt-client-total">0 Kz</strong>
       <small id="debt-client-count">0 clients</small>
     </div>
 
     <div class="debt-kpi red">
-      <span>Fournisseurs à payer</span>
+      <span>Fornecedores a pagar</span>
       <strong id="debt-supplier-total">0 Kz</strong>
-      <small id="debt-supplier-count">0 fournisseurs</small>
+      <small id="debt-supplier-count">0 fornecedores</small>
     </div>
 
     <div class="debt-kpi">
       <span>Solde net</span>
       <strong id="debt-net">0 Kz</strong>
-      <small>À recevoir - à payer</small>
+      <small>A receber - a pagar</small>
     </div>
 
     <div class="debt-kpi">
-      <span>Dossiers ouverts</span>
+      <span>Fichas abertas</span>
       <strong id="debt-open-count">0</strong>
-      <small>clients + fournisseurs</small>
+      <small>clients + fornecedores</small>
     </div>
   </div>
 
   <div class="debt-lists">
     <div class="debt-list-card">
-      <div class="card-title">Clients débiteurs</div>
+      <div class="card-title">Clientes devedores</div>
       <div id="debt-client-list" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
-      <button class="dashboard-see-all" onclick="goTo('clientes', null)">Tout voir</button>
+      <button class="dashboard-see-all" onclick="goTo('clientes', null)">Ver tudo</button>
     </div>
 
     <div class="debt-list-card">
-      <div class="card-title">Fournisseurs à payer</div>
+      <div class="card-title">Fornecedores a pagar</div>
         <div id="debt-supplier-list" class="dashboard-preview-list">
           <div class="empty">A carregar...</div>
         </div>
-        <button class="dashboard-see-all" onclick="goTo('forn', null)">Tout voir</button>
+        <button class="dashboard-see-all" onclick="goTo('forn', null)">Ver tudo</button>
     </div>
   </div>
 </div>
 <div class="purchase-dashboard-card">
   <div class="purchase-dashboard-head">
     <div>
-      <div class="eyebrow">Achats</div>
+      <div class="eyebrow">Compras</div>
       <h2>Vue achats</h2>
-      <p>Suivi des achats, fournisseurs et crédits.</p>
+      <p>Seguimento das compras, fornecedores e creditos.</p>
     </div>
     <div class="purchase-actions">
       <button class="filter-btn" onclick="goTo('achat', null)">Nouvel achat</button>
-      <button class="filter-btn" onclick="goTo('forn', null)">Fournisseurs</button>
+      <button class="filter-btn" onclick="goTo('forn', null)">Fornecedors</button>
     </div>
   </div>
 
   <div class="purchase-kpi-grid">
     <div class="purchase-kpi">
-      <span>Achats aujourd’hui</span>
+      <span>Compras hoje</span>
       <strong id="dash-purchase-today">0 Kz</strong>
       <small id="dash-purchase-today-count">0 achats</small>
     </div>
 
     <div class="purchase-kpi">
-      <span>Achats du mois</span>
+      <span>Compras do mes</span>
       <strong id="dash-purchase-month">0 Kz</strong>
       <small id="dash-purchase-month-count">0 achats</small>
     </div>
 
     <div class="purchase-kpi red">
-      <span>Achats à crédit</span>
+      <span>Compras a credito</span>
       <strong id="dash-purchase-credit">0 Kz</strong>
-      <small id="dash-purchase-credit-count">0 dossiers</small>
+      <small id="dash-purchase-credit-count">0 fichas</small>
     </div>
 
     <div class="purchase-kpi red">
-      <span>Dette fournisseurs</span>
+      <span>Divida a fornecedores</span>
       <strong id="dash-purchase-debt">0 Kz</strong>
-      <small>Reste à payer</small>
+      <small>Resta pagar</small>
     </div>
   </div>
 
   <div class="purchase-dashboard-body">
     <div class="purchase-main-supplier">
-      <span>Fournisseur principal</span>
+      <span>Fornecedor principal</span>
       <strong id="dash-main-supplier">-</strong>
       <small id="dash-main-supplier-total">0 Kz</small>
     </div>
@@ -304,7 +304,7 @@
 <div id="dash-latest-purchases" class="dashboard-preview-list">
   <div class="empty">A carregar...</div>
 </div>
-<button class="dashboard-see-all" onclick="goTo('achat', null); setTimeout(function(){ switchAchatTab('historico', document.getElementById('achat-tab-historico')); }, 100);">Tout voir</button>
+<button class="dashboard-see-all" onclick="goTo('achat', null); setTimeout(function(){ switchCompraTab('historico', document.getElementById('achat-tab-historico')); }, 100);">Ver tudo</button>
     </div>
   </div>
 </div>
@@ -313,22 +313,22 @@
     <div>
       <div class="eyebrow">Stock</div>
       <h2>Stock intelligent</h2>
-      <p>Valeur, ruptures, alertes et produits dormants.</p>
+      <p>Valor, rupturas, alertas e produtos parados.</p>
     </div>
-    <button class="filter-btn" onclick="goTo('transfert', null)">Voir stock</button>
+    <button class="filter-btn" onclick="goTo('transfert', null)">Ver stock</button>
   </div>
 
   <div class="smart-stock-grid">
     <div class="smart-stock-kpi">
-      <span>Valeur totale stock</span>
+      <span>Valor total do stock</span>
       <strong id="smart-stock-value">0 Kz</strong>
-      <small>Boutique + dépôt</small>
+      <small>Loja + armazem</small>
     </div>
 
     <div class="smart-stock-kpi red">
       <span>Produits finis</span>
       <strong id="smart-stock-out">0</strong>
-      <small>stock total à 0</small>
+      <small>stock total a 0</small>
     </div>
 
     <div class="smart-stock-kpi orange">
@@ -340,17 +340,17 @@
     <div class="smart-stock-kpi">
       <span>Produits dormants</span>
       <strong id="smart-stock-dormant">0</strong>
-      <small>pas vendus sur la période</small>
+      <small>sem vendas no periodo</small>
     </div>
   </div>
 
   <div class="smart-stock-body">
     <div class="smart-stock-list-card">
-      <div class="card-title">Alertes prioritaires</div>
+      <div class="card-title">Alertas prioritaires</div>
       <div id="smart-stock-alerts" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
-      <button class="dashboard-see-all" onclick="goTo('transfert', null)">Tout voir</button>
+      <button class="dashboard-see-all" onclick="goTo('transfert', null)">Ver tudo</button>
     </div>
 
     <div class="smart-stock-list-card">
@@ -358,25 +358,25 @@
       <div id="smart-stock-dormants" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
-      <button class="dashboard-see-all" onclick="goTo('transfert', null)">Tout voir</button>
+      <button class="dashboard-see-all" onclick="goTo('transfert', null)">Ver tudo</button>
     </div>
   </div>
 </div>
       <div class="sales-performance-card">
   <div class="sales-performance-head">
     <div>
-      <div class="eyebrow">Ventes</div>
+      <div class="eyebrow">Vendas</div>
       <h2>Performance commerciale</h2>
-      <p>Ticket moyen, marge, clients et rythme des ventes.</p>
+      <p>Ticket medio, margem, clientes e ritmo de vendas.</p>
     </div>
-    <button class="filter-btn" onclick="goTo('venda', null)">Nouvelle vente</button>
+    <button class="filter-btn" onclick="goTo('venda', null)">Nova venda</button>
   </div>
 
   <div class="sales-performance-grid">
     <div class="sales-performance-kpi">
       <span>Ticket moyen</span>
       <strong id="sales-perf-average-ticket">0 Kz</strong>
-      <small>total ventes / transactions</small>
+      <small>total vendas / transacoes</small>
     </div>
 
     <div class="sales-performance-kpi">
@@ -386,9 +386,9 @@
     </div>
 
     <div class="sales-performance-kpi">
-      <span>Articles vendus</span>
+      <span>Artigos vendidos</span>
       <strong id="sales-perf-items-sold">0</strong>
-      <small>quantité totale</small>
+      <small>quantidade total</small>
     </div>
 
     <div class="sales-performance-kpi green">
@@ -400,7 +400,7 @@
 
   <div class="sales-performance-body">
     <div class="sales-performance-highlight">
-      <span>Meilleur client</span>
+      <span>Melhor cliente</span>
       <strong id="sales-perf-best-client">-</strong>
       <small id="sales-perf-best-client-total">0 Kz</small>
     </div>
@@ -426,11 +426,11 @@
 
   <div class="sales-performance-lists">
     <div class="sales-performance-list-card">
-      <div class="card-title">Top clients</div>
+      <div class="card-title">Top clientes</div>
       <div id="sales-perf-top-clients" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
-      <button class="dashboard-see-all" onclick="goTo('clientes', null)">Tout voir</button>
+      <button class="dashboard-see-all" onclick="goTo('clientes', null)">Ver tudo</button>
     </div>
 
     <div class="sales-performance-list-card">
@@ -438,7 +438,7 @@
 <div id="sales-perf-origin-list" class="dashboard-preview-list">
   <div class="empty">A carregar...</div>
 </div>
-<button class="dashboard-see-all" onclick="goTo('venda', null); setTimeout(function(){ switchVendaTab('historico', document.getElementById('vente-tab-historico')); }, 100);">Tout voir</button>
+<button class="dashboard-see-all" onclick="goTo('venda', null); setTimeout(function(){ switchVendaTab('historico', document.getElementById('vente-tab-historico')); }, 100);">Ver tudo</button>
     </div>
   </div>
 </div>
@@ -446,23 +446,23 @@
   <div class="accounting-summary-head">
     <div>
       <div class="eyebrow">Fiscal / Comptable</div>
-      <h2>Résumé fiscal/comptable</h2>
-      <p>Vue simplifiée du résultat, stock, créances et dettes.</p>
+      <h2>Resumo fiscal/contabilistico</h2>
+      <p>Visao simplificada do resultado, stock, valores a receber e dividas.</p>
     </div>
-    <button class="filter-btn" onclick="goTo('comptabilite', null)">Comptabilité</button>
+    <button class="filter-btn" onclick="goTo('comptabilite', null)">Contabilidade</button>
   </div>
 
   <div class="accounting-summary-grid">
     <div class="accounting-summary-kpi">
       <span>Chiffre d’affaires</span>
       <strong id="acct-sum-revenue">0 Kz</strong>
-      <small>Ventes de la période</small>
+      <small>Vendas do periodo</small>
     </div>
 
     <div class="accounting-summary-kpi red">
-      <span>Coût marchandises</span>
+      <span>Custo das mercadorias</span>
       <strong id="acct-sum-cogs">0 Kz</strong>
-      <small>Prix d’achat vendus</small>
+      <small>Preco de compra vendido</small>
     </div>
 
     <div class="accounting-summary-kpi green">
@@ -472,34 +472,34 @@
     </div>
 
     <div class="accounting-summary-kpi red">
-      <span>Dépenses</span>
+      <span>Despesas</span>
       <strong id="acct-sum-expenses">0 Kz</strong>
-      <small>Charges de la période</small>
+      <small>Custos do periodo</small>
     </div>
   </div>
 
   <div class="accounting-summary-body">
     <div class="accounting-result-box">
-      <span>Résultat net estimé</span>
+      <span>Resultado liquido estimado</span>
       <strong id="acct-sum-net">0 Kz</strong>
       <small id="acct-sum-net-rate">Marge nette: 0%</small>
     </div>
 
     <div class="accounting-mini-list">
       <div class="accounting-mini-row">
-        <span>Stock valorisé</span>
+        <span>Stock valorizado</span>
         <strong id="acct-sum-stock">0 Kz</strong>
       </div>
       <div class="accounting-mini-row">
-        <span>Clients à recevoir</span>
+        <span>Clientes a receber</span>
         <strong id="acct-sum-receivables">0 Kz</strong>
       </div>
       <div class="accounting-mini-row">
-        <span>Fournisseurs à payer</span>
+        <span>Fornecedores a pagar</span>
         <strong id="acct-sum-payables">0 Kz</strong>
       </div>
       <div class="accounting-mini-row">
-        <span>Trésorerie</span>
+        <span>Tesouraria</span>
         <strong id="acct-sum-cash">0 Kz</strong>
       </div>
     </div>
@@ -507,11 +507,11 @@
 
   <div class="accounting-balance-grid">
     <div>
-      <span>Actif simplifié</span>
+      <span>Ativo simplificado</span>
       <strong id="acct-sum-assets">0 Kz</strong>
     </div>
     <div>
-      <span>Passif simplifié</span>
+      <span>Passivo simplificado</span>
       <strong id="acct-sum-liabilities">0 Kz</strong>
     </div>
     <div>
@@ -523,22 +523,22 @@
 <div class="important-alerts-card">
   <div class="important-alerts-head">
     <div>
-      <div class="eyebrow">Alertes</div>
-      <h2>Alertes importantes</h2>
-      <p>Ce qui demande ton attention avant de continuer à vendre.</p>
+      <div class="eyebrow">Alertas</div>
+      <h2>Alertas importantes</h2>
+      <p>O que precisa da tua atencao antes de continuar a vender.</p>
     </div>
-    <button class="filter-btn" onclick="loadDashboard()">Actualiser</button>
+    <button class="filter-btn" onclick="loadDashboard()">Atualizar</button>
   </div>
 
   <div class="important-alerts-grid">
     <div class="important-alerts-kpi red">
       <span>Critiques</span>
       <strong id="important-alerts-critical">0</strong>
-      <small>à traiter vite</small>
+      <small>a tratar rapido</small>
     </div>
 
     <div class="important-alerts-kpi orange">
-      <span>À surveiller</span>
+      <span>A acompanhar</span>
       <strong id="important-alerts-warning">0</strong>
       <small>risque moyen</small>
     </div>
@@ -546,7 +546,7 @@
     <div class="important-alerts-kpi">
       <span>Total alertes</span>
       <strong id="important-alerts-total">0</strong>
-      <small>sur la période</small>
+      <small>no periodo</small>
     </div>
   </div>
 
@@ -585,12 +585,12 @@
         <div class="card">
           <div class="card-title"> Alertas de Stock Baixo</div>
          <div id="alert-list" class="dashboard-preview-list"><div class="empty">A verificar...</div></div>
-<button class="dashboard-see-all" onclick="goTo('transfert', null)">Tout voir</button>
+<button class="dashboard-see-all" onclick="goTo('transfert', null)">Ver tudo</button>
         </div>
         <div class="card">
-          <div class="card-title"> Ultimas Depenses</div>
+          <div class="card-title"> Ultimas Despesas</div>
           <div id="depenses-list" class="dashboard-preview-list"><div class="empty">A carregar...</div></div>
-          <button class="dashboard-see-all" onclick="goTo('depenses', null)">Tout voir</button>
+          <button class="dashboard-see-all" onclick="goTo('depenses', null)">Ver tudo</button>
         </div>
       </div>
     </div>
@@ -636,14 +636,14 @@
               </div>
               <div style="display:flex;gap:6px;margin-bottom:10px;">
                 <button class="pay-btn" id="type-stock" onclick="selType(this,'interno')" style="border-color:var(--blue);color:var(--blue);background:rgba(201,168,76,0.1);"> Stock</button>
-                <button class="pay-btn" id="type-commande" onclick="selType(this,'Externo')"> Commande</button>
+                <button class="pay-btn" id="type-commande" onclick="selType(this,'Externo')"> Externo</button>
               </div>
-              <!-- Paiement mixte - plusieurs moyens possibles -->
+              <!-- Pagamento misto - varios meios possiveis -->
               <div style="margin-bottom:8px;">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Paiement</div>
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;">Pagamento</div>
                 <div id="payment-lines-wrap" style="display:flex;flex-direction:column;gap:5px;"></div>
                 <button onclick="addPaymentLine()" style="margin-top:5px;padding:4px 12px;background:var(--surface2);border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-family:DM Sans,sans-serif;font-size:11px;cursor:pointer;">
-                  + Ajouter moyen de paiement
+                  + Adicionar meio de pagamento
                 </button>
                 <div id="payment-status" style="margin-top:6px;font-size:11px;color:var(--muted);">Pago: 0 Kz / Total: 0 Kz</div>
               </div>
@@ -652,7 +652,7 @@
                 <div class="progress-bar" id="progressBar"></div>
               </div>
               <button class="confirm-btn" id="confirmBtn" onclick="openPaymentModal()" disabled>
-                Paiement
+                Pagamento
               </button>
             </div>
           </div>
@@ -686,30 +686,30 @@
     <!-- NOVO ACHAT -->
     <div class="page" id="page-achat">
     <div class="achat-tabs">
-      <button class="mode-btn active" id="achat-tab-novo" onclick="switchAchatTab('novo',this)">Novo Achat</button>
-      <button class="mode-btn" id="achat-tab-historico" onclick="switchAchatTab('historico',this)">Historique</button>
+      <button class="mode-btn active" id="achat-tab-novo" onclick="switchCompraTab('novo',this)">Nova Compra</button>
+      <button class="mode-btn" id="achat-tab-historico" onclick="switchCompraTab('historico',this)">Historico</button>
     </div>
 
       <!-- NOVO ACHAT -->
       <div id="achat-panel-novo">
-        <div class="section-title">Registar Novo Achat</div>
+        <div class="section-title">Registar Nova Compra</div>
 
-        <!-- Fournisseur commun -->
+        <!-- Fornecedor comum -->
         <div class="form-group" style="margin-bottom:16px;max-width:360px;">
           <label class="form-label">Fornecedor</label>
           <input type="text" class="form-input" id="a-forn" list="list-pay-forn" placeholder="Nome do fornecedor">
         </div>
-        <div style="margin:-6px 0 14px 0;font-size:12px;color:var(--muted);max-width:760px;line-height:1.5;">O nome do produto, o preço de compra e o fornecedor são obrigatórios. O código, a categoria, a variação, a foto e o preço de venda são opcionais por produto.</div>
+        <div style="margin:-6px 0 14px 0;font-size:12px;color:var(--muted);max-width:760px;line-height:1.5;">O nome do produto, o preco de compra e o fornecedor sao obrigatorios. O codigo, a categoria, a variacao, a foto e o preco de venda sao opcionais por produto.</div>
         <datalist id="prodList"></datalist>
 
-        <!-- Tableau multi-lignes produits -->
+        <!-- Tabela de produtos em varias linhas -->
         <div class="achat-lines-wrap">
           <table class="achat-lines-table" id="achat-lines-table">
             <tbody id="achat-lines-body"></tbody>
           </table>
         </div>
 
-        <button onclick="addAchatLine()" style="padding:7px 16px;background:var(--surface2);border:1px dashed var(--blue);border-radius:7px;color:var(--blue);font-family:DM Sans,sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px;">
+        <button onclick="addCompraLine()" style="padding:7px 16px;background:var(--surface2);border:1px dashed var(--blue);border-radius:7px;color:var(--blue);font-family:DM Sans,sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px;">
           + Adicionar produto
         </button>
 
@@ -722,15 +722,15 @@
         <!-- Case credit -->
         <div style="max-width:600px;margin-bottom:14px;">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
-            <input type="checkbox" id="a-credit" onchange="toggleCredit()" style="width:16px;height:16px;accent-color:var(--blue);">
+            <input type="checkbox" id="a-credit" onchange="toggleCredito()" style="width:16px;height:16px;accent-color:var(--blue);">
             <div>
-              <div style="font-size:13px;font-weight:600;">Compra a crédito</div>
+              <div style="font-size:13px;font-weight:600;">Compra a credito</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px;">Marque esta caixa se ainda não tiver pago integralmente a este fornecedor.</div>
             </div>
           </label>
         </div>
 
-        <!-- Section paiements (visible si credit) -->
+        <!-- Seccao de pagamentos (visivel em credito) -->
         <div id="a-credit-fields" style="display:none;max-width:600px;margin-bottom:16px;">
           <!-- Total du -->
           <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(224,92,92,0.06);border-radius:6px;margin-bottom:12px;font-size:12px;">
@@ -738,7 +738,7 @@
             <span id="a-total-du-display" style="color:var(--red);font-weight:700;">0 Kz</span>
           </div>
 
-          <!-- Tableau paiements -->
+          <!-- Tabela de pagamentos -->
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Pagamentos efetuados</div>
           <table style="width:100%;border-collapse:collapse;" id="paiements-table">
             <thead>
@@ -752,33 +752,33 @@
             <tbody id="paiements-body"></tbody>
           </table>
 
-          <button onclick="addPaiementLine()" style="margin-top:8px;padding:7px 14px;background:var(--surface2);border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-family:DM Sans,sans-serif;font-size:12px;cursor:pointer;">
+          <button onclick="addPagamentoLine()" style="margin-top:8px;padding:7px 14px;background:var(--surface2);border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-family:DM Sans,sans-serif;font-size:12px;cursor:pointer;">
             + Pagamento adicional
           </button>
 
           <!-- Resume -->
           <div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;">
             <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
-              <span style="color:var(--muted);">Total paye</span>
+              <span style="color:var(--muted);">Total pago</span>
               <span id="a-total-paye" style="color:var(--green);font-weight:600;">0 Kz</span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:8px 12px;background:var(--surface2);border-radius:6px;">
-              <span>Reste a payer</span>
+              <span>Resta pagar</span>
               <span id="a-reste-payer" style="color:var(--red);">0 Kz</span>
             </div>
           </div>
         </div>
 
-        <button class="form-submit" onclick="saveAchat()"> Registar Achat</button>
+        <button class="form-submit" onclick="saveCompra()"> Registar Compra</button>
       </div>
       <div id="achat-panel-historico" style="display:none;">
   <div class="achat-history-head">
     <div>
-      <div class="eyebrow">Achats</div>
-      <h2>Historique des achats</h2>
-      <p>Recherche par produit, fournisseur, code ou variation.</p>
+      <div class="eyebrow">Compras</div>
+      <h2>Historico de compras</h2>
+      <p>Pesquisa por produto, fornecedor, codigo ou variacao.</p>
     </div>
-    <button class="filter-btn" onclick="loadAchatHistorique()">Actualiser</button>
+    <button class="filter-btn" onclick="loadCompraHistorique()">Atualizar</button>
   </div>
 
   <div class="achat-history-kpis">
@@ -788,26 +788,26 @@
       <div class="kpi-sub" id="achatHistCount">0 achats</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Total payé</div>
+      <div class="kpi-label">Total pago</div>
       <div class="kpi-val" id="achatHistPaid">0 Kz</div>
-      <div class="kpi-sub">Paiements fournisseurs</div>
+      <div class="kpi-sub">Pagamentos fornecedores</div>
     </div>
     <div class="kpi red">
       <div class="kpi-label">Dette</div>
       <div class="kpi-val" id="achatHistDebt">0 Kz</div>
-      <div class="kpi-sub">Reste à payer</div>
+      <div class="kpi-sub">Resta pagar</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Quantité</div>
+      <div class="kpi-label">Quantidade</div>
       <div class="kpi-val" id="achatHistQty">0</div>
-      <div class="kpi-sub">articles achetés</div>
+      <div class="kpi-sub">artigos comprados</div>
     </div>
   </div>
 
   <div class="achat-history-filters">
-    <input type="date" class="filter-input" id="achatHistFrom" onchange="loadAchatHistorique()">
-    <input type="date" class="filter-input" id="achatHistTo" onchange="loadAchatHistorique()">
-    <input type="text" class="filter-input" id="achatHistSearch" placeholder="Rechercher produit, fournisseur, code..." oninput="loadAchatHistoriqueDebounced()">
+    <input type="date" class="filter-input" id="achatHistFrom" onchange="loadCompraHistorique()">
+    <input type="date" class="filter-input" id="achatHistTo" onchange="loadCompraHistorique()">
+    <input type="text" class="filter-input" id="achatHistSearch" placeholder="Pesquisar produto, fornecedor, codigo..." oninput="loadCompraHistoriqueDebounced()">
   </div>
 
   <div class="achat-history-mobile" id="achatHistoryCards"></div>
@@ -820,9 +820,9 @@
           <th>Fornecedor</th>
           <th>Produto</th>
           <th>Codigo</th>
-          <th>Variação</th>
+          <th>Variacao</th>
           <th>Qtd</th>
-          <th>P. Achat</th>
+          <th>P. Compra</th>
           <th>Total</th>
           <th>Pago</th>
           <th>Reste</th>
@@ -842,7 +842,7 @@
       <!-- MODE TOGGLE -->
       <div style="display:flex;gap:10px;margin-bottom:20px;max-width:500px;">
         <button class="mode-btn active" id="modeSingle" onclick="switchMode('single', this)"> Individual</button>
-        <button class="mode-btn" id="modeTudo" onclick="switchMode('tudo', this)"> Tudo para Boutique</button>
+        <button class="mode-btn" id="modeTudo" onclick="switchMode('tudo', this)"> Tudo para Loja</button>
         <button class="mode-btn" id="modestock" onclick="switchMode('stock', this)"> Stock</button>
       </div>
 
@@ -851,7 +851,7 @@
         <div class="transfer-visual">
           <div class="store-box"><div class="store-icon"></div><div class="store-name">Armazem</div></div>
           <div class="arrow-tr">-></div>
-          <div class="store-box"><div class="store-icon"></div><div class="store-name">Boutique</div></div>
+          <div class="store-box"><div class="store-icon"></div><div class="store-name">Loja</div></div>
         </div>
         <div class="form-grid" style="grid-template-columns:1fr; max-width:360px;">
           <div class="form-group">
@@ -882,7 +882,7 @@
         <div class="card" style="margin-bottom:14px;background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
           <div class="card-title"> Como funciona</div>
           <p style="font-size:13px;color:var(--muted);line-height:1.6;">
-            Transfere <b style="color:var(--text)">todo o stock do Armazem</b> para a Boutique de uma so vez.
+            Transfere <b style="color:var(--text)">todo o stock do Armazem</b> para a loja de uma so vez.
             Ideal quando nao tens armazem separado.
           </p>
         </div>
@@ -891,7 +891,7 @@
         </div>
         <div style="display:flex;gap:10px;">
           <button class="form-submit" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);box-shadow:none;" onclick="carregarStockArmazem()"> Ver Stock</button>
-          <button class="form-submit" id="btnTudoBoutique" onclick="transferirTudoBoutique()" > Transferir Tudo</button>
+          <button class="form-submit" id="btnTudoLoja" onclick="transferirTudoLoja()" > Transferir Tudo</button>
         </div>
       </div>
       <!-- VOIR LES STOCK -->
@@ -907,7 +907,7 @@
                   </div>
                   <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
                     <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);" id="valeurStocktotal">0</div>
-                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Valeur du stock</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Valor do stock</div>
                   </div>
                   <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
                     <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);"  id="nbreStock">0</div>
@@ -918,12 +918,12 @@
                     <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Valeur dans le magasin</div>
                   </div>
                   <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
-                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);" id="nbreboutique">0</div>
-                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Stock boutique total</div>
+                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--blue);" id="nbreloja">0</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Stock loja total</div>
                   </div>
                   <div style="background:var(--surface2);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:100px;">
-                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);"  id="valeurboutique">0</div>
-                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Valuer dans la boutique</div>
+                    <div style="font-family:Playfair Display,serif;font-size:18px;color:var(--red);"  id="valeurloja">0</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;" id="kpi-label">Valor na loja</div>
                   </div>
                 </div>
             </div>
@@ -932,23 +932,23 @@
                 type="text"
                 class="filter-input"
                 id="inventory-search"
-                placeholder="Rechercher produit, fournisseur, code..."
+                placeholder="Pesquisar produto, fornecedor, codigo..."
                 oninput="onInventorySearch()"
                 style="flex:1;"
               >
-              <button class="filter-btn" type="button" onclick="clearInventorySearch()">Effacer</button>
+              <button class="filter-btn" type="button" onclick="clearInventorySearch()">Limpar</button>
             </div>
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Designation</th>
-                  <th>Fournisseur</th>
+                  <th>Fornecedor</th>
                   <th>Entrees</th>
                   <th>Sorties</th>
-                  <th>Stock boutique</th>
+                  <th>Stock loja</th>
                   <th>Stock Magasin</th>
                   <th>Total</th>
-                  <th>Prix d'achat</th>
+                  <th>Preco de compra</th>
                   <th>Valeur achat</th>
                 </tr>
               </thead>
@@ -1044,7 +1044,7 @@
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div class="form-group">
               <label class="form-label">Nome</label>
-              <input type="text" class="form-input" id="cfg-name" placeholder="Nome da boutique">
+              <input type="text" class="form-input" id="cfg-name" placeholder="Nome da loja">
             </div>
             <div class="form-group">
               <label class="form-label">Slogan</label>
@@ -1085,18 +1085,18 @@
         <div class="card" style="grid-column:1/-1;">
           <div class="card-title"> Modo de Stock</div>
           <div style="display:flex;flex-direction:column;gap:8px;">
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;" id="cfg-stock-boutique" onclick="setCfgStockMode('boutique')">
-              <input type="radio" name="cfgStockMode" value="boutique" style="margin-top:2px;accent-color:var(--blue);">
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;" id="cfg-stock-loja" onclick="setCfgStockMode('loja')">
+              <input type="radio" name="cfgStockMode" value="loja" style="margin-top:2px;accent-color:var(--blue);">
               <div>
-                <div style="font-size:13px;font-weight:500;"> Apenas Stock Boutique</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:2px;">Compras entram directamente na Boutique. Sem transferencias.</div>
+                <div style="font-size:13px;font-weight:500;"> Apenas Stock Loja</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px;">Compras entram diretamente na loja. Sem transferencias.</div>
               </div>
             </label>
             <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;" id="cfg-stock-armazem" onclick="setCfgStockMode('armazem')">
               <input type="radio" name="cfgStockMode" value="armazem" style="margin-top:2px;accent-color:var(--blue);">
               <div>
-                <div style="font-size:13px;font-weight:500;"> Stock Boutique + Armazem</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:2px;">Compras -> Armazem -> Transferencia -> Boutique.</div>
+                <div style="font-size:13px;font-weight:500;"> Stock loja + armazem</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px;">Compras -> Armazem -> Transferencia -> Loja.</div>
               </div>
             </label>
           </div>
@@ -1197,9 +1197,9 @@
           <div id="editModeTimer" style="display:none;text-align:center;font-size:12px;color:var(--red);margin-top:8px;font-weight:600;"></div>
         </div>
         <div class="card" style="grid-column:1/-1;">
-          <div class="card-title">Importation des donnees</div>
+          <div class="card-title">Importacao dos dados</div>
           <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;">
-            Importe les achats avec un fichier CSV modele. Les produits seront ajoutes au stock et les fournisseurs seront crees automatiquement.
+            Importa compras com um ficheiro CSV modelo. Os produtos entram no stock e os fornecedores sao criados automaticamente.
           </div>
           <button class="form-submit" type="button" onclick="goTo('import', null)" style="width:100%;">
             Ouvrir l'importation
@@ -1222,19 +1222,19 @@
       <div>
         <div class="import-eyebrow">Importation</div>
         <h2>Importer les achats</h2>
-        <p>Telecharge le modele CSV, remplis les produits, puis importe le fichier. Les fournisseurs et le stock seront mis a jour automatiquement.</p>
+        <p>Baixa o modelo CSV, preenche os produtos e importa o ficheiro. Os fornecedores e o stock serao atualizados automaticamente.</p>
       </div>
-      <button type="button" class="import-ghost-btn" onclick="goTo('settings', null)">Retour parametres</button>
+      <button type="button" class="import-ghost-btn" onclick="goTo('settings', null)">Voltar as definicoes</button>
     </div>
    <div class="import-tabs">
     <button type="button" class="import-tab active" id="import-tab-purchases" onclick="switchImportTab('purchases')">
-      Achats
+      Compras
     </button>
     <button type="button" class="import-tab" id="import-tab-sales" onclick="switchImportTab('sales')">
-      Ventes
+      Vendas
     </button>
     <button type="button" class="import-tab" id="import-tab-expenses" onclick="switchImportTab('expenses')">
-      Depenses
+      Despesas
     </button>
   </div>
     <div id="import-panel-purchases">
@@ -1244,12 +1244,12 @@
             <div class="import-panel-head">
               <div>
                 <h3>Modele CSV</h3>
-                <p>Utilise toujours ce fichier pour eviter les erreurs de colonnes.</p>
+                <p>Usa sempre este ficheiro para evitar erros de colunas.</p>
               </div>
             </div>
     
             <button type="button" class="import-primary-btn" onclick="downloadPurchaseCsvTemplate()">
-              Telecharger modele CSV
+              Baixar modelo CSV
             </button>
     
             <div class="import-columns">
@@ -1261,17 +1261,17 @@
             <div class="import-panel-head">
               <div>
                 <h3>Fichier a importer</h3>
-                <p>Choisis ton CSV rempli, puis verifie l'apercu avant importation.</p>
+                <p>Escolhe o CSV preenchido e verifica a pre-visualizacao antes da importacao.</p>
               </div>
             </div>
     
             <input class="import-native-file" type="file" id="purchase-import-file" accept=".csv,text/csv" onchange="handlePurchaseCsvFile(event)">
             <label class="import-file-btn" for="purchase-import-file">
-              Choisir fichier CSV
+              Escolher ficheiro CSV
             </label>
     
             <div id="purchase-import-summary" class="import-summary">
-              Aucun fichier selectionne.
+              Nenhum ficheiro selecionado.
             </div>
           </div>
         </div>
@@ -1292,15 +1292,15 @@
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Fournisseur</th>
+                  <th>Fornecedor</th>
                   <th>Designation</th>
                   <th>Qtd</th>
                   <th>P. achat</th>
                   <th>P. vente</th>
-                  <th>Categorie</th>
+                  <th>Categoria</th>
                   <th>Code</th>
                   <th>Variation</th> 
-                  <th>Paiement</th>
+                  <th>Pagamento</th>
                 </tr>
               </thead>
               <tbody id="purchase-import-preview">
@@ -1319,12 +1319,12 @@
           <div class="import-panel-head">
             <div>
               <h3>Modele CSV ventes</h3>
-              <p>Utilise ce fichier pour importer les anciennes ventes.</p>
+              <p>Usa este ficheiro para importar vendas antigas.</p>
             </div>
           </div>
       
           <button type="button" class="import-primary-btn" onclick="downloadSaleCsvTemplate()">
-            Telecharger modele ventes
+            Baixar modelo de vendas
           </button>
       
           <div class="import-columns">
@@ -1336,17 +1336,17 @@
           <div class="import-panel-head">
             <div>
               <h3>Fichier ventes</h3>
-              <p>Si le numero de recu est vide, il sera genere automatiquement.</p>
+              <p>Se o numero do recibo estiver vazio, sera gerado automaticamente.</p>
             </div>
           </div>
       
           <input class="import-native-file" type="file" id="sale-import-file" accept=".csv,text/csv" onchange="handleSaleCsvFile(event)">
           <label class="import-file-btn" for="sale-import-file">
-            Choisir fichier ventes
+            Escolher ficheiro de vendas
           </label>
       
           <div id="sale-import-summary" class="import-summary">
-            Aucun fichier selectionne.
+            Nenhum ficheiro selecionado.
           </div>
         </div>
       </div>
@@ -1355,7 +1355,7 @@
         <div class="import-preview-head">
           <div>
             <div class="import-eyebrow">Apercu ventes</div>
-            <h3>Ventes detectees</h3>
+            <h3>Vendas detectadas</h3>
           </div>
           <button type="button" class="import-submit-btn" onclick="importSaleCsvRows()">
             Importer ventes
@@ -1394,13 +1394,13 @@
           <div class="import-panel">
             <div class="import-panel-head">
               <div>
-                <h3>Modele CSV depenses</h3>
-                <p>Utilise ce fichier pour importer les anciennes depenses.</p>
+                <h3>Modelo CSV de despesas</h3>
+                <p>Usa este ficheiro para importar despesas antigas.</p>
               </div>
             </div>
 
             <button type="button" class="import-primary-btn" onclick="downloadExpenseCsvTemplate()">
-              Telecharger modele depenses
+              Baixar modelo de despesas
             </button>
 
             <div class="import-columns">
@@ -1411,18 +1411,18 @@
           <div class="import-panel">
             <div class="import-panel-head">
               <div>
-                <h3>Fichier depenses</h3>
-                <p>Choisis ton CSV rempli, puis verifie l'apercu avant importation.</p>
+                <h3>Ficheiro de despesas</h3>
+                <p>Escolhe o CSV preenchido e verifica a pre-visualizacao antes da importacao.</p>
               </div>
             </div>
 
             <input class="import-native-file" type="file" id="expense-import-file" accept=".csv,text/csv" onchange="handleExpenseCsvFile(event)">
             <label class="import-file-btn" for="expense-import-file">
-              Choisir fichier depenses
+              Escolher ficheiro de despesas
             </label>
 
             <div id="expense-import-summary" class="import-summary">
-              Aucun fichier selectionne.
+              Nenhum ficheiro selecionado.
             </div>
           </div>
         </div>
@@ -1430,11 +1430,11 @@
         <div class="import-preview-card" style="margin-top:16px;">
           <div class="import-preview-head">
             <div>
-              <div class="import-eyebrow">Apercu depenses</div>
-              <h3>Depenses detectees</h3>
+              <div class="import-eyebrow">Pre-visualizacao de despesas</div>
+              <h3>Despesas detectadas</h3>
             </div>
             <button type="button" class="import-submit-btn" onclick="importExpenseCsvRows()">
-              Importer depenses
+              Importar despesas
             </button>
           </div>
 
@@ -1443,13 +1443,13 @@
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Categorie</th>
+                  <th>Categoria</th>
                   <th>Description</th>
-                  <th>Montant</th>
+                  <th>Montante</th>
                 </tr>
               </thead>
               <tbody id="expense-import-preview">
-                <tr><td colspan="4" class="empty">Le preview des depenses apparait ici</td></tr>
+                <tr><td colspan="4" class="empty">A pre-visualizacao das despesas aparece aqui</td></tr>
               </tbody>
             </table>
           </div>
@@ -1464,8 +1464,8 @@
     <div class="page" id="page-clientes">
       <!-- BOUTON DE NAVIGATION CLIENTS -->
        <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
-        <button class="mode-btn active" id="client-tab-pagamento" onclick="switchClientTab('fiche',this)">Fiche client</button>
-        <button class="mode-btn" id="client-tab-fiche" onclick="switchClientTab('pagamento',this)"> Enregistrer paiement</button>
+        <button class="mode-btn active" id="client-tab-pagamento" onclick="switchClientTab('fiche',this)">Ficha do cliente</button>
+        <button class="mode-btn" id="client-tab-fiche" onclick="switchClientTab('pagamento',this)"> Registar pagamento</button>
       </div>
       <!-- FICHE CLIENTES -->
       <div id="client-panel-fiche">
@@ -1491,11 +1491,11 @@
             <datalist id="list-client"></datalist>
           </div>
           <div class="form-group full">
-            <label class="form-label">Montant Paye</label>
+            <label class="form-label">Montante pago</label>
             <input type="number" class="form-input" id="c-montant" placeholder="0" min="0">
           </div>
           <div class="form-group full">
-            <label class="form-label" style="font-size:12px;font-weight:600;">Montant restant : <span id="restePayClient">0 kz</span></label>
+            <label class="form-label" style="font-size:12px;font-weight:600;">Montante restante : <span id="restePayClient">0 kz</span></label>
           </div>
           <div class="form-group full">
             <label class="form-label">Note (opcional)</label>
@@ -1695,13 +1695,13 @@
     <!-- DEPENSES -->
     <div class="page" id="page-depenses">
       <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
-        <button class="mode-btn active" id="dep-tab-new" onclick="switchDepenseTab('new',this)">Nouvelle Depense</button>
-        <button class="mode-btn" id="dep-tab-dashboard" onclick="switchDepenseTab('dashboard',this)">Dashboard Depenses</button>
-        <button class="mode-btn" id="dep-tab-history" onclick="switchDepenseTab('history',this)">Historique Depenses</button>
+        <button class="mode-btn active" id="dep-tab-new" onclick="switchDespesaTab('new',this)">Nova Despesa</button>
+        <button class="mode-btn" id="dep-tab-dashboard" onclick="switchDespesaTab('dashboard',this)">Dashboard de Despesas</button>
+        <button class="mode-btn" id="dep-tab-history" onclick="switchDespesaTab('history',this)">Historico de Despesas</button>
       </div>
 
       <div id="dep-panel-new">
-        <div class="section-title">Registar Depense</div>
+        <div class="section-title">Registar Despesa</div>
         <div class="form-grid" style="max-width:600px;">
           <div class="form-group">
             <label class="form-label">Data</label>
@@ -1717,27 +1717,27 @@
               <option>Autre</option>
             </select>
             <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
-              <input type="text" class="form-input" id="dep-new-category" placeholder="Nouvelle categorie..." style="flex:1;">
-              <button type="button" class="filter-btn" onclick="addDepenseCategory()">Ajouter</button>
+              <input type="text" class="form-input" id="dep-new-category" placeholder="Nova categoria..." style="flex:1;">
+              <button type="button" class="filter-btn" onclick="addDespesaCategory()">Adicionar</button>
             </div>
           </div>
           <div class="form-group full">
             <label class="form-label">Description</label>
-            <input type="text" class="form-input" id="dep-desc" placeholder="Description de la depense...">
+            <input type="text" class="form-input" id="dep-desc" placeholder="Descricao da despesa...">
           </div>
           <div class="form-group full">
-            <label class="form-label">Montant</label>
+            <label class="form-label">Montante</label>
             <input type="number" class="form-input" id="dep-montant" placeholder="0" min="0" >
           </div>
           <div class="form-group full">
-            <button class="form-submit" id="depBtn" onclick="saveDepense()"> Registar Depense</button>
+            <button class="form-submit" id="depBtn" onclick="saveDespesa()"> Registar Despesa</button>
           </div>
         </div>
       </div>
 
       <div id="dep-panel-dashboard" style="display:none;">
         <div class="card">
-          <div class="card-title depense">Dashboard Depenses</div>
+          <div class="card-title depense">Dashboard de Despesas</div>
           <div class="form-grid" style="max-width:none;grid-template-columns:1fr 1fr 1fr auto;">
             <div class="form-group">
               <label class="form-label depense">De</label>
@@ -1748,43 +1748,43 @@
               <input type="date" class="form-input" id="dep-filter-to">
             </div>
             <div class="form-group">
-              <label class="form-label depense">Categorie</label>
+              <label class="form-label depense">Categoria</label>
               <select class="form-input" id="dep-filter-category"></select>
             </div>
             <div class="form-group">
               <label class="form-label">&nbsp;</label>
-              <button class="filter-btn" style="width:100%;" id="depFilterBtn" onclick="loadDepenseInsights()">Appliquer</button>
+              <button class="filter-btn" style="width:100%;" id="depFilterBtn" onclick="loadDespesaInsights()">Aplicar</button>
             </div>
           </div>
           <div class="kpi-grid" style="margin-top:6px;">
             <div class="kpi red">
-              <div class="kpi-label depense">Total Depenses</div>
+              <div class="kpi-label depense">Total de Despesas</div>
               <div class="kpi-val" id="dep-kpi-total">0 Kz</div>
               <div class="kpi-sub" id="dep-kpi-count">0 registos</div>
             </div>
             <div class="kpi">
-              <div class="kpi-label depense">Moyenne</div>
+              <div class="kpi-label depense">Media</div>
               <div class="kpi-val" id="dep-kpi-avg">0 Kz</div>
-              <div class="kpi-sub depense">Par depense</div>
+              <div class="kpi-sub depense">Por despesa</div>
             </div>
             <div class="kpi">
-              <div class="kpi-label depense">Maximum</div>
+              <div class="kpi-label depense">Maximo</div>
               <div class="kpi-val" id="dep-kpi-max">0 Kz</div>
-              <div class="kpi-sub depense" id="dep-kpi-max-cat">Categorie</div>
+              <div class="kpi-sub depense" id="dep-kpi-max-cat">Categoria</div>
             </div>
             <div class="kpi">
-              <div class="kpi-label depense">Aujourd hui</div>
+              <div class="kpi-label depense">Hoje</div>
               <div class="kpi-val" id="dep-kpi-today">0 Kz</div>
-              <div class="kpi-sub depense">Depenses du jour</div>
+              <div class="kpi-sub depense">Despesas do dia</div>
             </div>
           </div>
           <div class="row2" style="margin-top:16px;">
             <div class="card" style="padding:14px;background:var(--surface2);">
-              <div class="card-title depense">Par categorie</div>
+              <div class="card-title depense">Por categoria</div>
               <div id="dep-cat-chart"><div class="empty">A charger...</div></div>
             </div>
             <div class="card" style="padding:14px;background:var(--surface2);">
-              <div class="card-title depense">Evolution journaliere</div>
+              <div class="card-title depense">Evolucao diaria</div>
               <div id="dep-day-chart"><div class="empty">A charger...</div></div>
             </div>
           </div>
@@ -1793,15 +1793,15 @@
 
       <div id="dep-panel-history" style="display:none;">
         <div class="card">
-          <div class="card-title depense">Historique Des Depenses</div>
+          <div class="card-title depense">Historico das Despesas</div>
           <div style="overflow-x:auto;">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th class="depense">Date</th>
-                  <th class="depense">Categorie</th>
-                  <th class="depense">Description</th>
-                  <th class="depense">Montant</th>
+                  <th class="depense">Data</th>
+                  <th class="depense">Categoria</th>
+                  <th class="depense">Descricao</th>
+                  <th class="depense">Montante</th>
                 </tr>
               </thead>
               <tbody id="depHistoryBody">
@@ -1958,8 +1958,8 @@
     <!-- TRESORERIE -->
     <div class="page" id="page-tresorerie">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-        <div class="section-title" style="margin:0;">Tresorerie</div>
-        <button class="filter-btn" onclick="loadTresorerie()">Actualiser</button>
+        <div class="section-title" style="margin:0;">Tesouraria</div>
+        <button class="filter-btn" onclick="loadTesouraria()">Atualizar</button>
       </div>
 
       <div class="kpi-grid" style="grid-template-columns:repeat(3, minmax(0,1fr));">
@@ -1969,7 +1969,7 @@
           <div class="kpi-sub">argent disponible</div>
         </div>
         <div class="kpi green">
-          <div class="kpi-label">Entrées</div>
+          <div class="kpi-label">Entradas</div>
           <div class="kpi-val" id="tr-in">-</div>
           <div class="kpi-sub">periode filtree</div>
         </div>
@@ -1982,14 +1982,14 @@
 
       <div class="row2">
         <div class="card">
-          <div class="card-title">Nouveau Mouvement</div>
+          <div class="card-title">Novo Movimento</div>
           <div class="form-grid" style="max-width:none;">
             <div class="form-group">
               <label class="form-label">Date</label>
               <input type="date" class="form-input" id="tre-date">
             </div>
             <div class="form-group">
-              <label class="form-label">Mouvement</label>
+              <label class="form-label">Movimento</label>
               <select class="form-input" id="tre-mvt">
                 <option value="entrada">Entrada</option>
                 <option value="saida">Saida</option>
@@ -2000,15 +2000,15 @@
               <input type="text" class="form-input" id="tre-type" placeholder="Ex: Capital, Retrait, Ajuste...">
             </div>
             <div class="form-group">
-              <label class="form-label">Montant</label>
+              <label class="form-label">Montante</label>
               <input type="number" class="form-input" id="tre-montant" placeholder="0" min="0">
             </div>
             <div class="form-group full">
               <label class="form-label">Description</label>
-              <input type="text" class="form-input" id="tre-desc" placeholder="Description du mouvement...">
+              <input type="text" class="form-input" id="tre-desc" placeholder="Descricao do movimento...">
             </div>
             <div class="form-group full">
-              <button class="form-submit" id="treBtn" onclick="saveTresorerie()">Registar Mouvement</button>
+              <button class="form-submit" id="treBtn" onclick="saveTesouraria()">Registar Movimento</button>
             </div>
           </div>
         </div>
@@ -2026,17 +2026,17 @@
             </div>
             <div class="form-group full">
               <label class="form-label">Type contient</label>
-              <input type="text" class="form-input" id="tre-filter-type" placeholder="Ex: Vente, Depense, Achat...">
+              <input type="text" class="form-input" id="tre-filter-type" placeholder="Ex: Venda, Despesa, Compra...">
             </div>
             <div class="form-group full">
-              <button class="form-submit" style="width:100%;" onclick="loadTresorerie()">Appliquer les filtres</button>
+              <button class="form-submit" style="width:100%;" onclick="loadTesouraria()">Aplicar filtros</button>
             </div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Historique des Mouvements</div>
+        <div class="card-title">Historico dos Movimentos</div>
         <div style="overflow-x:auto;">
           <table class="data-table">
             <thead>
@@ -2050,7 +2050,7 @@
               </tr>
             </thead>
             <tbody id="tresoBody">
-              <tr><td colspan="6" class="empty">Chargement...</td></tr>
+              <tr><td colspan="6" class="empty">A carregar...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2064,7 +2064,7 @@
         <div class="filter-group"><label class="form-label">De</label><input type="date" class="filter-input" id="acct-from"></div>
         <div class="filter-group"><label class="form-label">A</label><input type="date" class="filter-input" id="acct-to"></div>
         <div class="filter-group"><label class="form-label">Tipo</label><input type="text" class="filter-input" id="acct-type" placeholder="Venda, Compra, Despesa"></div>
-        <button class="filter-btn" onclick="loadComptabilite()">Aplicar</button>
+        <button class="filter-btn" onclick="loadContabilidade()">Aplicar</button>
       </div>
       <div class="kpi-grid" style="margin-bottom:18px;">
         <div class="kpi"><div class="kpi-label">Vendas</div><div class="kpi-val" id="acct-sales">0</div><div class="kpi-sub" id="acct-sales-n">0 vendas</div></div>
@@ -2094,29 +2094,29 @@
           <div>
             <div class="eyebrow">Controlo</div>
             <h2>Corrections</h2>
-            <p>Annule une vente, un achat, une depense ou un paiement en gardant une trace propre.</p>
+            <p>Anula uma venda, compra, despesa ou pagamento mantendo um registo limpo.</p>
           </div>
-          <button class="filter-btn" onclick="loadCorrections()">Actualiser</button>
+          <button class="filter-btn" onclick="loadCorrections()">Atualizar</button>
         </div>
 
         <div class="correction-tabs">
-          <button class="mode-btn active" id="correction-tab-sale" onclick="switchCorrectionTab('sale', this)">Corriger vente</button>
-          <button class="mode-btn" id="correction-tab-purchase" onclick="switchCorrectionTab('purchase', this)">Corriger achat</button>
-          <button class="mode-btn" id="correction-tab-expense" onclick="switchCorrectionTab('expense', this)">Corriger depense</button>
-          <button class="mode-btn" id="correction-tab-payment" onclick="switchCorrectionTab('payment', this)">Corriger paiement</button>
+          <button class="mode-btn active" id="correction-tab-sale" onclick="switchCorrectionTab('sale', this)">Corrigir venda</button>
+          <button class="mode-btn" id="correction-tab-purchase" onclick="switchCorrectionTab('purchase', this)">Corrigir compra</button>
+          <button class="mode-btn" id="correction-tab-expense" onclick="switchCorrectionTab('expense', this)">Corrigir despesa</button>
+          <button class="mode-btn" id="correction-tab-payment" onclick="switchCorrectionTab('payment', this)">Corrigir pagamento</button>
         </div>
 
         <div class="correction-search-card">
-          <input type="text" class="form-input" id="correction-search" placeholder="Rechercher numero, client, fournisseur, description..." oninput="loadCorrectionsDebounced()">
-          <button class="filter-btn" onclick="loadCorrections()">Rechercher</button>
+          <input type="text" class="form-input" id="correction-search" placeholder="Pesquisar numero, cliente, fornecedor, descricao..." oninput="loadCorrectionsDebounced()">
+          <button class="filter-btn" onclick="loadCorrections()">Pesquisar</button>
         </div>
 
         <div class="correction-notice">
-          La correction n'efface pas l'ancien mouvement. Elle cree une trace d'annulation et inverse les effets possibles sur stock, dettes, caisse et comptabilite.
+          A correcao nao apaga o movimento antigo. Ela cria um registo de anulacao e inverte os efeitos possiveis no stock, dividas, caixa e contabilidade.
         </div>
 
         <div id="correction-list" class="correction-list">
-          <div class="empty">Selectionne un type de correction.</div>
+          <div class="empty">Seleciona um tipo de correcao.</div>
         </div>
       </div>
     </div>
@@ -2125,24 +2125,24 @@
 <!-- FORNECEDORES -->
 <div class="page" id="page-forn">
   <div class="supplier-tabs">
-    <button class="mode-btn active" id="forn-tab-fiche" onclick="switchFornTab('fiche', this)">Fiche fournisseur</button>
-    <button class="mode-btn" id="forn-tab-cadastro" onclick="switchFornTab('cadastro', this)">Enregistrer fournisseur</button>
+    <button class="mode-btn active" id="forn-tab-fiche" onclick="switchFornTab('fiche', this)">Ficha do fornecedor</button>
+    <button class="mode-btn" id="forn-tab-cadastro" onclick="switchFornTab('cadastro', this)">Registar fornecedor</button>
     <button class="mode-btn" id="forn-tab-pagamento" onclick="switchFornTab('pagamento', this)">Registar pagamento</button>
-    <button class="mode-btn" id="forn-tab-dividas" onclick="switchFornTab('dividas', this)">Dettes fournisseurs</button>
+    <button class="mode-btn" id="forn-tab-dividas" onclick="switchFornTab('dividas', this)">Dividas a fornecedores</button>
   </div>
 
   <div id="forn-panel-fiche">
     <div class="supplier-page-head">
       <div>
         <div class="eyebrow">Fornecedores</div>
-        <h2>Fiche fournisseur</h2>
-        <p>Clique sur un fournisseur pour voir ses achats, paiements et dettes.</p>
+        <h2>Ficha do fornecedor</h2>
+        <p>Clica num fornecedor para ver compras, pagamentos e dividas.</p>
       </div>
-      <button class="filter-btn" onclick="renderSupplierDirectory()">Actualiser</button>
+      <button class="filter-btn" onclick="renderSupplierDirectory()">Atualizar</button>
     </div>
 
     <div class="supplier-search-card">
-      <input type="text" class="form-input" id="supplier-fiche-search" list="list-supplier-fiche" placeholder="Rechercher un fournisseur">
+      <input type="text" class="form-input" id="supplier-fiche-search" list="list-supplier-fiche" placeholder="Pesquisar fornecedor">
       <datalist id="list-supplier-fiche"></datalist>
       <button class="form-submit" onclick="loadSupplierFiche()">Pesquisar</button>
     </div>
@@ -2152,7 +2152,7 @@
     </div>
 
     <div id="supplier-fiche-result" class="supplier-fiche-result">
-      <div class="empty">Selectionne un fournisseur pour voir sa fiche.</div>
+      <div class="empty">Seleciona um fornecedor para ver a ficha.</div>
     </div>
   </div>
 
@@ -2195,16 +2195,16 @@
         <datalist id="list-pay-forn"></datalist>
       </div>
       <div class="form-group full">
-        <label class="form-label">Montant Paye</label>
+        <label class="form-label">Montante pago</label>
         <input type="number" class="form-input" id="p-montant" placeholder="0" min="0">
       </div>
       <div class="supplier-debt-mini">
-        <span>Montant restant</span>
+        <span>Montante restante</span>
         <strong id="restePayFourn">0 kz</strong>
       </div>
       <div class="form-group full">
         <label class="form-label">Note</label>
-        <input type="text" class="form-input" id="p-note" placeholder="Ex: Paiement parcial...">
+        <input type="text" class="form-input" id="p-note" placeholder="Ex: Pagamento parcial...">
       </div>
       <div class="form-group full">
         <button class="form-submit" id="pg-forn-btn" onclick="savePagamentoForn()">Registar Pagamento</button>
@@ -2235,12 +2235,12 @@
     <div style="text-align:center;margin-bottom:24px;">
       <div style="font-size:40px;margin-bottom:8px;"></div>
       <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#1a1a1a;">Bem-vindo ao POS</div>
-      <div style="font-size:13px;color:#888;margin-top:6px;">Configura a tua boutique em 1 minuto</div>
+      <div style="font-size:13px;color:#888;margin-top:6px;">Configura a tua loja em 1 minuto</div>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div class="form-group">
-        <label class="form-label" style="color:#555;">Nome da Boutique</label>
+        <label class="form-label" style="color:#555;">Nome da loja</label>
         <input type="text" class="form-input" id="setup-name" placeholder="Ex: Dukson, Le Monsieur..." style="border-color:#ddd;color:#1a1a1a;background:#f9f9f9;">
       </div>
       <div class="form-group">
@@ -2261,18 +2261,18 @@
       <div class="form-group">
         <label class="form-label" style="color:#555;">Modo de Stock</label>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-          <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;" id="stock-opt-boutique" onclick="selectStockMode('boutique')">
-            <input type="radio" name="stockMode" value="boutique" checked style="margin-top:2px;accent-color:#0b3d91;">
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;" id="stock-opt-loja" onclick="selectStockMode('loja')">
+            <input type="radio" name="stockMode" value="loja" checked style="margin-top:2px;accent-color:#0b3d91;">
             <div>
-              <div style="font-size:13px;font-weight:600;color:#1a1a1a;"> Apenas Stock Boutique</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;">As compras entram directamente no Stock Boutique. Ideal se nao tens deposito separado.</div>
+              <div style="font-size:13px;font-weight:600;color:#1a1a1a;"> Apenas Stock Loja</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">As compras entram directamente no Stock loja. Ideal se nao tens deposito separado.</div>
             </div>
           </label>
           <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;" id="stock-opt-armazem" onclick="selectStockMode('armazem')">
             <input type="radio" name="stockMode" value="armazem" style="margin-top:2px;accent-color:#0b3d91;">
             <div>
-              <div style="font-size:13px;font-weight:600;color:#1a1a1a;"> Stock Boutique + Armazem</div>
-              <div style="font-size:11px;color:#888;margin-top:2px;">As compras entram no Armazem, depois transferes para a Boutique. Para lojas com deposito separado.</div>
+              <div style="font-size:13px;font-weight:600;color:#1a1a1a;"> Stock loja + armazem</div>
+              <div style="font-size:11px;color:#888;margin-top:2px;">As compras entram no armazem, depois transferes para a loja. Para lojas com deposito separado.</div>
             </div>
           </label>
         </div>
@@ -2308,11 +2308,11 @@
 <!-- RECEIPT MODAL -->
 <div class="overlay" id="receiptOverlay">
   <div class="receipt-box" id="receiptBox">
-    <!-- Nom boutique - mis a jour par applyConfig() -->
+    <!-- Nome da loja - atualizado por applyConfig() -->
     <img id="r-logo-img" alt="Logo" style="display:none;max-width:100%;height:auto;margin:0 auto 8px auto;object-fit:contain;">
     <div class="r-logo" id="r-logo">Azul Gestão</div>
     <div class="r-slogan" id="r-slogan">O sistema de gestão que o seu negocio merece</div>
-    <!-- Adresse et telephone - affiches si remplis dans Definicoes -->
+    <!-- Endereco e telefone - mostrados se estiverem preenchidos em Definicoes -->
     <div class="r-meta" id="r-address-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
     <div class="r-meta" id="r-phone-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
     <hr class="r-divider">
@@ -2342,7 +2342,7 @@
 <div class="overlay" id="paymentOverlay">
   <div class="payment-modal">
     <div class="payment-modal-head">
-      <div class="payment-modal-title">Paiement</div>
+      <div class="payment-modal-title">Pagamento</div>
       <button class="payment-modal-close" onclick="closePaymentModal()">x</button>
     </div>
     <div class="payment-modal-grid">
@@ -2360,11 +2360,11 @@
       <div class="payment-modal-value" id="paymentModalTotal" style="font-family:'Playfair Display',serif;font-size:28px;color:var(--blue);">0 Kz</div>
     </div>
     <div class="payment-type-wrap">
-      <button class="payment-type-btn active" id="payment-type-stock" onclick="selPaymentType('interno')">Interne</button>
-      <button class="payment-type-btn" id="payment-type-commande" onclick="selPaymentType('Externo')">Externe</button>
+      <button class="payment-type-btn active" id="payment-type-stock" onclick="selPaymentType('interno')">Interno</button>
+      <button class="payment-type-btn" id="payment-type-commande" onclick="selPaymentType('Externo')">Externo</button>
     </div>
     <div id="paymentModalLines" class="payment-modal-lines"></div>
-    <button class="payment-modal-add" onclick="addPaymentLine()">+ Ajouter moyen de paiement</button>
+    <button class="payment-modal-add" onclick="addPaymentLine()">+ Adicionar meio de pagamento</button>
     <div id="paymentModalStatus" class="payment-modal-status">Pago: 0 Kz / Total: 0 Kz</div>
     <div class="progress-label" id="paymentProgressLabel">A registar venda...</div>
     <div class="progress-wrap" id="paymentProgressWrap">

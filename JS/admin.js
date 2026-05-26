@@ -29,7 +29,7 @@ async function loginAdmin() {
   });
 
   if (result.error) {
-    adminMsg("admin-login-msg", "Accès refusé.");
+    adminMsg("admin-login-msg", "Acesso recusado.");
     return;
   }
 
@@ -83,7 +83,7 @@ async function createOrganization() {
   });
 
   if (result.error) {
-    adminMsg("admin-form-msg", "Erreur: " + result.error.message);
+    adminMsg("admin-form-msg", "Erro: " + result.error.message);
     return;
   }
 
@@ -93,17 +93,17 @@ async function createOrganization() {
   document.getElementById("org-expires").value = "";
   document.getElementById("org-notes").value = "";
 
-  adminMsg("admin-form-msg", "Licence générée: " + (org.license_key || ""));
+  adminMsg("admin-form-msg", "Licenca gerada: " + (org.license_key || ""));
   loadOrganizations();
 }
 async function loadOrganizations() {
   var list = document.getElementById("organizations-list");
-  list.innerHTML = '<div class="empty">Chargement...</div>';
+  list.innerHTML = '<div class="empty">A carregar...</div>';
 
   var result = await adminSupabaseClient.rpc("admin_list_clients");
 
   if (result.error) {
-    list.innerHTML = '<div class="empty">Erreur: ' + htmlSafe(result.error.message) + '</div>';
+    list.innerHTML = '<div class="empty">Erro: ' + htmlSafe(result.error.message) + '</div>';
     return;
   }
 
@@ -126,14 +126,14 @@ function renderOrganizations() {
 });
 
   if (!rows.length) {
-    list.innerHTML = '<div class="empty">Aucun client trouvé.</div>';
+    list.innerHTML = '<div class="empty">Nenhum cliente encontrado.</div>';
     return;
   }
 
   list.innerHTML = rows.map(function(org) {
     var status = org.status || "inactive";
     var nextStatus = status === "active" ? "suspended" : "active";
-    var actionText = status === "active" ? "Désactiver" : "Réactiver";
+    var actionText = status === "active" ? "Desativar" : "Reativar";
 
     return `
       <div class="org-item">
@@ -142,14 +142,14 @@ function renderOrganizations() {
             <div class="org-name">${htmlSafe(org.name || "Client")}</div>
             <div class="org-meta">
               Licence: <strong>${htmlSafe(org.current_license_key || "-")}</strong><br>
-              Statut licence: ${htmlSafe(org.current_license_status || "-")}<br>
+              Estado da licenca: ${htmlSafe(org.current_license_status || "-")}<br>
               Plan: ${htmlSafe(org.plan || "starter")}<br>
               Expiration: ${htmlSafe(org.expires_at ? String(org.expires_at).slice(0, 10) : "Sans expiration")}<br>
               Activations: ${htmlSafe(org.activation_count || 0)} / ${htmlSafe(org.activation_limit || 1)}<br>
-              Téléphone: ${htmlSafe(org.phone || "-")}<br>
+              Telefone: ${htmlSafe(org.phone || "-")}<br>
               Email: ${htmlSafe(org.email || "-")}<br>
               Appareils: ${htmlSafe(org.active_devices || 0)} / ${htmlSafe(org.device_limit || 1)}<br>
-              Créé: ${htmlSafe(String(org.created_at || "").slice(0, 10))}
+              Criado: ${htmlSafe(String(org.created_at || "").slice(0, 10))}
             </div>
           </div>
 
@@ -157,11 +157,11 @@ function renderOrganizations() {
         </div>
 
         <div class="org-actions">
-          <button onclick="copyLicense('${htmlSafe(org.current_license_key || "")}')">Copier licence</button>
+          <button onclick="copyLicense('${htmlSafe(org.current_license_key || "")}')">Copiar licenca</button>
           <button onclick="createRenewalLicense('${org.id}')">Renouveler</button>
           <button onclick="changeOrganizationStatus('${org.id}', '${nextStatus}')">${actionText}</button>
           <button onclick="changeDeviceLimit('${org.id}')">Appareils</button>
-          <button type="button" data-devices-preview="${htmlSafe(org.id)}">Voir appareils</button>
+          <button type="button" data-devices-preview="${htmlSafe(org.id)}">Ver aparelhos</button>
           
         </div>
       </div>
@@ -176,7 +176,7 @@ async function changeOrganizationStatus(id, status) {
   });
 
   if (result.error) {
-    alert("Erreur: " + result.error.message);
+    alert("Erro: " + result.error.message);
     return;
   }
 
@@ -188,9 +188,9 @@ async function copyLicense(key) {
 
   try {
     await navigator.clipboard.writeText(key);
-    alert("Licence copiée.");
+    alert("Licenca copiada.");
   } catch (e) {
-    prompt("Copie la licence:", key);
+    prompt("Copia a licenca:", key);
   }
 }
 async function createRenewalLicense(organizationId) {
@@ -201,23 +201,23 @@ async function createRenewalLicense(organizationId) {
   });
 
   if (result.error) {
-    alert("Erreur: " + result.error.message);
+    alert("Erro: " + result.error.message);
     return;
   }
 
-  alert("Nouvelle licence: " + result.data.license_key);
+  alert("Nova licenca: " + result.data.license_key);
   loadOrganizations();
 }
 
 async function changeDeviceLimit(organizationId) {
-  var value = prompt("Nombre d'appareils autorises:");
+  var value = prompt("Numero de aparelhos autorizados:");
 
   if (!value) return;
 
   var limit = parseInt(value, 10);
 
   if (!limit || limit < 1) {
-    alert("Limite invalide.");
+    alert("Limite invalido.");
     return;
   }
 
@@ -227,7 +227,7 @@ async function changeDeviceLimit(organizationId) {
   });
 
   if (result.error) {
-    alert("Erreur: " + result.error.message);
+    alert("Erro: " + result.error.message);
     return;
   }
 
@@ -269,7 +269,7 @@ async function openDevicesPreview(organizationId) {
     <div class="devices-preview">
       <div class="devices-preview-head">
         <div>
-          <div class="devices-preview-kicker">Appareils connectés</div>
+          <div class="devices-preview-kicker">Aparelhos ligados</div>
           <h2>${htmlSafe(org && org.name ? org.name : "Client")}</h2>
           <p>${htmlSafe(org && org.email ? org.email : "-")}</p>
         </div>
@@ -288,7 +288,7 @@ async function openDevicesPreview(organizationId) {
       </div>
 
       <div id="devices-preview-body" class="devices-preview-body">
-        <div class="empty">Chargement des appareils...</div>
+        <div class="empty">A carregar aparelhos...</div>
       </div>
     </div>
   `;
@@ -303,14 +303,14 @@ async function openDevicesPreview(organizationId) {
   });
 
   if (result.error) {
-    body.innerHTML = '<div class="empty">Erreur: ' + htmlSafe(result.error.message) + '</div>';
+    body.innerHTML = '<div class="empty">Erro: ' + htmlSafe(result.error.message) + '</div>';
     return;
   }
 
   var devices = result.data || [];
 
   if (!devices.length) {
-    body.innerHTML = '<div class="empty">Aucun appareil connecté.</div>';
+    body.innerHTML = '<div class="empty">Nenhum aparelho ligado.</div>';
     return;
   }
 
@@ -337,8 +337,8 @@ async function openDevicesPreview(organizationId) {
             Email: ${htmlSafe(ownerEmail)}<br>
             Numero: ${htmlSafe(ownerPhone)}<br>
             ID: ${htmlSafe(shortId || "-")}<br>
-            Première connexion ERP: ${htmlSafe(formatAdminDate(device.first_login_at))}<br>
-            Dernière activité: ${htmlSafe(formatAdminDate(device.last_seen_at))}<br>
+            Primeira entrada no ERP: ${htmlSafe(formatAdminDate(device.first_login_at))}<br>
+            Ultima atividade: ${htmlSafe(formatAdminDate(device.last_seen_at))}<br>
             ${htmlSafe(device.last_seen_label || "")}
           </div>
         </div>
@@ -346,7 +346,7 @@ async function openDevicesPreview(organizationId) {
     `;
   }).join("");
   } catch (e) {
-    body.innerHTML = '<div class="empty">Erreur: ' + htmlSafe(e.message || e) + '</div>';
+    body.innerHTML = '<div class="empty">Erro: ' + htmlSafe(e.message || e) + '</div>';
   }
 }
 

@@ -513,7 +513,7 @@ html, body {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--blue);  /* même couleur que le background */
+  background: var(--blue);  /* mesma cor do fundo */
 }
 /* Cart */
 .cart-head {
@@ -2200,7 +2200,7 @@ html, body {
     display: none;
   }
 
-  #achat-panel-novo > button[onclick="addAchatLine()"] {
+  #achat-panel-novo > button[onclick="addCompraLine()"] {
     display: none;
   }
 
@@ -2340,22 +2340,22 @@ html, body {
   }
 }
 
-/* Fix: cacher les contrôles achat mobile sur desktop */
-#mobileAchatAddBtn,
-#mobileAchatSummary {
+/* Fix: ocultar controlos de compra mobile no desktop */
+#mobileCompraAddBtn,
+#mobileCompraSummary {
   display: none !important;
 }
 
 @media (max-width: 820px) {
-  #mobileAchatAddBtn {
+  #mobileCompraAddBtn {
     display: grid !important;
   }
 
-  #mobileAchatSummary {
+  #mobileCompraSummary {
     display: grid !important;
   }
 
-  #mobileAchatSummary[style*="display: none"] {
+  #mobileCompraSummary[style*="display: none"] {
     display: none !important;
   }
 }
@@ -5130,7 +5130,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     cursor: pointer;
   }
 }
-/* Alertes importantes compactes mobile/desktop */
+/* Alertas importantes compactes mobile/desktop */
 #page-dashboard .important-alert-row {
   display: grid !important;
   grid-template-columns: 12px 1fr 34px !important;
@@ -5327,10 +5327,10 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     display: none !important;
   }
 }
-/* Achat mobile: couleur du theme + cache quand menu ouvert */
+/* Compra mobile: couleur du theme + cache quand menu ouvert */
 @media (max-width: 820px) {
-  body.mobile-nav-open #mobileAchatSummary,
-  body.mobile-nav-open #mobileAchatAddBtn {
+  body.mobile-nav-open #mobileCompraSummary,
+  body.mobile-nav-open #mobileCompraAddBtn {
     display: none !important;
   }
 
@@ -5349,7 +5349,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
     color: #fff !important;
   }
 }
-/* Correction mobile tableau paiements achat */
+/* Correcao mobile da tabela de pagamentos de compra */
 @media (max-width: 820px) {
   #a-credit-fields {
     padding-bottom: 16px !important;
@@ -5487,7 +5487,7 @@ textarea,
   font-weight: 800 !important;
   letter-spacing: 0 !important;
 }
-/* Stock mobile: input + effacer sur la même ligne */
+/* Stock mobile: input + limpar na mesma linha */
 @media (max-width: 820px) {
   #page-transfert #stock > div[style*="display:flex"] {
     display: grid !important;
@@ -5546,7 +5546,7 @@ textarea,
     display: none !important;
   }
 
-  #mobileDepenseHistoryList {
+  #mobileDespesaHistoryList {
     display: grid !important;
     gap: 10px !important;
   }
@@ -5599,7 +5599,7 @@ textarea,
     color: var(--red);
   }
 }
-/* Comptabilite mobile: cartes au lieu de tableaux */
+/* Contabilidade mobile: cartes au lieu de tableaux */
 @media (max-width: 820px) {
   #page-comptabilite .data-table {
     display: none !important;
