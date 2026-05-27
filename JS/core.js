@@ -3344,20 +3344,12 @@ function setQuickTreasuryText(id, value) {
 async function getResellerOpenDebtsFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
 
-  filters = filters || {};
-  var from = filters.from || "";
-  var to = filters.to || "";
-
   var query = supabaseClient
     .from("reseller_consignments")
     .select("id,consignment_no,reseller_name,consignment_date,total,paid_amount,status,created_at,user_name")
     .eq("organization_id", organizationId)
-    .neq("status", "returned")
     .order("consignment_date", { ascending: false })
     .order("created_at", { ascending: false });
-
-  if (from) query = query.gte("consignment_date", from);
-  if (to) query = query.lte("consignment_date", to);
 
   var result = await query;
 
@@ -3371,12 +3363,27 @@ async function getResellerOpenDebtsFromSupabase(filters) {
     };
   }
 
-  var rows = (result.data || []).map(function(row) {
-    var total = Number(row.total) || 0;
+  var consignments = (result.data || []).filter(function(row) {
+    var status = String(row.status || "open").toLowerCase();
+    return status !== "returned" && status !== "devolvido" && status !== "cancelled" && status !== "cancelado";
+  });
+
+  var ids = consignments.map(function(row) {
+    return row.id;
+  });
+
+  var itemsById = await getRevItemsForConsignments(ids);
+  var rows = consignments.map(function(row) {
+    var items = itemsById[row.id] || [];
+    var itemsTotal = items.reduce(function(sum, item) {
+      return sum + (Number(item.total) || ((Number(item.quantity) || 0) * (Number(item.unit_price) || 0)));
+    }, 0);
+    var total = itemsTotal > 0 ? itemsTotal : (Number(row.total) || 0);
     var paid = Number(row.paid_amount) || 0;
     var remaining = Math.max(0, total - paid);
 
     return Object.assign({}, row, {
+      total: total,
       remaining_amount: remaining
     });
   }).filter(function(row) {
