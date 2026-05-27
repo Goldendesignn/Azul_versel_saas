@@ -9297,6 +9297,10 @@ function renderinventaire(products) {
 
   if (!body) return;
 
+  function setInventoryText(el, value) {
+    if (el) el.innerHTML = value;
+  }
+
 products = filterInventoryProducts(products || []);
 renderMobileInventory(products);
 
@@ -9345,12 +9349,12 @@ renderMobileInventory(products);
     '</tr>';
   }).join('');
 
-  nbrestocktotal.innerHTML = nbreProductTotal;
-  valeurtext.innerHTML = fmt(valeurtotal);
-  valeurlojatext.innerHTML = fmt(valeurTotalBoutique);
-  valeurstocktext.innerHTML = fmt(valeurTotalStock);
-  nbrestock.innerHTML = totalstock;
-  nbreloja.innerHTML = totalloja;
+  setInventoryText(nbrestocktotal, nbreProductTotal);
+  setInventoryText(valeurtext, fmt(valeurtotal));
+  setInventoryText(valeurlojatext, fmt(valeurTotalBoutique));
+  setInventoryText(valeurstocktext, fmt(valeurTotalStock));
+  setInventoryText(nbrestock, totalstock);
+  setInventoryText(nbreloja, totalloja);
 }
 function renderMobileDespesaHistory(rows) {
   var list = ensureMobileList("depHistoryBody", "mobileDespesaHistoryList");
