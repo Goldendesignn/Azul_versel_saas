@@ -3364,7 +3364,8 @@ async function getResellerOpenDebtsFromSupabase(filters) {
   }
 
   var consignments = (result.data || []).filter(function(row) {
-    return getRevStatusLabel(row.status) === "Devolvido";
+    var status = String(row.status || "open").toLowerCase();
+    return !status || status === "open" || status === "aberto";
   });
 
   var ids = consignments.map(function(row) {
@@ -3384,10 +3385,12 @@ async function getResellerOpenDebtsFromSupabase(filters) {
       return sum + getRevConsignmentItemDebtValue(item, salePriceMap);
     }, 0);
     var total = itemsTotal > 0 ? itemsTotal : (Number(row.total) || 0);
+    var paid = Number(row.paid_amount) || 0;
+    var remaining = Math.max(0, total - paid);
 
     return Object.assign({}, row, {
       total: total,
-      remaining_amount: total
+      remaining_amount: remaining
     });
   }).filter(function(row) {
     return (Number(row.remaining_amount) || 0) > 0;
