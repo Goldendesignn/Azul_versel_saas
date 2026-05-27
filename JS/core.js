@@ -3341,6 +3341,84 @@ function setQuickTreasuryText(id, value) {
   if (el) el.textContent = fmt(value || 0);
 }
 
+async function getResellerOpenDebtsFromSupabase(filters) {
+  var organizationId = getAzulOrganizationId();
+
+  filters = filters || {};
+  var from = filters.from || "";
+  var to = filters.to || "";
+
+  var query = supabaseClient
+    .from("reseller_consignments")
+    .select("id,consignment_no,reseller_name,consignment_date,total,paid_amount,status,created_at,user_name")
+    .eq("organization_id", organizationId)
+    .neq("status", "returned")
+    .order("consignment_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (from) query = query.gte("consignment_date", from);
+  if (to) query = query.lte("consignment_date", to);
+
+  var result = await query;
+
+  if (result.error) {
+    console.warn("Dividas de revendedores indisponiveis:", result.error);
+    return {
+      total: 0,
+      count: 0,
+      byReseller: [],
+      rows: []
+    };
+  }
+
+  var rows = (result.data || []).map(function(row) {
+    var total = Number(row.total) || 0;
+    var paid = Number(row.paid_amount) || 0;
+    var remaining = Math.max(0, total - paid);
+
+    return Object.assign({}, row, {
+      remaining_amount: remaining
+    });
+  }).filter(function(row) {
+    return (Number(row.remaining_amount) || 0) > 0;
+  });
+
+  var resellerMap = {};
+
+  rows.forEach(function(row) {
+    var name = String(row.reseller_name || "Revendedor").trim();
+    var key = name.toLowerCase();
+
+    if (!resellerMap[key]) {
+      resellerMap[key] = {
+        name: "Revendedor: " + name,
+        total: 0,
+        count: 0
+      };
+    }
+
+    resellerMap[key].total += Number(row.remaining_amount) || 0;
+    resellerMap[key].count += 1;
+  });
+
+  var byReseller = Object.keys(resellerMap).map(function(key) {
+    return resellerMap[key];
+  }).sort(function(a, b) {
+    return b.total - a.total;
+  });
+
+  var totalDebt = rows.reduce(function(sum, row) {
+    return sum + (Number(row.remaining_amount) || 0);
+  }, 0);
+
+  return {
+    total: totalDebt,
+    count: rows.length,
+    byReseller: byReseller,
+    rows: rows
+  };
+}
+
 function getMainDashboardText(key) {
   var dict = {
       period: 'Periodo', from: 'De', to: 'Ate', product: 'Produto', supplier: 'Fornecedor',
@@ -3595,6 +3673,7 @@ async function getDashboardDebtsFromSupabase(filters) {
 
   var clientMap = {};
   var supplierMap = {};
+  var resellerDebts = await getResellerOpenDebtsFromSupabase(filters);
 
   (clientResult.data || []).forEach(function(row) {
     var name = String(row.client_name || "Cliente").trim();
@@ -3624,6 +3703,21 @@ async function getDashboardDebtsFromSupabase(filters) {
 
     supplierMap[name].total += Number(row.remaining_amount) || 0;
     supplierMap[name].count += 1;
+  });
+
+  (resellerDebts.byReseller || []).forEach(function(row) {
+    var name = row.name || "Revendedor";
+
+    if (!clientMap[name]) {
+      clientMap[name] = {
+        name: name,
+        total: 0,
+        count: 0
+      };
+    }
+
+    clientMap[name].total += Number(row.total) || 0;
+    clientMap[name].count += Number(row.count) || 0;
   });
 
   var clients = Object.keys(clientMap).map(function(key) {
@@ -10326,6 +10420,21 @@ function acctSet(id, value) {
 function acctAmountRow(label, amount, color) {
   return '<tr><td>' + htmlSafeAcct(label) + '</td><td style="text-align:right;font-weight:700;color:' + (color || 'var(--text)') + ';">' + fmt(amount || 0) + '</td></tr>';
 }
+
+function buildResellerDebtAccountingRows(resellerDebts) {
+  return ((resellerDebts && resellerDebts.rows) || []).map(function(row) {
+    return {
+      date: row.consignment_date || String(row.created_at || "").slice(0, 10),
+      type: "12 - Clientes / Revendedores",
+      desc: "Divida revendedor " + (row.reseller_name || "Revendedor") + " - " + (row.consignment_no || ""),
+      debito: Number(row.remaining_amount) || 0,
+      credito: 0,
+      source: "reseller_debt",
+      created_at: row.created_at || ""
+    };
+  });
+}
+
 function getCashInAmountFromPaymentLines(lines, fallbackTotal) {
   lines = lines || [];
 
@@ -10592,8 +10701,25 @@ async function getContabilidadeFromSupabase(params) {
   if (entriesResult.error) throw entriesResult.error;
 
   var entries = entriesResult.data || [];
+  var resellerDebts = await getResellerOpenDebtsFromSupabase({
+    from: from,
+    to: to
+  });
+  var resellerDebtJournal = buildResellerDebtAccountingRows(resellerDebts);
 
   if (!entries.length) {
+    if (typeFilter) {
+      resellerDebtJournal = resellerDebtJournal.filter(function(row) {
+        return (
+          String(row.type || "").toLowerCase().indexOf(typeFilter) >= 0 ||
+          String(row.desc || "").toLowerCase().indexOf(typeFilter) >= 0 ||
+          String(row.source || "").toLowerCase().indexOf(typeFilter) >= 0
+        );
+      });
+    }
+
+    var resellerReceivableOnly = Number(resellerDebts.total) || 0;
+
     return {
       resume: {
         vendas: 0,
@@ -10610,17 +10736,17 @@ async function getContabilidadeFromSupabase(params) {
       bilan: {
         tresorerie: 0,
         stock: 0,
-        clientesAReceber: 0,
-        actifSimplifie: 0,
+        clientesAReceber: resellerReceivableOnly,
+        actifSimplifie: resellerReceivableOnly,
         dividasFornecedors: 0,
         passivo: 0,
-        capitaisProprios: 0
+        capitaisProprios: resellerReceivableOnly
       },
       period: {
         from: from || "-",
         to: to || "-"
       },
-      journal: []
+      journal: resellerDebtJournal
     };
   }
 
@@ -10664,7 +10790,7 @@ async function getContabilidadeFromSupabase(params) {
 
   var tresorerie = sumAccount("11", "debit") - sumAccount("11", "credit");
   var stock = sumAccount("13", "debit") - sumAccount("13", "credit");
-  var clientesAReceber = sumAccount("12", "debit") - sumAccount("12", "credit");
+  var clientesAReceber = (sumAccount("12", "debit") - sumAccount("12", "credit")) + (Number(resellerDebts.total) || 0);
   var dividasFornecedors = sumAccount("21", "credit") - sumAccount("21", "debit");
 
   var beneficeBrut = vendas - coutVendas;
@@ -10690,6 +10816,8 @@ async function getContabilidadeFromSupabase(params) {
       created_at: entry.created_at || ""
     });
   });
+
+  journal = journal.concat(resellerDebtJournal);
 
   if (typeFilter) {
     journal = journal.filter(function(row) {
