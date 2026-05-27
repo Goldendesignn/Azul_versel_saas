@@ -10,7 +10,7 @@
   });
 
   window.addEventListener("load", function() {
-    navigator.serviceWorker.register("/sw.js").then(function(registration) {
+    navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then(function(registration) {
       registration.update();
 
       if (registration.waiting) {

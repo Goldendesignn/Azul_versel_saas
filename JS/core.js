@@ -3343,10 +3343,11 @@ function setQuickTreasuryText(id, value) {
 
 async function getResellerOpenDebtsFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
+  filters = filters || {};
 
   var query = supabaseClient
     .from("reseller_consignments")
-    .select("id,consignment_no,reseller_name,consignment_date,total,paid_amount,status,created_at,user_name")
+    .select("id,organization_id,consignment_no,reseller_name,consignment_date,total,paid_amount,status,created_at,user_name")
     .eq("organization_id", organizationId)
     .order("consignment_date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -3363,28 +3364,71 @@ async function getResellerOpenDebtsFromSupabase(filters) {
     };
   }
 
-  var consignments = (result.data || []).filter(function(row) {
-    var status = String(row.status || "open").toLowerCase();
-    return !status || status === "open" || status === "aberto";
+  var rawRows = result.data || [];
+
+  if (!rawRows.length) {
+    var fallbackResult = await supabaseClient
+      .from("reseller_consignments")
+      .select("id,organization_id,consignment_no,reseller_name,consignment_date,total,paid_amount,status,created_at,user_name")
+      .order("consignment_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (!fallbackResult.error) {
+      rawRows = (fallbackResult.data || []).filter(function(row) {
+        return String(row.organization_id || "") === String(organizationId || "");
+      });
+    } else {
+      console.warn("Fallback dividas revendedores indisponivel:", fallbackResult.error);
+    }
+  }
+
+  var closedStatuses = {
+    paid: true,
+    pago: true,
+    closed: true,
+    fechado: true,
+    returned: true,
+    devolvido: true,
+    cancelled: true,
+    canceled: true,
+    cancelado: true
+  };
+
+  var consignments = rawRows.filter(function(row) {
+    var status = String(row.status || "open").trim().toLowerCase();
+    return !closedStatuses[status];
   });
 
   var ids = consignments.map(function(row) {
     return row.id;
   });
 
-  var itemsById = await getRevItemsForConsignments(ids);
+  var itemsById = {};
+  try {
+    itemsById = await getRevItemsForConsignments(ids);
+  } catch (e) {
+    console.warn("Itens das consignacoes indisponiveis. A usar total da consignacao:", e);
+  }
+
   var allItems = [];
   Object.keys(itemsById).forEach(function(id) {
     allItems = allItems.concat(itemsById[id] || []);
   });
-  var salePriceMap = await getRevProductSalePriceMap(allItems);
+
+  var salePriceMap = {};
+  try {
+    salePriceMap = await getRevProductSalePriceMap(allItems);
+  } catch (e) {
+    console.warn("Precos dos produtos de revendedor indisponiveis:", e);
+  }
 
   var rows = consignments.map(function(row) {
     var items = itemsById[row.id] || [];
     var itemsTotal = items.reduce(function(sum, item) {
       return sum + getRevConsignmentItemDebtValue(item, salePriceMap);
     }, 0);
-    var total = itemsTotal > 0 ? itemsTotal : (Number(row.total) || 0);
+    var rowTotal = Number(row.total) || 0;
+    var total = Math.max(rowTotal, itemsTotal);
     var paid = Number(row.paid_amount) || 0;
     var remaining = Math.max(0, total - paid);
 

@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v58";
+const AZUL_CACHE = "azul-pwa-v59";
 
 const AZUL_STATIC_ASSETS = [
   "/",
@@ -139,6 +139,30 @@ self.addEventListener("fetch", function(event) {
           return caches.match(request).then(function(cached) {
             return cached || caches.match("/index.html");
           });
+        })
+    );
+    return;
+  }
+
+  var isAppCode =
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".webmanifest");
+
+  if (isAppCode) {
+    event.respondWith(
+      fetch(new Request(request, { cache: "no-store" }))
+        .then(function(response) {
+          if (!response || response.status !== 200) return response;
+          var clone = response.clone();
+          caches.open(AZUL_CACHE).then(function(cache) {
+            cache.put(request, clone);
+          });
+          return response;
+        })
+        .catch(function() {
+          return caches.match(request);
         })
     );
     return;
