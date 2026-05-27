@@ -3393,7 +3393,8 @@ async function getResellerOpenDebtsFromSupabase(filters) {
       resellerMap[key] = {
         name: "Revendedor: " + name,
         total: 0,
-        count: 0
+        count: 0,
+        isReseller: false
       };
     }
 
@@ -3470,7 +3471,7 @@ function getMainDashboardText(key) {
       cogs: 'Custo das mercadorias', purchaseCostSold: 'Preco de compra vendido',
       grossMargin: 'Margem bruta', periodCharges: 'Despesas do periodo',
       estimatedNetResult: 'Resultado liquido estimado', netMargin: 'Margem liquida',
-      valuedStock: 'Stock valorizado', treasuryAsset: 'Tesouraria', simplifiedAssets: 'Ativo simplificado',
+      valuedStock: 'Stock valorizado', resellerReceivables: 'Revendedores a receber', treasuryAsset: 'Tesouraria', simplifiedAssets: 'Ativo simplificado',
       simplifiedLiabilities: 'Passivo simplificado', netPosition: 'Situacao liquida',
       alerts: 'Alertas', importantAlerts: 'Alertas importantes',
       importantIntro: 'O que precisa da tua atencao antes de continuar a vender.',
@@ -3574,7 +3575,7 @@ function translateMainDashboard() {
   setMainDashboardTexts('#page-dashboard .accounting-summary-kpi > span', ['revenue', 'cogs', 'grossMargin', 'expenses']);
   setMainDashboardTexts('#page-dashboard .accounting-summary-kpi > small:not([id])', ['periodSales', 'purchaseCostSold', 'periodCharges']);
   setMainDashboardText('#page-dashboard .accounting-result-box > span', 'estimatedNetResult');
-  setMainDashboardTexts('#page-dashboard .accounting-mini-row > span', ['valuedStock', 'clientsReceivable', 'suppliersPayable', 'treasuryAsset']);
+  setMainDashboardTexts('#page-dashboard .accounting-mini-row > span', ['valuedStock', 'clientsReceivable', 'resellerReceivables', 'suppliersPayable', 'treasuryAsset']);
   setMainDashboardTexts('#page-dashboard .accounting-balance-grid span', ['simplifiedAssets', 'simplifiedLiabilities', 'netPosition']);
 
   setMainDashboardText('#page-dashboard .important-alerts-head .eyebrow', 'alerts');
@@ -3712,17 +3713,20 @@ async function getDashboardDebtsFromSupabase(filters) {
       clientMap[name] = {
         name: name,
         total: 0,
-        count: 0
+        count: 0,
+        isReseller: true
       };
     }
 
     clientMap[name].total += Number(row.total) || 0;
     clientMap[name].count += Number(row.count) || 0;
+    clientMap[name].isReseller = true;
   });
 
   var clients = Object.keys(clientMap).map(function(key) {
     return clientMap[key];
   }).sort(function(a, b) {
+    if (!!a.isReseller !== !!b.isReseller) return a.isReseller ? -1 : 1;
     return b.total - a.total;
   });
 
@@ -3742,6 +3746,9 @@ async function getDashboardDebtsFromSupabase(filters) {
 
   return {
     clientTotal: clientTotal,
+    clientDebtTotal: clientTotal - (Number(resellerDebts.total) || 0),
+    resellerTotal: Number(resellerDebts.total) || 0,
+    resellerCount: Number(resellerDebts.count) || 0,
     supplierTotal: supplierTotal,
     net: clientTotal - supplierTotal,
     clientCount: clients.length,
@@ -3759,6 +3766,7 @@ function renderDashboardDebts(data) {
   var supplierTotal = document.getElementById("debt-supplier-total");
   var net = document.getElementById("debt-net");
   var clientCount = document.getElementById("debt-client-count");
+  var resellerCount = document.getElementById("debt-reseller-count");
   var supplierCount = document.getElementById("debt-supplier-count");
   var openCount = document.getElementById("debt-open-count");
 
@@ -3770,6 +3778,10 @@ function renderDashboardDebts(data) {
   }
 
   if (clientCount) clientCount.textContent = formatDashboardCount(data.clientCount || 0, 'clients');
+  if (resellerCount) {
+    resellerCount.textContent = "Revendedores: " + fmt(data.resellerTotal || 0) + " (" + (data.resellerCount || 0) + ")";
+    resellerCount.style.color = (Number(data.resellerTotal) || 0) > 0 ? "var(--orange)" : "var(--muted)";
+  }
   if (supplierCount) supplierCount.textContent = formatDashboardCount(data.supplierCount || 0, 'suppliers');
   if (openCount) openCount.textContent = data.openCount || 0;
 
@@ -4296,6 +4308,7 @@ function getDashboardAccountingSummary(sales, saleItems, expenseRows, productRow
   }, 0);
 
   var receivables = Number(debts.clientTotal) || 0;
+  var resellerReceivables = Number(debts.resellerTotal) || 0;
   var payables = Number(debts.supplierTotal) || 0;
   var cash = Number(quickTreasury.balance) || 0;
 
@@ -4313,6 +4326,7 @@ function getDashboardAccountingSummary(sales, saleItems, expenseRows, productRow
     netRate: revenue > 0 ? (netResult / revenue) * 100 : 0,
     stockValue: stockValue,
     receivables: receivables,
+    resellerReceivables: resellerReceivables,
     payables: payables,
     cash: cash,
     assets: assets,
@@ -4344,6 +4358,7 @@ function renderDashboardAccountingSummary(data) {
 
   set("acct-sum-stock", fmt(data.stockValue || 0));
   set("acct-sum-receivables", fmt(data.receivables || 0));
+  set("acct-sum-reseller-receivables", fmt(data.resellerReceivables || 0));
   set("acct-sum-payables", fmt(data.payables || 0));
   set("acct-sum-cash", fmt(data.cash || 0));
 
@@ -10604,6 +10619,7 @@ var balanceRowsMobile = [
   { kicker: "Ativo", label: "Tesouraria", amount: b.tresorerie || 0, kind: "debit" },
   { kicker: "Ativo", label: "Stock", amount: b.stock || 0, kind: "" },
   { kicker: "Ativo", label: "Clientes a receber", amount: b.clientesAReceber || 0, kind: "debit" },
+  { kicker: "Ativo", label: "Revendedores a receber", amount: b.revendedoresAReceber || 0, kind: "debit" },
   { kicker: "Ativo", label: "Total do ativo", amount: b.actifSimplifie || 0, kind: "debit" },
   { kicker: "Passivo", label: "Dividas fornecedores", amount: b.dividasFornecedors || 0, kind: "credit" },
   { kicker: "Passivo", label: "Total do passivo", amount: b.passivo || 0, kind: "credit" },
@@ -10643,6 +10659,7 @@ renderMobileAccountingRows("acctBalanceBody", balanceRowsMobile, "Nenhum balanco
         acctAmountRow("Tesouraria", b.tresorerie, "var(--blue)") +
         acctAmountRow("Stock", b.stock, "var(--text)") +
         acctAmountRow("Clientes a receber", b.clientesAReceber, "var(--blue)") +
+        acctAmountRow("Revendedores a receber", b.revendedoresAReceber, "var(--orange)") +
         acctAmountRow("Total do ativo", b.actifSimplifie, "var(--green)") +
         acctAmountRow("Dividas fornecedores", b.dividasFornecedors, "var(--red)") +
         acctAmountRow("Total do passivo", b.passivo, "var(--red)") +
@@ -10737,6 +10754,7 @@ async function getContabilidadeFromSupabase(params) {
         tresorerie: 0,
         stock: 0,
         clientesAReceber: resellerReceivableOnly,
+        revendedoresAReceber: resellerReceivableOnly,
         actifSimplifie: resellerReceivableOnly,
         dividasFornecedors: 0,
         passivo: 0,
@@ -10852,6 +10870,7 @@ async function getContabilidadeFromSupabase(params) {
       tresorerie: tresorerie,
       stock: stock,
       clientesAReceber: clientesAReceber,
+      revendedoresAReceber: Number(resellerDebts.total) || 0,
       actifSimplifie: tresorerie + stock + clientesAReceber,
       dividasFornecedors: dividasFornecedors,
       passivo: dividasFornecedors,
