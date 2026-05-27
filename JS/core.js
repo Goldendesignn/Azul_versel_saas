@@ -3364,8 +3364,7 @@ async function getResellerOpenDebtsFromSupabase(filters) {
   }
 
   var consignments = (result.data || []).filter(function(row) {
-    var status = String(row.status || "open").toLowerCase();
-    return status !== "returned" && status !== "devolvido" && status !== "cancelled" && status !== "cancelado";
+    return getRevStatusLabel(row.status) === "Devolvido";
   });
 
   var ids = consignments.map(function(row) {
@@ -3385,14 +3384,10 @@ async function getResellerOpenDebtsFromSupabase(filters) {
       return sum + getRevConsignmentItemDebtValue(item, salePriceMap);
     }, 0);
     var total = itemsTotal > 0 ? itemsTotal : (Number(row.total) || 0);
-    var paid = Number(row.paid_amount) || 0;
-    var status = String(row.status || "open").toLowerCase();
-    var isOpen = status === "open" || status === "aberto" || status === "em curso";
-    var remaining = isOpen && paid >= total ? total : Math.max(0, total - paid);
 
     return Object.assign({}, row, {
       total: total,
-      remaining_amount: remaining
+      remaining_amount: total
     });
   }).filter(function(row) {
     return (Number(row.remaining_amount) || 0) > 0;
@@ -6383,7 +6378,7 @@ async function confirmRevAction() {
 function getRevStatusLabel(status) {
   var value = String(status || "").toLowerCase();
   if (value === "paid") return "Pago";
-  if (value === "returned") return "Devolvido";
+  if (value === "returned" || value === "devolvido") return "Devolvido";
   if (value === "cancelled") return "Cancelado";
   return "Aberto";
 }
@@ -6409,9 +6404,18 @@ async function getResellerHistoryFromSupabase(filters) {
   if (!rows.length) return [];
 
   var itemsById = await getRevItemsForConsignments(rows.map(function(row) { return row.id; }));
+  var allItems = [];
+  Object.keys(itemsById).forEach(function(id) {
+    allItems = allItems.concat(itemsById[id] || []);
+  });
+  var salePriceMap = await getRevProductSalePriceMap(allItems);
 
   return rows.map(function(row) {
     var items = itemsById[row.id] || [];
+    var itemTotal = items.reduce(function(sum, item) {
+      return sum + getRevConsignmentItemDebtValue(item, salePriceMap);
+    }, 0);
+
     return {
       id: row.consignment_no || row.id,
       actionDate: row.consignment_date || "",
@@ -6422,7 +6426,7 @@ async function getResellerHistoryFromSupabase(filters) {
       itemsSummary: items.map(function(item) {
         return (item.product_name || "-") + " x" + (item.quantity || 0);
       }).join(", "),
-      total: Number(row.total) || 0,
+      total: itemTotal > 0 ? itemTotal : (Number(row.total) || 0),
       paid: Number(row.paid_amount) || 0,
       payment: row.payment_summary || "",
       recibo: row.receipt_no || ""
