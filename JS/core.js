@@ -3349,7 +3349,7 @@ async function getResellerOpenDebtsFromSupabase(filters) {
 
   var query = supabaseClient
     .from("reseller_consignments")
-    .select("id,organization_id,consignment_no,reseller_name,consignment_date,total,paid_amount,status,created_at,user_name")
+    .select("*")
     .eq("organization_id", organizationId)
     .order("consignment_date", { ascending: false })
     .order("created_at", { ascending: false });
