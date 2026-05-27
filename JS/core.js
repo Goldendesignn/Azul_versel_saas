@@ -3373,14 +3373,22 @@ async function getResellerOpenDebtsFromSupabase(filters) {
   });
 
   var itemsById = await getRevItemsForConsignments(ids);
+  var allItems = [];
+  Object.keys(itemsById).forEach(function(id) {
+    allItems = allItems.concat(itemsById[id] || []);
+  });
+  var salePriceMap = await getRevProductSalePriceMap(allItems);
+
   var rows = consignments.map(function(row) {
     var items = itemsById[row.id] || [];
     var itemsTotal = items.reduce(function(sum, item) {
-      return sum + (Number(item.total) || ((Number(item.quantity) || 0) * (Number(item.unit_price) || 0)));
+      return sum + getRevConsignmentItemDebtValue(item, salePriceMap);
     }, 0);
     var total = itemsTotal > 0 ? itemsTotal : (Number(row.total) || 0);
     var paid = Number(row.paid_amount) || 0;
-    var remaining = Math.max(0, total - paid);
+    var status = String(row.status || "open").toLowerCase();
+    var isOpen = status === "open" || status === "aberto" || status === "em curso";
+    var remaining = isOpen && paid >= total ? total : Math.max(0, total - paid);
 
     return Object.assign({}, row, {
       total: total,
@@ -3425,6 +3433,54 @@ async function getResellerOpenDebtsFromSupabase(filters) {
     byReseller: byReseller,
     rows: rows
   };
+}
+
+function getRevConsignmentItemDebtValue(item, salePriceMap) {
+  item = item || {};
+  salePriceMap = salePriceMap || {};
+
+  var qty = Number(item.quantity) || 0;
+  var total = Number(item.total) || 0;
+  var unitPrice = Number(item.unit_price) || 0;
+  var productPrice = Number(salePriceMap[item.product_id]) || 0;
+
+  if (total > 0) return total;
+  if (unitPrice > 0) return qty * unitPrice;
+  if (productPrice > 0) return qty * productPrice;
+
+  return 0;
+}
+
+async function getRevProductSalePriceMap(items) {
+  var ids = (items || []).map(function(item) {
+    return item.product_id;
+  }).filter(Boolean);
+
+  var unique = Array.from(new Set(ids));
+  var map = {};
+
+  if (!unique.length) return map;
+
+  for (var i = 0; i < chunkImportArray(unique, 80).length; i++) {
+    var chunk = chunkImportArray(unique, 80)[i];
+    if (!chunk.length) continue;
+
+    var result = await supabaseClient
+      .from("products")
+      .select("id,sale_price")
+      .in("id", chunk);
+
+    if (result.error) {
+      console.warn("Precos de produtos revendedores indisponiveis:", result.error);
+      continue;
+    }
+
+    (result.data || []).forEach(function(product) {
+      map[product.id] = Number(product.sale_price) || 0;
+    });
+  }
+
+  return map;
 }
 
 function getMainDashboardText(key) {
@@ -5906,10 +5962,15 @@ async function getConsignmentsByResellerFromSupabase(name) {
     itemsById[item.consignment_id].push(item);
   });
 
+  var salePriceMap = await getRevProductSalePriceMap(itemsResult.data || []);
+
   return rows.map(function(row) {
     var items = itemsById[row.id] || [];
     var paid = Number(row.paid_amount) || 0;
-    var total = Number(row.total) || 0;
+    var itemsTotal = items.reduce(function(sum, item) {
+      return sum + getRevConsignmentItemDebtValue(item, salePriceMap);
+    }, 0);
+    var total = itemsTotal > 0 ? itemsTotal : (Number(row.total) || 0);
     return {
       id: row.id,
       displayId: row.consignment_no || row.id,
