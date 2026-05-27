@@ -737,6 +737,58 @@ async function notifyAzulTableInsert(tableName, row) {
   await createAzulNotification(notification);
 }
 
+async function notifyAzulResellerAction(actionType, rows, amount) {
+  rows = rows || [];
+  var first = rows[0] || {};
+  var count = rows.length;
+  var resellerName = first.reseller_name || "Revendedor";
+  var actor = getAzulCurrentUserName();
+  var title = "";
+  var message = "";
+  var sourceType = "reseller";
+
+  if (actionType === "reseller:payment") {
+    title = actor + " registou pagamento de revendedor";
+    message = resellerName + " - " + fmt(amount || 0) + " em " + count + " consignacao(oes)";
+  } else if (actionType === "reseller:return") {
+    title = actor + " registou devolucao de revendedor";
+    message = resellerName + " - " + count + " consignacao(oes)";
+  } else {
+    title = actor + " criou consignacao para revendedor";
+    message = resellerName + " - " + fmt(amount || 0) + " em " + count + " consignacao(oes)";
+    sourceType = "reseller_consignment";
+  }
+
+  await createAzulNotification({
+    actionType: actionType,
+    title: title,
+    message: message,
+    sourceType: sourceType,
+    sourceId: count === 1 && first.id ? first.id : null,
+    details: {
+      reseller_name: resellerName,
+      consignments: rows.map(function(row) {
+        return {
+          id: row.id || "",
+          consignment_no: row.consignment_no || "",
+          total: Number(row.total) || 0,
+          paid_amount: Number(row.paid_amount) || 0,
+          status: row.status || ""
+        };
+      }),
+      amount: Number(amount) || 0
+    }
+  });
+
+  await logAzulAction(actionType, "reseller", "success", {
+    source_table: "reseller_consignments",
+    source_id: count === 1 && first.id ? first.id : null,
+    reseller_name: resellerName,
+    count: count,
+    amount: Number(amount) || 0
+  });
+}
+
 async function getAzulCurrentUserId() {
   try {
     var audit = await getAzulAuditFields();
@@ -6186,6 +6238,7 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
   var itemsById = await getRevItemsForConsignments(rows.map(function(row) { return row.id; }));
   var receiptNo = "REV-" + Date.now();
   var remainingPayment = totalPaid;
+  var paidRows = [];
 
   for (var i = 0; i < rows.length && remainingPayment > 0; i++) {
     var row = rows[i];
@@ -6217,6 +6270,13 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
 
     if (updateResult.error) throw updateResult.error;
 
+    paidRows.push(Object.assign({}, row, {
+      paid_amount: newPaid,
+      status: fullyPaid ? "paid" : "open",
+      applied_amount: applied,
+      receipt_no: receiptNo
+    }));
+
     var accountingLines = [
       { account: "11", debit: applied, credit: 0 },
       { account: "71", debit: 0, credit: applied }
@@ -6241,7 +6301,8 @@ async function paySelectedConsignmentsInSupabase(ids, paymentLines, actionDate) 
   return {
     paid: totalPaid,
     due: totalDue,
-    partial: totalPaid < totalDue - 0.01
+    partial: totalPaid < totalDue - 0.01,
+    rows: paidRows
   };
 }
 
@@ -6302,7 +6363,13 @@ async function returnSelectedConsignmentsInSupabase(ids) {
     if (updateResult.error) throw updateResult.error;
   }
 
-  return true;
+  return {
+    count: rows.length,
+    total: rows.reduce(function(sum, row) {
+      return sum + (Number(row.total) || 0);
+    }, 0),
+    rows: rows
+  };
 }
 
 async function confirmRevAction() {
@@ -6328,13 +6395,8 @@ async function confirmRevAction() {
 
   try {
     if (action === "return") {
-      await returnSelectedConsignmentsInSupabase(ids);
-      await createAzulNotification({
-        actionType: "reseller:return",
-        title: getAzulCurrentUserName() + " registou devolucao de revendedor",
-        message: ids.length + " consignacao(oes)",
-        sourceType: "reseller"
-      });
+      var returnResult = await returnSelectedConsignmentsInSupabase(ids);
+      await notifyAzulResellerAction("reseller:return", returnResult.rows || [], returnResult.total || 0);
       toast("Mercadoria devolvida ao stock.", "success");
     } else {
       var paymentResult = await paySelectedConsignmentsInSupabase(
@@ -6342,12 +6404,7 @@ async function confirmRevAction() {
         revPaymentLines,
         (document.getElementById("rev-action-date") || {}).value || getRevTodayDate()
       );
-      await createAzulNotification({
-        actionType: "reseller:payment",
-        title: getAzulCurrentUserName() + " registou pagamento de revendedor",
-        message: ids.length + " consignacao(oes) - " + fmt(paymentResult.paid || 0),
-        sourceType: "reseller"
-      });
+      await notifyAzulResellerAction("reseller:payment", paymentResult.rows || [], paymentResult.paid || 0);
       toast(paymentResult.partial ? "Pagamento parcial registado." : "Pagamento registado.", "success");
     }
 
