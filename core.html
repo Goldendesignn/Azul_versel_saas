@@ -89,7 +89,7 @@
   try {
     var saved = JSON.parse(localStorage.getItem("pos_config") || "{}");
     var theme = saved.theme || "light";
-    var bg = theme === "dark" ? "#0d0d0d" : "#ffffff";
+    var bg = theme === "dark" ? "#0b0f14" : "#ffffff";
     var accent = readableAccentColor(saved.color || "#0b3d91", bg);
     var accent2 = readableAccentColor(saved.color2 || "#071e4f", bg);
     var root = document.documentElement;
@@ -100,12 +100,12 @@
     root.style.setProperty("--accent-text", textOnColor(accent));
 
     if (theme === "dark") {
-      root.style.setProperty("--bg", "#0d0d0d");
-      root.style.setProperty("--surface", "#161616");
-      root.style.setProperty("--surface2", "#1f1f1f");
-      root.style.setProperty("--border", "#2a2a2a");
-      root.style.setProperty("--text", "#f0ece4");
-      root.style.setProperty("--muted", "#7a7670");
+      root.style.setProperty("--bg", "#0b0f14");
+      root.style.setProperty("--surface", "#151a21");
+      root.style.setProperty("--surface2", "#202733");
+      root.style.setProperty("--border", "#364152");
+      root.style.setProperty("--text", "#f8fafc");
+      root.style.setProperty("--muted", "#b6c0cc");
     } else {
       root.style.setProperty("--bg", "#f5f5f0");
       root.style.setProperty("--surface", "#ffffff");

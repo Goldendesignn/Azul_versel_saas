@@ -9187,7 +9187,7 @@ function applyConfig() {
   selectedSetupColor2 = config.color2 || selectedSetupColor2 || '#071e4f';
   selectedSetupTheme = config.theme || selectedSetupTheme || 'light';
   root.setAttribute('data-theme', selectedSetupTheme);
-  var themeBackground = selectedSetupTheme === 'dark' ? '#0d0d0d' : '#ffffff';
+  var themeBackground = selectedSetupTheme === 'dark' ? '#0b0f14' : '#ffffff';
   var readableColor = readableAccentColor(selectedSetupColor, themeBackground);
   var readableColor2 = readableAccentColor(selectedSetupColor2, themeBackground);
   root.style.setProperty('--blue', readableColor);
@@ -9198,12 +9198,12 @@ function applyConfig() {
 
   // Apply theme
   if (selectedSetupTheme === 'dark') {
-    root.style.setProperty('--bg', '#0d0d0d');
-    root.style.setProperty('--surface', '#161616');
-    root.style.setProperty('--surface2', '#1f1f1f');
-    root.style.setProperty('--border', '#2a2a2a');
-    root.style.setProperty('--text', '#f0ece4');
-    root.style.setProperty('--muted', '#7a7670');
+    root.style.setProperty('--bg', '#0b0f14');
+    root.style.setProperty('--surface', '#151a21');
+    root.style.setProperty('--surface2', '#202733');
+    root.style.setProperty('--border', '#364152');
+    root.style.setProperty('--text', '#f8fafc');
+    root.style.setProperty('--muted', '#b6c0cc');
   } else {
     root.style.setProperty('--bg', '#f5f5f0');
     root.style.setProperty('--surface', '#ffffff');
@@ -14910,49 +14910,40 @@ function injectLockSettingsCard() {
 
   var card = document.createElement("div");
   card.id = "erpLockSettingsCard";
-
-  card.style.maxWidth = "700px";
-  card.style.margin = "18px 0 30px";
-  card.style.padding = "18px";
-  card.style.border = "1px solid #ded8cc";
-  card.style.borderRadius = "10px";
-  card.style.background = "#fff";
-  card.style.boxShadow = "0 8px 24px rgba(0,0,0,.05)";
+  card.className = "lock-settings-card";
 
   card.innerHTML = `
-    <h3 style="margin:0 0 6px;color:#002f87;font-size:18px;">Seguranca do ERP</h3>
-    <p style="margin:0 0 14px;color:#8a8177;font-size:13px;">
+    <h3>Seguranca do ERP</h3>
+    <p>
       Defina um mot de passe para bloquear o acesso ao sistema.
     </p>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div style="position:relative;">
+    <div class="lock-settings-grid">
+      <div class="lock-password-wrap">
         <input id="erpLockPassword" type="password" placeholder="Novo mot de passe"
-          style="width:100%;height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 44px 0 12px;font-size:14px;">
+          autocomplete="new-password">
         <button type="button" onclick="togglePasswordVisibility('erpLockPassword', this)"
-          style="position:absolute;right:6px;top:5px;width:32px;height:32px;border:0;background:transparent;cursor:pointer;font-size:17px;">
+          class="lock-eye-btn">
          &#128065;
         </button>
       </div>
 
-      <div style="position:relative;">
+      <div class="lock-password-wrap">
         <input id="erpLockPasswordConfirm" type="password" placeholder="Confirmar mot de passe"
-          style="width:100%;height:42px;border:1px solid #d8d2c7;border-radius:7px;padding:0 44px 0 12px;font-size:14px;">
+          autocomplete="new-password">
         <button type="button" onclick="togglePasswordVisibility('erpLockPasswordConfirm', this)"
-          style="position:absolute;right:6px;top:5px;width:32px;height:32px;border:0;background:transparent;cursor:pointer;font-size:17px;">
+          class="lock-eye-btn">
          &#128065;
         </button>
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button onclick="saveErpLockPassword()"
-        style="height:42px;border:0;border-radius:7px;padding:0 16px;background:#003b91;color:#fff;font-weight:700;cursor:pointer;">
+    <div class="lock-actions">
+      <button class="erp-lock-btn erp-lock-save" onclick="saveErpLockPassword()">
         Guardar mot de passe
       </button>
 
-      <button onclick="lockErpNow()"
-        style="height:42px;border:0;border-radius:7px;padding:0 16px;background:#b91c1c;color:#fff;font-weight:700;cursor:pointer;">
+      <button class="erp-lock-btn erp-lock-danger" onclick="lockErpNow()">
         Sair / Bloquear
       </button>
     </div>
