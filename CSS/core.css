@@ -6000,6 +6000,73 @@ textarea,
   }
 }
 
+@media (max-width: 820px) {
+  .reseller-product-card {
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+    grid-template-areas:
+      "photo info"
+      "side side";
+    align-items: start !important;
+    min-height: 124px !important;
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+
+  .reseller-product-img {
+    grid-area: photo;
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 9px !important;
+  }
+
+  .reseller-product-info {
+    grid-area: info;
+    min-width: 0 !important;
+    align-self: start;
+  }
+
+  .reseller-product-info strong {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    max-width: 100%;
+  }
+
+  .reseller-product-info span,
+  .reseller-product-info em {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+
+  .reseller-product-side {
+    grid-area: side;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    width: 100%;
+    border-top: 1px solid var(--border);
+    padding-top: 7px;
+    text-align: left !important;
+  }
+
+  .reseller-product-side b {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px !important;
+  }
+
+  .reseller-product-side small {
+    flex: 0 0 auto;
+    font-size: 10px !important;
+  }
+}
+
 /* ===== RESPONSIVE PARAMETRES / DEFINICOES ===== */
 @media (max-width: 820px) {
   #page-settings {
