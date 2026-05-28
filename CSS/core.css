@@ -13,8 +13,15 @@
   --blue2: #071e4f;
   --accent-text: #ffffff;
   --orange: #e08c3a;
+  --accent-soft: color-mix(in srgb, var(--blue) 10%, transparent);
+  --accent-border: color-mix(in srgb, var(--blue) 28%, var(--border));
+  --shadow-soft: rgba(0, 0, 0, .08);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --shadow-soft: rgba(0, 0, 0, .32);
+}
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
@@ -62,6 +69,111 @@ html, body {
   font-weight: 300;
 }
 .date-txt { font-size: 11px; color: var(--muted); }
+
+input,
+select,
+textarea {
+  color: inherit;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: var(--muted) !important;
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .prod-card,
+html[data-theme="dark"] .cart,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .payment-modal,
+html[data-theme="dark"] .notification-panel,
+html[data-theme="dark"] .context-help-panel,
+html[data-theme="dark"] .mobile-card-list > *,
+html[data-theme="dark"] .mobile-sale-card,
+html[data-theme="dark"] .mobile-stock-card,
+html[data-theme="dark"] .mobile-cart-item,
+html[data-theme="dark"] .mobile-payment-card,
+html[data-theme="dark"] .mobile-total-card,
+html[data-theme="dark"] .mobile-expense-card,
+html[data-theme="dark"] .mobile-treasury-card,
+html[data-theme="dark"] .mobile-accounting-card,
+html[data-theme="dark"] .reseller-product-card,
+html[data-theme="dark"] .mobile-inventory-card,
+html[data-theme="dark"] .mobile-history-card,
+html[data-theme="dark"] .mobile-rev-history-card,
+html[data-theme="dark"] .settings-user-card,
+html[data-theme="dark"] .settings-team-card,
+html[data-theme="dark"] #a-credit-fields,
+html[data-theme="dark"] .az-client-hero,
+html[data-theme="dark"] .az-client-history,
+html[data-theme="dark"] .erp-lock-box,
+html[data-theme="dark"] .import-card,
+html[data-theme="dark"] .import-panel,
+html[data-theme="dark"] .import-preview-card,
+html[data-theme="dark"] .supplier-search-card,
+html[data-theme="dark"] .supplier-form-card,
+html[data-theme="dark"] .supplier-card-btn,
+html[data-theme="dark"] .supplier-profile-card,
+html[data-theme="dark"] .achat-history-card,
+html[data-theme="dark"] .quick-treasury-card,
+html[data-theme="dark"] .debt-dashboard-card,
+html[data-theme="dark"] #page-dashboard .purchase-dashboard-card,
+html[data-theme="dark"] #page-dashboard .smart-stock-card,
+html[data-theme="dark"] #page-dashboard .sales-performance-card,
+html[data-theme="dark"] #page-dashboard .accounting-summary-card,
+html[data-theme="dark"] #page-dashboard .important-alerts-card,
+html[data-theme="dark"] .correction-search-card,
+html[data-theme="dark"] .correction-notice,
+html[data-theme="dark"] .team-user-meta span,
+html[data-theme="dark"] .custom-role-list span,
+html[data-theme="dark"] .approval-lock-card {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .approval-lock-screen {
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--blue) 16%, transparent), transparent 36%),
+    var(--bg) !important;
+}
+
+html[data-theme="dark"] [style*="background:#fff"],
+html[data-theme="dark"] [style*="background: #fff"],
+html[data-theme="dark"] [style*="background:#ffffff"],
+html[data-theme="dark"] [style*="background: #ffffff"] {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] [style*="color:#333"],
+html[data-theme="dark"] [style*="color: #333"],
+html[data-theme="dark"] [style*="color:#1a1a1a"],
+html[data-theme="dark"] [style*="color: #1a1a1a"] {
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] table,
+html[data-theme="dark"] th,
+html[data-theme="dark"] td {
+  color: var(--text);
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .empty,
+html[data-theme="dark"] .form-label,
+html[data-theme="dark"] small {
+  color: var(--muted) !important;
+}
 
 .header-actions {
   display: flex;
@@ -889,7 +1001,7 @@ button.az-icon-button,
   background: var(--surface2);
   border-radius: 8px;
   margin-bottom: 8px;
-  border: 1px solid rgba(201,168,76,0.12);
+  border: 1px solid color-mix(in srgb, var(--blue) 12%, var(--border));
   min-width: 0;
   overflow: hidden;
 }
@@ -1033,12 +1145,12 @@ button.az-icon-button,
   text-align: center;
   transition: all 0.15s;
 }
-.pay-btn.active { border-color: var(--blue); color: var(--blue); background: rgba(201,168,76,0.1); }
+.pay-btn.active { border-color: var(--blue); color: var(--blue); background: var(--accent-soft); }
 .payment-panel {
   margin-bottom: 10px;
   padding: 10px;
-  background: rgba(201,168,76,0.06);
-  border: 1px solid rgba(201,168,76,0.18);
+  background: color-mix(in srgb, var(--blue) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--blue) 18%, var(--border));
   border-radius: 10px;
 }
 .cart-foot > div[style*="display:flex;gap:6px;margin-bottom:10px;"] {
@@ -1055,8 +1167,8 @@ button.az-icon-button,
 }
 .cart-foot > div[style*="margin-bottom:8px;"] {
   padding: 10px;
-  background: rgba(201,168,76,0.06);
-  border: 1px solid rgba(201,168,76,0.18);
+  background: color-mix(in srgb, var(--blue) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--blue) 18%, var(--border));
   border-radius: 10px;
 }
 .cart-foot > div[style*="margin-bottom:8px;"]::before {
@@ -1216,7 +1328,7 @@ button.az-icon-button,
 .payment-type-btn.active {
   border-color: var(--blue);
   color: var(--blue);
-  background: rgba(201,168,76,0.1);
+  background: var(--accent-soft);
 }
 .payment-modal-lines {
   display: flex;
@@ -1254,7 +1366,7 @@ button.az-icon-button,
   cursor: pointer;
   transition: all 0.2s;
 }
-.confirm-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(201,168,76,0.3); }
+.confirm-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px color-mix(in srgb, var(--blue) 30%, transparent); }
 .confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 #confirmBtn {
   display: block;
@@ -1297,7 +1409,7 @@ button.az-icon-button,
   cursor: pointer;
   transition: all 0.2s;
 }
-.form-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(201,168,76,0.3); }
+.form-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--blue) 30%, transparent); }
 
 /* Transfer visual */
 /* DASH FILTERS */
@@ -1355,7 +1467,7 @@ button.az-icon-button,
 .mode-btn.active {
   border-color: var(--blue);
   color: var(--blue);
-  background: rgba(201,168,76,0.1);
+  background: var(--accent-soft);
 }
 .tudo-item {
   display: flex; align-items: center; justify-content: space-between;
@@ -1411,7 +1523,7 @@ button.az-icon-button,
 .tbadge.express { background: rgba(224,140,58,0.15); color: var(--orange); }
 .tbadge.cartao { background: rgba(91,155,213,0.15); color: var(--blue); }
 .tbadge.credito { background: rgba(154,149,144,0.18); color: var(--muted); }
-.tbadge.mixte { background: rgba(201,168,76,0.16); color: var(--blue); }
+.tbadge.mixte { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue); }
 
 /*  RECEIPT MODAL  */
 .overlay {
@@ -1461,15 +1573,15 @@ button.az-icon-button,
 .achat-lines-table tbody td {
   padding: 12px 10px;
   vertical-align: middle;
-  border-top: 1px solid rgba(201,168,76,0.14);
-  border-bottom: 1px solid rgba(201,168,76,0.14);
+  border-top: 1px solid color-mix(in srgb, var(--blue) 14%, var(--border));
+  border-bottom: 1px solid color-mix(in srgb, var(--blue) 14%, var(--border));
 }
 .achat-lines-table tbody td:first-child {
-  border-left: 1px solid rgba(201,168,76,0.14);
+  border-left: 1px solid color-mix(in srgb, var(--blue) 14%, var(--border));
   border-radius: 10px 0 0 10px;
 }
 .achat-lines-table tbody td:last-child {
-  border-right: 1px solid rgba(201,168,76,0.14);
+  border-right: 1px solid color-mix(in srgb, var(--blue) 14%, var(--border));
   border-radius: 0 10px 10px 0;
 }
 .achat-cell-input {
@@ -4496,7 +4608,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   width: max-content;
   border-radius: 999px;
   padding: 4px 9px;
-  background: color-mix(in srgb, var(--blue) 10%, #fff);
+  background: color-mix(in srgb, var(--blue) 10%, var(--surface));
   color: var(--blue);
   font-size: 11px;
   font-weight: 800;
@@ -6781,7 +6893,7 @@ textarea,
   width: fit-content;
   margin-top: 3px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--blue) 7%, #fff);
+  background: color-mix(in srgb, var(--blue) 7%, var(--surface));
   color: var(--muted);
   padding: 3px 7px;
   font-size: 10px;
@@ -6874,7 +6986,7 @@ textarea,
 .team-permissions span {
   border: 1px solid color-mix(in srgb, var(--blue) 18%, var(--border));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--blue) 7%, #fff);
+  background: color-mix(in srgb, var(--blue) 7%, var(--surface));
   color: var(--blue);
   padding: 5px 8px;
   font-size: 11px;
@@ -6889,7 +7001,7 @@ textarea,
 .custom-role-builder {
   border: 1px dashed color-mix(in srgb, var(--blue) 35%, var(--border));
   border-radius: 14px;
-  background: color-mix(in srgb, var(--blue) 5%, #fff);
+  background: color-mix(in srgb, var(--blue) 5%, var(--surface));
   padding: 12px;
 }
 
@@ -7609,7 +7721,7 @@ body.approval-locked header {
   margin: 18px 0 0;
   border: 1px solid color-mix(in srgb, var(--blue) 12%, var(--border));
   border-radius: 16px;
-  background: color-mix(in srgb, var(--blue) 6%, #fff);
+  background: color-mix(in srgb, var(--blue) 6%, var(--surface));
   padding: 14px;
 }
 

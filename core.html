@@ -93,6 +93,7 @@
     var accent = readableAccentColor(saved.color || "#0b3d91", bg);
     var accent2 = readableAccentColor(saved.color2 || "#071e4f", bg);
     var root = document.documentElement;
+    root.setAttribute("data-theme", theme);
 
     root.style.setProperty("--blue", accent);
     root.style.setProperty("--blue2", accent2);
@@ -768,7 +769,7 @@
                 <span class="total-val" id="cartTotal">0 Kz</span>
               </div>
               <div style="display:flex;gap:6px;margin-bottom:10px;">
-                <button class="pay-btn" id="type-stock" onclick="selType(this,'interno')" style="border-color:var(--blue);color:var(--blue);background:rgba(201,168,76,0.1);"> Stock</button>
+                <button class="pay-btn" id="type-stock" onclick="selType(this,'interno')" style="border-color:var(--blue);color:var(--blue);background:color-mix(in srgb, var(--blue) 10%, transparent);"> Stock</button>
                 <button class="pay-btn" id="type-commande" onclick="selType(this,'Externo')"> Externo</button>
               </div>
               <!-- Pagamento misto - varios meios possiveis -->
@@ -1012,7 +1013,7 @@
 
       <!-- MODO TUDO PARA BOUTIQUE -->
       <div id="transferTudo" style="display:none; max-width:500px;">
-        <div class="card" style="margin-bottom:14px;background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
+        <div class="card" style="margin-bottom:14px;background:color-mix(in srgb, var(--blue) 8%, var(--surface));border-color:color-mix(in srgb, var(--blue) 30%, var(--border));">
           <div class="card-title"> Como funciona</div>
           <p style="font-size:13px;color:var(--muted);line-height:1.6;">
             Transfere <b style="color:var(--text)">todo o stock do Armazem</b> para a loja de uma so vez.

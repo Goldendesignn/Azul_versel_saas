@@ -7119,7 +7119,7 @@ function selType(btn, type) {
     btn.classList.add("active");
     btn.style.borderColor = "var(--blue)";
     btn.style.color = "var(--blue)";
-    btn.style.background = "rgba(201,168,76,0.1)";
+    btn.style.background = "color-mix(in srgb, var(--blue) 10%, transparent)";
   }
 
   renderProds(products);
@@ -8559,7 +8559,7 @@ function selectTheme(theme, btn) {
     b.classList.add('active');
     b.style.borderColor = selectedSetupColor || 'var(--blue)';
     b.style.color = selectedSetupColor || 'var(--blue)';
-    b.style.background = 'rgba(201,168,76,0.1)';
+    b.style.background = 'color-mix(in srgb, var(--blue) 10%, transparent)';
   });
   applyConfig();
 }
@@ -9186,6 +9186,7 @@ function applyConfig() {
   selectedSetupColor = config.color || selectedSetupColor || '#0b3d91';
   selectedSetupColor2 = config.color2 || selectedSetupColor2 || '#071e4f';
   selectedSetupTheme = config.theme || selectedSetupTheme || 'light';
+  root.setAttribute('data-theme', selectedSetupTheme);
   var themeBackground = selectedSetupTheme === 'dark' ? '#0d0d0d' : '#ffffff';
   var readableColor = readableAccentColor(selectedSetupColor, themeBackground);
   var readableColor2 = readableAccentColor(selectedSetupColor2, themeBackground);
@@ -9316,7 +9317,7 @@ function applyConfig() {
     btn.classList.toggle('active', isActive);
     btn.style.borderColor = isActive ? 'var(--blue)' : '';
     btn.style.color = isActive ? 'var(--blue)' : '';
-    btn.style.background = isActive ? 'rgba(201,168,76,0.1)' : '';
+    btn.style.background = isActive ? 'color-mix(in srgb, var(--blue) 10%, transparent)' : '';
   });
 
   // Sync stock mode radios
