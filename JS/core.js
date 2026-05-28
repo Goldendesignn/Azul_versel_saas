@@ -959,6 +959,295 @@ window.toggleAzulNotifications = toggleAzulNotifications;
 window.markAllAzulNotificationsRead = markAllAzulNotificationsRead;
 window.requestAzulPwaNotificationPermission = requestAzulPwaNotificationPermission;
 
+var AZUL_CONTEXT_HELP = {
+  dashboard: {
+    title: "Dashboard",
+    subtitle: "Painel para acompanhar vendas, tesouraria, dividas, stock e alertas da loja.",
+    main: [
+      "Use o filtro de periodo para analisar hoje, semana, mes ou datas personalizadas.",
+      "Os KPIs principais mostram vendas, lucro, despesas e alertas de stock.",
+      "As secoes de dividas, stock inteligente e contabilidade resumem a saude do negocio."
+    ],
+    care: [
+      "Se um valor parecer antigo, toque em Aplicar ou Atualizar.",
+      "Os filtros do dashboard afectam os blocos de resumo do periodo."
+    ],
+    tip: "Comece o dia pelo dashboard para ver o que precisa de atencao antes de vender."
+  },
+  venda: {
+    title: "Nova venda",
+    subtitle: "Modulo para registar vendas, escolher produtos, confirmar pagamento e emitir recibo.",
+    main: [
+      "Pesquise ou toque num produto para adicionar ao carrinho.",
+      "Venda interna baixa o stock; venda externa nao baixa o stock.",
+      "Pagamento a credito exige o nome do cliente para criar a divida."
+    ],
+    care: [
+      "A verificacao de stock acontece na confirmacao quando a venda e interna.",
+      "Pode combinar Cash, Express, Cartao e Credito no pagamento."
+    ],
+    tip: "No telemovel, use a barra Ver carrinho para abrir o pagamento sem perder a lista de produtos."
+  },
+  achat: {
+    title: "Nova compra",
+    subtitle: "Modulo para dar entrada de mercadoria, fornecedores, variacoes, imagens e dividas de compra.",
+    main: [
+      "Informe fornecedor, produto, quantidade, preco de compra e preco de venda.",
+      "Se marcar compra a credito, o restante vira divida do fornecedor.",
+      "Use importacao CSV para grandes listas de compras."
+    ],
+    care: [
+      "O modo de stock definido nas Definicoes decide se a compra entra na loja ou no armazem.",
+      "Codigo, categoria, variacao e foto ajudam a encontrar produtos depois."
+    ],
+    tip: "Para evitar erros de stock, registe primeiro a compra antes de fazer transferencias."
+  },
+  transfert: {
+    title: "Estoque",
+    subtitle: "Modulo para consultar stock, pesquisar produtos e transferir mercadoria do armazem para a loja.",
+    main: [
+      "Use a pesquisa para encontrar produto, fornecedor, codigo ou variacao.",
+      "A tabela mostra loja, armazem, total e valor do stock.",
+      "Quando usa armazem, transfira produtos para a loja antes da venda interna."
+    ],
+    care: [
+      "Stock da loja e o stock usado na venda interna.",
+      "Produtos esgotados ou abaixo do minimo aparecem tambem no dashboard."
+    ],
+    tip: "Com muitos produtos, pesquise pelo codigo ou fornecedor para ganhar tempo."
+  },
+  clientes: {
+    title: "Clientes",
+    subtitle: "Modulo para consultar ficha do cliente, historico, dividas e registar pagamentos recebidos.",
+    main: [
+      "Na ficha, pesquise o nome do cliente para ver compras, divida e transacoes.",
+      "Em registar pagamento, informe cliente, data e montante pago.",
+      "Pagamentos reduzem a divida criada por vendas a credito."
+    ],
+    care: [
+      "Use sempre o mesmo nome do cliente para manter o historico unido.",
+      "Vendas anonimas nao criam ficha de credito."
+    ],
+    tip: "Antes de aceitar uma nova venda a credito, consulte a ficha do cliente."
+  },
+  depenses: {
+    title: "Despesas",
+    subtitle: "Modulo para registar gastos da loja e acompanhar impacto no caixa e nos resultados.",
+    main: [
+      "Registe categoria, descricao, data e valor da despesa.",
+      "O dashboard de despesas mostra totais e historico por periodo.",
+      "As despesas entram na contabilidade e reduzem o resultado."
+    ],
+    care: [
+      "Use categorias consistentes para relatórios mais limpos.",
+      "Corrija despesas erradas pelo modulo Correcoes."
+    ],
+    tip: "Registe despesas no mesmo dia para manter a tesouraria realista."
+  },
+  rh: {
+    title: "Recursos Humanos",
+    subtitle: "Modulo para gerir colaboradores, presencas e pagamentos de equipa.",
+    main: [
+      "Crie a ficha do colaborador com funcao e contacto.",
+      "Registe presencas para acompanhar actividade.",
+      "Pagamentos RH ajudam a controlar custos da equipa."
+    ],
+    care: [
+      "Mantenha nomes consistentes para evitar duplicados.",
+      "Pagamentos RH podem aparecer nos relatórios conforme a configuracao."
+    ],
+    tip: "Use o RH para separar gastos de equipa das outras despesas operacionais."
+  },
+  forn: {
+    title: "Fornecedores",
+    subtitle: "Modulo para ver ficha do fornecedor, historico de compras, pagamentos e dividas.",
+    main: [
+      "Fornecedores podem ser criados automaticamente durante a compra.",
+      "Abra a ficha para ver compras, pagamentos e saldo em aberto.",
+      "Registe pagamentos a fornecedores quando liquidar uma divida."
+    ],
+    care: [
+      "O nome do fornecedor deve ser escrito sempre igual.",
+      "Compras a credito aumentam o valor a pagar ao fornecedor."
+    ],
+    tip: "Consulte fornecedores a pagar no dashboard antes de fazer novos pagamentos."
+  },
+  tresorerie: {
+    title: "Tesouraria",
+    subtitle: "Modulo para acompanhar entradas, saidas, saldo e movimentos de caixa.",
+    main: [
+      "Entradas podem vir de vendas, pagamentos de clientes e movimentos manuais.",
+      "Saidas podem vir de despesas, fornecedores e movimentos manuais.",
+      "Use filtros para analisar o periodo certo."
+    ],
+    care: [
+      "Movimentos manuais devem ter descricao clara.",
+      "Pagamentos registados nos outros modulos tambem afectam a tesouraria."
+    ],
+    tip: "Compare o saldo da tesouraria com o dinheiro real no fim do dia."
+  },
+  comptabilite: {
+    title: "Contabilidade",
+    subtitle: "Modulo para demonstracao de resultados, balanco simplificado e diario contabilistico.",
+    main: [
+      "A demonstracao mostra vendas, custo, lucro bruto, despesas e resultado.",
+      "O balanco separa tesouraria, stock, clientes, revendedores e fornecedores.",
+      "O diario mostra os lancamentos contabilisticos do periodo."
+    ],
+    care: [
+      "Use datas correctas para obter um resumo fiscal confiavel.",
+      "Correcoes criam movimentos de anulacao em vez de apagar historico."
+    ],
+    tip: "Antes de fechar o mes, confira vendas, despesas, compras e dividas."
+  },
+  corrections: {
+    title: "Correcoes",
+    subtitle: "Modulo para corrigir vendas, compras, despesas e pagamentos sem destruir o historico.",
+    main: [
+      "Pesquise o movimento errado pelo numero, cliente, fornecedor ou descricao.",
+      "A correcao cria uma anulacao controlada.",
+      "Use motivo claro para manter auditoria compreensivel."
+    ],
+    care: [
+      "Nao use correcoes para operacoes ainda nao confirmadas.",
+      "Algumas correcoes podem afectar stock, dividas, caixa e contabilidade."
+    ],
+    tip: "Corrigir e melhor do que apagar, porque protege o historico da loja."
+  },
+  revendeurs: {
+    title: "Revendedores",
+    subtitle: "Modulo para consignacao, pagamento, retorno e historico por revendedor.",
+    main: [
+      "Crie uma consignacao quando entregar produtos a um revendedor.",
+      "Pagamento baixa a divida aberta da consignacao.",
+      "Retorno devolve mercadoria ao stock quando nao houve pagamento."
+    ],
+    care: [
+      "Consignacoes com status open aparecem como revendedores a receber.",
+      "Se ja houve pagamento, faca correcao antes de devolver."
+    ],
+    tip: "Use nomes de revendedores consistentes para manter a ficha limpa."
+  },
+  settings: {
+    title: "Definicoes",
+    subtitle: "Modulo para configurar identidade da loja, recibo, utilizadores, roles, stock e seguranca.",
+    main: [
+      "Proprietario gere equipa, roles e estado dos utilizadores.",
+      "Configure logo, recibo, moeda e modo de stock.",
+      "Use importacao para entrar compras, vendas e despesas antigas."
+    ],
+    care: [
+      "Mudancas em stock e roles afectam o funcionamento de varios modulos.",
+      "Apenas proprietario ou permissao adequada deve alterar configuracoes criticas."
+    ],
+    tip: "Configure primeiro identidade, moeda e modo de stock antes de iniciar testes reais."
+  },
+  import: {
+    title: "Importacao",
+    subtitle: "Modulo para importar compras, vendas e despesas via CSV modelo.",
+    main: [
+      "Baixe sempre o modelo CSV antes de preencher dados.",
+      "Verifique a pre-visualizacao antes de importar.",
+      "Grandes importacoes devem ser feitas por tipo: compras, depois vendas, depois despesas."
+    ],
+    care: [
+      "Evite alterar os nomes das colunas do modelo.",
+      "Duplicados podem ser rejeitados conforme as regras do importador."
+    ],
+    tip: "Teste primeiro com poucas linhas antes de importar ficheiros grandes."
+  }
+};
+
+function getActiveAzulPageKey() {
+  var active = document.querySelector(".page.active");
+  if (!active || !active.id) return "dashboard";
+  return active.id.replace(/^page-/, "");
+}
+
+function getContextHelpData(pageKey) {
+  return AZUL_CONTEXT_HELP[pageKey] || AZUL_CONTEXT_HELP.dashboard;
+}
+
+function renderContextHelp(pageKey) {
+  var data = getContextHelpData(pageKey);
+  var title = document.getElementById("contextHelpTitle");
+  var subtitle = document.getElementById("contextHelpSubtitle");
+  var eyebrow = document.getElementById("contextHelpEyebrow");
+  var body = document.getElementById("contextHelpBody");
+
+  if (!title || !subtitle || !eyebrow || !body) return;
+
+  eyebrow.textContent = "Ajuda contextual";
+  title.textContent = data.title || "Ajuda Azul";
+  subtitle.textContent = data.subtitle || "";
+
+  var section = function(label, rows) {
+    rows = rows || [];
+    if (!rows.length) return "";
+
+    return '<div class="context-help-section">' +
+      '<h3>' + escapeDespesaHtml(label) + '</h3>' +
+      '<ul class="context-help-list">' +
+        rows.map(function(row) {
+          return '<li>' + escapeDespesaHtml(row) + '</li>';
+        }).join("") +
+      '</ul>' +
+    '</div>';
+  };
+
+  body.innerHTML =
+    section("Como usar", data.main) +
+    section("Atencao", data.care) +
+    '<div class="context-help-tip"><strong>Dica rapida</strong>' + escapeDespesaHtml(data.tip || "") + '</div>';
+}
+
+function syncContextHelpButton() {
+  var btn = document.getElementById("contextHelpBtn");
+  if (!btn) return;
+
+  var data = getContextHelpData(getActiveAzulPageKey());
+  btn.setAttribute("aria-label", "Abrir ajuda: " + (data.title || "Azul"));
+  btn.title = "Ajuda: " + (data.title || "Azul");
+}
+
+function openContextHelp(pageKey) {
+  var key = pageKey || getActiveAzulPageKey();
+  renderContextHelp(key);
+
+  var panel = document.getElementById("contextHelpPanel");
+  var backdrop = document.getElementById("contextHelpBackdrop");
+
+  if (panel) {
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
+  }
+
+  if (backdrop) backdrop.classList.add("open");
+}
+
+function closeContextHelp() {
+  var panel = document.getElementById("contextHelpPanel");
+  var backdrop = document.getElementById("contextHelpBackdrop");
+
+  if (panel) {
+    panel.classList.remove("open");
+    panel.setAttribute("aria-hidden", "true");
+  }
+
+  if (backdrop) backdrop.classList.remove("open");
+}
+
+function initContextHelp() {
+  syncContextHelpButton();
+
+  document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") closeContextHelp();
+  });
+}
+
+window.openContextHelp = openContextHelp;
+window.closeContextHelp = closeContextHelp;
+
 async function logAzulAction(action, moduleName, status, details) {
   try {
     var organizationId = localStorage.getItem("azul_organization_id");
@@ -2788,6 +3077,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderSettingsTeamCard();
   applyAzulRolePermissions();
   startAzulNotifications();
+  initContextHelp();
   initPaymentLines();
   initCompraLines();
   cleanupLegacyCartFooter();
@@ -2903,6 +3193,7 @@ function goTo(page, btn) {
     if (page === "forn" || page === "achat") {
       renderSupplierDatalists();
     }
+    syncContextHelpButton();
   } catch (e) {
     toast('Erro no separador: ' + (e && e.message ? e.message : e), 'error');
   }

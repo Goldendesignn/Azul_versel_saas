@@ -56,6 +56,27 @@
 
   <div class="mobile-nav-backdrop" id="mobileNavBackdrop" onclick="closeMobileMenu()"></div>
 
+  <button class="context-help-fab" id="contextHelpBtn" type="button" onclick="openContextHelp()" aria-label="Abrir ajuda">
+    <span>?</span>
+    <strong>Ajuda</strong>
+  </button>
+
+  <div class="context-help-backdrop" id="contextHelpBackdrop" onclick="closeContextHelp()"></div>
+  <aside class="context-help-panel" id="contextHelpPanel" aria-hidden="true">
+    <div class="context-help-head">
+      <div>
+        <span id="contextHelpEyebrow">Modulo</span>
+        <h2 id="contextHelpTitle">Ajuda Azul</h2>
+      </div>
+      <button type="button" onclick="closeContextHelp()" aria-label="Fechar ajuda">×</button>
+    </div>
+    <p class="context-help-subtitle" id="contextHelpSubtitle"></p>
+    <div class="context-help-body" id="contextHelpBody"></div>
+    <div class="context-help-foot">
+      <button type="button" onclick="closeContextHelp()">Entendi</button>
+    </div>
+  </aside>
+
 
   <!-- NAV -->
   <div class="nav">
