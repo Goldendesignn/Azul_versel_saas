@@ -691,7 +691,7 @@ html[data-theme="dark"] small {
   z-index: 930;
   place-items: end center;
   padding: 0 16px 18px;
-  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, .34) 100%);
+  background: transparent;
   backdrop-filter: none;
   pointer-events: none;
 }
