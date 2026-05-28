@@ -1247,7 +1247,7 @@ var AZUL_ONBOARDING_STEPS = [
     intro: "Este e o painel principal do ERP. Aqui vais acompanhar vendas, stock, despesas, caixa e alertas importantes da tua loja.",
     bullets: [
       "O dashboard mostra a saude do negocio.",
-      "Antes de vender, confirma os parametros principais da loja.",
+      "Ele resume caixa, stock, vendas, dividas e alertas.",
       "Clica em Seguinte para ir para Definicoes."
     ]
   },
@@ -1265,6 +1265,19 @@ var AZUL_ONBOARDING_STEPS = [
     ]
   },
   {
+    title: "Importar dados antigos",
+    icon: "import",
+    page: "import",
+    target: "#page-import",
+    intro: "Se a loja ja tem historico, usa a Importacao para carregar compras, vendas e despesas por ficheiros CSV modelo.",
+    bullets: [
+      "Baixa sempre o modelo CSV antes de preencher.",
+      "Importa primeiro compras, depois vendas, depois despesas.",
+      "Confere o preview antes de confirmar.",
+      "Se a loja for nova, podes saltar esta etapa."
+    ]
+  },
+  {
     title: "Adicionar o primeiro produto",
     icon: "achat",
     page: "achat",
@@ -1275,6 +1288,32 @@ var AZUL_ONBOARDING_STEPS = [
       "Produto: coloca nome, quantidade, preco de compra e preco de venda.",
       "Imagem e variacao: usa quando houver foto, tamanho, cor ou modelo.",
       "Registar Compra: guarda o produto e actualiza o stock."
+    ]
+  },
+  {
+    title: "Controlar o stock",
+    icon: "transfert",
+    page: "transfert",
+    target: "#page-transfert",
+    intro: "No Estoque acompanhas quantidades da loja, armazem, alertas e transferencias de produtos.",
+    bullets: [
+      "Pesquisa o produto pelo nome, codigo, fornecedor ou categoria.",
+      "Confere stock da loja, armazem e total.",
+      "Usa transferencias quando a mercadoria sai do armazem para a loja.",
+      "Este modulo ajuda a evitar vender produto acabado."
+    ]
+  },
+  {
+    title: "Organizar fornecedores",
+    icon: "forn",
+    page: "forn",
+    target: "#page-forn",
+    intro: "Em Fornecedores ves ficha, compras, pagamentos e dividas de cada fornecedor.",
+    bullets: [
+      "A compra cria ou actualiza o fornecedor automaticamente.",
+      "Completa contacto, pais e observacoes quando precisares.",
+      "Regista pagamentos para reduzir dividas.",
+      "Usa a ficha para ver historico e saldo."
     ]
   },
   {
@@ -1291,6 +1330,19 @@ var AZUL_ONBOARDING_STEPS = [
     ]
   },
   {
+    title: "Acompanhar clientes",
+    icon: "clientes",
+    page: "clientes",
+    target: "#page-clientes",
+    intro: "Em Clientes acompanhas compras, credito, pagamentos recebidos e historico de cada cliente.",
+    bullets: [
+      "Vendas a credito exigem nome do cliente.",
+      "A ficha mostra total comprado, divida e transacoes.",
+      "Regista pagamentos quando o cliente paga depois.",
+      "Usa a pesquisa para encontrar clientes rapidamente."
+    ]
+  },
+  {
     title: "Registar a primeira despesa",
     icon: "depenses",
     page: "depenses",
@@ -1301,6 +1353,71 @@ var AZUL_ONBOARDING_STEPS = [
       "Escreve uma descricao simples para reconhecer o gasto depois.",
       "Coloca o montante pago.",
       "Ao registar, a despesa entra no dashboard, tesouraria e contabilidade."
+    ]
+  },
+  {
+    title: "Controlar a tesouraria",
+    icon: "tresorerie",
+    page: "tresorerie",
+    target: "#page-tresorerie",
+    intro: "A Tesouraria mostra entradas, saidas, saldo e movimentos de caixa da loja.",
+    bullets: [
+      "Entradas podem vir de vendas e pagamentos recebidos.",
+      "Saidas podem vir de despesas, compras e pagamentos a fornecedores.",
+      "Usa filtros por data para fechar o dia ou o mes.",
+      "Confere este modulo antes de fechar o caixa."
+    ]
+  },
+  {
+    title: "Ler a contabilidade",
+    icon: "comptabilite",
+    page: "comptabilite",
+    target: "#page-comptabilite",
+    intro: "A Contabilidade resume resultado, balanco simples e diario contabilistico.",
+    bullets: [
+      "Vendas, custo, lucro, despesas e resultado aparecem juntos.",
+      "O balanco mostra caixa, stock, clientes, fornecedores e revendedores.",
+      "O diario ajuda a auditar cada movimento.",
+      "Usa o filtro de datas para analisar periodos."
+    ]
+  },
+  {
+    title: "Gerir revendedores",
+    icon: "revendeurs",
+    page: "revendeurs",
+    target: "#page-revendeurs",
+    intro: "Em Revendedores registas consignacoes, pagamentos, devolucoes e historico por revendedor.",
+    bullets: [
+      "Cria consignacao quando entregas produto ao revendedor.",
+      "Pagamento baixa o valor em aberto.",
+      "Devolucao fecha produtos que voltaram.",
+      "Consignacoes abertas entram nas dividas de revendedores."
+    ]
+  },
+  {
+    title: "Gerir recursos humanos",
+    icon: "rh",
+    page: "rh",
+    target: "#page-rh",
+    intro: "Recursos Humanos ajuda a acompanhar funcionarios, presencas, pagamentos e historico.",
+    bullets: [
+      "Regista funcionarios com dados principais.",
+      "Controla presencas quando precisares.",
+      "Regista pagamentos de salario ou adiantamentos.",
+      "Consulta historico para saber quem recebeu e quando."
+    ]
+  },
+  {
+    title: "Corrigir erros com seguranca",
+    icon: "corrections",
+    page: "corrections",
+    target: "#page-corrections",
+    intro: "Correcoes serve para anular venda, compra, despesa ou pagamento mantendo o historico limpo.",
+    bullets: [
+      "Usa quando alguem registou uma operacao errada.",
+      "A correcao nao deve apagar historico importante.",
+      "Cada correcao fica auditada com o utilizador.",
+      "Este modulo e melhor que editar dados manualmente."
     ]
   }
 ];
@@ -1483,6 +1600,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:revendeurs": { label: "Revendedores", group: "Paginas" },
   "page:rh": { label: "Recursos Humanos", group: "Paginas" },
   "page:settings": { label: "Definicoes", group: "Paginas" },
+  "page:import": { label: "Importacao", group: "Paginas" },
   "sale:create": { label: "Registar vendas", group: "Vendas" },
   "sale:view": { label: "Ver vendas", group: "Vendas" },
   "purchase:create": { label: "Registar compras", group: "Compras" },
@@ -1519,7 +1637,7 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   stock: {
     name: "Stock",
-    permissions: ["page:dashboard", "page:achat", "page:transfert", "page:forn", "purchase:create", "purchase:view", "stock:transfer", "supplier:view", "supplier_payment:create", "import:create"]
+    permissions: ["page:dashboard", "page:achat", "page:transfert", "page:forn", "page:import", "purchase:create", "purchase:view", "stock:transfer", "supplier:view", "supplier_payment:create", "import:create"]
   },
   accountant: {
     name: "Contabilista",
