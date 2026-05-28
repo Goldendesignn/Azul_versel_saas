@@ -184,6 +184,40 @@
     </div>
   </aside>
 
+  <div class="onboarding-backdrop" id="azulOnboardingBackdrop" aria-hidden="true">
+    <section class="onboarding-panel" id="azulOnboardingPanel" role="dialog" aria-modal="true" aria-labelledby="azulOnboardingTitle">
+      <div class="onboarding-top">
+        <div class="onboarding-brand">
+          <span id="azulOnboardingIcon">1</span>
+          <div>
+            <small>Primeiros passos</small>
+            <h2 id="azulOnboardingTitle">Bem-vindo ao Azul</h2>
+          </div>
+        </div>
+        <button type="button" class="onboarding-close" onclick="closeAzulOnboarding()" aria-label="Fechar onboarding">×</button>
+      </div>
+
+      <div class="onboarding-progress" aria-hidden="true">
+        <span id="azulOnboardingProgressBar"></span>
+      </div>
+
+      <div class="onboarding-body">
+        <p id="azulOnboardingIntro"></p>
+        <ul class="onboarding-list" id="azulOnboardingList"></ul>
+      </div>
+
+      <div class="onboarding-steps" id="azulOnboardingDots" aria-label="Etapas do onboarding"></div>
+
+      <div class="onboarding-actions">
+        <button type="button" class="onboarding-secondary" onclick="prevAzulOnboardingStep()" id="azulOnboardingPrev">Voltar</button>
+        <button type="button" class="onboarding-primary" onclick="openAzulOnboardingTarget()" id="azulOnboardingOpen">Abrir etapa</button>
+        <button type="button" class="onboarding-secondary" onclick="nextAzulOnboardingStep()" id="azulOnboardingNext">Proximo</button>
+      </div>
+
+      <button type="button" class="onboarding-skip" onclick="closeAzulOnboarding()">Fechar teste</button>
+    </section>
+  </div>
+
 
   <!-- NAV -->
   <div class="nav">

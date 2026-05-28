@@ -1237,16 +1237,177 @@ function closeContextHelp() {
   if (backdrop) backdrop.classList.remove("open");
 }
 
+var azulOnboardingIndex = 0;
+var AZUL_ONBOARDING_STEPS = [
+  {
+    title: "1. Configurar o recibo",
+    icon: "settings",
+    page: "settings",
+    target: "#cfg-logo-url",
+    intro: "Antes de vender, ajuste como o recibo deve aparecer para o cliente.",
+    bullets: [
+      ["Nome e contacto", "Confirme o nome da loja, telefone e morada."],
+      ["Logo", "Adicione a imagem ou URL do logo para sair no recibo."],
+      ["Campos visiveis", "Escolha se quer mostrar data, cliente, pagamento e numero do recibo."],
+      ["Moeda", "Garanta que a moeda esta em Kz para trabalhar em Angola."]
+    ]
+  },
+  {
+    title: "2. Adicionar um produto",
+    icon: "achat",
+    page: "achat",
+    target: "#achat-tab-novo",
+    intro: "No Azul, o produto entra normalmente atraves de uma nova compra.",
+    bullets: [
+      ["Fornecedor", "Escreva o nome do fornecedor antes de preencher os produtos."],
+      ["Produto", "Informe designacao, quantidade, preco de compra e preco de venda."],
+      ["Imagem e variacao", "Use foto e variacoes quando houver tamanho, cor ou modelo."],
+      ["Stock", "Ao registar a compra, o stock fica disponivel conforme o modo escolhido."]
+    ]
+  },
+  {
+    title: "3. Fazer a primeira venda",
+    icon: "venda",
+    page: "venda",
+    target: "#prodGrid",
+    intro: "Depois de ter produto em stock, faca uma venda simples para testar o caixa.",
+    bullets: [
+      ["Adicionar ao carrinho", "Clique no produto. Cada clique adiciona uma nova linha."],
+      ["Cliente", "Preencha o cliente se for venda a credito ou se quiser ficha do cliente."],
+      ["Pagamento", "Escolha Cash, Express, Cartao ou Credito."],
+      ["Confirmar", "Finalize a venda e confira se ela aparece no historico e tesouraria."]
+    ]
+  },
+  {
+    title: "4. Registar a primeira despesa",
+    icon: "depenses",
+    page: "depenses",
+    target: "#dep-date",
+    intro: "As despesas ajudam o dashboard e a contabilidade a mostrar o lucro real.",
+    bullets: [
+      ["Data", "Escolha a data correcta da despesa."],
+      ["Categoria", "Use categorias como renda, transporte, salario ou internet."],
+      ["Descricao", "Escreva uma descricao curta para entender depois."],
+      ["Montante", "Registe o valor pago e confirme se aparece no dashboard."]
+    ]
+  }
+];
+
+function getAzulOnboardingStep(index) {
+  return AZUL_ONBOARDING_STEPS[index] || AZUL_ONBOARDING_STEPS[0];
+}
+
+function renderAzulOnboarding() {
+  var step = getAzulOnboardingStep(azulOnboardingIndex);
+  var title = document.getElementById("azulOnboardingTitle");
+  var icon = document.getElementById("azulOnboardingIcon");
+  var intro = document.getElementById("azulOnboardingIntro");
+  var list = document.getElementById("azulOnboardingList");
+  var dots = document.getElementById("azulOnboardingDots");
+  var progress = document.getElementById("azulOnboardingProgressBar");
+  var prev = document.getElementById("azulOnboardingPrev");
+  var next = document.getElementById("azulOnboardingNext");
+
+  if (!title || !icon || !intro || !list || !dots || !progress) return;
+
+  title.textContent = step.title;
+  icon.innerHTML = typeof azulIcon === "function" ? azulIcon(step.icon) : String(azulOnboardingIndex + 1);
+  intro.textContent = step.intro;
+  progress.style.width = (((azulOnboardingIndex + 1) / AZUL_ONBOARDING_STEPS.length) * 100) + "%";
+
+  list.innerHTML = (step.bullets || []).map(function(item) {
+    return "<li><strong>" + escapeDespesaHtml(item[0]) + "</strong><span>" + escapeDespesaHtml(item[1]) + "</span></li>";
+  }).join("");
+
+  dots.innerHTML = AZUL_ONBOARDING_STEPS.map(function(item, index) {
+    return '<button type="button" class="onboarding-dot ' + (index === azulOnboardingIndex ? "active" : "") +
+      '" onclick="goAzulOnboardingStep(' + index + ')">' + escapeDespesaHtml(item.title.replace(/^\d+\.\s*/, "")) + '</button>';
+  }).join("");
+
+  if (prev) prev.disabled = azulOnboardingIndex === 0;
+  if (next) next.textContent = azulOnboardingIndex === AZUL_ONBOARDING_STEPS.length - 1 ? "Terminar" : "Proximo";
+}
+
+function openAzulOnboarding() {
+  azulOnboardingIndex = 0;
+  renderAzulOnboarding();
+
+  var backdrop = document.getElementById("azulOnboardingBackdrop");
+  if (backdrop) {
+    backdrop.classList.add("open");
+    backdrop.setAttribute("aria-hidden", "false");
+  }
+}
+
+function closeAzulOnboarding() {
+  var backdrop = document.getElementById("azulOnboardingBackdrop");
+  if (backdrop) {
+    backdrop.classList.remove("open");
+    backdrop.setAttribute("aria-hidden", "true");
+  }
+}
+
+function goAzulOnboardingStep(index) {
+  azulOnboardingIndex = Math.max(0, Math.min(AZUL_ONBOARDING_STEPS.length - 1, index));
+  renderAzulOnboarding();
+}
+
+function nextAzulOnboardingStep() {
+  if (azulOnboardingIndex >= AZUL_ONBOARDING_STEPS.length - 1) {
+    closeAzulOnboarding();
+    return;
+  }
+
+  goAzulOnboardingStep(azulOnboardingIndex + 1);
+}
+
+function prevAzulOnboardingStep() {
+  goAzulOnboardingStep(azulOnboardingIndex - 1);
+}
+
+function findAzulNavButton(page) {
+  return document.querySelector(".tab[onclick*=\"goTo('" + page + "'\"]") ||
+    document.querySelector(".tab[onclick*='goTo(\"" + page + "\"']");
+}
+
+function openAzulOnboardingTarget() {
+  var step = getAzulOnboardingStep(azulOnboardingIndex);
+  closeAzulOnboarding();
+
+  if (step.page && typeof goTo === "function") {
+    goTo(step.page, findAzulNavButton(step.page));
+  }
+
+  setTimeout(function() {
+    var target = step.target ? document.querySelector(step.target) : null;
+    if (target && typeof target.scrollIntoView === "function") {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (typeof target.focus === "function" && /input|select|textarea/i.test(target.tagName || "")) {
+        target.focus({ preventScroll: true });
+      }
+    }
+  }, 260);
+}
+
 function initContextHelp() {
   syncContextHelpButton();
 
   document.addEventListener("keydown", function(event) {
-    if (event.key === "Escape") closeContextHelp();
+    if (event.key === "Escape") {
+      closeContextHelp();
+      closeAzulOnboarding();
+    }
   });
 }
 
 window.openContextHelp = openContextHelp;
 window.closeContextHelp = closeContextHelp;
+window.openAzulOnboarding = openAzulOnboarding;
+window.closeAzulOnboarding = closeAzulOnboarding;
+window.goAzulOnboardingStep = goAzulOnboardingStep;
+window.nextAzulOnboardingStep = nextAzulOnboardingStep;
+window.prevAzulOnboardingStep = prevAzulOnboardingStep;
+window.openAzulOnboardingTarget = openAzulOnboardingTarget;
 
 async function logAzulAction(action, moduleName, status, details) {
   try {
@@ -3189,6 +3350,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   startAzulNotifications();
   initContextHelp();
   applyAzulIcons();
+  setTimeout(openAzulOnboarding, 650);
   initPaymentLines();
   initCompraLines();
   cleanupLegacyCartFooter();
