@@ -792,15 +792,30 @@ body.azul-onboarding-open .page {
 
 @media (max-width: 760px) {
   .onboarding-backdrop {
-    padding: 0 10px 10px;
+    padding: 0 10px calc(env(safe-area-inset-bottom, 0px) + 10px);
   }
 
   .onboarding-panel {
     width: 100%;
     grid-template-columns: 1fr;
-    gap: 12px;
-    padding: 14px;
+    gap: 10px;
+    padding: 12px;
     border-radius: 18px;
+  }
+
+  .onboarding-brand > span {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+
+  .onboarding-brand h2 {
+    font-size: 16px;
+  }
+
+  .onboarding-copy p {
+    font-size: 13px;
+    margin-bottom: 8px;
   }
 
   .onboarding-copy p,
@@ -819,8 +834,18 @@ body.azul-onboarding-open .page {
 
   .onboarding-actions button {
     min-width: 0;
+    min-height: 38px;
     padding: 0 8px;
     font-size: 12px;
+  }
+
+  body.mobile-nav-open .onboarding-backdrop {
+    display: none !important;
+  }
+
+  body.azul-onboarding-open .content {
+    padding-bottom: calc(var(--azul-onboarding-space, 180px) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+    scroll-padding-bottom: calc(var(--azul-onboarding-space, 180px) + env(safe-area-inset-bottom, 0px) + 18px);
   }
 }
 
