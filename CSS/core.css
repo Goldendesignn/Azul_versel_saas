@@ -687,6 +687,134 @@ html[data-theme="dark"] small {
   }
 }
 
+.onboarding-backdrop {
+  z-index: 930;
+  place-items: end center;
+  padding: 0 16px 18px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, .34) 100%);
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
+.onboarding-backdrop.open {
+  display: grid;
+}
+
+.onboarding-panel {
+  width: min(980px, calc(100vw - 32px));
+  max-height: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 94%, var(--blue));
+  box-shadow: 0 18px 54px rgba(0, 0, 0, .28);
+  pointer-events: auto;
+}
+
+.onboarding-copy {
+  min-width: 0;
+}
+
+.onboarding-brand {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.onboarding-brand > span {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+}
+
+.onboarding-brand > span .az-icon {
+  width: 21px;
+  height: 21px;
+}
+
+.onboarding-brand h2 {
+  font-size: 19px;
+}
+
+.onboarding-copy p {
+  margin: 8px 0 10px 54px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.42;
+}
+
+.onboarding-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-left: 54px;
+}
+
+.onboarding-list li {
+  min-height: 0;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.onboarding-actions {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 8px;
+  padding: 0;
+}
+
+.onboarding-actions button {
+  min-width: 94px;
+  min-height: 42px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.onboarding-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+
+@media (max-width: 760px) {
+  .onboarding-backdrop {
+    padding: 0 10px 10px;
+  }
+
+  .onboarding-panel {
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .onboarding-copy p,
+  .onboarding-list {
+    margin-left: 0;
+  }
+
+  .onboarding-list {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .onboarding-actions button {
+    min-width: 0;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
+
 .notification-wrap {
   position: relative;
   display: none;

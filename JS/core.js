@@ -1240,55 +1240,28 @@ function closeContextHelp() {
 var azulOnboardingIndex = 0;
 var AZUL_ONBOARDING_STEPS = [
   {
-    title: "1. Configurar o recibo",
-    icon: "settings",
-    page: "settings",
-    target: "#cfg-logo-url",
-    intro: "Antes de vender, ajuste como o recibo deve aparecer para o cliente.",
+    title: "Bem-vindo ao Azul",
+    icon: "dashboard",
+    page: "dashboard",
+    target: "#page-dashboard",
+    intro: "Este e o painel principal do ERP. Aqui vais acompanhar vendas, stock, despesas, caixa e alertas importantes da tua loja.",
     bullets: [
-      ["Nome e contacto", "Confirme o nome da loja, telefone e morada."],
-      ["Logo", "Adicione a imagem ou URL do logo para sair no recibo."],
-      ["Campos visiveis", "Escolha se quer mostrar data, cliente, pagamento e numero do recibo."],
-      ["Moeda", "Garanta que a moeda esta em Kz para trabalhar em Angola."]
+      "O dashboard mostra a saude do negocio.",
+      "O proximo passo e adicionar o primeiro produto.",
+      "Clica em Seguinte para ir para Nova Compra."
     ]
   },
   {
-    title: "2. Adicionar um produto",
+    title: "Adicionar o primeiro produto",
     icon: "achat",
     page: "achat",
     target: "#achat-tab-novo",
-    intro: "No Azul, o produto entra normalmente atraves de uma nova compra.",
+    intro: "Para criar produto e stock, entra em Nova Compra. Preenche o fornecedor e a linha do produto, depois regista a compra.",
     bullets: [
-      ["Fornecedor", "Escreva o nome do fornecedor antes de preencher os produtos."],
-      ["Produto", "Informe designacao, quantidade, preco de compra e preco de venda."],
-      ["Imagem e variacao", "Use foto e variacoes quando houver tamanho, cor ou modelo."],
-      ["Stock", "Ao registar a compra, o stock fica disponivel conforme o modo escolhido."]
-    ]
-  },
-  {
-    title: "3. Fazer a primeira venda",
-    icon: "venda",
-    page: "venda",
-    target: "#prodGrid",
-    intro: "Depois de ter produto em stock, faca uma venda simples para testar o caixa.",
-    bullets: [
-      ["Adicionar ao carrinho", "Clique no produto. Cada clique adiciona uma nova linha."],
-      ["Cliente", "Preencha o cliente se for venda a credito ou se quiser ficha do cliente."],
-      ["Pagamento", "Escolha Cash, Express, Cartao ou Credito."],
-      ["Confirmar", "Finalize a venda e confira se ela aparece no historico e tesouraria."]
-    ]
-  },
-  {
-    title: "4. Registar a primeira despesa",
-    icon: "depenses",
-    page: "depenses",
-    target: "#dep-date",
-    intro: "As despesas ajudam o dashboard e a contabilidade a mostrar o lucro real.",
-    bullets: [
-      ["Data", "Escolha a data correcta da despesa."],
-      ["Categoria", "Use categorias como renda, transporte, salario ou internet."],
-      ["Descricao", "Escreva uma descricao curta para entender depois."],
-      ["Montante", "Registe o valor pago e confirme se aparece no dashboard."]
+      "Fornecedor: escreve quem vendeu a mercadoria.",
+      "Produto: coloca nome, quantidade, preco de compra e preco de venda.",
+      "Imagem e variacao: usa quando houver foto, tamanho, cor ou modelo.",
+      "Registar Compra: guarda o produto e actualiza o stock."
     ]
   }
 ];
@@ -1301,35 +1274,30 @@ function renderAzulOnboarding() {
   var step = getAzulOnboardingStep(azulOnboardingIndex);
   var title = document.getElementById("azulOnboardingTitle");
   var icon = document.getElementById("azulOnboardingIcon");
+  var stepText = document.getElementById("azulOnboardingStep");
   var intro = document.getElementById("azulOnboardingIntro");
   var list = document.getElementById("azulOnboardingList");
-  var dots = document.getElementById("azulOnboardingDots");
-  var progress = document.getElementById("azulOnboardingProgressBar");
   var prev = document.getElementById("azulOnboardingPrev");
   var next = document.getElementById("azulOnboardingNext");
 
-  if (!title || !icon || !intro || !list || !dots || !progress) return;
+  if (!title || !icon || !intro || !list) return;
 
   title.textContent = step.title;
   icon.innerHTML = typeof azulIcon === "function" ? azulIcon(step.icon) : String(azulOnboardingIndex + 1);
+  if (stepText) stepText.textContent = "Tutorial " + (azulOnboardingIndex + 1) + "/" + AZUL_ONBOARDING_STEPS.length;
   intro.textContent = step.intro;
-  progress.style.width = (((azulOnboardingIndex + 1) / AZUL_ONBOARDING_STEPS.length) * 100) + "%";
 
   list.innerHTML = (step.bullets || []).map(function(item) {
-    return "<li><strong>" + escapeDespesaHtml(item[0]) + "</strong><span>" + escapeDespesaHtml(item[1]) + "</span></li>";
-  }).join("");
-
-  dots.innerHTML = AZUL_ONBOARDING_STEPS.map(function(item, index) {
-    return '<button type="button" class="onboarding-dot ' + (index === azulOnboardingIndex ? "active" : "") +
-      '" onclick="goAzulOnboardingStep(' + index + ')">' + escapeDespesaHtml(item.title.replace(/^\d+\.\s*/, "")) + '</button>';
+    return "<li>" + escapeDespesaHtml(item) + "</li>";
   }).join("");
 
   if (prev) prev.disabled = azulOnboardingIndex === 0;
-  if (next) next.textContent = azulOnboardingIndex === AZUL_ONBOARDING_STEPS.length - 1 ? "Terminar" : "Proximo";
+  if (next) next.textContent = azulOnboardingIndex === AZUL_ONBOARDING_STEPS.length - 1 ? "Terminar" : "Seguinte";
 }
 
 function openAzulOnboarding() {
   azulOnboardingIndex = 0;
+  openAzulOnboardingPage();
   renderAzulOnboarding();
 
   var backdrop = document.getElementById("azulOnboardingBackdrop");
@@ -1349,6 +1317,7 @@ function closeAzulOnboarding() {
 
 function goAzulOnboardingStep(index) {
   azulOnboardingIndex = Math.max(0, Math.min(AZUL_ONBOARDING_STEPS.length - 1, index));
+  openAzulOnboardingPage();
   renderAzulOnboarding();
 }
 
@@ -1372,7 +1341,11 @@ function findAzulNavButton(page) {
 
 function openAzulOnboardingTarget() {
   var step = getAzulOnboardingStep(azulOnboardingIndex);
-  closeAzulOnboarding();
+  openAzulOnboardingPage();
+}
+
+function openAzulOnboardingPage() {
+  var step = getAzulOnboardingStep(azulOnboardingIndex);
 
   if (step.page && typeof goTo === "function") {
     goTo(step.page, findAzulNavButton(step.page));

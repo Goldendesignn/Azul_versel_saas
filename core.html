@@ -185,36 +185,23 @@
   </aside>
 
   <div class="onboarding-backdrop" id="azulOnboardingBackdrop" aria-hidden="true">
-    <section class="onboarding-panel" id="azulOnboardingPanel" role="dialog" aria-modal="true" aria-labelledby="azulOnboardingTitle">
-      <div class="onboarding-top">
+    <section class="onboarding-panel" id="azulOnboardingPanel" aria-live="polite">
+      <div class="onboarding-copy">
         <div class="onboarding-brand">
           <span id="azulOnboardingIcon">1</span>
           <div>
-            <small>Primeiros passos</small>
+            <small id="azulOnboardingStep">Tutorial 1/2</small>
             <h2 id="azulOnboardingTitle">Bem-vindo ao Azul</h2>
           </div>
         </div>
-        <button type="button" class="onboarding-close" onclick="closeAzulOnboarding()" aria-label="Fechar onboarding">×</button>
-      </div>
-
-      <div class="onboarding-progress" aria-hidden="true">
-        <span id="azulOnboardingProgressBar"></span>
-      </div>
-
-      <div class="onboarding-body">
         <p id="azulOnboardingIntro"></p>
         <ul class="onboarding-list" id="azulOnboardingList"></ul>
       </div>
-
-      <div class="onboarding-steps" id="azulOnboardingDots" aria-label="Etapas do onboarding"></div>
-
       <div class="onboarding-actions">
-        <button type="button" class="onboarding-secondary" onclick="prevAzulOnboardingStep()" id="azulOnboardingPrev">Voltar</button>
-        <button type="button" class="onboarding-primary" onclick="openAzulOnboardingTarget()" id="azulOnboardingOpen">Abrir etapa</button>
-        <button type="button" class="onboarding-secondary" onclick="nextAzulOnboardingStep()" id="azulOnboardingNext">Proximo</button>
+        <button type="button" class="onboarding-secondary" onclick="prevAzulOnboardingStep()" id="azulOnboardingPrev">Anterior</button>
+        <button type="button" class="onboarding-secondary" onclick="closeAzulOnboarding()" id="azulOnboardingSkip">Saltar</button>
+        <button type="button" class="onboarding-primary" onclick="nextAzulOnboardingStep()" id="azulOnboardingNext">Seguinte</button>
       </div>
-
-      <button type="button" class="onboarding-skip" onclick="closeAzulOnboarding()">Fechar teste</button>
     </section>
   </div>
 
