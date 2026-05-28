@@ -1247,8 +1247,21 @@ var AZUL_ONBOARDING_STEPS = [
     intro: "Este e o painel principal do ERP. Aqui vais acompanhar vendas, stock, despesas, caixa e alertas importantes da tua loja.",
     bullets: [
       "O dashboard mostra a saude do negocio.",
-      "O proximo passo e adicionar o primeiro produto.",
-      "Clica em Seguinte para ir para Nova Compra."
+      "Antes de vender, confirma os parametros principais da loja.",
+      "Clica em Seguinte para ir para Definicoes."
+    ]
+  },
+  {
+    title: "Configurar a loja",
+    icon: "settings",
+    page: "settings",
+    target: "#cfg-name",
+    intro: "Nas Definicoes defines a identidade da loja, recibo, moeda, tema, modo de stock e seguranca do ERP.",
+    bullets: [
+      "Identidade no recibo: nome, slogan, contacto e dados que aparecem no recibo.",
+      "Moeda e tema: adapta o ERP ao estilo da loja.",
+      "Modo de stock: escolhe se a compra entra na loja ou no armazem.",
+      "Guarda as configuracoes antes de comecar a operar."
     ]
   },
   {
@@ -1262,6 +1275,32 @@ var AZUL_ONBOARDING_STEPS = [
       "Produto: coloca nome, quantidade, preco de compra e preco de venda.",
       "Imagem e variacao: usa quando houver foto, tamanho, cor ou modelo.",
       "Registar Compra: guarda o produto e actualiza o stock."
+    ]
+  },
+  {
+    title: "Fazer a primeira venda",
+    icon: "venda",
+    page: "venda",
+    target: "#searchInput",
+    intro: "Na Nova Venda pesquisas produtos, adicionas ao carrinho, escolhes o tipo de venda e confirmas o pagamento.",
+    bullets: [
+      "Pesquisa: encontra o produto pelo nome, codigo, fornecedor ou categoria.",
+      "Carrinho: ajusta quantidade e preco quando for necessario.",
+      "Stock ou Externo: stock baixa a loja; externo nao baixa stock.",
+      "Pagamento: confirma cash, express, cartao, credito ou multipagamento."
+    ]
+  },
+  {
+    title: "Registar a primeira despesa",
+    icon: "depenses",
+    page: "depenses",
+    target: "#dep-panel-new",
+    intro: "Nas Despesas registas custos da loja como renda, transporte, salario, energia ou outras saidas de caixa.",
+    bullets: [
+      "Escolhe a data e o tipo de despesa.",
+      "Escreve uma descricao simples para reconhecer o gasto depois.",
+      "Coloca o montante pago.",
+      "Ao registar, a despesa entra no dashboard, tesouraria e contabilidade."
     ]
   }
 ];
