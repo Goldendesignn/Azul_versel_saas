@@ -4914,7 +4914,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   #page-dashboard .accounting-balance-grid,
   #page-dashboard .important-alerts-grid,
   #page-dashboard .row2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
     gap: 10px !important;
   }
 
