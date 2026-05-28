@@ -995,10 +995,11 @@
     <div class="page" id="page-transfert">
 
       <!-- MODE TOGGLE -->
-      <div style="display:flex;gap:10px;margin-bottom:20px;max-width:500px;">
+      <div style="display:flex;gap:10px;margin-bottom:20px;max-width:720px;flex-wrap:wrap;">
         <button class="mode-btn active" id="modeSingle" onclick="switchMode('single', this)"> Individual</button>
         <button class="mode-btn" id="modeTudo" onclick="switchMode('tudo', this)"> Tudo para Loja</button>
         <button class="mode-btn" id="modestock" onclick="switchMode('stock', this)"> Stock</button>
+        <button class="mode-btn" id="modeHistorico" onclick="switchMode('historico', this)"> Historico</button>
       </div>
 
       <!-- MODO INDIVIDUAL -->
@@ -1109,6 +1110,35 @@
               </thead>
               <tbody id="Inventaires">
                <tr><td colspan="9" class="empty">A charger...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="transferHistorico" style="display:none;">
+        <div class="card">
+          <div class="card-title">Historico de transferencias</div>
+          <div class="hist-filters">
+            <input type="date" class="filter-input" id="transfer-history-from">
+            <input type="date" class="filter-input" id="transfer-history-to">
+            <input type="text" class="filter-input" id="transfer-history-search" placeholder="Produto, nota ou utilizador...">
+            <button class="filter-btn" type="button" onclick="loadTransferHistory()">Filtrar</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Produto</th>
+                  <th>Qtd</th>
+                  <th>Origem</th>
+                  <th>Destino</th>
+                  <th>Nota</th>
+                  <th>Utilizador</th>
+                </tr>
+              </thead>
+              <tbody id="transferHistoryBody">
+                <tr><td colspan="7" class="empty">A carregar...</td></tr>
               </tbody>
             </table>
           </div>

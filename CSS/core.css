@@ -2485,7 +2485,8 @@ button.az-icon-button,
 
 @media (max-width: 820px) {
   #vente-panel-historico .data-table,
-  #stock .data-table {
+  #stock .data-table,
+  #transferHistorico .data-table {
     display: none;
   }
 
@@ -2495,7 +2496,8 @@ button.az-icon-button,
   }
 
   .mobile-sale-card,
-  .mobile-stock-card {
+  .mobile-stock-card,
+  .mobile-transfer-card {
     background: #fff;
     border: 1px solid rgba(224, 224, 224, 0.85);
     border-radius: 16px;

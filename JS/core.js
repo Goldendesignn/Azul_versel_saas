@@ -198,6 +198,7 @@ var AZUL_TABLE_ACTIONS = {
   supplier_payments: "supplier_payment:create",
   corrections_log: "correction:create",
   treasury_entries: "cash:create",
+  stock_transfers: "stock:transfer",
   reseller_consignments: "reseller:create",
   hr_employees: "hr:create",
   hr_attendance: "hr:create",
@@ -2176,6 +2177,47 @@ async function getProductsFromSupabase() {
 
   return (result.data || []).map(mapSupabaseProduct);
 }
+
+function isStockTransferHistoryMissing(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  return msg.indexOf("stock_transfers") >= 0 &&
+    (msg.indexOf("could not find") >= 0 ||
+      msg.indexOf("schema cache") >= 0 ||
+      msg.indexOf("does not exist") >= 0 ||
+      msg.indexOf("relation") >= 0);
+}
+
+async function recordStockTransfers(rows) {
+  rows = (rows || []).filter(function(row) {
+    return row && row.organization_id && row.product_name && Number(row.quantity) > 0;
+  });
+
+  if (!rows.length) return false;
+
+  try {
+    var result = await insertRowsWithAzulAudit("stock_transfers", rows, "id");
+
+    if (result.error) {
+      if (isStockTransferHistoryMissing(result.error)) {
+        console.warn("Tabela stock_transfers ainda nao configurada. Transferencia feita sem historico.");
+        return false;
+      }
+      throw result.error;
+    }
+
+    return true;
+  } catch (e) {
+    if (isStockTransferHistoryMissing(e)) {
+      console.warn("Tabela stock_transfers ainda nao configurada. Transferencia feita sem historico.");
+      return false;
+    }
+
+    console.warn("Historico de transferencia nao gravado:", e);
+    toast("Transferencia feita, mas o historico nao foi gravado.", "error");
+    return false;
+  }
+}
+
 async function transferProductToShop(productName, quantity) {
   var organizationId = getAzulOrganizationId();
   productName = String(productName || "").trim();
@@ -2212,7 +2254,15 @@ async function transferProductToShop(productName, quantity) {
 
   if (updateResult.error) throw updateResult.error;
 
-  return true;
+  return {
+    product_id: product.id,
+    product_name: product.name,
+    quantity: quantity,
+    warehouse_before: warehouse,
+    shop_before: shop,
+    warehouse_after: warehouse - quantity,
+    shop_after: shop + quantity
+  };
 }
 
 async function transferAllProductsToShop() {
@@ -2227,6 +2277,8 @@ async function transferAllProductsToShop() {
   if (productsResult.error) throw productsResult.error;
 
   var rows = productsResult.data || [];
+
+  var movedRows = [];
 
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
@@ -2244,9 +2296,19 @@ async function transferAllProductsToShop() {
       .eq("id", row.id);
 
     if (updateResult.error) throw updateResult.error;
+
+    movedRows.push({
+      product_id: row.id,
+      product_name: row.name,
+      quantity: warehouse,
+      warehouse_before: warehouse,
+      shop_before: shop,
+      warehouse_after: 0,
+      shop_after: shop + warehouse
+    });
   }
 
-  return rows.length;
+  return movedRows;
 }
 
 async function getStockArmazemFromSupabase() {
@@ -3491,6 +3553,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (document.getElementById('acct-to')) document.getElementById('acct-to').value = today;
   if (document.getElementById('rev-history-from')) document.getElementById('rev-history-from').value = first;
   if (document.getElementById('rev-history-to')) document.getElementById('rev-history-to').value = today;
+  if (document.getElementById('transfer-history-from')) document.getElementById('transfer-history-from').value = first;
+  if (document.getElementById('transfer-history-to')) document.getElementById('transfer-history-to').value = today;
 
   loadSettings();
   await renderSettingsUserCard();
@@ -3704,6 +3768,36 @@ function renderMobileInventory(rows) {
         '<div class="mobile-stock-box"><div class="mobile-stock-label">Loja</div><div class="mobile-stock-value">' + stockBoutique + '</div></div>' +
         '<div class="mobile-stock-box"><div class="mobile-stock-label">Magasin</div><div class="mobile-stock-value">' + stockage + '</div></div>' +
         '<div class="mobile-stock-box"><div class="mobile-stock-label">Total</div><div class="mobile-stock-value">' + total + '</div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderMobileTransferHistory(rows) {
+  var list = ensureMobileList("transferHistoryBody", "mobileTransferHistoryList");
+  if (!list) return;
+
+  rows = rows || [];
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhuma transferencia encontrada</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(row) {
+    return '<div class="mobile-transfer-card">' +
+      '<div class="mobile-card-top">' +
+        '<div>' +
+          '<div class="mobile-card-kicker">' + escapeDespesaHtml(row.transfer_date || '') + '</div>' +
+          '<div class="mobile-card-title">' + escapeDespesaHtml(row.product_name || '') + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDespesaHtml(row.from_location || 'Armazem') + ' -> ' + escapeDespesaHtml(row.to_location || 'Loja') + '</div>' +
+          '<div class="mobile-card-sub">' + escapeDespesaHtml(row.note || 'Sem nota') + '</div>' +
+          '<div class="mobile-card-sub">' + renderActionAuthor(row) + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div class="mobile-card-amount">' + (Number(row.quantity) || 0) + ' un</div>' +
+          '<div class="mobile-card-pill">Transferencia</div>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -8674,6 +8768,95 @@ async function loadResumoDettes() {
 }
 
 // ===== TRANSFERENCIA =====
+async function getStockTransfersFromSupabase(filters) {
+  var organizationId = getAzulOrganizationId();
+  filters = filters || {};
+
+  var query = supabaseClient
+    .from("stock_transfers")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("transfer_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(300);
+
+  if (filters.from) query = query.gte("transfer_date", filters.from);
+  if (filters.to) query = query.lte("transfer_date", filters.to);
+
+  var result = await query;
+
+  if (result.error) {
+    if (isStockTransferHistoryMissing(result.error)) return { missing: true, rows: [] };
+    throw result.error;
+  }
+
+  var rows = result.data || [];
+  var search = String(filters.search || "").trim().toLowerCase();
+
+  if (search) {
+    rows = rows.filter(function(row) {
+      return [
+        row.product_name,
+        row.from_location,
+        row.to_location,
+        row.note,
+        row.user_name
+      ].join(" ").toLowerCase().indexOf(search) >= 0;
+    });
+  }
+
+  return { missing: false, rows: rows };
+}
+
+async function loadTransferHistory() {
+  var body = document.getElementById("transferHistoryBody");
+  if (!body) return;
+
+  body.innerHTML = '<tr><td colspan="7" class="empty">A carregar...</td></tr>';
+  renderMobileTransferHistory([]);
+
+  try {
+    var result = await getStockTransfersFromSupabase({
+      from: (document.getElementById("transfer-history-from") || {}).value || "",
+      to: (document.getElementById("transfer-history-to") || {}).value || "",
+      search: (document.getElementById("transfer-history-search") || {}).value || ""
+    });
+
+    if (result.missing) {
+      body.innerHTML = '<tr><td colspan="7" class="empty">Cria a tabela stock_transfers no Supabase para activar o historico.</td></tr>';
+      renderMobileTransferHistory([]);
+      return;
+    }
+
+    var rows = result.rows || [];
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma transferencia encontrada</td></tr>';
+      renderMobileTransferHistory([]);
+      return;
+    }
+
+    body.innerHTML = rows.map(function(row) {
+      return '<tr>' +
+        '<td>' + escapeDespesaHtml(row.transfer_date || '') + '</td>' +
+        '<td>' + escapeDespesaHtml(row.product_name || '') + '</td>' +
+        '<td>' + (Number(row.quantity) || 0) + '</td>' +
+        '<td>' + escapeDespesaHtml(row.from_location || 'Armazem') + '</td>' +
+        '<td>' + escapeDespesaHtml(row.to_location || 'Loja') + '</td>' +
+        '<td>' + escapeDespesaHtml(row.note || '') + '</td>' +
+        '<td>' + renderActionAuthor(row) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    renderMobileTransferHistory(rows);
+  } catch (e) {
+    console.error("Erro historico transferencias:", e);
+    body.innerHTML = '<tr><td colspan="7" class="empty">Erro ao carregar historico</td></tr>';
+    renderMobileTransferHistory([]);
+    toast("Erro historico transferencias: " + (e.message || e), "error");
+  }
+}
+
 async function saveTransfer() {
   if (!requireAzulAction("stock:transfer", "transferir stock")) return;
 
@@ -8698,7 +8881,19 @@ async function saveTransfer() {
   }
 
   try {
-    await transferProductToShop(data.prod, data.qty);
+    var transferInfo = await transferProductToShop(data.prod, data.qty);
+    await recordStockTransfers([{
+      organization_id: getAzulOrganizationId(),
+      transfer_date: data.date || new Date().toISOString().split("T")[0],
+      product_id: transferInfo.product_id || null,
+      product_name: transferInfo.product_name || data.prod,
+      quantity: data.qty,
+      from_location: "Armazem",
+      to_location: "Loja",
+      transfer_type: "single_to_shop",
+      note: data.obs || ""
+    }]);
+
     await createAzulNotification({
       actionType: "stock:transfer",
       title: getAzulCurrentUserName() + " transferiu stock",
@@ -8717,6 +8912,9 @@ async function saveTransfer() {
     document.getElementById("t-obs").value = "";
 
     await loadProducts(true);
+    if (document.getElementById("transferHistorico") && document.getElementById("transferHistorico").style.display !== "none") {
+      await loadTransferHistory();
+    }
 
   } catch (e) {
     console.error("Erro transferencia:", e);
@@ -9655,6 +9853,7 @@ function applyStockModeUi() {
   var singlePanel = document.getElementById("transferSingle");
   var tudoPanel = document.getElementById("transferTudo");
   var stockPanel = document.getElementById("stock");
+  var historyPanel = document.getElementById("transferHistorico");
 
   if (singleBtn) singleBtn.style.display = warehouseMode ? "" : "none";
   if (tudoBtn) tudoBtn.style.display = warehouseMode ? "" : "none";
@@ -9662,16 +9861,16 @@ function applyStockModeUi() {
   if (!warehouseMode) {
     if (singlePanel) singlePanel.style.display = "none";
     if (tudoPanel) tudoPanel.style.display = "none";
-    if (stockPanel) stockPanel.style.display = "block";
+    if (stockPanel && (!historyPanel || historyPanel.style.display === "none")) stockPanel.style.display = "block";
     if (singleBtn) singleBtn.classList.remove("active");
     if (tudoBtn) tudoBtn.classList.remove("active");
-    if (stockBtn) stockBtn.classList.add("active");
+    if (stockBtn && (!historyPanel || historyPanel.style.display === "none")) stockBtn.classList.add("active");
   }
 }
 
 // ===== TRANSFERENCIA MODO TOGGLE =====
 function switchMode(mode, btn) {
-  if (!isWarehouseStockMode() && mode !== 'stock') {
+  if (!isWarehouseStockMode() && mode !== 'stock' && mode !== 'historico') {
     mode = 'stock';
     btn = document.getElementById('modestock') || btn;
   }
@@ -9680,10 +9879,14 @@ function switchMode(mode, btn) {
   if (btn && btn.classList) btn.classList.add('active');
   document.getElementById('transferSingle').style.display = mode === 'single' ? 'block' : 'none';
   document.getElementById('transferTudo').style.display = mode === 'tudo' ? 'block' : 'none';
-   document.getElementById('stock').style.display = mode === 'stock' ? 'block' : 'none';
+  document.getElementById('stock').style.display = mode === 'stock' ? 'block' : 'none';
+  document.getElementById('transferHistorico').style.display = mode === 'historico' ? 'block' : 'none';
 
   if (mode === 'stock') {
     loadProducts(true);
+  }
+  if (mode === 'historico') {
+    loadTransferHistory();
   }
 
   applyStockModeUi();
@@ -9738,7 +9941,24 @@ async function transferirTudoLoja() {
   }
 
   try {
-    var count = await transferAllProductsToShop();
+    var movedRows = await transferAllProductsToShop();
+    var count = movedRows.length;
+    var today = new Date().toISOString().split("T")[0];
+
+    await recordStockTransfers(movedRows.map(function(row) {
+      return {
+        organization_id: getAzulOrganizationId(),
+        transfer_date: today,
+        product_id: row.product_id || null,
+        product_name: row.product_name || "",
+        quantity: Number(row.quantity) || 0,
+        from_location: "Armazem",
+        to_location: "Loja",
+        transfer_type: "all_to_shop",
+        note: "Transferencia total para loja"
+      };
+    }));
+
     await createAzulNotification({
       actionType: "stock:transfer",
       title: getAzulCurrentUserName() + " transferiu todo o stock",
@@ -9757,6 +9977,9 @@ async function transferirTudoLoja() {
     toast(count + " produtos transferidos para a loja!", "success");
 
     await loadProducts(true);
+    if (document.getElementById("transferHistorico") && document.getElementById("transferHistorico").style.display !== "none") {
+      await loadTransferHistory();
+    }
 
   } catch (e) {
     console.error("Erro transferencia total:", e);
