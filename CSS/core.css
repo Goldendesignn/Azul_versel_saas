@@ -10,6 +10,8 @@
   --green: #4caf7d;
   --red: #e05c5c;
   --blue: #5b9bd5;
+  --blue2: #071e4f;
+  --accent-text: #ffffff;
   --orange: #e08c3a;
 }
 * { margin:0; padding:0; box-sizing:border-box; }

@@ -9192,6 +9192,8 @@ function applyConfig() {
   root.style.setProperty('--blue', readableColor);
   root.style.setProperty('--blue2', readableColor2);
   root.style.setProperty('--accent-text', textOnColor(readableColor));
+  var themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.setAttribute('content', readableColor);
 
   // Apply theme
   if (selectedSetupTheme === 'dark') {
