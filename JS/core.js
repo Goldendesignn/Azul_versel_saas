@@ -1270,6 +1270,12 @@ function getAzulOnboardingStep(index) {
   return AZUL_ONBOARDING_STEPS[index] || AZUL_ONBOARDING_STEPS[0];
 }
 
+function syncAzulOnboardingSpace() {
+  var panel = document.getElementById("azulOnboardingPanel");
+  var height = panel ? Math.ceil(panel.getBoundingClientRect().height) : 0;
+  document.documentElement.style.setProperty("--azul-onboarding-space", (height ? height + 28 : 0) + "px");
+}
+
 function renderAzulOnboarding() {
   var step = getAzulOnboardingStep(azulOnboardingIndex);
   var title = document.getElementById("azulOnboardingTitle");
@@ -1293,6 +1299,7 @@ function renderAzulOnboarding() {
 
   if (prev) prev.disabled = azulOnboardingIndex === 0;
   if (next) next.textContent = azulOnboardingIndex === AZUL_ONBOARDING_STEPS.length - 1 ? "Terminar" : "Seguinte";
+  setTimeout(syncAzulOnboardingSpace, 0);
 }
 
 function openAzulOnboarding() {
@@ -1305,6 +1312,9 @@ function openAzulOnboarding() {
     backdrop.classList.add("open");
     backdrop.setAttribute("aria-hidden", "false");
   }
+  document.body.classList.add("azul-onboarding-open");
+  syncAzulOnboardingSpace();
+  setTimeout(syncAzulOnboardingSpace, 80);
 }
 
 function closeAzulOnboarding() {
@@ -1313,6 +1323,8 @@ function closeAzulOnboarding() {
     backdrop.classList.remove("open");
     backdrop.setAttribute("aria-hidden", "true");
   }
+  document.body.classList.remove("azul-onboarding-open");
+  document.documentElement.style.setProperty("--azul-onboarding-space", "0px");
 }
 
 function goAzulOnboardingStep(index) {
@@ -1364,6 +1376,13 @@ function openAzulOnboardingPage() {
 
 function initContextHelp() {
   syncContextHelpButton();
+
+  window.addEventListener("resize", function() {
+    var backdrop = document.getElementById("azulOnboardingBackdrop");
+    if (backdrop && backdrop.classList.contains("open")) {
+      syncAzulOnboardingSpace();
+    }
+  });
 
   document.addEventListener("keydown", function(event) {
     if (event.key === "Escape") {

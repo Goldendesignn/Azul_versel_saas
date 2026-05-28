@@ -700,6 +700,15 @@ html[data-theme="dark"] small {
   display: grid;
 }
 
+body.azul-onboarding-open .content {
+  padding-bottom: calc(var(--azul-onboarding-space, 180px) + 24px) !important;
+  scroll-padding-bottom: calc(var(--azul-onboarding-space, 180px) + 24px);
+}
+
+body.azul-onboarding-open .page {
+  scroll-margin-bottom: calc(var(--azul-onboarding-space, 180px) + 24px);
+}
+
 .onboarding-panel {
   width: min(980px, calc(100vw - 32px));
   max-height: none;
