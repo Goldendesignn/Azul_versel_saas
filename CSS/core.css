@@ -99,6 +99,11 @@ html, body {
   font-size: 16px;
 }
 
+.context-help-fab .az-icon {
+  width: 17px;
+  height: 17px;
+}
+
 .context-help-fab strong {
   font-size: 13px;
   letter-spacing: .01em;
@@ -523,6 +528,10 @@ html, body {
 }
 .nav::-webkit-scrollbar { display: none; }
 .tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   padding: 10px 16px;
   border: none;
   background: transparent;
@@ -537,6 +546,50 @@ html, body {
 }
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+.az-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.az-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab .az-icon {
+  width: 15px;
+  height: 15px;
+}
+
+button.az-icon-button,
+.mode-btn.az-icon-button,
+.filter-btn.az-icon-button,
+.form-submit.az-icon-button,
+.dashboard-see-all.az-icon-button,
+.import-primary-btn.az-icon-button,
+.import-submit-btn.az-icon-button,
+.import-file-btn.az-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dashboard-see-all .az-icon,
+.filter-btn .az-icon,
+.form-submit .az-icon {
+  width: 15px;
+  height: 15px;
+}
 
 /*  CONTENT  */
 .content {
@@ -1724,6 +1777,7 @@ html, body {
     padding: 13px 12px;
     border-radius: 10px;
     border-bottom: none;
+    justify-content: flex-start;
     text-align: left;
     font-size: 14px;
     color: var(--text);

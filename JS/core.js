@@ -1466,6 +1466,116 @@ function applyAzulRolePermissions() {
   });
 }
 
+var AZUL_ICON_PATHS = {
+  dashboard: '<path d="M3 13h7V3H3z"></path><path d="M14 21h7V11h-7z"></path><path d="M14 8h7V3h-7z"></path><path d="M3 21h7v-5H3z"></path>',
+  venda: '<circle cx="9" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle><path d="M2 3h3l3 12h10l3-8H6"></path>',
+  achat: '<path d="M6 2l1.5 4h9L18 2"></path><path d="M3 6h18l-2 15H5z"></path><path d="M9 11h6"></path>',
+  transfert: '<path d="M7 7h11l-3-3"></path><path d="M17 17H6l3 3"></path><path d="M5 12h14"></path>',
+  clientes: '<path d="M16 21v-2a4 4 0 0 0-8 0v2"></path><circle cx="12" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>',
+  depenses: '<path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>',
+  rh: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+  forn: '<path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9h1"></path><path d="M9 13h1"></path><path d="M9 17h1"></path>',
+  tresorerie: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
+  comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
+  corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
+  revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
+  settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1.82V22a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.82-.33H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1.82V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.21.64.49.86.83.22.34.56.54.96.54H22a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51.63z"></path>',
+  import: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path>',
+  search: '<circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path>',
+  refresh: '<path d="M21 12a9 9 0 0 1-15.5 6.2"></path><path d="M3 12A9 9 0 0 1 18.5 5.8"></path><path d="M18 3v4h-4"></path><path d="M6 21v-4h4"></path>',
+  print: '<path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path>',
+  add: '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
+  pay: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path>',
+  view: '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle>',
+  clear: '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 15H6L5 6"></path>',
+  help: '<circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path>'
+};
+
+var AZUL_PAGE_ICON_MAP = {
+  dashboard: "dashboard",
+  venda: "venda",
+  achat: "achat",
+  transfert: "transfert",
+  clientes: "clientes",
+  depenses: "depenses",
+  rh: "rh",
+  forn: "forn",
+  tresorerie: "tresorerie",
+  comptabilite: "comptabilite",
+  corrections: "corrections",
+  revendeurs: "revendeurs",
+  settings: "settings",
+  import: "import"
+};
+
+function azulIcon(name) {
+  var path = AZUL_ICON_PATHS[name] || AZUL_ICON_PATHS.help;
+  return '<svg class="az-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + path + '</svg>';
+}
+
+function setAzulButtonIcon(button, iconName) {
+  if (!button || !iconName) return;
+  if (button.dataset && button.dataset.noIcon === "1") return;
+
+  var labelEl = button.querySelector(".az-label");
+  var label = labelEl ? labelEl.textContent : button.textContent;
+  label = String(label || "").trim();
+  if (!label && button.getAttribute("aria-label")) label = button.getAttribute("aria-label");
+  if (!label) return;
+
+  button.classList.add("az-icon-button");
+  button.innerHTML = azulIcon(iconName) + '<span class="az-label">' + escapeDespesaHtml(label) + '</span>';
+}
+
+function getAzulIconForButton(button) {
+  var onclick = button.getAttribute("onclick") || "";
+  var text = normalizeAzulIconText(button.textContent);
+  var id = String(button.id || "").toLowerCase();
+  var page = extractGoToPage(onclick);
+
+  if (page && AZUL_PAGE_ICON_MAP[page]) return AZUL_PAGE_ICON_MAP[page];
+  if (id.indexOf("notification") >= 0) return "help";
+  if (id.indexOf("search") >= 0 || text.indexOf("pesquisar") >= 0 || text.indexOf("procurar") >= 0) return "search";
+  if (text.indexOf("guardar") >= 0 || text.indexOf("salvar") >= 0) return "save";
+  if (text.indexOf("atualizar") >= 0 || text.indexOf("actualizar") >= 0 || text.indexOf("aplicar") >= 0) return "refresh";
+  if (text.indexOf("imprimir") >= 0) return "print";
+  if (text.indexOf("adicionar") >= 0 || text.indexOf("criar") >= 0 || text.indexOf("novo") >= 0 || text.indexOf("nova") >= 0) return "add";
+  if (text.indexOf("pagamento") >= 0 || text.indexOf("pagar") >= 0 || text.indexOf("receber") >= 0) return "pay";
+  if (text.indexOf("ver tudo") >= 0 || text.indexOf("ver stock") >= 0 || text.indexOf("historico") >= 0 || text.indexOf("ficha") >= 0) return "view";
+  if (text.indexOf("limpar") >= 0 || text.indexOf("eliminar") >= 0 || text.indexOf("remover") >= 0) return "clear";
+  if (text.indexOf("import") >= 0 || text.indexOf("baixar") >= 0 || text.indexOf("modelo") >= 0 || text.indexOf("ficheiro") >= 0) return "import";
+  if (text.indexOf("transfer") >= 0) return "transfert";
+
+  return "";
+}
+
+function normalizeAzulIconText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function applyAzulIcons() {
+  Array.prototype.forEach.call(document.querySelectorAll(".nav .tab[onclick]"), function(button) {
+    var page = extractGoToPage(button.getAttribute("onclick"));
+    setAzulButtonIcon(button, AZUL_PAGE_ICON_MAP[page] || "");
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll(
+    ".mode-btn, .filter-btn, .form-submit, .dashboard-see-all, .import-primary-btn, .import-submit-btn, .import-file-btn"
+  ), function(button) {
+    setAzulButtonIcon(button, getAzulIconForButton(button));
+  });
+
+  var helpBtn = document.getElementById("contextHelpBtn");
+  if (helpBtn) {
+    helpBtn.innerHTML = '<span>' + azulIcon("help") + '</span><strong>Ajuda</strong>';
+  }
+}
+
 function getOrCreateDeviceId() {
   var key = "azul_device_id";
   var deviceId = localStorage.getItem(key);
@@ -3078,6 +3188,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   applyAzulRolePermissions();
   startAzulNotifications();
   initContextHelp();
+  applyAzulIcons();
   initPaymentLines();
   initCompraLines();
   cleanupLegacyCartFooter();
@@ -3194,6 +3305,7 @@ function goTo(page, btn) {
       renderSupplierDatalists();
     }
     syncContextHelpButton();
+    applyAzulIcons();
   } catch (e) {
     toast('Erro no separador: ' + (e && e.message ? e.message : e), 'error');
   }
@@ -5149,6 +5261,7 @@ dashboardLoadingTimer = setTimeout(function() {
 
     renderDashboardData(data);
     applyPortugueseText();
+    applyAzulIcons();
 
   } catch (e) {
     console.error("Erro dashboard:", e);
@@ -8936,6 +9049,7 @@ function applyPortugueseText() {
     var clientEmpty = document.querySelector('#clientFichaResult .empty');
     if (clientEmpty && clientEmpty.textContent.indexOf('cliente') >= 0) clientEmpty.textContent = getText('loading');
     syncPageTitles();
+    applyAzulIcons();
   } catch (e) {
     console.error('applyPortugueseText failed', e);
   } finally {
