@@ -390,10 +390,14 @@ html[data-theme="dark"] small {
 
 @media (max-width: 820px) {
   .context-help-fab {
-    right: 16px;
-    bottom: 82px;
-    min-height: 42px;
-    padding: 6px 12px 6px 7px;
+    left: 16px;
+    right: auto;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0;
+    justify-content: center;
     box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
   }
 
@@ -403,6 +407,10 @@ html[data-theme="dark"] small {
   }
 
   .context-help-fab strong {
+    display: none;
+  }
+
+  body.mobile-nav-open .context-help-fab {
     display: none;
   }
 
