@@ -103,7 +103,7 @@ begin
     'device_limit', coalesce(v_org.device_limit, 1)
   );
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.admin_create_license(p_expires_at timestamp with time zone, p_notes text)
@@ -142,7 +142,7 @@ begin
 
   return new_license;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.admin_create_renewal_license(p_organization_id uuid, p_expires_at timestamp with time zone, p_notes text)
@@ -172,7 +172,7 @@ begin
 
   return new_license;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.admin_list_clients()
@@ -213,7 +213,7 @@ AS $function$
       and od.active = true
   ) d on true
   order by o.created_at desc;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.admin_list_devices(p_organization_id uuid)
@@ -248,7 +248,7 @@ begin
   where od.organization_id = p_organization_id
   order by coalesce(od.last_seen_at, od.created_at) desc;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.admin_set_device_limit(p_organization_id uuid, p_device_limit integer)
@@ -272,7 +272,7 @@ begin
   set device_limit = p_device_limit
   where id = p_organization_id;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.admin_set_organization_status(p_organization_id uuid, p_status text)
@@ -305,7 +305,7 @@ begin
 
   return org;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.check_license_status(p_organization_id uuid)
@@ -359,7 +359,7 @@ begin
     'device_limit', coalesce(v_org.device_limit, 1)
   );
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.complete_owner_profile(p_organization_id uuid, p_name text, p_phone text, p_email text)
@@ -439,7 +439,7 @@ begin
     'status', v_profile.status
   );
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.create_accounting_entry_for_org(p_organization_id uuid, p_source_type text, p_source_id uuid, p_entry_date date, p_description text, p_lines jsonb)
@@ -521,7 +521,7 @@ begin
 
   return v_entry;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.create_purchase_for_org(p_organization_id uuid, p_supplier text, p_total numeric, p_paid_amount numeric, p_remaining_amount numeric, p_is_credit boolean, p_created_at timestamp with time zone, p_items jsonb)
@@ -595,7 +595,7 @@ begin
 
   return v_purchase;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.delete_team_member(p_organization_id uuid, p_email text)
@@ -660,7 +660,7 @@ begin
   where p.organization_id = p_organization_id
     and lower(p.email) = v_email;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.generate_license_key()
@@ -686,7 +686,7 @@ begin
 
   return new_key;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.get_login_profile(p_identifier text)
@@ -733,7 +733,7 @@ begin
     'status', v_profile.status
   );
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.get_login_profile_for_org(p_organization_id uuid, p_identifier text)
@@ -762,7 +762,7 @@ AS $function$
       )
     )
   limit 1;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.get_login_profile_v2(p_identifier text)
@@ -795,7 +795,7 @@ AS $function$
     end,
     p.last_seen_at desc nulls last
   limit 1;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.get_organization_team(p_organization_id uuid)
@@ -839,7 +839,7 @@ AS $function$
       else 9
     end,
     lower(coalesce(p.name, p.email, ''));
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.get_role_catalog(p_organization_id uuid)
@@ -870,7 +870,7 @@ AS $function$
      or rd.organization_id = p_organization_id
   group by rd.code, rd.name, rd.description, rd.is_system
   order by rd.is_system desc, rd.name asc;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.is_admin()
@@ -908,7 +908,7 @@ begin
       )
   );
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.register_device_access(p_organization_id uuid, p_device_id text, p_device_name text)
@@ -1026,7 +1026,7 @@ begin
 
   return query select true, 'OK', v_count, v_limit;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.register_license_access(p_license_key text, p_store_name text, p_name text, p_phone text, p_email text)
@@ -1157,7 +1157,7 @@ begin
     v_role,
     v_status;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.rls_auto_enable()
@@ -1190,7 +1190,7 @@ BEGIN
      END IF;
   END LOOP;
 END;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.touch_team_user(p_organization_id uuid, p_name text, p_phone text, p_email text, p_role text)
@@ -1218,7 +1218,7 @@ begin
     and lower(email) = v_email
     and coalesce(nullif(status, ''), 'pending') = 'active';
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.trigger_send_push_notification()
@@ -1256,7 +1256,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.update_team_member_role_status(p_organization_id uuid, p_email text, p_role text, p_status text)
@@ -1350,7 +1350,7 @@ begin
     and lower(p.email) = v_email
   limit 1;
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.upsert_custom_role(p_organization_id uuid, p_code text, p_name text, p_permissions text[])
@@ -1415,7 +1415,7 @@ begin
   return query
   select v_code, trim(p_name), coalesce(p_permissions, array[]::text[]);
 end;
-$function$
+$function$;
 
 -- ============================================================
 -- Function: public.upsert_supplier_for_org(p_organization_id uuid, p_name text, p_phone text, p_country text, p_note text)
@@ -1475,4 +1475,4 @@ begin
 
   return v_supplier;
 end;
-$function$
+$function$;
