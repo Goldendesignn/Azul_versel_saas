@@ -1239,6 +1239,7 @@ function closeContextHelp() {
 }
 
 var azulOnboardingIndex = 0;
+var AZUL_ONBOARDING_SEEN_KEY = "azul_onboarding_seen_v1";
 var AZUL_ONBOARDING_STEPS = [
   {
     title: "Bem-vindo ao Azul",
@@ -1427,6 +1428,25 @@ function getAzulOnboardingStep(index) {
   return AZUL_ONBOARDING_STEPS[index] || AZUL_ONBOARDING_STEPS[0];
 }
 
+function getAzulOnboardingStorageKey() {
+  var organizationId = localStorage.getItem("azul_organization_id") || "local";
+  return AZUL_ONBOARDING_SEEN_KEY + "_" + organizationId;
+}
+
+function hasSeenAzulOnboarding() {
+  try {
+    return localStorage.getItem(getAzulOnboardingStorageKey()) === "1";
+  } catch (e) {
+    return false;
+  }
+}
+
+function markAzulOnboardingSeen() {
+  try {
+    localStorage.setItem(getAzulOnboardingStorageKey(), "1");
+  } catch (e) {}
+}
+
 function syncAzulOnboardingSpace() {
   var panel = document.getElementById("azulOnboardingPanel");
   var height = panel ? Math.ceil(panel.getBoundingClientRect().height) : 0;
@@ -1459,7 +1479,10 @@ function renderAzulOnboarding() {
   setTimeout(syncAzulOnboardingSpace, 0);
 }
 
-function openAzulOnboarding() {
+function openAzulOnboarding(forceManual) {
+  if (!forceManual && hasSeenAzulOnboarding()) return;
+  markAzulOnboardingSeen();
+
   azulOnboardingIndex = 0;
   openAzulOnboardingPage();
   renderAzulOnboarding();
@@ -1472,6 +1495,17 @@ function openAzulOnboarding() {
   document.body.classList.add("azul-onboarding-open");
   syncAzulOnboardingSpace();
   setTimeout(syncAzulOnboardingSpace, 80);
+}
+
+function restartAzulOnboarding() {
+  openAzulOnboarding(true);
+}
+
+function startAzulOnboardingOnce() {
+  if (hasSeenAzulOnboarding()) return;
+  setTimeout(function() {
+    openAzulOnboarding(false);
+  }, 650);
 }
 
 function closeAzulOnboarding() {
@@ -1552,6 +1586,7 @@ function initContextHelp() {
 window.openContextHelp = openContextHelp;
 window.closeContextHelp = closeContextHelp;
 window.openAzulOnboarding = openAzulOnboarding;
+window.restartAzulOnboarding = restartAzulOnboarding;
 window.closeAzulOnboarding = closeAzulOnboarding;
 window.goAzulOnboardingStep = goAzulOnboardingStep;
 window.nextAzulOnboardingStep = nextAzulOnboardingStep;
@@ -3563,7 +3598,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   startAzulNotifications();
   initContextHelp();
   applyAzulIcons();
-  setTimeout(openAzulOnboarding, 650);
+  startAzulOnboardingOnce();
   initPaymentLines();
   initCompraLines();
   cleanupLegacyCartFooter();

@@ -7175,6 +7175,39 @@ textarea,
   overflow-wrap: anywhere;
 }
 
+.onboarding-settings-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.onboarding-settings-subtitle {
+  max-width: 520px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.onboarding-settings-btn {
+  min-height: 42px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 9px;
+  background: var(--blue);
+  color: var(--accent-text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.onboarding-settings-btn:hover {
+  filter: brightness(1.05);
+}
+
 @media (max-width: 760px) {
   .user-settings-head {
     align-items: flex-start;
@@ -7189,6 +7222,15 @@ textarea,
     height: 48px;
     border-radius: 16px;
     font-size: 20px;
+  }
+
+  .onboarding-settings-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .onboarding-settings-btn {
+    width: 100%;
   }
 }
 
