@@ -5156,9 +5156,33 @@ function renderDashboardSmartStock(data) {
   }
 }
 
+function isDashboardServiceSaleItem(item) {
+  if (!item) return false;
+  if (item.isService || item.itemType === "service" || item.service_id) return true;
+  if (!item.product_id) return true;
+
+  var variation = String(item.variation || "").toLowerCase();
+  if (variation === "servico" || variation === "serviço" || variation.indexOf("servico") >= 0 || variation.indexOf("serviço") >= 0) {
+    return true;
+  }
+
+  if (Array.isArray(item.variations)) {
+    return item.variations.some(function(value) {
+      var text = String(value || "").toLowerCase();
+      return text === "servico" || text === "serviço";
+    });
+  }
+
+  return false;
+}
+
 function getDashboardSalesPerformance(sales, saleItems) {
   sales = sales || [];
   saleItems = saleItems || [];
+  var serviceItems = saleItems.filter(isDashboardServiceSaleItem);
+  var productItems = saleItems.filter(function(item) {
+    return !isDashboardServiceSaleItem(item);
+  });
 
   var totalSales = sales.reduce(function(sum, sale) {
     return sum + (Number(sale.total) || 0);
@@ -5168,8 +5192,20 @@ function getDashboardSalesPerformance(sales, saleItems) {
     return sum + (Number(item.profit) || 0);
   }, 0);
 
-  var itemsSold = saleItems.reduce(function(sum, item) {
+  var itemsSold = productItems.reduce(function(sum, item) {
     return sum + (Number(item.quantity) || 0);
+  }, 0);
+
+  var servicesSold = serviceItems.reduce(function(sum, item) {
+    return sum + (Number(item.quantity) || 0);
+  }, 0);
+
+  var serviceRevenue = serviceItems.reduce(function(sum, item) {
+    return sum + (Number(item.total) || 0);
+  }, 0);
+
+  var serviceProfit = serviceItems.reduce(function(sum, item) {
+    return sum + (Number(item.profit) || 0);
   }, 0);
 
   var averageTicket = sales.length ? totalSales / sales.length : 0;
@@ -5244,6 +5280,9 @@ function getDashboardSalesPerformance(sales, saleItems) {
     averageTicket: averageTicket,
     salesCount: sales.length,
     itemsSold: itemsSold,
+    servicesSold: servicesSold,
+    serviceRevenue: serviceRevenue,
+    serviceProfit: serviceProfit,
     marginPercent: marginPercent,
     bestClient: clients[0] || { name: "-", total: 0, count: 0 },
     bestSeller: sellers[0] || { name: "-", total: 0, count: 0 },
@@ -5266,6 +5305,9 @@ function renderDashboardSalesPerformance(data) {
   set("sales-perf-sales-count", data.salesCount || 0);
   set("sales-perf-items-sold", new Intl.NumberFormat(getLocale()).format(data.itemsSold || 0));
   set("sales-perf-margin", ((Number(data.marginPercent) || 0).toFixed(1)).replace(".", ",") + "%");
+  set("sales-service-count", new Intl.NumberFormat(getLocale()).format(data.servicesSold || 0));
+  set("sales-service-revenue", fmt(data.serviceRevenue || 0));
+  set("sales-service-profit", fmt(data.serviceProfit || 0));
 
   set("sales-perf-best-client", (data.bestClient && data.bestClient.name) || "-");
   set("sales-perf-best-client-total", fmt((data.bestClient && data.bestClient.total) || 0));

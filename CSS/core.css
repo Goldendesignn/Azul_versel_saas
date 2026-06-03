@@ -5323,14 +5323,29 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   margin-bottom: 14px;
 }
 
+#page-dashboard .sales-services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: -4px 0 14px;
+}
+
 #page-dashboard .sales-performance-kpi {
   background: var(--surface2);
   border-radius: 14px;
   padding: 14px;
 }
 
+#page-dashboard .sales-services-kpi {
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface2));
+  border: 1px solid color-mix(in srgb, var(--blue) 18%, var(--border));
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
 #page-dashboard .sales-performance-kpi span,
-#page-dashboard .sales-performance-highlight span {
+#page-dashboard .sales-performance-highlight span,
+#page-dashboard .sales-services-kpi span {
   display: block;
   font-size: 11px;
   color: var(--muted);
@@ -5339,19 +5354,22 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
 }
 
 #page-dashboard .sales-performance-kpi strong,
-#page-dashboard .sales-performance-highlight strong {
+#page-dashboard .sales-performance-highlight strong,
+#page-dashboard .sales-services-kpi strong {
   display: block;
   margin-top: 8px;
   color: var(--blue);
   font-size: 20px;
 }
 
-#page-dashboard .sales-performance-kpi.green strong {
+#page-dashboard .sales-performance-kpi.green strong,
+#page-dashboard .sales-services-kpi.green strong {
   color: var(--green);
 }
 
 #page-dashboard .sales-performance-kpi small,
-#page-dashboard .sales-performance-highlight small {
+#page-dashboard .sales-performance-highlight small,
+#page-dashboard .sales-services-kpi small {
   display: block;
   margin-top: 4px;
   color: var(--muted);
@@ -5412,6 +5430,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
 
 @media (max-width: 1000px) {
   #page-dashboard .sales-performance-grid,
+  #page-dashboard .sales-services-grid,
   #page-dashboard .sales-performance-body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5431,6 +5450,10 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   #page-dashboard .sales-performance-grid,
   #page-dashboard .sales-performance-body {
     grid-template-columns: 1fr;
+  }
+
+  #page-dashboard .sales-services-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 #page-dashboard .accounting-summary-card {
