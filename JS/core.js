@@ -10557,6 +10557,7 @@ function getText(key) {
       tab_comptabilite: 'Contabilidade',
       tab_corrections: 'Correcoes',
       tab_revendeurs: 'Revendedores',
+      tab_online: 'Venda Online',
       save_settings: 'Guardar configuracoes',
       reset_setup: 'Reiniciar configuracao',
       clear_cart: 'Limpar',
@@ -10709,7 +10710,7 @@ function applyPortugueseText() {
   try {
     document.documentElement.lang = 'pt';
     var tabs = document.querySelectorAll('.nav .tab');
-    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_rh','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_settings'];
+    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_rh','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_online','tab_settings'];
     tabs.forEach(function(tab, index) {
       if (keys[index]) tab.textContent = getText(keys[index]);
     });
