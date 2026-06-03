@@ -909,6 +909,13 @@
           <video id="barcodeScannerVideo" autoplay muted playsinline></video>
           <div class="barcode-scan-line"></div>
         </div>
+        <div class="barcode-cart-strip" id="barcodeCartStrip" style="display:none;">
+          <div>
+            <strong id="barcodeCartTitle">Carrinho vazio</strong>
+            <span id="barcodeCartMeta">0 produtos | 0 Kz</span>
+          </div>
+          <button type="button" onclick="closeBarcodeScanner(); openMobileCart();">Ver carrinho</button>
+        </div>
         <div class="barcode-scanner-status" id="barcodeScannerStatus">A iniciar camera...</div>
       </div>
     </div>

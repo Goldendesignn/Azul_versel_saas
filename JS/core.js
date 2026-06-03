@@ -5867,6 +5867,7 @@ var barcodeScannerStream = null;
 var barcodeScannerFrame = null;
 var barcodeScannerBusy = false;
 var barcodeScannerTarget = null;
+var barcodeLastScan = { code: "", at: 0 };
 
 function setVendaProductsLoading(isLoading) {
   productsLoading = isLoading;
@@ -6367,7 +6368,7 @@ async function addProductByBarcode(code, options) {
 
   if (!code) {
     setBarcodeStatus("Lê ou escreve um codigo de barras.", "warning");
-    return false;
+    return null;
   }
 
   if (!products || !products.length) {
@@ -6380,7 +6381,7 @@ async function addProductByBarcode(code, options) {
   if (!product) {
     setBarcodeStatus("Produto nao encontrado: " + code, "error");
     toast("Produto nao encontrado para o codigo: " + code, "error");
-    return false;
+    return null;
   }
 
   if (matches.length > 1) {
@@ -6393,17 +6394,21 @@ async function addProductByBarcode(code, options) {
     switchSaleCatalog("products");
   }
 
-  addToCart(product.id || product.name, product.stockBoutique);
+  addToCart(product.id || product.name, product.stockBoutique, {
+    suppressFocus: !!options.suppressFocus
+  });
+  toast("Produto adicionado: " + product.name, "success");
+  renderBarcodeScannerCartStrip(product);
 
   if (!options.keepInput) {
     var input = document.getElementById("barcodeInput");
     if (input) {
       input.value = "";
-      input.focus();
+      if (!options.suppressFocus) input.focus();
     }
   }
 
-  return true;
+  return product;
 }
 
 function handleBarcodeInputKey(event) {
@@ -6520,21 +6525,47 @@ function applyBarcodeToCompraLine(index, code) {
   return true;
 }
 
-function handleBarcodeScanResult(code) {
+async function handleBarcodeScanResult(code, options) {
+  options = options || {};
   var target = barcodeScannerTarget || { mode: "sale" };
 
   if (target.mode === "purchase") {
     applyBarcodeToCompraLine(target.index, code);
-    return;
+    return null;
   }
 
   var input = document.getElementById("barcodeInput");
   if (input) input.value = code;
-  addProductByBarcode(code);
+  return await addProductByBarcode(code, {
+    keepInput: !!options.keepInput,
+    suppressFocus: !!options.suppressFocus
+  });
 }
 
 function openCompraBarcodeScanner(index) {
   openBarcodeScanner({ mode: "purchase", index: index });
+}
+
+function renderBarcodeScannerCartStrip(lastProduct) {
+  var strip = document.getElementById("barcodeCartStrip");
+  if (!strip) return;
+
+  var title = document.getElementById("barcodeCartTitle");
+  var meta = document.getElementById("barcodeCartMeta");
+  var count = getCartCountMobile();
+  var total = getCartTotalMobile();
+
+  strip.style.display = cart && cart.length ? "flex" : "none";
+
+  if (title) {
+    title.textContent = lastProduct && lastProduct.name
+      ? "Adicionado: " + lastProduct.name
+      : "Carrinho actualizado";
+  }
+
+  if (meta) {
+    meta.textContent = count + " produtos | " + fmt(total);
+  }
 }
 
 async function openBarcodeScanner(options) {
@@ -6543,6 +6574,7 @@ async function openBarcodeScanner(options) {
 
   if (!modal || !video) return;
   barcodeScannerTarget = options || { mode: "sale" };
+  renderBarcodeScannerCartStrip();
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     barcodeScannerTarget = null;
@@ -6593,11 +6625,48 @@ async function scanBarcodeVideoFrame(detector, video) {
       barcodeScannerBusy = true;
       var code = codes[0].rawValue || codes[0].rawValueText || "";
       var target = barcodeScannerTarget;
-      setBarcodeScannerStatus("Codigo encontrado: " + code, "success");
-      closeBarcodeScanner();
-      barcodeScannerTarget = target;
-      await handleBarcodeScanResult(code);
-      barcodeScannerTarget = null;
+      var now = Date.now();
+
+      if (barcodeLastScan.code === code && now - barcodeLastScan.at < 1200) {
+        barcodeScannerBusy = false;
+        barcodeScannerFrame = window.requestAnimationFrame(function() {
+          scanBarcodeVideoFrame(detector, video);
+        });
+        return;
+      }
+
+      barcodeLastScan = { code: code, at: now };
+
+      if (target && target.mode === "purchase") {
+        setBarcodeScannerStatus("Codigo encontrado: " + code, "success");
+        closeBarcodeScanner();
+        barcodeScannerTarget = target;
+        await handleBarcodeScanResult(code);
+        barcodeScannerTarget = null;
+        return;
+      }
+
+      barcodeScannerTarget = target || { mode: "sale" };
+      setBarcodeScannerStatus("Produto detectado. A adicionar ao carrinho...", "success");
+      var addedProduct = await handleBarcodeScanResult(code, {
+        keepInput: true,
+        suppressFocus: true
+      });
+
+      if (addedProduct) {
+        setBarcodeScannerStatus("Adicionado: " + addedProduct.name + ". Pode ler o proximo produto.", "success");
+      } else {
+        setBarcodeScannerStatus("Codigo nao encontrado: " + code + ". Pode tentar outro.", "error");
+      }
+
+      setTimeout(function() {
+        barcodeScannerBusy = false;
+        if (barcodeScannerStream) {
+          barcodeScannerFrame = window.requestAnimationFrame(function() {
+            scanBarcodeVideoFrame(detector, video);
+          });
+        }
+      }, 850);
       return;
     }
   } catch (e) {
@@ -6799,7 +6868,8 @@ function filterProds() {
   renderProds(list);
 }
 // ===== CART =====
-function addToCart(productIdOrName, stock) {
+function addToCart(productIdOrName, stock, options) {
+  options = options || {};
   var product = (products || []).find(function(p) {
     return String(p.id) === String(productIdOrName);
   }) || (products || []).find(function(p) {
@@ -6824,13 +6894,16 @@ function addToCart(productIdOrName, stock) {
 
   renderCart();
 
-  setTimeout(function() {
-    var inputs = document.querySelectorAll(".ci-price-input");
-    if (inputs.length) inputs[inputs.length - 1].focus();
-  }, 50);
+  if (!options.suppressFocus) {
+    setTimeout(function() {
+      var inputs = document.querySelectorAll(".ci-price-input");
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }, 50);
+  }
 }
 
-function addServiceToCart(serviceIdOrName) {
+function addServiceToCart(serviceIdOrName, options) {
+  options = options || {};
   var service = (services || []).find(function(s) {
     return String(s.id) === String(serviceIdOrName);
   }) || (services || []).find(function(s) {
@@ -6858,10 +6931,12 @@ function addServiceToCart(serviceIdOrName) {
 
   renderCart();
 
-  setTimeout(function() {
-    var inputs = document.querySelectorAll(".ci-price-input");
-    if (inputs.length) inputs[inputs.length - 1].focus();
-  }, 50);
+  if (!options.suppressFocus) {
+    setTimeout(function() {
+      var inputs = document.querySelectorAll(".ci-price-input");
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }, 50);
+  }
 }
 
 
@@ -6875,6 +6950,7 @@ function renderCart() {
     cleanupLegacyCartFooter();
     updatePaymentStatus();
     renderMobileCartBar();
+    renderBarcodeScannerCartStrip();
     return;
   }
   el.innerHTML = '';
@@ -6915,6 +6991,7 @@ function renderCart() {
   cleanupLegacyCartFooter();
   updatePaymentStatus();
   renderMobileCartBar();
+  renderBarcodeScannerCartStrip();
 }
 
 function chgQty(i, d) {
