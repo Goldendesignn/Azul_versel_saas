@@ -2130,6 +2130,41 @@ button.az-icon-button,
 }
 .form-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--blue) 30%, transparent); }
 
+.achat-code-scan-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.achat-code-scan-wrap .achat-code-input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  min-width: 0;
+}
+
+.achat-code-scan-btn {
+  width: 38px;
+  border: 1px solid var(--border);
+  border-left: 0;
+  border-radius: 0 7px 7px 0;
+  background: color-mix(in srgb, var(--blue) 11%, var(--surface2));
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.achat-code-scan-btn .az-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.achat-code-scan-btn:hover {
+  background: var(--blue);
+  color: var(--accent-text);
+}
+
 /* Transfer visual */
 /* DASH FILTERS */
 .dash-filters {

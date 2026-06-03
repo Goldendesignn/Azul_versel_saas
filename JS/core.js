@@ -5866,6 +5866,7 @@ var barcodeKeyboardTimer = null;
 var barcodeScannerStream = null;
 var barcodeScannerFrame = null;
 var barcodeScannerBusy = false;
+var barcodeScannerTarget = null;
 
 function setVendaProductsLoading(isLoading) {
   productsLoading = isLoading;
@@ -6501,19 +6502,57 @@ async function getBarcodeDetectorInstance() {
   return new BarcodeDetector();
 }
 
-async function openBarcodeScanner() {
+function applyBarcodeToCompraLine(index, code) {
+  index = Number(index);
+  code = normalizeBarcodeValue(code);
+
+  if (!achatLines[index] || !code) return false;
+
+  achatLines[index].code = code;
+  renderCompraLines();
+
+  setTimeout(function() {
+    var input = document.querySelector('[data-achat-code-index="' + index + '"]');
+    if (input) input.focus();
+  }, 50);
+
+  toast("Codigo de barras inserido.", "success");
+  return true;
+}
+
+function handleBarcodeScanResult(code) {
+  var target = barcodeScannerTarget || { mode: "sale" };
+
+  if (target.mode === "purchase") {
+    applyBarcodeToCompraLine(target.index, code);
+    return;
+  }
+
+  var input = document.getElementById("barcodeInput");
+  if (input) input.value = code;
+  addProductByBarcode(code);
+}
+
+function openCompraBarcodeScanner(index) {
+  openBarcodeScanner({ mode: "purchase", index: index });
+}
+
+async function openBarcodeScanner(options) {
   var modal = document.getElementById("barcodeScannerModal");
   var video = document.getElementById("barcodeScannerVideo");
 
   if (!modal || !video) return;
+  barcodeScannerTarget = options || { mode: "sale" };
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    barcodeScannerTarget = null;
     toast("Camera indisponivel neste navegador. Usa leitor USB/Bluetooth.", "error");
     return;
   }
 
   var detector = await getBarcodeDetectorInstance();
   if (!detector) {
+    barcodeScannerTarget = null;
     toast("Este navegador nao suporta leitura por camera. Usa leitor USB/Bluetooth.", "error");
     return;
   }
@@ -6553,11 +6592,12 @@ async function scanBarcodeVideoFrame(detector, video) {
     if (codes && codes.length) {
       barcodeScannerBusy = true;
       var code = codes[0].rawValue || codes[0].rawValueText || "";
+      var target = barcodeScannerTarget;
       setBarcodeScannerStatus("Codigo encontrado: " + code, "success");
       closeBarcodeScanner();
-      var input = document.getElementById("barcodeInput");
-      if (input) input.value = code;
-      await addProductByBarcode(code);
+      barcodeScannerTarget = target;
+      await handleBarcodeScanResult(code);
+      barcodeScannerTarget = null;
       return;
     }
   } catch (e) {
@@ -6593,6 +6633,7 @@ function closeBarcodeScanner() {
   }
 
   barcodeScannerBusy = false;
+  barcodeScannerTarget = null;
 
   if (modal) {
     modal.style.display = "none";
@@ -8827,6 +8868,16 @@ function removeCompraLine(i) {
   renderCompraLines();
 }
 
+function renderCompraCodeScannerInput(index, line) {
+  var value = escapeDespesaHtml((line && line.code) || "");
+  return '<div class="achat-code-scan-wrap">' +
+    '<input type="text" data-achat-code-index="' + index + '" class="form-input achat-cell-input achat-code-input" value="' + value + '" placeholder="Codigo" oninput="achatLines[' + index + '].code=this.value">' +
+    '<button type="button" class="achat-code-scan-btn" onclick="openCompraBarcodeScanner(' + index + ')" aria-label="Ler codigo de barras">' +
+      (typeof azulIcon === "function" ? azulIcon("barcode") : "|||") +
+    '</button>' +
+  '</div>';
+}
+
 function renderCompraLines() {
   var tbody = document.getElementById('achat-lines-body');
   if (!tbody) return;
@@ -8861,7 +8912,7 @@ function renderCompraLines() {
           '<input type="text" class="form-input achat-cell-input prod al-prod" value="' + (line.prod || '') + '" placeholder="Produto..." list="prodList" oninput="achatLines[' + i + '].prod=this.value" onchange="applyCompraProductPreset(' + i + ', this.value)">' +
           '<div class="achat-mini-grid">' +
             //code du produit
-            '<input type="text" class="form-input achat-cell-input" value="' + (line.code || '') + '" placeholder="Codigo" oninput="achatLines[' + i + '].code=this.value">' +
+            renderCompraCodeScannerInput(i, line) +
             //categorie
             '<input type="text" class="form-input achat-cell-input" value="' + (line.category || '') + '" placeholder="Categoria" oninput="achatLines[' + i + '].category=this.value">' +
           '</div>' +
@@ -8879,7 +8930,7 @@ function renderCompraLines() {
           variationChips +
           //selection image
           '<div class="achat-mini-grid">' +
-            '<input type="text" class="form-input achat-cell-input" value="' + (line.code || '') + '" placeholder="Codigo" oninput="achatLines[' + i + '].code=this.value">' +
+            renderCompraCodeScannerInput(i, line) +
             '<input type="text" class="form-input achat-cell-input" value="' + (line.category || '') + '" placeholder="Categoria" oninput="achatLines[' + i + '].category=this.value">' +
           '</div>' +
         '</div>' +
