@@ -220,6 +220,7 @@
     <button class="tab" onclick="goTo('comptabilite', this)">Contabilidade</button>
     <button class="tab" onclick="goTo('corrections', this)">Correcoes</button>
     <button class="tab" onclick="goTo('revendeurs', this)">Revendedores</button>
+    <button class="tab" onclick="goTo('online', this)">Venda Online</button>
     <button class="tab" onclick="goTo('settings', this)"> Definicoes</button>
   </div>
 
@@ -1264,6 +1265,91 @@
     </div>
 
     <!-- DEFINICOES -->
+    <div class="page" id="page-online">
+      <div class="online-store-shell">
+        <div class="online-store-hero">
+          <div>
+            <div class="eyebrow">WhatsApp</div>
+            <h2>Venda Online</h2>
+            <p>Cria uma vitrine publica com produtos selecionados e recebe pedidos directamente no WhatsApp.</p>
+          </div>
+          <div class="online-store-hero-actions">
+            <button class="filter-btn" type="button" onclick="loadOnlineStoreSettings(true)">Atualizar</button>
+            <button class="form-submit" type="button" onclick="saveOnlineStoreSettings()">Guardar loja</button>
+          </div>
+        </div>
+
+        <div class="online-store-grid">
+          <section class="online-store-card">
+            <div class="card-title">Configuracao da loja</div>
+            <div class="online-store-form">
+              <label class="online-store-toggle">
+                <input type="checkbox" id="online-active">
+                <span>
+                  <strong>Loja online ativa</strong>
+                  <small>Quando estiver ativa, os clientes podem abrir o catalogo publico.</small>
+                </span>
+              </label>
+              <div class="form-group">
+                <label class="form-label">Nome publico</label>
+                <input type="text" class="form-input" id="online-store-name" placeholder="Nome da loja no catalogo">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Numero WhatsApp</label>
+                <input type="text" class="form-input" id="online-whatsapp" placeholder="Ex: 244923000000">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Slug da loja</label>
+                <input type="text" class="form-input" id="online-slug" placeholder="Ex: minha-loja">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Mensagem inicial</label>
+                <input type="text" class="form-input" id="online-message" placeholder="Ex: Ola, quero comprar estes produtos">
+              </div>
+              <label class="online-store-toggle compact">
+                <input type="checkbox" id="online-show-stock" checked>
+                <span>
+                  <strong>Mostrar stock</strong>
+                  <small>Ajuda o cliente a saber se o produto esta disponivel.</small>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <aside class="online-store-card online-link-card">
+            <div class="card-title">Link publico</div>
+            <div class="online-link-box" id="online-public-link">Guarda a configuracao para gerar o link.</div>
+            <div class="online-qr-box">
+              <img id="online-store-qr" alt="QR code da loja online" style="display:none;">
+              <div class="empty" id="online-qr-empty">QR code aparece aqui.</div>
+            </div>
+            <div class="online-store-actions">
+              <button type="button" class="filter-btn" onclick="copyOnlineStoreLink()">Copiar link</button>
+              <button type="button" class="filter-btn ghost" onclick="openOnlineStoreLink()">Abrir loja</button>
+            </div>
+            <div class="online-store-status" id="online-store-status">Configura a loja e escolhe os produtos.</div>
+          </aside>
+        </div>
+
+        <section class="online-store-card">
+          <div class="online-products-head">
+            <div>
+              <div class="card-title">Produtos da vitrine</div>
+              <p>Seleciona os produtos que vao aparecer na pagina publica.</p>
+            </div>
+            <div class="online-products-actions">
+              <input type="text" class="form-input" id="online-product-search" placeholder="Pesquisar produto..." oninput="renderOnlineProductList()">
+              <button type="button" class="filter-btn" onclick="selectAllOnlineProducts(true)">Todos</button>
+              <button type="button" class="filter-btn ghost" onclick="selectAllOnlineProducts(false)">Limpar</button>
+            </div>
+          </div>
+          <div class="online-products-list" id="online-products-list">
+            <div class="empty">A carregar produtos...</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
     <div class="page" id="page-settings">
       <div class="section-title">Definicoes</div>
 

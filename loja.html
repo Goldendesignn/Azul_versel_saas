@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b3d91">
+  <title>Loja Azul</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="Assets/icon-192.png" type="image/png">
+  <link rel="stylesheet" href="CSS/loja.css">
+</head>
+<body>
+  <main class="shop-shell">
+    <header class="shop-header">
+      <div class="shop-brand">
+        <img src="Assets/icon-192.png" alt="">
+        <div>
+          <strong id="shopName">Loja Azul</strong>
+          <span id="shopSubtitle">Catalogo WhatsApp</span>
+        </div>
+      </div>
+      <button type="button" class="shop-cart-button" onclick="scrollToCart()">
+        Carrinho <span id="shopCartCount">0</span>
+      </button>
+    </header>
+
+    <section class="shop-hero">
+      <div>
+        <span>Compra pelo WhatsApp</span>
+        <h1 id="shopHeroTitle">Escolha os produtos</h1>
+        <p id="shopWelcome">Adiciona produtos ao carrinho e envia o pedido pelo WhatsApp.</p>
+      </div>
+    </section>
+
+    <section class="shop-search">
+      <input type="text" id="shopSearch" placeholder="Pesquisar produto..." oninput="renderShopProducts()">
+    </section>
+
+    <section class="shop-products" id="shopProducts">
+      <div class="shop-empty">A carregar loja...</div>
+    </section>
+
+    <section class="shop-cart" id="shopCart">
+      <div class="shop-cart-head">
+        <div>
+          <span>Pedido</span>
+          <strong id="shopCartTotal">0 Kz</strong>
+        </div>
+        <button type="button" onclick="clearShopCart()">Limpar</button>
+      </div>
+      <div class="shop-cart-list" id="shopCartList">
+        <div class="shop-empty">Nenhum produto no carrinho.</div>
+      </div>
+      <button type="button" class="shop-whatsapp-btn" id="shopWhatsappBtn" onclick="sendShopCartToWhatsApp()" disabled>
+        Enviar pedido no WhatsApp
+      </button>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="JS/supabase.js"></script>
+  <script src="JS/loja.js"></script>
+</body>
+</html>

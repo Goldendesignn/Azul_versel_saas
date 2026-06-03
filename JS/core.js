@@ -1638,6 +1638,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:comptabilite": { label: "Contabilidade", group: "Paginas" },
   "page:corrections": { label: "Correcoes", group: "Paginas" },
   "page:revendeurs": { label: "Revendedores", group: "Paginas" },
+  "page:online": { label: "Venda Online", group: "Paginas" },
   "page:rh": { label: "Recursos Humanos", group: "Paginas" },
   "page:settings": { label: "Definicoes", group: "Paginas" },
   "page:import": { label: "Importacao", group: "Paginas" },
@@ -1829,6 +1830,7 @@ var AZUL_ICON_PATHS = {
   comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
   corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
   revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
+  online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
   settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1.82V22a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.82-.33H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1.82V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.21.64.49.86.83.22.34.56.54.96.54H22a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51.63z"></path>',
   import: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path>',
   search: '<circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path>',
@@ -1856,6 +1858,7 @@ var AZUL_PAGE_ICON_MAP = {
   comptabilite: "comptabilite",
   corrections: "corrections",
   revendeurs: "revendeurs",
+  online: "online",
   settings: "settings",
   import: "import"
 };
@@ -3808,6 +3811,9 @@ function goTo(page, btn) {
       renderRevPayLines();
       loadOpenConsignations();
       switchRevendeurTab('create', document.getElementById('rev-tab-create'));
+    }
+    if (page === 'online') {
+      loadOnlineStoreSettings();
     }
     if (page === 'achat') {
       switchCompraTab('novo', document.getElementById('achat-tab-novo'));
@@ -7065,6 +7071,287 @@ function openPhoneScannerLink() {
     return;
   }
   window.open(phoneScannerUrl, "_blank", "noopener,noreferrer");
+}
+
+var onlineStoreSettings = null;
+var onlineSelectedProductIds = {};
+var onlineStoreLink = "";
+var onlineStoreLoading = false;
+
+function normalizeOnlinePhone(value) {
+  return String(value || "").replace(/[^\d]/g, "");
+}
+
+function slugifyOnlineStore(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}
+
+function getDefaultOnlineSlug() {
+  var base = localStorage.getItem("azul_organization_name") || config.name || "loja-azul";
+  var slug = slugifyOnlineStore(base);
+  if (!slug) slug = "loja-azul";
+  return slug + "-" + String(getAzulOrganizationId() || "").slice(0, 8);
+}
+
+function isOnlineStoreTableMissing(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  return msg.indexOf("online_store_settings") >= 0 &&
+    (msg.indexOf("could not find") >= 0 ||
+      msg.indexOf("schema cache") >= 0 ||
+      msg.indexOf("does not exist") >= 0 ||
+      msg.indexOf("relation") >= 0);
+}
+
+function getOnlineStorePublicUrl(settings) {
+  settings = settings || onlineStoreSettings || {};
+  var url = new URL("loja.html", window.location.href);
+  if (settings.slug) {
+    url.searchParams.set("loja", settings.slug);
+  } else {
+    url.searchParams.set("org", getAzulOrganizationId());
+  }
+  return url.toString();
+}
+
+function setOnlineStoreStatus(message, isError) {
+  var el = document.getElementById("online-store-status");
+  if (!el) return;
+  el.textContent = message || "";
+  el.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function updateOnlineStoreLink(settings) {
+  var linkBox = document.getElementById("online-public-link");
+  var qr = document.getElementById("online-store-qr");
+  var qrEmpty = document.getElementById("online-qr-empty");
+
+  onlineStoreLink = settings && settings.active ? getOnlineStorePublicUrl(settings) : "";
+
+  if (linkBox) {
+    linkBox.textContent = onlineStoreLink || "Ativa e guarda a loja para gerar o link publico.";
+    linkBox.title = onlineStoreLink || "";
+  }
+
+  if (qr) {
+    qr.style.display = onlineStoreLink ? "block" : "none";
+    qr.src = onlineStoreLink
+      ? "https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=" + encodeURIComponent(onlineStoreLink)
+      : "";
+  }
+
+  if (qrEmpty) {
+    qrEmpty.style.display = onlineStoreLink ? "none" : "block";
+  }
+}
+
+function applyOnlineStoreForm(settings) {
+  settings = settings || {};
+
+  var active = document.getElementById("online-active");
+  var storeName = document.getElementById("online-store-name");
+  var whatsapp = document.getElementById("online-whatsapp");
+  var slug = document.getElementById("online-slug");
+  var message = document.getElementById("online-message");
+  var showStock = document.getElementById("online-show-stock");
+
+  if (active) active.checked = !!settings.active;
+  if (storeName) storeName.value = settings.store_name || config.name || localStorage.getItem("azul_organization_name") || "Azul";
+  if (whatsapp) whatsapp.value = settings.whatsapp_phone || config.phone || "";
+  if (slug) slug.value = settings.slug || getDefaultOnlineSlug();
+  if (message) message.value = settings.welcome_message || "Ola, quero comprar estes produtos:";
+  if (showStock) showStock.checked = settings.show_stock !== false;
+
+  onlineSelectedProductIds = {};
+  (Array.isArray(settings.product_ids) ? settings.product_ids : []).forEach(function(id) {
+    onlineSelectedProductIds[String(id)] = true;
+  });
+
+  updateOnlineStoreLink(settings);
+}
+
+function collectSelectedOnlineProductIds() {
+  var ids = [];
+  document.querySelectorAll(".online-product-check").forEach(function(input) {
+    if (input.checked && input.value) ids.push(input.value);
+  });
+  return ids;
+}
+
+function renderOnlineProductList() {
+  var list = document.getElementById("online-products-list");
+  if (!list) return;
+
+  var q = String((document.getElementById("online-product-search") || {}).value || "").trim().toLowerCase();
+  var source = products || [];
+  var rows = q ? source.filter(function(product) {
+    return productSearchText(product).indexOf(q) >= 0;
+  }) : source;
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhum produto encontrado.</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(product) {
+    var id = String(product.id || "");
+    var checked = onlineSelectedProductIds[id] ? " checked" : "";
+    var safeName = escapeDespesaHtml(product.name || "");
+    var safePhoto = escapeDespesaHtml(product.photo || "");
+    var img = safePhoto
+      ? '<img src="' + safePhoto + '" alt="' + safeName + '">'
+      : '<div class="online-product-placeholder">' + escapeDespesaHtml(String(product.name || "A").charAt(0).toUpperCase()) + '</div>';
+
+    return '<label class="online-product-card">' +
+      img +
+      '<span class="online-product-info">' +
+        '<strong title="' + safeName + '">' + safeName + '</strong>' +
+        '<span>' + fmt(product.salePrice || product.price || 0) + '</span>' +
+        '<small>' + escapeDespesaHtml(product.category || "Sem categoria") + ' | Loja: ' + (Number(product.stockBoutique) || 0) + '</small>' +
+      '</span>' +
+      '<input class="online-product-check" type="checkbox" value="' + escapeDespesaHtml(id) + '"' + checked + ' onchange="syncOnlineProductSelection(this)">' +
+    '</label>';
+  }).join("");
+}
+
+function syncOnlineProductSelection(input) {
+  if (!input || !input.value) return;
+  if (input.checked) onlineSelectedProductIds[String(input.value)] = true;
+  else delete onlineSelectedProductIds[String(input.value)];
+}
+
+function selectAllOnlineProducts(select) {
+  (products || []).forEach(function(product) {
+    if (!product || !product.id) return;
+    if (select) onlineSelectedProductIds[String(product.id)] = true;
+    else delete onlineSelectedProductIds[String(product.id)];
+  });
+  renderOnlineProductList();
+}
+
+async function loadOnlineStoreSettings(forceRefresh) {
+  if (onlineStoreLoading && !forceRefresh) return;
+  onlineStoreLoading = true;
+  setOnlineStoreStatus("A carregar loja online...", false);
+
+  try {
+    if (!products || !products.length || forceRefresh) {
+      await loadProducts(forceRefresh);
+    }
+
+    var organizationId = getAzulOrganizationId();
+    var result = await supabaseClient
+      .from("online_store_settings")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+
+    if (result.error) throw result.error;
+
+    onlineStoreSettings = result.data || {
+      organization_id: organizationId,
+      active: false,
+      slug: getDefaultOnlineSlug(),
+      whatsapp_phone: config.phone || "",
+      store_name: config.name || localStorage.getItem("azul_organization_name") || "Azul",
+      welcome_message: "Ola, quero comprar estes produtos:",
+      show_stock: true,
+      product_ids: []
+    };
+
+    applyOnlineStoreForm(onlineStoreSettings);
+    renderOnlineProductList();
+    setOnlineStoreStatus(onlineStoreSettings.active ? "Loja online ativa." : "Loja online desativada.", false);
+  } catch (e) {
+    console.error("Erro loja online:", e);
+    if (isOnlineStoreTableMissing(e)) {
+      setOnlineStoreStatus("Executa SQL/online_store.sql no Supabase antes de usar este modulo.", true);
+    } else {
+      setOnlineStoreStatus("Erro loja online: " + (e.message || e), true);
+    }
+  } finally {
+    onlineStoreLoading = false;
+  }
+}
+
+async function saveOnlineStoreSettings() {
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) return;
+
+  var active = !!((document.getElementById("online-active") || {}).checked);
+  var phone = normalizeOnlinePhone((document.getElementById("online-whatsapp") || {}).value);
+  var slug = slugifyOnlineStore((document.getElementById("online-slug") || {}).value) || getDefaultOnlineSlug();
+  var productIds = collectSelectedOnlineProductIds();
+
+  if (active && !phone) {
+    toast("Informe o numero WhatsApp antes de ativar a loja.", "error");
+    return;
+  }
+
+  if (active && !productIds.length) {
+    toast("Seleciona pelo menos um produto para publicar.", "error");
+    return;
+  }
+
+  var payload = {
+    organization_id: organizationId,
+    active: active,
+    slug: slug,
+    whatsapp_phone: phone,
+    store_name: String((document.getElementById("online-store-name") || {}).value || config.name || "Azul").trim(),
+    welcome_message: String((document.getElementById("online-message") || {}).value || "Ola, quero comprar estes produtos:").trim(),
+    show_stock: !!((document.getElementById("online-show-stock") || {}).checked),
+    product_ids: productIds
+  };
+
+  try {
+    var result = await supabaseClient
+      .from("online_store_settings")
+      .upsert(payload, { onConflict: "organization_id" })
+      .select()
+      .single();
+
+    if (result.error) throw result.error;
+
+    onlineStoreSettings = result.data;
+    applyOnlineStoreForm(onlineStoreSettings);
+    renderOnlineProductList();
+    setOnlineStoreStatus(active ? "Loja online guardada e ativa." : "Loja online guardada, mas desativada.", false);
+    toast("Loja online guardada.", "success");
+  } catch (e) {
+    console.error("Erro guardar loja online:", e);
+    toast("Erro loja online: " + (e.message || e), "error");
+    if (isOnlineStoreTableMissing(e)) {
+      setOnlineStoreStatus("Executa SQL/online_store.sql no Supabase.", true);
+    }
+  }
+}
+
+async function copyOnlineStoreLink() {
+  if (!onlineStoreLink) {
+    toast("Ativa e guarda a loja primeiro.", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(onlineStoreLink);
+    toast("Link da loja copiado.", "success");
+  } catch (e) {
+    toast("Nao foi possivel copiar o link.", "error");
+  }
+}
+
+function openOnlineStoreLink() {
+  if (!onlineStoreLink) {
+    toast("Ativa e guarda a loja primeiro.", "error");
+    return;
+  }
+  window.open(onlineStoreLink, "_blank", "noopener,noreferrer");
 }
 //==============modification carde product=====================
 function renderProds(list) {
