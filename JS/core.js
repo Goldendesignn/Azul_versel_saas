@@ -5868,6 +5868,8 @@ var barcodeScannerFrame = null;
 var barcodeScannerBusy = false;
 var barcodeScannerTarget = null;
 var barcodeLastScan = { code: "", at: 0 };
+var BARCODE_DUPLICATE_DELAY_MS = 2600;
+var BARCODE_SCAN_RESUME_DELAY_MS = 1800;
 
 function setVendaProductsLoading(isLoading) {
   productsLoading = isLoading;
@@ -6627,7 +6629,7 @@ async function scanBarcodeVideoFrame(detector, video) {
       var target = barcodeScannerTarget;
       var now = Date.now();
 
-      if (barcodeLastScan.code === code && now - barcodeLastScan.at < 1200) {
+      if (barcodeLastScan.code === code && now - barcodeLastScan.at < BARCODE_DUPLICATE_DELAY_MS) {
         barcodeScannerBusy = false;
         barcodeScannerFrame = window.requestAnimationFrame(function() {
           scanBarcodeVideoFrame(detector, video);
@@ -6654,7 +6656,7 @@ async function scanBarcodeVideoFrame(detector, video) {
       });
 
       if (addedProduct) {
-        setBarcodeScannerStatus("Adicionado: " + addedProduct.name + ". Pode ler o proximo produto.", "success");
+        setBarcodeScannerStatus("Adicionado: " + addedProduct.name + ". Aguarde um instante para ler o proximo produto.", "success");
       } else {
         setBarcodeScannerStatus("Codigo nao encontrado: " + code + ". Pode tentar outro.", "error");
       }
@@ -6666,7 +6668,7 @@ async function scanBarcodeVideoFrame(detector, video) {
             scanBarcodeVideoFrame(detector, video);
           });
         }
-      }, 850);
+      }, BARCODE_SCAN_RESUME_DELAY_MS);
       return;
     }
   } catch (e) {
