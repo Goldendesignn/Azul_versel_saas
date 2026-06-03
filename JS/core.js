@@ -5873,6 +5873,9 @@ var BARCODE_SCAN_RESUME_DELAY_MS = 1800;
 var phoneScannerSession = null;
 var phoneScannerChannel = null;
 var phoneScannerUrl = "";
+var phoneScannerPollTimer = null;
+var phoneScannerModalAutoHidden = false;
+var phoneScannerProcessedEvents = {};
 
 function setVendaProductsLoading(isLoading) {
   productsLoading = isLoading;
@@ -6782,6 +6785,28 @@ function stopPhoneScannerRealtime() {
   phoneScannerChannel = null;
 }
 
+function hidePhoneScannerModalAfterConnect() {
+  var modal = document.getElementById("phoneScannerModal");
+  if (phoneScannerModalAutoHidden) return;
+
+  phoneScannerModalAutoHidden = true;
+
+  if (modal) {
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  setBarcodeStatus("Telefone conectado. Os produtos lidos vao entrar no carrinho automaticamente.", "success");
+  toast("Telefone conectado ao carrinho.", "success");
+}
+
+function stopPhoneScannerPolling() {
+  if (phoneScannerPollTimer) {
+    clearInterval(phoneScannerPollTimer);
+    phoneScannerPollTimer = null;
+  }
+}
+
 async function markPhoneScannerSessionClosed() {
   if (!phoneScannerSession || !phoneScannerSession.id || !supabaseClient) return;
 
@@ -6796,11 +6821,14 @@ async function markPhoneScannerSessionClosed() {
 }
 
 async function handlePhoneScannerEvent(payload) {
-  var row = payload && payload.new ? payload.new : null;
+  var row = payload && payload.new ? payload.new : payload;
   if (!row || !row.barcode) return;
   if (!phoneScannerSession || String(row.session_id) !== String(phoneScannerSession.id)) return;
+  if (row.id && phoneScannerProcessedEvents[row.id]) return;
+  if (row.id) phoneScannerProcessedEvents[row.id] = true;
 
   var code = normalizeBarcodeValue(row.barcode);
+  hidePhoneScannerModalAfterConnect();
   setPhoneScannerStatus("Codigo recebido: " + code + ". A adicionar ao carrinho...", "");
 
   var product = await addProductByBarcode(code, {
@@ -6829,6 +6857,59 @@ async function handlePhoneScannerEvent(payload) {
   } else {
     setPhoneScannerStatus("Codigo recebido, mas produto nao encontrado: " + code, "error");
   }
+}
+
+async function pollPhoneScannerSession() {
+  if (!phoneScannerSession || !phoneScannerSession.id || !supabaseClient) return;
+
+  try {
+    var sessionResult = await supabaseClient
+      .from("pos_scan_sessions")
+      .select("id,status,created_at,last_seen_at,expires_at")
+      .eq("id", phoneScannerSession.id)
+      .single();
+
+    if (!sessionResult.error && sessionResult.data) {
+      var session = sessionResult.data;
+      var createdAt = new Date(session.created_at || 0).getTime();
+      var lastSeenAt = new Date(session.last_seen_at || 0).getTime();
+
+      if (session.status !== "active" || (session.expires_at && new Date(session.expires_at).getTime() < Date.now())) {
+        setBarcodeStatus("Sessao do telefone terminou. Abre uma nova sessao para continuar.", "warning");
+        stopPhoneScannerPolling();
+        stopPhoneScannerRealtime();
+        phoneScannerSession = null;
+        return;
+      }
+
+      if (lastSeenAt && createdAt && lastSeenAt - createdAt > 400) {
+        hidePhoneScannerModalAfterConnect();
+      }
+    }
+
+    var eventsResult = await supabaseClient
+      .from("pos_scan_events")
+      .select("id,session_id,barcode,status,created_at")
+      .eq("session_id", phoneScannerSession.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(20);
+
+    if (eventsResult.error) throw eventsResult.error;
+
+    var rows = Array.isArray(eventsResult.data) ? eventsResult.data : [];
+    for (var i = 0; i < rows.length; i++) {
+      await handlePhoneScannerEvent(rows[i]);
+    }
+  } catch (e) {
+    console.warn("Polling scanner telefone falhou:", e);
+  }
+}
+
+function startPhoneScannerPolling() {
+  stopPhoneScannerPolling();
+  pollPhoneScannerSession();
+  phoneScannerPollTimer = setInterval(pollPhoneScannerSession, 850);
 }
 
 function startPhoneScannerRealtime(session) {
@@ -6875,6 +6956,9 @@ async function openPhoneScannerSession() {
   renderPhoneScannerCartStrip();
 
   stopPhoneScannerRealtime();
+  stopPhoneScannerPolling();
+  phoneScannerModalAutoHidden = false;
+  phoneScannerProcessedEvents = {};
 
   try {
     var userResult = await supabaseClient.auth.getUser();
@@ -6888,7 +6972,7 @@ async function openPhoneScannerSession() {
         created_by: user && user.id ? user.id : null,
         status: "active"
       })
-      .select("id, session_token, expires_at")
+      .select("id, session_token, expires_at, created_at, last_seen_at")
       .single();
 
     if (result.error) throw result.error;
@@ -6897,6 +6981,7 @@ async function openPhoneScannerSession() {
     var scannerUrl = buildPhoneScannerUrl(phoneScannerSession);
     setPhoneScannerQr(scannerUrl);
     startPhoneScannerRealtime(phoneScannerSession);
+    startPhoneScannerPolling();
   } catch (e) {
     console.error("Erro sessao scanner telefone:", e);
     setPhoneScannerStatus("Erro ao criar sessao. Executa SQL/pos_phone_scanner.sql no Supabase.", "error");
@@ -6907,9 +6992,12 @@ async function openPhoneScannerSession() {
 async function closePhoneScannerSession() {
   var modal = document.getElementById("phoneScannerModal");
   stopPhoneScannerRealtime();
+  stopPhoneScannerPolling();
   await markPhoneScannerSessionClosed();
   phoneScannerSession = null;
   phoneScannerUrl = "";
+  phoneScannerModalAutoHidden = false;
+  phoneScannerProcessedEvents = {};
 
   if (modal) {
     modal.style.display = "none";
