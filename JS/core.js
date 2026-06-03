@@ -1832,6 +1832,7 @@ var AZUL_ICON_PATHS = {
   settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1.82V22a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.82-.33H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1.82V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.21.64.49.86.83.22.34.56.54.96.54H22a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51.63z"></path>',
   import: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path>',
   search: '<circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path>',
+  barcode: '<path d="M3 5v14"></path><path d="M7 5v14"></path><path d="M11 5v14"></path><path d="M15 5v14"></path><path d="M19 5v14"></path><path d="M21 5v14"></path><path d="M4 3H2v4"></path><path d="M20 3h2v4"></path><path d="M4 21H2v-4"></path><path d="M20 21h2v-4"></path>',
   save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path>',
   refresh: '<path d="M21 12a9 9 0 0 1-15.5 6.2"></path><path d="M3 12A9 9 0 0 1 18.5 5.8"></path><path d="M18 3v4h-4"></path><path d="M6 21v-4h4"></path>',
   print: '<path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path>',
@@ -3666,6 +3667,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('dateTxt').textContent =
     now.toLocaleDateString('pt-PT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
   setupVendaSearchFilter();
+  setupBarcodeKeyboardScanner();
 
   var today = now.toISOString().split('T')[0];
   document.getElementById('t-date').value = today;
@@ -5859,6 +5861,11 @@ dashboardLoadingTimer = setTimeout(function() {
 // ===== PRODUCTS =====
 // ===== PRODUCTS =====
 var productsLoading = false;
+var barcodeKeyboardBuffer = "";
+var barcodeKeyboardTimer = null;
+var barcodeScannerStream = null;
+var barcodeScannerFrame = null;
+var barcodeScannerBusy = false;
 
 function setVendaProductsLoading(isLoading) {
   productsLoading = isLoading;
@@ -5890,7 +5897,12 @@ function normalizeProductList(list) {
     product = product || {};
     var name = String(product.name || '').trim();
     if (!name) return null;
-    var key = name.toLowerCase();
+    var key = String(product.id || product.code || [
+      name,
+      product.variation,
+      Array.isArray(product.variations) ? product.variations.join('|') : '',
+      product.salePrice || product.price || ''
+    ].join('|')).toLowerCase();
     if (seen[key]) return null;
     seen[key] = true;
     var normalized = {
@@ -6310,6 +6322,282 @@ function saveProductProfileCard() {
       btn.textContent = getText('save_product_profile') || 'Guardar ficha do produto';
     }
   });
+}
+
+function normalizeBarcodeValue(value) {
+  return String(value || "").trim();
+}
+
+function getBarcodeKey(value) {
+  return normalizeBarcodeValue(value).toLowerCase();
+}
+
+function findProductsByBarcode(code) {
+  var key = getBarcodeKey(code);
+  if (!key) return [];
+
+  return (products || []).filter(function(product) {
+    return getBarcodeKey(product && product.code) === key;
+  });
+}
+
+function chooseBarcodeProduct(matches) {
+  matches = Array.isArray(matches) ? matches.filter(Boolean) : [];
+  if (!matches.length) return null;
+
+  var available = matches.find(function(product) {
+    return (Number(product.stockBoutique) || 0) > 0;
+  });
+
+  return available || matches[0];
+}
+
+function setBarcodeStatus(message, type) {
+  var status = document.getElementById("barcodeStatus");
+  if (!status) return;
+  status.textContent = message || "";
+  status.classList.remove("success", "error", "warning");
+  if (type) status.classList.add(type);
+}
+
+async function addProductByBarcode(code, options) {
+  options = options || {};
+  code = normalizeBarcodeValue(code);
+
+  if (!code) {
+    setBarcodeStatus("Lê ou escreve um codigo de barras.", "warning");
+    return false;
+  }
+
+  if (!products || !products.length) {
+    await loadProducts(true);
+  }
+
+  var matches = findProductsByBarcode(code);
+  var product = chooseBarcodeProduct(matches);
+
+  if (!product) {
+    setBarcodeStatus("Produto nao encontrado: " + code, "error");
+    toast("Produto nao encontrado para o codigo: " + code, "error");
+    return false;
+  }
+
+  if (matches.length > 1) {
+    setBarcodeStatus("Codigo repetido. Foi escolhido: " + product.name, "warning");
+  } else {
+    setBarcodeStatus("Adicionado: " + product.name, "success");
+  }
+
+  if (saleCatalogMode !== "products") {
+    switchSaleCatalog("products");
+  }
+
+  addToCart(product.id || product.name, product.stockBoutique);
+
+  if (!options.keepInput) {
+    var input = document.getElementById("barcodeInput");
+    if (input) {
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  return true;
+}
+
+function handleBarcodeInputKey(event) {
+  if (!event) return;
+  if (event.key === "Enter") {
+    event.preventDefault();
+    scanBarcodeFromInput();
+  }
+}
+
+function scanBarcodeFromInput() {
+  var input = document.getElementById("barcodeInput");
+  addProductByBarcode(input ? input.value : "");
+}
+
+function isVendaPageActiveForBarcode() {
+  var page = document.getElementById("page-venda");
+  var panel = document.getElementById("vente-panel-novo");
+  return !!(page && page.classList.contains("active") && (!panel || panel.style.display !== "none"));
+}
+
+function isTypingInFormField(target) {
+  if (!target) return false;
+  var tag = String(target.tagName || "").toLowerCase();
+  return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+}
+
+function setupBarcodeKeyboardScanner() {
+  var input = document.getElementById("barcodeInput");
+  if (input) {
+    input.addEventListener("focus", function() {
+      setBarcodeStatus("Pronto para ler codigo de barras.", "");
+    });
+  }
+
+  document.addEventListener("keydown", function(event) {
+    if (!isVendaPageActiveForBarcode()) return;
+    if (isTypingInFormField(event.target)) return;
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+    if (event.key === "Enter") {
+      if (barcodeKeyboardBuffer.length >= 4) {
+        event.preventDefault();
+        var code = barcodeKeyboardBuffer;
+        barcodeKeyboardBuffer = "";
+        addProductByBarcode(code);
+      }
+      return;
+    }
+
+    if (event.key && event.key.length === 1) {
+      barcodeKeyboardBuffer += event.key;
+      if (barcodeKeyboardTimer) clearTimeout(barcodeKeyboardTimer);
+      barcodeKeyboardTimer = setTimeout(function() {
+        barcodeKeyboardBuffer = "";
+      }, 80);
+    }
+  });
+}
+
+function setBarcodeScannerStatus(message, type) {
+  var status = document.getElementById("barcodeScannerStatus");
+  if (!status) return;
+  status.textContent = message || "";
+  status.classList.remove("success", "error");
+  if (type) status.classList.add(type);
+}
+
+async function getBarcodeDetectorInstance() {
+  if (!("BarcodeDetector" in window)) return null;
+
+  var preferred = [
+    "ean_13",
+    "ean_8",
+    "upc_a",
+    "upc_e",
+    "code_128",
+    "code_39",
+    "code_93",
+    "itf",
+    "qr_code"
+  ];
+
+  try {
+    if (typeof BarcodeDetector.getSupportedFormats === "function") {
+      var supported = await BarcodeDetector.getSupportedFormats();
+      var formats = preferred.filter(function(format) {
+        return supported.indexOf(format) >= 0;
+      });
+      return formats.length ? new BarcodeDetector({ formats: formats }) : new BarcodeDetector();
+    }
+  } catch (e) {
+    console.warn("Formats BarcodeDetector indisponiveis:", e);
+  }
+
+  return new BarcodeDetector();
+}
+
+async function openBarcodeScanner() {
+  var modal = document.getElementById("barcodeScannerModal");
+  var video = document.getElementById("barcodeScannerVideo");
+
+  if (!modal || !video) return;
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast("Camera indisponivel neste navegador. Usa leitor USB/Bluetooth.", "error");
+    return;
+  }
+
+  var detector = await getBarcodeDetectorInstance();
+  if (!detector) {
+    toast("Este navegador nao suporta leitura por camera. Usa leitor USB/Bluetooth.", "error");
+    return;
+  }
+
+  try {
+    modal.style.display = "grid";
+    modal.setAttribute("aria-hidden", "false");
+    setBarcodeScannerStatus("A iniciar camera...", "");
+
+    barcodeScannerStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
+
+    video.srcObject = barcodeScannerStream;
+    await video.play();
+    barcodeScannerBusy = false;
+    setBarcodeScannerStatus("Procura o codigo de barras...", "");
+    scanBarcodeVideoFrame(detector, video);
+  } catch (e) {
+    console.error("Erro leitor barcode:", e);
+    closeBarcodeScanner();
+    toast("Nao foi possivel abrir a camera: " + (e.message || e), "error");
+  }
+}
+
+async function scanBarcodeVideoFrame(detector, video) {
+  if (!video || !detector || barcodeScannerBusy || !barcodeScannerStream) return;
+
+  try {
+    var codes = await detector.detect(video);
+
+    if (codes && codes.length) {
+      barcodeScannerBusy = true;
+      var code = codes[0].rawValue || codes[0].rawValueText || "";
+      setBarcodeScannerStatus("Codigo encontrado: " + code, "success");
+      closeBarcodeScanner();
+      var input = document.getElementById("barcodeInput");
+      if (input) input.value = code;
+      await addProductByBarcode(code);
+      return;
+    }
+  } catch (e) {
+    console.warn("Erro durante leitura barcode:", e);
+  }
+
+  if (barcodeScannerStream) {
+    barcodeScannerFrame = window.requestAnimationFrame(function() {
+      scanBarcodeVideoFrame(detector, video);
+    });
+  }
+}
+
+function closeBarcodeScanner() {
+  var modal = document.getElementById("barcodeScannerModal");
+  var video = document.getElementById("barcodeScannerVideo");
+
+  if (barcodeScannerFrame) {
+    window.cancelAnimationFrame(barcodeScannerFrame);
+    barcodeScannerFrame = null;
+  }
+
+  if (barcodeScannerStream) {
+    barcodeScannerStream.getTracks().forEach(function(track) {
+      track.stop();
+    });
+    barcodeScannerStream = null;
+  }
+
+  if (video) {
+    video.pause();
+    video.srcObject = null;
+  }
+
+  barcodeScannerBusy = false;
+
+  if (modal) {
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+  }
 }
 //==============modification carde product=====================
 function renderProds(list) {

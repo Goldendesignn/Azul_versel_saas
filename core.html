@@ -784,6 +784,25 @@
               <input type="text" id="searchInput" placeholder="Pesquisar produto..." oninput="filterProds()">
               <button onclick="loadProducts(true)" title="Actualizar produtos" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:0 4px;" id="refreshBtn">Refresh</button>
             </div>
+            <div class="barcode-pos-panel">
+              <div class="barcode-input-wrap">
+                <span class="barcode-input-icon" aria-hidden="true"></span>
+                <input
+                  type="text"
+                  id="barcodeInput"
+                  placeholder="Ler codigo de barras..."
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  onkeydown="handleBarcodeInputKey(event)"
+                >
+                <button type="button" class="barcode-action-btn" onclick="scanBarcodeFromInput()">Adicionar</button>
+                <button type="button" class="barcode-camera-btn" id="barcodeCameraBtn" onclick="openBarcodeScanner()" aria-label="Abrir camera para ler codigo de barras">
+                  Camera
+                </button>
+              </div>
+              <small id="barcodeStatus">Leitor USB/Bluetooth: aponta para este campo e pressiona Enter.</small>
+            </div>
             <div class="sale-catalog-tabs">
               <button type="button" class="sale-catalog-tab active" id="sale-catalog-products" onclick="switchSaleCatalog('products')">Produtos</button>
               <button type="button" class="sale-catalog-tab" id="sale-catalog-services" onclick="switchSaleCatalog('services')">Servicos</button>
@@ -874,6 +893,23 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <div class="barcode-scanner-modal" id="barcodeScannerModal" style="display:none;" aria-hidden="true">
+      <div class="barcode-scanner-card">
+        <div class="barcode-scanner-head">
+          <div>
+            <strong>Ler codigo de barras</strong>
+            <span>Aponte a camera para o codigo do produto.</span>
+          </div>
+          <button type="button" onclick="closeBarcodeScanner()" aria-label="Fechar leitor">x</button>
+        </div>
+        <div class="barcode-video-frame">
+          <video id="barcodeScannerVideo" autoplay muted playsinline></video>
+          <div class="barcode-scan-line"></div>
+        </div>
+        <div class="barcode-scanner-status" id="barcodeScannerStatus">A iniciar camera...</div>
       </div>
     </div>
 
