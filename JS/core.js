@@ -5870,6 +5870,9 @@ var barcodeScannerTarget = null;
 var barcodeLastScan = { code: "", at: 0 };
 var BARCODE_DUPLICATE_DELAY_MS = 2600;
 var BARCODE_SCAN_RESUME_DELAY_MS = 1800;
+var phoneScannerSession = null;
+var phoneScannerChannel = null;
+var phoneScannerUrl = "";
 
 function setVendaProductsLoading(isLoading) {
   productsLoading = isLoading;
@@ -6711,6 +6714,230 @@ function closeBarcodeScanner() {
     modal.setAttribute("aria-hidden", "true");
   }
 }
+
+function getPhoneScannerDeviceName() {
+  var ua = String(navigator.userAgent || "");
+  if (/android/i.test(ua)) return "Android";
+  if (/iphone|ipad|ipod/i.test(ua)) return "iPhone";
+  if (/windows/i.test(ua)) return "Windows";
+  if (/macintosh|mac os/i.test(ua)) return "Mac";
+  return "Caixa";
+}
+
+function setPhoneScannerStatus(message, type) {
+  var status = document.getElementById("phoneScannerStatus");
+  if (!status) return;
+  status.textContent = message || "";
+  status.classList.toggle("error", type === "error");
+}
+
+function renderPhoneScannerCartStrip(lastProduct) {
+  var title = document.getElementById("phoneScannerCartTitle");
+  var meta = document.getElementById("phoneScannerCartMeta");
+  if (!title || !meta) return;
+
+  if (lastProduct && lastProduct.name) {
+    title.textContent = "Recebido: " + lastProduct.name;
+  } else if (cart && cart.length) {
+    title.textContent = "Carrinho actualizado";
+  } else {
+    title.textContent = "Carrinho vazio";
+  }
+
+  meta.textContent = getCartCountMobile() + " produtos | " + fmt(getCartTotalMobile());
+}
+
+function buildPhoneScannerUrl(session) {
+  var url = new URL("scanner.html", window.location.href);
+  url.searchParams.set("session", session.id);
+  url.searchParams.set("token", session.session_token);
+  return url.toString();
+}
+
+function setPhoneScannerQr(url) {
+  var qr = document.getElementById("phoneScannerQr");
+  var urlBox = document.getElementById("phoneScannerUrl");
+
+  phoneScannerUrl = url || "";
+
+  if (qr) {
+    qr.src = "https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=12&data=" + encodeURIComponent(phoneScannerUrl);
+  }
+
+  if (urlBox) {
+    urlBox.textContent = phoneScannerUrl;
+    urlBox.title = phoneScannerUrl;
+  }
+}
+
+function stopPhoneScannerRealtime() {
+  if (phoneScannerChannel && supabaseClient && supabaseClient.removeChannel) {
+    try {
+      supabaseClient.removeChannel(phoneScannerChannel);
+    } catch (e) {
+      console.warn("Erro ao fechar canal do scanner:", e);
+    }
+  }
+
+  phoneScannerChannel = null;
+}
+
+async function markPhoneScannerSessionClosed() {
+  if (!phoneScannerSession || !phoneScannerSession.id || !supabaseClient) return;
+
+  try {
+    await supabaseClient
+      .from("pos_scan_sessions")
+      .update({ status: "closed", last_seen_at: new Date().toISOString() })
+      .eq("id", phoneScannerSession.id);
+  } catch (e) {
+    console.warn("Sessao scanner nao fechada no servidor:", e);
+  }
+}
+
+async function handlePhoneScannerEvent(payload) {
+  var row = payload && payload.new ? payload.new : null;
+  if (!row || !row.barcode) return;
+  if (!phoneScannerSession || String(row.session_id) !== String(phoneScannerSession.id)) return;
+
+  var code = normalizeBarcodeValue(row.barcode);
+  setPhoneScannerStatus("Codigo recebido: " + code + ". A adicionar ao carrinho...", "");
+
+  var product = await addProductByBarcode(code, {
+    keepInput: true,
+    suppressFocus: true
+  });
+
+  renderPhoneScannerCartStrip(product);
+
+  try {
+    await supabaseClient
+      .from("pos_scan_events")
+      .update({
+        status: product ? "processed" : "error",
+        product_name: product && product.name ? product.name : null,
+        error_message: product ? null : "Produto nao encontrado",
+        processed_at: new Date().toISOString()
+      })
+      .eq("id", row.id);
+  } catch (e) {
+    console.warn("Evento scanner nao actualizado:", e);
+  }
+
+  if (product) {
+    setPhoneScannerStatus("Adicionado pelo telefone: " + product.name, "");
+  } else {
+    setPhoneScannerStatus("Codigo recebido, mas produto nao encontrado: " + code, "error");
+  }
+}
+
+function startPhoneScannerRealtime(session) {
+  if (!supabaseClient || !supabaseClient.channel || !session || !session.id) {
+    setPhoneScannerStatus("Realtime indisponivel. Verifica o SQL do scanner.", "error");
+    return;
+  }
+
+  stopPhoneScannerRealtime();
+
+  phoneScannerChannel = supabaseClient
+    .channel("pos-phone-scanner-" + session.id)
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "pos_scan_events",
+      filter: "session_id=eq." + session.id
+    }, handlePhoneScannerEvent)
+    .subscribe(function(status) {
+      if (status === "SUBSCRIBED") {
+        setPhoneScannerStatus("Sessao pronta. Leia o QR code com o telefone.", "");
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        setPhoneScannerStatus("Ligacao em tempo real instavel. Verifica Supabase Realtime.", "error");
+      }
+    });
+}
+
+async function openPhoneScannerSession() {
+  var modal = document.getElementById("phoneScannerModal");
+  if (!modal) return;
+
+  if (!supabaseClient) {
+    toast("Supabase indisponivel.", "error");
+    return;
+  }
+
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) return;
+
+  modal.style.display = "grid";
+  modal.setAttribute("aria-hidden", "false");
+  setPhoneScannerStatus("A criar sessao...", "");
+  setPhoneScannerQr("");
+  renderPhoneScannerCartStrip();
+
+  stopPhoneScannerRealtime();
+
+  try {
+    var userResult = await supabaseClient.auth.getUser();
+    var user = userResult && userResult.data ? userResult.data.user : null;
+
+    var result = await supabaseClient
+      .from("pos_scan_sessions")
+      .insert({
+        organization_id: organizationId,
+        device_name: getPhoneScannerDeviceName(),
+        created_by: user && user.id ? user.id : null,
+        status: "active"
+      })
+      .select("id, session_token, expires_at")
+      .single();
+
+    if (result.error) throw result.error;
+
+    phoneScannerSession = result.data;
+    var scannerUrl = buildPhoneScannerUrl(phoneScannerSession);
+    setPhoneScannerQr(scannerUrl);
+    startPhoneScannerRealtime(phoneScannerSession);
+  } catch (e) {
+    console.error("Erro sessao scanner telefone:", e);
+    setPhoneScannerStatus("Erro ao criar sessao. Executa SQL/pos_phone_scanner.sql no Supabase.", "error");
+    toast("Erro scanner telefone: " + (e.message || e), "error");
+  }
+}
+
+async function closePhoneScannerSession() {
+  var modal = document.getElementById("phoneScannerModal");
+  stopPhoneScannerRealtime();
+  await markPhoneScannerSessionClosed();
+  phoneScannerSession = null;
+  phoneScannerUrl = "";
+
+  if (modal) {
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+  }
+}
+
+async function copyPhoneScannerLink() {
+  if (!phoneScannerUrl) {
+    toast("Cria primeiro uma sessao de scanner.", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(phoneScannerUrl);
+    toast("Link copiado.", "success");
+  } catch (e) {
+    toast("Nao foi possivel copiar. Usa o QR code.", "error");
+  }
+}
+
+function openPhoneScannerLink() {
+  if (!phoneScannerUrl) {
+    toast("Cria primeiro uma sessao de scanner.", "error");
+    return;
+  }
+  window.open(phoneScannerUrl, "_blank", "noopener,noreferrer");
+}
 //==============modification carde product=====================
 function renderProds(list) {
   var g = document.getElementById('prodGrid');
@@ -6953,6 +7180,7 @@ function renderCart() {
     updatePaymentStatus();
     renderMobileCartBar();
     renderBarcodeScannerCartStrip();
+    renderPhoneScannerCartStrip();
     return;
   }
   el.innerHTML = '';
@@ -6994,6 +7222,7 @@ function renderCart() {
   updatePaymentStatus();
   renderMobileCartBar();
   renderBarcodeScannerCartStrip();
+  renderPhoneScannerCartStrip();
 }
 
 function chgQty(i, d) {

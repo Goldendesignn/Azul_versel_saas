@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b3d91">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Azul Scanner</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="CSS/scanner.css">
+</head>
+<body>
+  <main class="scanner-shell">
+    <header class="scanner-header">
+      <div class="scanner-brand">
+        <img src="Assets/icon-192.png" alt="">
+        <div>
+          <strong>Azul Scanner</strong>
+          <span>Telefone ligado a caixa</span>
+        </div>
+      </div>
+      <span class="scanner-pill" id="scannerConnectionPill">A ligar...</span>
+    </header>
+
+    <section class="scanner-card">
+      <div class="scanner-video-wrap">
+        <video id="scannerVideo" autoplay muted playsinline></video>
+        <div class="scanner-frame"></div>
+        <div class="scanner-line"></div>
+      </div>
+
+      <div class="scanner-status" id="scannerStatus">
+        A preparar scanner...
+      </div>
+
+      <form class="scanner-manual" onsubmit="sendManualBarcode(event)">
+        <input
+          type="text"
+          id="manualBarcodeInput"
+          placeholder="Codigo manual"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+        >
+        <button type="submit">Enviar</button>
+      </form>
+    </section>
+
+    <section class="scanner-history">
+      <div class="scanner-history-head">
+        <strong>Ultimos envios</strong>
+        <span id="scannerCount">0</span>
+      </div>
+      <div id="scannerHistoryList" class="scanner-history-list">
+        <div class="scanner-empty">Nenhum codigo enviado.</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="JS/supabase.js"></script>
+  <script src="JS/scanner.js"></script>
+</body>
+</html>

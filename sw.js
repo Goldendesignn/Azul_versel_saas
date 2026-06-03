@@ -1,19 +1,22 @@
-const AZUL_CACHE = "azul-pwa-v76";
+const AZUL_CACHE = "azul-pwa-v77";
 
 const AZUL_STATIC_ASSETS = [
   "/",
   "/index.html",
   "/core.html",
+  "/scanner.html",
   "/admin.html",
   "/manifest.webmanifest",
   "/CSS/login.css",
   "/CSS/core.css",
+  "/CSS/scanner.css",
   "/CSS/admin.css",
   "/JS/pwa.js",
   "/JS/supabase.js",
   "/JS/push-config.js",
   "/JS/login.js",
   "/JS/core.js",
+  "/JS/scanner.js",
   "/JS/admin.js",
   "/JS/offline.js",
   "/Assets/azul-icon.png",

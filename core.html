@@ -800,6 +800,9 @@
                 <button type="button" class="barcode-camera-btn" id="barcodeCameraBtn" onclick="openBarcodeScanner()" aria-label="Abrir camera para ler codigo de barras">
                   Camera
                 </button>
+                <button type="button" class="barcode-phone-btn" id="barcodePhoneBtn" onclick="openPhoneScannerSession()" aria-label="Usar telefone como leitor de codigo de barras">
+                  Telefone
+                </button>
               </div>
               <small id="barcodeStatus">Leitor USB/Bluetooth: aponta para este campo e pressiona Enter.</small>
             </div>
@@ -917,6 +920,38 @@
           <button type="button" onclick="closeBarcodeScanner(); openMobileCart();">Ver carrinho</button>
         </div>
         <div class="barcode-scanner-status" id="barcodeScannerStatus">A iniciar camera...</div>
+      </div>
+    </div>
+
+    <div class="phone-scanner-modal" id="phoneScannerModal" style="display:none;" aria-hidden="true">
+      <div class="phone-scanner-card">
+        <div class="phone-scanner-head">
+          <div>
+            <strong>Telefone como scanner</strong>
+            <span>Leia este QR code no telefone para enviar produtos para esta venda.</span>
+          </div>
+          <button type="button" onclick="closePhoneScannerSession()" aria-label="Fechar scanner por telefone">x</button>
+        </div>
+        <div class="phone-scanner-body">
+          <div class="phone-scanner-qr-wrap">
+            <img id="phoneScannerQr" alt="QR code do scanner por telefone">
+          </div>
+          <div class="phone-scanner-info">
+            <div class="phone-scanner-status" id="phoneScannerStatus">A criar sessao...</div>
+            <div class="phone-scanner-url" id="phoneScannerUrl"></div>
+            <div class="phone-scanner-actions">
+              <button type="button" onclick="copyPhoneScannerLink()">Copiar link</button>
+              <button type="button" onclick="openPhoneScannerLink()">Abrir link</button>
+            </div>
+            <div class="phone-scanner-cart">
+              <strong id="phoneScannerCartTitle">Carrinho vazio</strong>
+              <span id="phoneScannerCartMeta">0 produtos | 0 Kz</span>
+            </div>
+          </div>
+        </div>
+        <div class="phone-scanner-foot">
+          A sessao expira automaticamente. Fecha esta janela quando terminar a venda.
+        </div>
       </div>
     </div>
 

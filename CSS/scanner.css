@@ -1,0 +1,262 @@
+:root {
+  --blue: #0b3d91;
+  --blue2: #1454b8;
+  --bg: #f8f6f1;
+  --surface: #ffffff;
+  --surface2: #f0ece3;
+  --text: #111827;
+  --muted: #8a8780;
+  --border: #ddd5c8;
+  --green: #35b779;
+  --red: #ef5555;
+  --shadow: 0 18px 48px rgba(11, 61, 145, .16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.scanner-shell {
+  width: min(520px, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 18px 14px calc(20px + env(safe-area-inset-bottom));
+}
+
+.scanner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.scanner-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scanner-brand img {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(0,0,0,.08);
+}
+
+.scanner-brand strong,
+.scanner-brand span {
+  display: block;
+  min-width: 0;
+}
+
+.scanner-brand strong {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--blue);
+}
+
+.scanner-brand span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.scanner-pill {
+  flex: 0 0 auto;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--blue) 12%, #fff);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.scanner-pill.error {
+  background: color-mix(in srgb, var(--red) 12%, #fff);
+  color: var(--red);
+}
+
+.scanner-card,
+.scanner-history {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.scanner-video-wrap {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: #050505;
+  overflow: hidden;
+}
+
+.scanner-video-wrap video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.scanner-frame {
+  position: absolute;
+  inset: 19%;
+  border: 3px solid rgba(255,255,255,.9);
+  border-radius: 22px;
+  box-shadow: 0 0 0 999px rgba(0,0,0,.22);
+  pointer-events: none;
+}
+
+.scanner-line {
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  top: 50%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--blue2);
+  box-shadow: 0 0 18px var(--blue2);
+  pointer-events: none;
+}
+
+.scanner-status {
+  min-height: 54px;
+  padding: 14px 16px;
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.scanner-status.error {
+  color: var(--red);
+}
+
+.scanner-manual {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.scanner-manual input,
+.scanner-manual button {
+  height: 46px;
+  border-radius: 14px;
+  font: inherit;
+}
+
+.scanner-manual input {
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  padding: 0 13px;
+  outline: none;
+}
+
+.scanner-manual input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 14%, transparent);
+}
+
+.scanner-manual button {
+  border: none;
+  background: var(--blue);
+  color: #fff;
+  padding: 0 16px;
+  font-weight: 900;
+}
+
+.scanner-history {
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.scanner-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.scanner-history-head strong {
+  font-size: 14px;
+}
+
+.scanner-history-head span {
+  color: var(--blue);
+  font-weight: 900;
+}
+
+.scanner-history-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.scanner-history-item {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 13px;
+  background: var(--surface2);
+  padding: 10px 12px;
+}
+
+.scanner-history-item strong,
+.scanner-history-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scanner-history-item strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.scanner-history-item span {
+  flex: 0 0 auto;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.scanner-empty {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 18px 0;
+}
+
+@media (max-width: 420px) {
+  .scanner-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .scanner-video-wrap {
+    aspect-ratio: 10 / 13;
+  }
+}
