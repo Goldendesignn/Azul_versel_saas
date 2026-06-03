@@ -329,6 +329,65 @@ body {
   padding: 10px 14px;
 }
 
+.shop-customer-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 14px 12px;
+}
+
+.shop-customer-title {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.shop-customer-form input,
+.shop-customer-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.shop-customer-form input {
+  height: 42px;
+  padding: 0 12px;
+}
+
+.shop-customer-form textarea {
+  grid-column: 1 / -1;
+  min-height: 58px;
+  resize: vertical;
+  padding: 10px 12px;
+}
+
+.shop-customer-form input:focus,
+.shop-customer-form textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 12%, transparent);
+}
+
+.shop-customer-form .is-invalid {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 12%, transparent);
+}
+
+.shop-form-error {
+  grid-column: 1 / -1;
+  min-height: 16px;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .shop-cart-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -384,7 +443,7 @@ body {
 
 @media (max-width: 720px) {
   .shop-shell {
-    padding: 12px 10px 220px;
+    padding: 12px 10px 330px;
   }
 
   .shop-header {
@@ -429,5 +488,13 @@ body {
     bottom: 8px;
     width: calc(100% - 16px);
     border-radius: 18px;
+  }
+
+  .shop-cart-list {
+    max-height: 104px;
+  }
+
+  .shop-customer-form {
+    grid-template-columns: 1fr;
   }
 }

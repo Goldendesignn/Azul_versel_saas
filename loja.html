@@ -51,6 +51,13 @@
       <div class="shop-cart-list" id="shopCartList">
         <div class="shop-empty">Nenhum produto no carrinho.</div>
       </div>
+      <div class="shop-customer-form" id="shopCustomerForm">
+        <div class="shop-customer-title">Dados para entrega</div>
+        <input type="text" id="shopCustomerName" placeholder="O seu nome" autocomplete="name">
+        <input type="tel" id="shopCustomerPhone" placeholder="WhatsApp: ex. 244923000000" autocomplete="tel">
+        <textarea id="shopCustomerAddress" placeholder="Endereco de entrega" rows="2" autocomplete="street-address"></textarea>
+        <div class="shop-form-error" id="shopFormError"></div>
+      </div>
       <button type="button" class="shop-whatsapp-btn" id="shopWhatsappBtn" onclick="sendShopCartToWhatsApp()" disabled>
         Enviar pedido no WhatsApp
       </button>

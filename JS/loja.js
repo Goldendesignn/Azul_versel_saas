@@ -24,6 +24,62 @@ function normalizeShopPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
 
+function getShopInputValue(id) {
+  var el = document.getElementById(id);
+  return String(el ? el.value : "").trim();
+}
+
+function setShopFormError(message, targetId) {
+  var error = document.getElementById("shopFormError");
+  var fields = ["shopCustomerName", "shopCustomerPhone", "shopCustomerAddress"];
+
+  fields.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle("is-invalid", id === targetId);
+  });
+
+  if (error) error.textContent = message || "";
+
+  if (targetId) {
+    var target = document.getElementById(targetId);
+    if (target) {
+      scrollToCart();
+      setTimeout(function() { target.focus(); }, 180);
+    }
+  }
+}
+
+function getShopCustomerData() {
+  var name = getShopInputValue("shopCustomerName");
+  var phoneRaw = getShopInputValue("shopCustomerPhone");
+  var phone = normalizeShopPhone(phoneRaw);
+  var address = getShopInputValue("shopCustomerAddress");
+
+  if (!name) {
+    setShopFormError("Informe o seu nome para enviar o pedido.", "shopCustomerName");
+    return null;
+  }
+
+  if (!phone || phone.length < 8) {
+    setShopFormError("Informe um numero WhatsApp valido.", "shopCustomerPhone");
+    return null;
+  }
+
+  if (!address) {
+    setShopFormError("Informe o endereco de entrega.", "shopCustomerAddress");
+    return null;
+  }
+
+  setShopFormError("", "");
+
+  return {
+    name: name,
+    phone: phoneRaw,
+    phoneDigits: phone,
+    address: address
+  };
+}
+
 function productSearchText(product) {
   return [
     product.name,
@@ -253,10 +309,16 @@ function renderShopCart() {
   }).join("");
 }
 
-function buildWhatsAppMessage() {
+function buildWhatsAppMessage(customer) {
   var lines = [];
   lines.push(shopStore.welcome_message || "Ola, quero comprar estes produtos:");
   lines.push("");
+  lines.push("Dados do cliente:");
+  lines.push("Nome: " + customer.name);
+  lines.push("WhatsApp: " + customer.phone);
+  lines.push("Endereco: " + customer.address);
+  lines.push("");
+  lines.push("Produtos:");
 
   shopCart.forEach(function(item) {
     var meta = [item.code, item.variation].filter(Boolean).join(" | ");
@@ -265,10 +327,6 @@ function buildWhatsAppMessage() {
 
   lines.push("");
   lines.push("Total: " + shopMoney(getShopCartTotal()));
-  lines.push("");
-  lines.push("Nome:");
-  lines.push("Morada:");
-  lines.push("Metodo de pagamento:");
 
   return lines.join("\n");
 }
@@ -276,13 +334,16 @@ function buildWhatsAppMessage() {
 function sendShopCartToWhatsApp() {
   if (!shopCart.length) return;
 
+  var customer = getShopCustomerData();
+  if (!customer) return;
+
   var phone = normalizeShopPhone(shopStore.whatsapp_phone);
   if (!phone) {
     alert("Numero WhatsApp indisponivel.");
     return;
   }
 
-  var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(buildWhatsAppMessage());
+  var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(buildWhatsAppMessage(customer));
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
