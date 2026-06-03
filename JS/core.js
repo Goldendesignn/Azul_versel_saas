@@ -11,7 +11,10 @@ var selectedType = 'interno';
 var selectedPay = 'Cash';
 
 var products = [];
+var services = [];
 var productsLoading = false;
+var servicesLoading = false;
+var saleCatalogMode = "products";
 var saleSaveInProgress = false;
 var purchaseSaveInProgress = false;
 var expenseSaveInProgress = false;
@@ -194,6 +197,7 @@ var AZUL_TABLE_ACTIONS = {
   sales: "sale:create",
   purchases: "purchase:create",
   expenses: "expense:create",
+  services: "service:create",
   client_payments: "client_payment:create",
   supplier_payments: "supplier_payment:create",
   corrections_log: "correction:create",
@@ -2213,6 +2217,84 @@ async function getProductsFromSupabase() {
   return (result.data || []).map(mapSupabaseProduct);
 }
 
+function isServicesTableMissing(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  return msg.indexOf("services") >= 0 &&
+    (msg.indexOf("could not find") >= 0 ||
+      msg.indexOf("schema cache") >= 0 ||
+      msg.indexOf("does not exist") >= 0 ||
+      msg.indexOf("relation") >= 0);
+}
+
+function mapSupabaseService(row) {
+  row = row || {};
+  return {
+    id: row.id || "",
+    name: String(row.name || "").trim(),
+    category: String(row.category || ""),
+    price: Number(row.sale_price) || 0,
+    salePrice: Number(row.sale_price) || 0,
+    purchasePrice: Number(row.cost_price) || 0,
+    costPrice: Number(row.cost_price) || 0,
+    active: row.active !== false,
+    isService: true,
+    _searchText: [
+      row.name || "",
+      row.category || "",
+      "servico",
+      "servicos",
+      "service"
+    ].join(" ").toLowerCase()
+  };
+}
+
+async function getServicesFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) return [];
+
+  var result = await supabaseClient
+    .from("services")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("active", true)
+    .order("created_at", { ascending: false });
+
+  if (result.error) {
+    if (isServicesTableMissing(result.error)) {
+      console.warn("Tabela services ainda nao configurada.");
+      return [];
+    }
+    throw result.error;
+  }
+
+  return (result.data || []).map(mapSupabaseService).filter(function(service) {
+    return service && service.name;
+  });
+}
+
+async function saveServiceToSupabase(data) {
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) throw new Error("Organizacao invalida.");
+
+  var name = String(data && data.name || "").trim();
+  var salePrice = Number(data && data.salePrice) || 0;
+
+  if (!name) throw new Error("Informe o nome do servico.");
+  if (salePrice <= 0) throw new Error("Informe o preco do servico.");
+
+  var result = await insertSingleWithAzulAudit("services", {
+    organization_id: organizationId,
+    name: name,
+    category: String(data.category || "").trim(),
+    sale_price: salePrice,
+    cost_price: Number(data.costPrice) || 0,
+    active: true
+  });
+
+  if (result.error) throw result.error;
+  return mapSupabaseService(result.data);
+}
+
 function isStockTransferHistoryMissing(error) {
   var msg = String(error && error.message ? error.message : error || "").toLowerCase();
   return msg.indexOf("stock_transfers") >= 0 &&
@@ -2393,6 +2475,7 @@ function groupCartQuantityByProduct(items) {
   var grouped = {};
 
   (items || []).forEach(function(item) {
+    if (isServiceCartItem(item)) return;
     var key = getCartProductKey(item);
     if (!key) return;
 
@@ -2401,6 +2484,11 @@ function groupCartQuantityByProduct(items) {
 
   return grouped;
 }
+
+function isServiceCartItem(item) {
+  return !!(item && (item.isService || item.itemType === "service" || item.serviceId));
+}
+
 function getCartProductKey(item) {
   if (item && item.productId) return String(item.productId);
   return String(item && (item.baseName || item.name) || "").trim();
@@ -2482,25 +2570,27 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
     var item = items[j];
     var productRow = findProductForCartItem(item);
 
-    if (!productRow) {
+    if (!productRow && !isServiceCartItem(item)) {
       throw new Error("Produto nao encontrado: " + item.name);
     }
 
     var qtySold = Number(item.qty) || 0;
-    var purchasePrice = Number(productRow.purchasePrice) || 0;
+    var purchasePrice = isServiceCartItem(item)
+      ? (Number(item.purchasePrice) || 0)
+      : (Number(productRow.purchasePrice) || 0);
     var unitPrice = Number(item.price) || 0;
 
     saleItems.push({
       sale_id: sale.id,
-      product_id: productRow.id,
+      product_id: productRow ? productRow.id : null,
       product_name: item.name,
       quantity: qtySold,
       unit_price: unitPrice,
       total: unitPrice * qtySold,
       purchase_price: purchasePrice,
       profit: (unitPrice - purchasePrice) * qtySold,
-      variation: (item.selectedVariations || []).join(" | "),
-      variations: item.selectedVariations || []
+      variation: isServiceCartItem(item) ? "Servico" : (item.selectedVariations || []).join(" | "),
+      variations: isServiceCartItem(item) ? ["Servico"] : (item.selectedVariations || [])
     });
 
    // Le stock est diminue plus bas une seule fois par produit,
@@ -2542,7 +2632,12 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
   await createClientDebtIfNeeded(sale, data, total);
   var cashIn = getCashInAmountFromPaymentLines(data.paymentLines || [], total);
   var creditAmount = getCreditoAmountFromPaymentLines(data.paymentLines || [], total);
-  var costOfGoods = saleItems.reduce(function(sum, item) {
+  var physicalCost = saleItems.reduce(function(sum, item) {
+    if (!item.product_id) return sum;
+    return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
+  }, 0);
+  var serviceCost = saleItems.reduce(function(sum, item) {
+    if (item.product_id) return sum;
     return sum + (Number(item.purchase_price) || 0) * (Number(item.quantity) || 0);
   }, 0);
   
@@ -2559,16 +2654,21 @@ if (creditAmount > 0) {
 
 saleLines.push({ account: "71", debit: 0, credit: total });
 
-if (costOfGoods > 0) {
-  saleLines.push({ account: "61", debit: costOfGoods, credit: 0 });
+if (physicalCost > 0) {
+  saleLines.push({ account: "61", debit: physicalCost, credit: 0 });
 
   if (isExternalSale) {
     // Venda externa: o fornecedor e pago directamente.
-    saleLines.push({ account: "11", debit: 0, credit: costOfGoods });
+    saleLines.push({ account: "11", debit: 0, credit: physicalCost });
   } else {
     // Venda interna: a mercadoria sai do stock.
-    saleLines.push({ account: "13", debit: 0, credit: costOfGoods });
+    saleLines.push({ account: "13", debit: 0, credit: physicalCost });
   }
+}
+
+if (serviceCost > 0) {
+  saleLines.push({ account: "62", debit: serviceCost, credit: 0 });
+  saleLines.push({ account: "11", debit: 0, credit: serviceCost });
 }
 
 await createAccountingEntry(
@@ -5816,6 +5916,15 @@ async function loadProducts(forceRefresh) {
 
     products = normalizeProductList(data);
     products = applyInventoryMovementSummary(products, await getInventoryMovementSummaryFromSupabase());
+    try {
+      servicesLoading = true;
+      services = await getServicesFromSupabase();
+    } catch (serviceError) {
+      console.warn("Erro ao carregar servicos:", serviceError);
+      services = [];
+    } finally {
+      servicesLoading = false;
+    }
 
     setVendaProductsLoading(false);
     filterProds();
@@ -6208,9 +6317,110 @@ function renderProds(list) {
   });
 }
 
+function switchSaleCatalog(mode) {
+  saleCatalogMode = mode === "services" ? "services" : "products";
+
+  var productTab = document.getElementById("sale-catalog-products");
+  var serviceTab = document.getElementById("sale-catalog-services");
+  var servicePanel = document.getElementById("serviceQuickPanel");
+  var search = document.getElementById("searchInput");
+
+  if (productTab) productTab.classList.toggle("active", saleCatalogMode === "products");
+  if (serviceTab) serviceTab.classList.toggle("active", saleCatalogMode === "services");
+  if (servicePanel) servicePanel.style.display = saleCatalogMode === "services" ? "" : "none";
+  if (search) search.placeholder = saleCatalogMode === "services" ? "Pesquisar servico..." : "Pesquisar produto...";
+
+  filterProds();
+}
+
+function renderServices(list) {
+  var g = document.getElementById('prodGrid');
+  if (!g) return;
+
+  if (servicesLoading) {
+    g.innerHTML = '<div class="empty" style="grid-column:1/-1">A carregar servicos...</div>';
+    return;
+  }
+
+  list = (Array.isArray(list) ? list : []).filter(function(service) {
+    return service && service.name;
+  });
+
+  if (!list.length) {
+    g.innerHTML = '<div class="empty" style="grid-column:1/-1">Sem servicos. Cria o primeiro servico acima.</div>';
+    return;
+  }
+
+  g.innerHTML = '';
+  list.forEach(function(service) {
+    var safeName = escapeDespesaHtml(service.name || '');
+    var safeCategory = escapeDespesaHtml(service.category || 'Servico');
+    var div = document.createElement('div');
+    div.className = 'prod-card service-card';
+    div.innerHTML =
+      '<div class="service-card-icon">' + (typeof azulIcon === "function" ? azulIcon("settings") : "S") + '</div>' +
+      '<div class="prod-name" title="' + safeName + '">' + safeName + '</div>' +
+      '<div class="prod-price" title="' + fmt(service.salePrice || service.price || 0) + '">' + fmt(service.salePrice || service.price || 0) + '</div>' +
+      '<div class="service-card-meta">' + safeCategory + '</div>' +
+      '<div class="prod-stock">Sem controlo de stock</div>';
+
+    div.onclick = function() {
+      addServiceToCart(service.id);
+    };
+
+    g.appendChild(div);
+  });
+}
+
+async function saveServiceQuick() {
+  if (!requireAzulAction("sale:create", "criar servico")) return;
+
+  var nameInput = document.getElementById("service-name");
+  var priceInput = document.getElementById("service-price");
+  var costInput = document.getElementById("service-cost");
+  var categoryInput = document.getElementById("service-category");
+  var name = nameInput ? nameInput.value.trim() : "";
+  var price = priceInput ? Number(priceInput.value) || 0 : 0;
+  var cost = costInput ? Number(costInput.value) || 0 : 0;
+  var category = categoryInput ? categoryInput.value.trim() : "";
+
+  try {
+    var service = await saveServiceToSupabase({
+      name: name,
+      salePrice: price,
+      costPrice: cost,
+      category: category
+    });
+
+    services.unshift(service);
+    if (nameInput) nameInput.value = "";
+    if (priceInput) priceInput.value = "";
+    if (costInput) costInput.value = "";
+    if (categoryInput) categoryInput.value = "";
+    filterProds();
+    toast("Servico guardado!", "success");
+  } catch (e) {
+    console.error("Erro servico:", e);
+    if (isServicesTableMissing(e)) {
+      toast("Tabela de servicos ainda nao instalada. Executa SQL/services_module.sql no Supabase.", "error");
+      return;
+    }
+    toast("Erro ao guardar servico: " + (e.message || e), "error");
+  }
+}
+
 function filterProds() {
   var input = document.getElementById('searchInput');
   var q = String((input && input.value) || '').trim().toLowerCase();
+  if (saleCatalogMode === "services") {
+    var serviceSource = services || [];
+    var serviceList = q ? serviceSource.filter(function(service) {
+      return String(service._searchText || service.name || "").toLowerCase().indexOf(q) >= 0;
+    }) : serviceSource;
+    renderServices(serviceList);
+    return;
+  }
+
   var source = products || [];
   var list = q ? source.filter(function(p) {
     return productSearchText(p).indexOf(q) >= 0;
@@ -6249,6 +6459,40 @@ function addToCart(productIdOrName, stock) {
   }, 50);
 }
 
+function addServiceToCart(serviceIdOrName) {
+  var service = (services || []).find(function(s) {
+    return String(s.id) === String(serviceIdOrName);
+  }) || (services || []).find(function(s) {
+    return s.name === serviceIdOrName;
+  }) || {};
+
+  var salePrice = Number(service.salePrice || service.price) || 0;
+
+  cart.push({
+    productId: "",
+    serviceId: service.id || "",
+    itemType: "service",
+    name: service.name || String(serviceIdOrName || ""),
+    baseName: service.name || String(serviceIdOrName || ""),
+    supplier: "",
+    purchasePrice: Number(service.costPrice || service.purchasePrice) || 0,
+    price: salePrice,
+    regularPrice: salePrice,
+    qty: 1,
+    stock: 0,
+    availableVariations: [],
+    selectedVariations: [],
+    isService: true
+  });
+
+  renderCart();
+
+  setTimeout(function() {
+    var inputs = document.querySelectorAll(".ci-price-input");
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
 
 function renderCart() {
   var el = document.getElementById('cartBody');
@@ -6271,13 +6515,14 @@ function renderCart() {
       return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface2);cursor:pointer;"><input type="checkbox" ' + checked + ' onclick="event.stopPropagation();" onchange="toggleCartVariation(event, ' + i + ',\'' + encodeURIComponent(v) + '\')">' + escapeDespesaHtml(v) + '</label>';
     }).join('');
     var safeItemName = escapeDespesaHtml(item.name || '');
+    var serviceBadge = item && item.isService ? '<span class="cart-service-badge">Servico</span>' : '';
     var div = document.createElement('div');
     div.className = 'cart-item';
     div.setAttribute('data-index', i);
     div.innerHTML =
       '<div style="width:100%;">' +
         '<div class="cart-item-head">' +
-          '<div class="ci-name" title="' + safeItemName + '">' + safeItemName + '</div>' +
+          '<div class="ci-name" title="' + safeItemName + '">' + safeItemName + serviceBadge + '</div>' +
           '<button class="ci-del" onclick="removeItem(' + i + ')">x</button>' +
         '</div>' +
         '<div class="cart-item-main">' +
@@ -7819,13 +8064,14 @@ function renderMobileCartPage() {
         var imgHtml = img
           ? '<img class="mobile-cart-img" src="' + escapeDespesaHtml(img) + '" alt="">'
           : '<div class="mobile-cart-img mobile-cart-img-empty"></div>';
+        var subText = isServiceCartItem(item) ? "Servico sem stock" : "Stock loja: " + (item.stock || 0) + " un";
         
         return '<div class="mobile-cart-item">' +
           '<div class="mobile-cart-item-main">' +
             imgHtml +
             '<div>' +
               '<div class="mobile-cart-name">' + escapeDespesaHtml(getItemDisplayName(item)) + '</div>' +
-              '<div class="mobile-cart-sub">Stock loja: ' + (item.stock || 0) + ' un</div>' +
+              '<div class="mobile-cart-sub">' + escapeDespesaHtml(subText) + '</div>' +
               '<div class="mobile-cart-price">' + fmt(item.price || 0) + '</div>' +
               '<div class="mobile-cart-sub">Total ' + fmt((item.price || 0) * (item.qty || 0)) + '</div>' +
             '</div>' +

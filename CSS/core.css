@@ -1255,6 +1255,72 @@ button.az-icon-button,
 }
 .search-wrap input::placeholder { color: var(--muted); }
 
+.sale-catalog-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sale-catalog-tab {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sale-catalog-tab.active {
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 11%, var(--surface));
+  color: var(--blue);
+}
+
+.service-quick-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.service-quick-head strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.service-quick-head span {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.service-quick-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr) minmax(0, .7fr) minmax(0, .9fr) auto;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.service-save-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--blue);
+  color: var(--accent-text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 /* Products */
 .prod-grid {
   flex: 1;
@@ -1297,6 +1363,36 @@ button.az-icon-button,
 }
 .prod-card:hover { border-color: var(--blue); }
 .prod-card.out { opacity: 0.4; cursor: not-allowed; }
+.service-card {
+  height: 240px;
+}
+
+.service-card-icon {
+  width: calc(100% - 16px);
+  height: 96px;
+  margin: 8px 8px 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--blue) 14%, var(--surface));
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+}
+
+.service-card-icon .az-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.service-card-meta {
+  margin: 0 8px;
+  min-height: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .prod-name { 
   font-size: 18px; 
   font-weight: 800; 
@@ -1527,6 +1623,19 @@ button.az-icon-button,
 
 .ci-del { background: none; border: none; color: var(--red); cursor: pointer; font-size: 15px; opacity: 0.6; }
 .ci-del:hover { opacity: 1; }
+.cart-service-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--blue) 12%, var(--surface));
+  color: var(--blue);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
 
 .cart-foot {
   padding: 14px 16px;
@@ -2378,10 +2487,27 @@ button.az-icon-button,
     overflow: visible;
   }
 
+  .service-quick-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .service-quick-grid input:first-child,
+  .service-save-btn {
+    grid-column: 1 / -1;
+  }
+
   .prod-card {
     max-width: none;
     min-height: 0;
     height: 278px;
+  }
+
+  .service-card {
+    height: 232px;
+  }
+
+  .service-card-icon {
+    height: 94px;
   }
 
   .prod-img {

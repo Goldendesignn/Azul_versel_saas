@@ -764,6 +764,25 @@
               <input type="text" id="searchInput" placeholder="Pesquisar produto..." oninput="filterProds()">
               <button onclick="loadProducts(true)" title="Actualizar produtos" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:0 4px;" id="refreshBtn">Refresh</button>
             </div>
+            <div class="sale-catalog-tabs">
+              <button type="button" class="sale-catalog-tab active" id="sale-catalog-products" onclick="switchSaleCatalog('products')">Produtos</button>
+              <button type="button" class="sale-catalog-tab" id="sale-catalog-services" onclick="switchSaleCatalog('services')">Servicos</button>
+            </div>
+            <div class="service-quick-panel" id="serviceQuickPanel" style="display:none;">
+              <div class="service-quick-head">
+                <div>
+                  <strong>Novo servico</strong>
+                  <span>Regista servicos sem mexer no stock.</span>
+                </div>
+              </div>
+              <div class="service-quick-grid">
+                <input type="text" class="form-input" id="service-name" placeholder="Nome do servico">
+                <input type="number" class="form-input" id="service-price" placeholder="Preco de venda">
+                <input type="number" class="form-input" id="service-cost" placeholder="Custo opcional">
+                <input type="text" class="form-input" id="service-category" placeholder="Categoria">
+                <button type="button" class="service-save-btn" onclick="saveServiceQuick()">Guardar servico</button>
+              </div>
+            </div>
             <div class="prod-grid" id="prodGrid">
               <div class="empty" style="grid-column:1/-1">A carregar produtos...</div>
             </div>
