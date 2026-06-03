@@ -2207,7 +2207,7 @@ async function getProductsFromSupabase() {
 
   var result = await supabaseClient
     .from("products")
-    .select("*")
+    .select("id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,variation,variations,photo")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
@@ -2255,7 +2255,7 @@ async function getServicesFromSupabase() {
 
   var result = await supabaseClient
     .from("services")
-    .select("*")
+    .select("id,name,category,sale_price,cost_price,active,created_at")
     .eq("organization_id", organizationId)
     .eq("active", true)
     .order("created_at", { ascending: false });
@@ -5876,6 +5876,8 @@ var phoneScannerUrl = "";
 var phoneScannerPollTimer = null;
 var phoneScannerModalAutoHidden = false;
 var phoneScannerProcessedEvents = {};
+var productsLastLoadedAt = 0;
+var PRODUCT_CACHE_MS = 60000;
 
 function setVendaProductsLoading(isLoading) {
   productsLoading = isLoading;
@@ -5951,14 +5953,66 @@ function setupVendaSearchFilter() {
   if (!input) return;
   input.oninput = filterProds;
 }
+
+function renderProductDependentViews() {
+  renderCompraProductDatalist();
+  renderFornPayDatalist();
+  renderFornNameDatalist();
+  rendertransfertDatalist();
+  renderProductProfileOptions();
+  renderClientDatalist();
+}
+
+function refreshProductHeavyViews() {
+  renderRevProducts(products);
+  renderinventaire(products);
+}
+
+function shouldUseCachedProducts(forceRefresh) {
+  return !forceRefresh &&
+    products &&
+    products.length &&
+    productsLastLoadedAt &&
+    Date.now() - productsLastLoadedAt < PRODUCT_CACHE_MS;
+}
+
+function enrichProductsInBackground() {
+  getInventoryMovementSummaryFromSupabase()
+    .then(function(summary) {
+      products = applyInventoryMovementSummary(products, summary);
+      refreshProductHeavyViews();
+    })
+    .catch(function(e) {
+      console.warn("Resumo de movimentos indisponivel:", e);
+    });
+
+  servicesLoading = true;
+  getServicesFromSupabase()
+    .then(function(data) {
+      services = data || [];
+      if (saleCatalogMode === "services") filterProds();
+    })
+    .catch(function(serviceError) {
+      console.warn("Erro ao carregar servicos:", serviceError);
+      services = [];
+    })
+    .finally(function() {
+      servicesLoading = false;
+    });
+}
+
 async function loadProducts(forceRefresh) {
   if (productsLoading) return;
 
   var vendaPage = document.getElementById("page-venda");
   var vendaActive = vendaPage && vendaPage.classList.contains("active");
 
-  if (!forceRefresh && vendaActive && products && products.length) {
+  if (shouldUseCachedProducts(forceRefresh)) {
     filterProds();
+    if (!vendaActive) {
+      refreshProductHeavyViews();
+      renderProductDependentViews();
+    }
     return;
   }
 
@@ -5979,27 +6033,13 @@ async function loadProducts(forceRefresh) {
     var data = await getProductsFromSupabase();
 
     products = normalizeProductList(data);
-    products = applyInventoryMovementSummary(products, await getInventoryMovementSummaryFromSupabase());
-    try {
-      servicesLoading = true;
-      services = await getServicesFromSupabase();
-    } catch (serviceError) {
-      console.warn("Erro ao carregar servicos:", serviceError);
-      services = [];
-    } finally {
-      servicesLoading = false;
-    }
+    productsLastLoadedAt = Date.now();
 
     setVendaProductsLoading(false);
     filterProds();
-    renderRevProducts(products);
-    renderCompraProductDatalist();
-    renderFornPayDatalist();
-    renderFornNameDatalist();
-    rendertransfertDatalist();
-    renderProductProfileOptions();
-    renderClientDatalist();
-    renderinventaire(products);
+    renderProductDependentViews();
+    refreshProductHeavyViews();
+    enrichProductsInBackground();
 
   } catch (e) {
     console.error("Erro Supabase produtos:", e);
