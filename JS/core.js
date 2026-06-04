@@ -7084,6 +7084,32 @@ function normalizeOnlinePhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
 
+function normalizeOnlineColor(value) {
+  var color = String(value || "").trim();
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+  return "#0b3d91";
+}
+
+function getOnlineFontFamily(value) {
+  var font = String(value || "").trim();
+  var allowed = [
+    "Arial, Helvetica, sans-serif",
+    "Inter, Arial, sans-serif",
+    "Verdana, Geneva, sans-serif",
+    "Georgia, serif",
+    "Trebuchet MS, Arial, sans-serif"
+  ];
+  return allowed.indexOf(font) >= 0 ? font : allowed[0];
+}
+
+function syncOnlineThemeColorText(value) {
+  var color = normalizeOnlineColor(value);
+  var colorInput = document.getElementById("online-theme-color");
+  if (colorInput && /^#[0-9a-f]{6}$/i.test(String(value || "").trim())) {
+    colorInput.value = color;
+  }
+}
+
 function slugifyOnlineStore(value) {
   return String(value || "")
     .normalize("NFD")
@@ -7191,13 +7217,22 @@ function applyOnlineStoreForm(settings) {
   var whatsapp = document.getElementById("online-whatsapp");
   var slug = document.getElementById("online-slug");
   var message = document.getElementById("online-message");
+  var themeColor = document.getElementById("online-theme-color");
+  var themeColorText = document.getElementById("online-theme-color-text");
+  var fontFamily = document.getElementById("online-font-family");
+  var logoUrl = document.getElementById("online-logo-url");
   var showStock = document.getElementById("online-show-stock");
+  var color = normalizeOnlineColor(settings.theme_color);
 
   if (active) active.checked = !!settings.active;
   if (storeName) storeName.value = settings.store_name || config.name || localStorage.getItem("azul_organization_name") || "Azul";
   if (whatsapp) whatsapp.value = settings.whatsapp_phone || config.phone || "";
   if (slug) slug.value = settings.slug || getDefaultOnlineSlug();
   if (message) message.value = settings.welcome_message || "Ola, quero comprar estes produtos:";
+  if (themeColor) themeColor.value = color;
+  if (themeColorText) themeColorText.value = color;
+  if (fontFamily) fontFamily.value = getOnlineFontFamily(settings.font_family);
+  if (logoUrl) logoUrl.value = settings.logo_url || config.logo || "";
   if (showStock) showStock.checked = settings.show_stock !== false;
 
   onlineSelectedProductIds = {};
@@ -7293,6 +7328,9 @@ async function loadOnlineStoreSettings(forceRefresh) {
       whatsapp_phone: config.phone || "",
       store_name: config.name || localStorage.getItem("azul_organization_name") || "Azul",
       welcome_message: "Ola, quero comprar estes produtos:",
+      theme_color: "#0b3d91",
+      font_family: "Arial, Helvetica, sans-serif",
+      logo_url: config.logo || "",
       show_stock: true,
       product_ids: []
     };
@@ -7339,6 +7377,9 @@ async function saveOnlineStoreSettings() {
     whatsapp_phone: phone,
     store_name: String((document.getElementById("online-store-name") || {}).value || config.name || "Azul").trim(),
     welcome_message: String((document.getElementById("online-message") || {}).value || "Ola, quero comprar estes produtos:").trim(),
+    theme_color: normalizeOnlineColor((document.getElementById("online-theme-color-text") || {}).value || (document.getElementById("online-theme-color") || {}).value),
+    font_family: getOnlineFontFamily((document.getElementById("online-font-family") || {}).value),
+    logo_url: String((document.getElementById("online-logo-url") || {}).value || "").trim(),
     show_stock: !!((document.getElementById("online-show-stock") || {}).checked),
     product_ids: productIds
   };

@@ -25,6 +25,33 @@ function normalizeShopPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
 
+function normalizeShopColor(value) {
+  var color = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : "#0b3d91";
+}
+
+function darkenShopColor(hex) {
+  var color = normalizeShopColor(hex).slice(1);
+  var parts = [0, 2, 4].map(function(start) {
+    return Math.max(0, Math.round(parseInt(color.slice(start, start + 2), 16) * 0.62));
+  });
+  return "#" + parts.map(function(part) {
+    return part.toString(16).padStart(2, "0");
+  }).join("");
+}
+
+function getShopFontFamily(value) {
+  var font = String(value || "").trim();
+  var allowed = [
+    "Arial, Helvetica, sans-serif",
+    "Inter, Arial, sans-serif",
+    "Verdana, Geneva, sans-serif",
+    "Georgia, serif",
+    "Trebuchet MS, Arial, sans-serif"
+  ];
+  return allowed.indexOf(font) >= 0 ? font : allowed[0];
+}
+
 function getShopInputValue(id) {
   var el = document.getElementById(id);
   return String(el ? el.value : "").trim();
@@ -145,8 +172,16 @@ async function loadShop() {
 function applyShopStore() {
   var name = shopStore.store_name || "Loja Azul";
   var welcome = shopStore.welcome_message || "Adiciona produtos ao carrinho e envia o pedido pelo WhatsApp.";
+  var themeColor = normalizeShopColor(shopStore.theme_color);
+  var logoUrl = String(shopStore.logo_url || "").trim() || "Assets/icon-192.png";
 
   document.title = name;
+  document.documentElement.style.setProperty("--blue", themeColor);
+  document.documentElement.style.setProperty("--blue2", darkenShopColor(themeColor));
+  document.body.style.fontFamily = getShopFontFamily(shopStore.font_family);
+
+  var themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.setAttribute("content", themeColor);
 
   var shopName = document.getElementById("shopName");
   var heroTitle = document.getElementById("shopHeroTitle");
@@ -155,6 +190,10 @@ function applyShopStore() {
   if (shopName) shopName.textContent = name;
   if (heroTitle) heroTitle.textContent = name;
   if (welcomeEl) welcomeEl.textContent = welcome;
+
+  document.querySelectorAll(".shop-brand img").forEach(function(img) {
+    img.src = logoUrl;
+  });
 }
 
 function renderShopProducts() {

@@ -1309,9 +1309,30 @@
                 <label class="form-label">Slug da loja</label>
                 <input type="text" class="form-input" id="online-slug" placeholder="Ex: minha-loja">
               </div>
-              <div class="form-group">
+              <div class="form-group online-wide">
                 <label class="form-label">Mensagem inicial</label>
                 <input type="text" class="form-input" id="online-message" placeholder="Ex: Ola, quero comprar estes produtos">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Cor principal</label>
+                <div class="online-color-row">
+                  <input type="color" id="online-theme-color" value="#0b3d91" aria-label="Cor principal da loja" oninput="document.getElementById('online-theme-color-text').value=this.value">
+                  <input type="text" class="form-input" id="online-theme-color-text" placeholder="#0b3d91" oninput="syncOnlineThemeColorText(this.value)">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fonte da loja</label>
+                <select class="form-input" id="online-font-family">
+                  <option value="Arial, Helvetica, sans-serif">Arial</option>
+                  <option value="Inter, Arial, sans-serif">Inter</option>
+                  <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="Trebuchet MS, Arial, sans-serif">Trebuchet</option>
+                </select>
+              </div>
+              <div class="form-group online-wide">
+                <label class="form-label">Logo da loja</label>
+                <input type="text" class="form-input" id="online-logo-url" placeholder="URL ou base64 da imagem do logo">
               </div>
               <label class="online-store-toggle compact">
                 <input type="checkbox" id="online-show-stock" checked>

@@ -1761,9 +1761,31 @@ button.az-icon-button,
   gap: 12px;
 }
 
-.online-store-form .form-group:nth-child(5),
+.online-store-form .online-wide,
 .online-store-toggle {
   grid-column: 1 / -1;
+}
+
+.online-color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.online-color-row input[type="color"] {
+  width: 54px;
+  min-width: 54px;
+  height: 42px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.online-color-row .form-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .online-store-toggle {

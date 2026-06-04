@@ -55,6 +55,7 @@ body {
   height: 42px;
   border-radius: 12px;
   background: #fff;
+  object-fit: contain;
 }
 
 .shop-brand strong,
