@@ -1,6 +1,7 @@
 var shopStore = null;
 var shopProducts = [];
 var shopCart = [];
+var shopCartOpen = false;
 
 function shopParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
@@ -43,7 +44,7 @@ function setShopFormError(message, targetId) {
   if (targetId) {
     var target = document.getElementById(targetId);
     if (target) {
-      scrollToCart();
+      openShopCart();
       setTimeout(function() { target.focus(); }, 180);
     }
   }
@@ -282,6 +283,8 @@ function getShopCartTotal() {
 function renderShopCart() {
   var list = document.getElementById("shopCartList");
   var count = document.getElementById("shopCartCount");
+  var mobileCount = document.getElementById("shopMobileCartCount");
+  var mobileTotal = document.getElementById("shopMobileCartTotal");
   var total = document.getElementById("shopCartTotal");
   var btn = document.getElementById("shopWhatsappBtn");
 
@@ -290,6 +293,8 @@ function renderShopCart() {
   }, 0);
 
   if (count) count.textContent = String(qty);
+  if (mobileCount) mobileCount.textContent = qty + (qty === 1 ? " produto" : " produtos");
+  if (mobileTotal) mobileTotal.textContent = shopMoney(getShopCartTotal());
   if (total) total.textContent = shopMoney(getShopCartTotal());
   if (btn) btn.disabled = !shopCart.length;
 
@@ -334,6 +339,8 @@ function buildWhatsAppMessage(customer) {
 function sendShopCartToWhatsApp() {
   if (!shopCart.length) return;
 
+  openShopCart();
+
   var customer = getShopCustomerData();
   if (!customer) return;
 
@@ -348,8 +355,21 @@ function sendShopCartToWhatsApp() {
 }
 
 function scrollToCart() {
+  openShopCart();
   var cart = document.getElementById("shopCart");
   if (cart) cart.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+function toggleShopCart(forceOpen) {
+  var cart = document.getElementById("shopCart");
+  if (!cart) return;
+
+  shopCartOpen = typeof forceOpen === "boolean" ? forceOpen : !shopCartOpen;
+  cart.classList.toggle("is-open", shopCartOpen);
+}
+
+function openShopCart() {
+  toggleShopCart(true);
 }
 
 document.addEventListener("DOMContentLoaded", loadShop);
