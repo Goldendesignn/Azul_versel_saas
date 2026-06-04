@@ -474,6 +474,26 @@ function bindShopCartToggle() {
   });
 }
 
+function shouldReloadShopForSettingsUpdate(payload) {
+  if (!payload) return false;
+  var org = shopParam("org");
+  var slug = shopParam("loja");
+  if (org && payload.organization_id && String(org) === String(payload.organization_id)) return true;
+  if (slug && payload.slug && String(slug).toLowerCase() === String(payload.slug).toLowerCase()) return true;
+  return false;
+}
+
+window.addEventListener("storage", function(event) {
+  if (event.key !== "azul_online_store_updated") return;
+
+  try {
+    var payload = JSON.parse(event.newValue || "{}");
+    if (shouldReloadShopForSettingsUpdate(payload)) {
+      loadShop();
+    }
+  } catch (e) {}
+});
+
 document.addEventListener("DOMContentLoaded", function() {
   bindShopCartToggle();
   loadShop();

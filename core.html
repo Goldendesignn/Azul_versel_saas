@@ -1332,7 +1332,17 @@
               </div>
               <div class="form-group online-wide">
                 <label class="form-label">Logo da loja</label>
-                <input type="text" class="form-input" id="online-logo-url" placeholder="URL ou base64 da imagem do logo">
+                <div class="online-logo-picker">
+                  <div class="online-logo-preview" id="online-logo-preview">A</div>
+                  <div class="online-logo-controls">
+                    <input type="text" class="form-input" id="online-logo-url" placeholder="URL ou base64 da imagem do logo" oninput="updateOnlineLogoPreview(this.value)">
+                    <div class="online-logo-actions">
+                      <label class="filter-btn" for="online-logo-file">Carregar imagem</label>
+                      <button class="filter-btn ghost" type="button" onclick="clearOnlineLogo()">Remover logo</button>
+                    </div>
+                    <input type="file" id="online-logo-file" accept="image/png,image/jpeg,image/webp" onchange="handleOnlineLogoFile(this)" hidden>
+                  </div>
+                </div>
               </div>
               <label class="online-store-toggle compact">
                 <input type="checkbox" id="online-show-stock" checked>

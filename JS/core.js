@@ -7110,6 +7110,65 @@ function syncOnlineThemeColorText(value) {
   }
 }
 
+function updateOnlineLogoPreview(value) {
+  var preview = document.getElementById("online-logo-preview");
+  if (!preview) return;
+
+  var logo = String(value || "").trim();
+  preview.innerHTML = "";
+
+  if (logo) {
+    var img = document.createElement("img");
+    img.src = logo;
+    img.alt = "Logo da loja";
+    img.onerror = function() {
+      preview.textContent = "A";
+    };
+    preview.appendChild(img);
+    return;
+  }
+
+  preview.textContent = String((document.getElementById("online-store-name") || {}).value || "Azul").trim().charAt(0).toUpperCase() || "A";
+}
+
+function clearOnlineLogo() {
+  var input = document.getElementById("online-logo-url");
+  var file = document.getElementById("online-logo-file");
+  if (input) input.value = "";
+  if (file) file.value = "";
+  updateOnlineLogoPreview("");
+}
+
+function handleOnlineLogoFile(input) {
+  var file = input && input.files && input.files[0];
+  if (!file) return;
+
+  if (!/^image\/(png|jpe?g|webp)$/i.test(file.type || "")) {
+    toast("Escolha uma imagem PNG, JPG ou WebP.", "error");
+    input.value = "";
+    return;
+  }
+
+  if (file.size > 1500 * 1024) {
+    toast("Logo muito pesado. Usa uma imagem com menos de 1.5 MB.", "error");
+    input.value = "";
+    return;
+  }
+
+  var reader = new FileReader();
+  reader.onload = function(event) {
+    var dataUrl = String(event.target && event.target.result || "");
+    var logoInput = document.getElementById("online-logo-url");
+    if (logoInput) logoInput.value = dataUrl;
+    updateOnlineLogoPreview(dataUrl);
+    toast("Logo carregado. Clique em Guardar loja.", "success");
+  };
+  reader.onerror = function() {
+    toast("Nao foi possivel carregar a imagem.", "error");
+  };
+  reader.readAsDataURL(file);
+}
+
 function slugifyOnlineStore(value) {
   return String(value || "")
     .normalize("NFD")
@@ -7233,6 +7292,7 @@ function applyOnlineStoreForm(settings) {
   if (themeColorText) themeColorText.value = color;
   if (fontFamily) fontFamily.value = getOnlineFontFamily(settings.font_family);
   if (logoUrl) logoUrl.value = settings.logo_url || config.logo || "";
+  updateOnlineLogoPreview(logoUrl ? logoUrl.value : "");
   if (showStock) showStock.checked = settings.show_stock !== false;
 
   onlineSelectedProductIds = {};
@@ -7396,6 +7456,13 @@ async function saveOnlineStoreSettings() {
     onlineStoreSettings = result.data;
     applyOnlineStoreForm(onlineStoreSettings);
     renderOnlineProductList();
+    try {
+      localStorage.setItem("azul_online_store_updated", JSON.stringify({
+        organization_id: organizationId,
+        slug: onlineStoreSettings.slug || "",
+        at: Date.now()
+      }));
+    } catch (storageError) {}
     setOnlineStoreStatus(active ? "Loja online guardada e ativa." : "Loja online guardada, mas desativada.", false);
     toast("Loja online guardada.", "success");
   } catch (e) {
