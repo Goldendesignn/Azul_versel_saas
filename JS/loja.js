@@ -373,4 +373,16 @@ function openShopCart() {
   toggleShopCart(true);
 }
 
-document.addEventListener("DOMContentLoaded", loadShop);
+function bindShopCartToggle() {
+  var button = document.getElementById("shopCartToggle");
+  if (!button) return;
+
+  button.addEventListener("click", function() {
+    toggleShopCart();
+  });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  bindShopCartToggle();
+  loadShop();
+});
