@@ -7275,6 +7275,7 @@ function applyOnlineStoreForm(settings) {
   var storeName = document.getElementById("online-store-name");
   var whatsapp = document.getElementById("online-whatsapp");
   var slug = document.getElementById("online-slug");
+  var heroTitle = document.getElementById("online-hero-title");
   var message = document.getElementById("online-message");
   var themeColor = document.getElementById("online-theme-color");
   var themeColorText = document.getElementById("online-theme-color-text");
@@ -7287,6 +7288,7 @@ function applyOnlineStoreForm(settings) {
   if (storeName) storeName.value = settings.store_name || config.name || localStorage.getItem("azul_organization_name") || "Azul";
   if (whatsapp) whatsapp.value = settings.whatsapp_phone || config.phone || "";
   if (slug) slug.value = settings.slug || getDefaultOnlineSlug();
+  if (heroTitle) heroTitle.value = settings.hero_title || "Escolha os produtos";
   if (message) message.value = settings.welcome_message || "Ola, quero comprar estes produtos:";
   if (themeColor) themeColor.value = color;
   if (themeColorText) themeColorText.value = color;
@@ -7387,6 +7389,7 @@ async function loadOnlineStoreSettings(forceRefresh) {
       slug: getDefaultOnlineSlug(),
       whatsapp_phone: config.phone || "",
       store_name: config.name || localStorage.getItem("azul_organization_name") || "Azul",
+      hero_title: "Escolha os produtos",
       welcome_message: "Ola, quero comprar estes produtos:",
       theme_color: "#0b3d91",
       font_family: "Arial, Helvetica, sans-serif",
@@ -7436,6 +7439,7 @@ async function saveOnlineStoreSettings() {
     slug: slug,
     whatsapp_phone: phone,
     store_name: String((document.getElementById("online-store-name") || {}).value || config.name || "Azul").trim(),
+    hero_title: String((document.getElementById("online-hero-title") || {}).value || "Escolha os produtos").trim(),
     welcome_message: String((document.getElementById("online-message") || {}).value || "Ola, quero comprar estes produtos:").trim(),
     theme_color: normalizeOnlineColor((document.getElementById("online-theme-color-text") || {}).value || (document.getElementById("online-theme-color") || {}).value),
     font_family: getOnlineFontFamily((document.getElementById("online-font-family") || {}).value),

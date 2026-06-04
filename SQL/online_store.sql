@@ -4,6 +4,7 @@ create table if not exists public.online_store_settings (
   slug text unique,
   whatsapp_phone text,
   store_name text,
+  hero_title text,
   welcome_message text,
   theme_color text not null default '#0b3d91',
   font_family text not null default 'Arial, Helvetica, sans-serif',
@@ -13,6 +14,9 @@ create table if not exists public.online_store_settings (
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now()
 );
+
+alter table public.online_store_settings
+  add column if not exists hero_title text;
 
 alter table public.online_store_settings
   add column if not exists theme_color text not null default '#0b3d91';
@@ -122,6 +126,7 @@ begin
       'active', v_settings.active,
       'whatsapp_phone', v_settings.whatsapp_phone,
       'store_name', v_settings.store_name,
+      'hero_title', v_settings.hero_title,
       'welcome_message', v_settings.welcome_message,
       'theme_color', v_settings.theme_color,
       'font_family', v_settings.font_family,

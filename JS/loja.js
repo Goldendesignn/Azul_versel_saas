@@ -72,6 +72,7 @@ function saveShopThemeCache(store) {
   try {
     localStorage.setItem(key, JSON.stringify({
       store_name: store.store_name || "Loja Azul",
+      hero_title: store.hero_title || "Escolha os produtos",
       welcome_message: store.welcome_message || "",
       theme_color: normalizeShopColor(store.theme_color),
       font_family: getShopFontFamily(store.font_family),
@@ -95,6 +96,7 @@ function readShopThemeCache() {
 function applyShopBranding(store, saveCache) {
   store = store || {};
   var name = store.store_name || "Loja Azul";
+  var hero = store.hero_title || "Escolha os produtos";
   var welcome = store.welcome_message || "Adiciona produtos ao carrinho e envia o pedido pelo WhatsApp.";
   var themeColor = normalizeShopColor(store.theme_color);
   var fontFamily = getShopFontFamily(store.font_family);
@@ -113,7 +115,7 @@ function applyShopBranding(store, saveCache) {
   var welcomeEl = document.getElementById("shopWelcome");
 
   if (shopName) shopName.textContent = name;
-  if (heroTitle) heroTitle.textContent = name;
+  if (heroTitle) heroTitle.textContent = hero;
   if (welcomeEl) welcomeEl.textContent = welcome;
 
   document.querySelectorAll(".shop-brand img").forEach(function(img) {
