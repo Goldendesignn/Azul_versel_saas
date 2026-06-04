@@ -336,13 +336,49 @@ function buildWhatsAppMessage(customer) {
   return lines.join("\n");
 }
 
-function sendShopCartToWhatsApp() {
+function getShopOrderItemsPayload() {
+  return shopCart.map(function(item) {
+    return {
+      product_id: item.id,
+      quantity: Number(item.qty) || 1
+    };
+  });
+}
+
+async function createShopOrder(customer, message) {
+  var org = shopParam("org");
+  var slug = shopParam("loja");
+  var result = await supabaseClient.rpc("create_online_order", {
+    p_org_id: org || null,
+    p_slug: slug || null,
+    p_customer_name: customer.name,
+    p_customer_phone: customer.phone,
+    p_customer_address: customer.address,
+    p_items: getShopOrderItemsPayload(),
+    p_whatsapp_message: message
+  });
+
+  if (result.error) throw result.error;
+
+  var data = result.data || {};
+  if (!data.ok) throw new Error(data.message || "Nao foi possivel criar a encomenda.");
+
+  return data.order || {};
+}
+
+function injectShopOrderNumber(message, order) {
+  if (!order || !order.order_number) return message;
+  return "Encomenda: " + order.order_number + "\n\n" + message;
+}
+
+async function sendShopCartToWhatsApp() {
   if (!shopCart.length) return;
 
   openShopCart();
 
   var customer = getShopCustomerData();
   if (!customer) return;
+  var btn = document.getElementById("shopWhatsappBtn");
 
   var phone = normalizeShopPhone(shopStore.whatsapp_phone);
   if (!phone) {
@@ -350,8 +386,25 @@ function sendShopCartToWhatsApp() {
     return;
   }
 
-  var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(buildWhatsAppMessage(customer));
-  window.open(url, "_blank", "noopener,noreferrer");
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "A criar encomenda...";
+    }
+
+    var message = buildWhatsAppMessage(customer);
+    var order = await createShopOrder(customer, message);
+    var finalMessage = injectShopOrderNumber(message, order);
+    var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(finalMessage);
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (e) {
+    alert("Erro ao criar encomenda: " + (e.message || e));
+  } finally {
+    if (btn) {
+      btn.disabled = !shopCart.length;
+      btn.textContent = "Enviar pedido no WhatsApp";
+    }
+  }
 }
 
 function scrollToCart() {

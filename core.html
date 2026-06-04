@@ -1274,7 +1274,7 @@
             <p>Cria uma vitrine publica com produtos selecionados e recebe pedidos directamente no WhatsApp.</p>
           </div>
           <div class="online-store-hero-actions">
-            <button class="filter-btn" type="button" onclick="loadOnlineStoreSettings(true)">Atualizar</button>
+            <button class="filter-btn" type="button" onclick="refreshOnlineStoreModule()">Atualizar</button>
             <button class="form-submit" type="button" onclick="saveOnlineStoreSettings()">Guardar loja</button>
           </div>
         </div>
@@ -1345,6 +1345,37 @@
           </div>
           <div class="online-products-list" id="online-products-list">
             <div class="empty">A carregar produtos...</div>
+          </div>
+        </section>
+
+        <section class="online-store-card">
+          <div class="online-products-head">
+            <div>
+              <div class="card-title">Encomendas online</div>
+              <p>Pedidos recebidos pela loja WhatsApp, com acompanhamento por estado.</p>
+            </div>
+            <div class="online-products-actions">
+              <select class="form-input" id="online-order-status-filter" onchange="renderOnlineOrders()">
+                <option value="">Todos os estados</option>
+                <option value="pending">Pendentes</option>
+                <option value="confirmed">Confirmadas</option>
+                <option value="preparing">Em preparacao</option>
+                <option value="delivered">Entregues</option>
+                <option value="canceled">Canceladas</option>
+              </select>
+              <button type="button" class="filter-btn" onclick="loadOnlineOrders()">Atualizar</button>
+            </div>
+          </div>
+
+          <div class="online-order-kpis">
+            <div><span>Pendentes</span><strong id="online-orders-pending">0</strong></div>
+            <div><span>Confirmadas</span><strong id="online-orders-confirmed">0</strong></div>
+            <div><span>Total pendente</span><strong id="online-orders-total">0 Kz</strong></div>
+            <div><span>Encomendas</span><strong id="online-orders-count">0</strong></div>
+          </div>
+
+          <div class="online-orders-list" id="online-orders-list">
+            <div class="empty">A carregar encomendas...</div>
           </div>
         </section>
       </div>

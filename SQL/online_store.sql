@@ -119,3 +119,224 @@ end;
 $$;
 
 grant execute on function public.get_online_store(uuid, text) to anon, authenticated;
+
+create table if not exists public.online_orders (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null,
+  order_number text not null unique,
+  customer_name text not null,
+  customer_phone text not null,
+  customer_address text not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'confirmed', 'preparing', 'delivered', 'canceled')),
+  total numeric not null default 0,
+  source text not null default 'whatsapp',
+  whatsapp_message text,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now()
+);
+
+create table if not exists public.online_order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.online_orders(id) on delete cascade,
+  organization_id uuid not null,
+  product_id uuid,
+  product_name text not null,
+  code text,
+  variation text,
+  quantity integer not null check (quantity > 0),
+  unit_price numeric not null default 0,
+  total numeric not null default 0,
+  created_at timestamp with time zone not null default now()
+);
+
+create index if not exists idx_online_orders_org_created
+  on public.online_orders (organization_id, created_at desc);
+
+create index if not exists idx_online_orders_org_status
+  on public.online_orders (organization_id, status);
+
+create index if not exists idx_online_order_items_order
+  on public.online_order_items (order_id);
+
+alter table public.online_orders enable row level security;
+alter table public.online_order_items enable row level security;
+
+grant select, update on public.online_orders to anon, authenticated;
+grant select on public.online_order_items to anon, authenticated;
+
+drop policy if exists online_orders_manage_by_org on public.online_orders;
+create policy online_orders_manage_by_org
+on public.online_orders
+for all
+to public
+using (
+  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+)
+with check (
+  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+);
+
+drop policy if exists online_order_items_select_by_org on public.online_order_items;
+create policy online_order_items_select_by_org
+on public.online_order_items
+for select
+to public
+using (
+  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+);
+
+create or replace function public.touch_online_orders_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_touch_online_orders on public.online_orders;
+create trigger trg_touch_online_orders
+before update on public.online_orders
+for each row
+execute function public.touch_online_orders_updated_at();
+
+create or replace function public.create_online_order(
+  p_org_id uuid default null,
+  p_slug text default null,
+  p_customer_name text default null,
+  p_customer_phone text default null,
+  p_customer_address text default null,
+  p_items jsonb default '[]'::jsonb,
+  p_whatsapp_message text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_settings public.online_store_settings%rowtype;
+  v_order_id uuid;
+  v_order_number text;
+  v_total numeric := 0;
+begin
+  if coalesce(trim(p_customer_name), '') = ''
+    or coalesce(trim(p_customer_phone), '') = ''
+    or coalesce(trim(p_customer_address), '') = '' then
+    return jsonb_build_object('ok', false, 'message', 'Dados do cliente incompletos');
+  end if;
+
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+    return jsonb_build_object('ok', false, 'message', 'Carrinho vazio');
+  end if;
+
+  select *
+    into v_settings
+  from public.online_store_settings s
+  where s.active = true
+    and (
+      (p_org_id is not null and s.organization_id = p_org_id)
+      or
+      (p_slug is not null and lower(s.slug) = lower(p_slug))
+    )
+  limit 1;
+
+  if v_settings.organization_id is null then
+    return jsonb_build_object('ok', false, 'message', 'Loja indisponivel');
+  end if;
+
+  v_order_number := 'ON-' ||
+    to_char(now(), 'YYMMDD-HH24MISS') || '-' ||
+    upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 4));
+
+  insert into public.online_orders (
+    organization_id,
+    order_number,
+    customer_name,
+    customer_phone,
+    customer_address,
+    status,
+    source,
+    whatsapp_message
+  )
+  values (
+    v_settings.organization_id,
+    v_order_number,
+    trim(p_customer_name),
+    trim(p_customer_phone),
+    trim(p_customer_address),
+    'pending',
+    'whatsapp',
+    p_whatsapp_message
+  )
+  returning id into v_order_id;
+
+  with requested_raw as (
+    select
+      nullif(item->>'product_id', '')::uuid as product_id,
+      greatest(1, coalesce(nullif(item->>'quantity', '')::integer, 1)) as quantity
+    from jsonb_array_elements(p_items) item
+    where nullif(item->>'product_id', '') is not null
+  ),
+  requested as (
+    select product_id, sum(quantity)::integer as quantity
+    from requested_raw
+    group by product_id
+  ),
+  inserted as (
+    insert into public.online_order_items (
+      order_id,
+      organization_id,
+      product_id,
+      product_name,
+      code,
+      variation,
+      quantity,
+      unit_price,
+      total
+    )
+    select
+      v_order_id,
+      v_settings.organization_id,
+      p.id,
+      p.name,
+      p.code,
+      p.variation,
+      r.quantity,
+      coalesce(p.sale_price, 0),
+      r.quantity * coalesce(p.sale_price, 0)
+    from requested r
+    join public.products p on p.id = r.product_id
+    where p.organization_id = v_settings.organization_id
+      and p.id::text in (select jsonb_array_elements_text(v_settings.product_ids))
+      and coalesce(p.sale_price, 0) > 0
+    returning total
+  )
+  select coalesce(sum(total), 0) into v_total
+  from inserted;
+
+  if v_total <= 0 then
+    delete from public.online_orders where id = v_order_id;
+    return jsonb_build_object('ok', false, 'message', 'Produtos indisponiveis');
+  end if;
+
+  update public.online_orders
+  set total = v_total
+  where id = v_order_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'order', jsonb_build_object(
+      'id', v_order_id,
+      'order_number', v_order_number,
+      'total', v_total,
+      'status', 'pending'
+    )
+  );
+end;
+$$;
+
+revoke all on function public.create_online_order(uuid, text, text, text, text, jsonb, text) from public;
+grant execute on function public.create_online_order(uuid, text, text, text, text, jsonb, text) to anon, authenticated;

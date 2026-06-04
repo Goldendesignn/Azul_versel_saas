@@ -7077,6 +7077,7 @@ var onlineStoreSettings = null;
 var onlineSelectedProductIds = {};
 var onlineStoreLink = "";
 var onlineStoreLoading = false;
+var onlineOrders = [];
 
 function normalizeOnlinePhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
@@ -7101,11 +7102,18 @@ function getDefaultOnlineSlug() {
 
 function isOnlineStoreTableMissing(error) {
   var msg = String(error && error.message ? error.message : error || "").toLowerCase();
-  return msg.indexOf("online_store_settings") >= 0 &&
+  return (msg.indexOf("online_store_settings") >= 0 ||
+    msg.indexOf("online_orders") >= 0 ||
+    msg.indexOf("online_order_items") >= 0 ||
+    msg.indexOf("create_online_order") >= 0) &&
     (msg.indexOf("could not find") >= 0 ||
       msg.indexOf("schema cache") >= 0 ||
       msg.indexOf("does not exist") >= 0 ||
       msg.indexOf("relation") >= 0);
+}
+
+function refreshOnlineStoreModule() {
+  loadOnlineStoreSettings(true);
 }
 
 function getOnlineStorePublicUrl(settings) {
@@ -7267,6 +7275,7 @@ async function loadOnlineStoreSettings(forceRefresh) {
     applyOnlineStoreForm(onlineStoreSettings);
     renderOnlineProductList();
     setOnlineStoreStatus(onlineStoreSettings.active ? "Loja online ativa." : "Loja online desativada.", false);
+    loadOnlineOrders();
   } catch (e) {
     console.error("Erro loja online:", e);
     if (isOnlineStoreTableMissing(e)) {
@@ -7352,6 +7361,174 @@ function openOnlineStoreLink() {
     return;
   }
   window.open(onlineStoreLink, "_blank", "noopener,noreferrer");
+}
+
+function getOnlineOrderStatusLabel(status) {
+  var labels = {
+    pending: "Pendente",
+    confirmed: "Confirmada",
+    preparing: "Em preparacao",
+    delivered: "Entregue",
+    canceled: "Cancelada"
+  };
+  return labels[status] || status || "Pendente";
+}
+
+function formatOnlineOrderDate(value) {
+  if (!value) return "";
+  var date = new Date(value);
+  if (isNaN(date.getTime())) return String(value).slice(0, 10);
+  return date.toLocaleString("pt-AO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function getOnlineOrderItems(order) {
+  var items = order && order.online_order_items;
+  return Array.isArray(items) ? items : [];
+}
+
+function renderOnlineOrderKpis() {
+  var pending = 0;
+  var confirmed = 0;
+  var pendingTotal = 0;
+
+  onlineOrders.forEach(function(order) {
+    if (order.status === "pending") {
+      pending++;
+      pendingTotal += Number(order.total) || 0;
+    }
+    if (order.status === "confirmed" || order.status === "preparing") confirmed++;
+  });
+
+  var pendingEl = document.getElementById("online-orders-pending");
+  var confirmedEl = document.getElementById("online-orders-confirmed");
+  var totalEl = document.getElementById("online-orders-total");
+  var countEl = document.getElementById("online-orders-count");
+
+  if (pendingEl) pendingEl.textContent = String(pending);
+  if (confirmedEl) confirmedEl.textContent = String(confirmed);
+  if (totalEl) totalEl.textContent = fmt(pendingTotal);
+  if (countEl) countEl.textContent = String(onlineOrders.length);
+}
+
+function renderOnlineOrders() {
+  var list = document.getElementById("online-orders-list");
+  if (!list) return;
+
+  renderOnlineOrderKpis();
+
+  var filter = String((document.getElementById("online-order-status-filter") || {}).value || "");
+  var rows = filter ? onlineOrders.filter(function(order) {
+    return order.status === filter;
+  }) : onlineOrders;
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhuma encomenda online encontrada.</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(order) {
+    var items = getOnlineOrderItems(order);
+    var itemText = items.map(function(item) {
+      return escapeDespesaHtml(item.product_name || "Produto") +
+        " x" + (Number(item.quantity) || 0);
+    }).join(" | ");
+    var phone = normalizeOnlinePhone(order.customer_phone || "");
+    var waLink = phone ? "https://wa.me/" + phone : "";
+
+    return '<article class="online-order-card">' +
+      '<div class="online-order-main">' +
+        '<div class="online-order-title">' +
+          '<strong>' + escapeDespesaHtml(order.order_number || "Encomenda") + '</strong>' +
+          '<span class="online-order-status">' + escapeDespesaHtml(getOnlineOrderStatusLabel(order.status)) + '</span>' +
+        '</div>' +
+        '<div class="online-order-meta">' +
+          escapeDespesaHtml(order.customer_name || "Cliente") + ' | ' +
+          escapeDespesaHtml(order.customer_phone || "") + '<br>' +
+          escapeDespesaHtml(order.customer_address || "") + '<br>' +
+          escapeDespesaHtml(formatOnlineOrderDate(order.created_at || order.createdAt || "")) +
+        '</div>' +
+        '<div class="online-order-items">' + (itemText || "Sem itens") + '</div>' +
+      '</div>' +
+      '<div class="online-order-total">' + fmt(order.total || 0) + '</div>' +
+      '<div class="online-order-actions">' +
+        (waLink ? '<a href="' + waLink + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' : '') +
+        renderOnlineOrderStatusButtons(order) +
+      '</div>' +
+    '</article>';
+  }).join("");
+}
+
+function renderOnlineOrderStatusButtons(order) {
+  var id = escapeDespesaHtml(order.id || "");
+  var status = order.status || "pending";
+  var html = "";
+
+  if (status === "pending") {
+    html += '<button type="button" class="primary" onclick="updateOnlineOrderStatus(\'' + id + '\', \'confirmed\')">Confirmar</button>';
+  }
+  if (status === "pending" || status === "confirmed") {
+    html += '<button type="button" onclick="updateOnlineOrderStatus(\'' + id + '\', \'preparing\')">Preparar</button>';
+  }
+  if (status !== "delivered" && status !== "canceled") {
+    html += '<button type="button" class="primary" onclick="updateOnlineOrderStatus(\'' + id + '\', \'delivered\')">Entregue</button>';
+    html += '<button type="button" class="danger" onclick="updateOnlineOrderStatus(\'' + id + '\', \'canceled\')">Cancelar</button>';
+  }
+
+  return html || '<button type="button" onclick="updateOnlineOrderStatus(\'' + id + '\', \'pending\')">Reabrir</button>';
+}
+
+async function loadOnlineOrders() {
+  var list = document.getElementById("online-orders-list");
+  if (list) list.innerHTML = '<div class="empty">A carregar encomendas...</div>';
+
+  try {
+    var organizationId = getAzulOrganizationId();
+    if (!organizationId) return;
+
+    var result = await supabaseClient
+      .from("online_orders")
+      .select("*, online_order_items(*)")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (result.error) throw result.error;
+
+    onlineOrders = result.data || [];
+    renderOnlineOrders();
+  } catch (e) {
+    console.error("Erro encomendas online:", e);
+    if (list) {
+      list.innerHTML = '<div class="empty">Erro ao carregar encomendas. Executa SQL/online_store.sql no Supabase.</div>';
+    }
+  }
+}
+
+async function updateOnlineOrderStatus(orderId, status) {
+  if (!orderId || !status) return;
+
+  try {
+    var result = await supabaseClient
+      .from("online_orders")
+      .update({ status: status })
+      .eq("id", orderId)
+      .select()
+      .single();
+
+    if (result.error) throw result.error;
+
+    toast("Estado da encomenda atualizado.", "success");
+    await loadOnlineOrders();
+  } catch (e) {
+    console.error("Erro atualizar encomenda:", e);
+    toast("Erro encomenda: " + (e.message || e), "error");
+  }
 }
 //==============modification carde product=====================
 function renderProds(list) {
