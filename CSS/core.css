@@ -1714,6 +1714,20 @@ button.az-icon-button,
   font-size: 26px;
 }
 
+.online-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.online-tabs .mode-btn {
+  min-height: 42px;
+}
+
+.online-tab-panel {
+  min-width: 0;
+}
+
 .online-store-hero p,
 .online-products-head p {
   margin: 0;

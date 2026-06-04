@@ -7078,6 +7078,7 @@ var onlineSelectedProductIds = {};
 var onlineStoreLink = "";
 var onlineStoreLoading = false;
 var onlineOrders = [];
+var onlineCurrentTab = "config";
 
 function normalizeOnlinePhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
@@ -7114,6 +7115,30 @@ function isOnlineStoreTableMissing(error) {
 
 function refreshOnlineStoreModule() {
   loadOnlineStoreSettings(true);
+  if (onlineCurrentTab === "orders") loadOnlineOrders();
+}
+
+function switchOnlineTab(tab, btn) {
+  onlineCurrentTab = tab || "config";
+
+  ["config", "products", "orders"].forEach(function(name) {
+    var panel = document.getElementById("online-panel-" + name);
+    var tabBtn = document.getElementById("online-tab-" + name);
+    if (panel) panel.style.display = name === onlineCurrentTab ? "" : "none";
+    if (tabBtn) tabBtn.classList.toggle("active", name === onlineCurrentTab);
+  });
+
+  if (btn && btn.classList) {
+    btn.classList.add("active");
+  }
+
+  if (onlineCurrentTab === "products") {
+    renderOnlineProductList();
+  }
+
+  if (onlineCurrentTab === "orders") {
+    loadOnlineOrders();
+  }
 }
 
 function getOnlineStorePublicUrl(settings) {
@@ -7275,7 +7300,7 @@ async function loadOnlineStoreSettings(forceRefresh) {
     applyOnlineStoreForm(onlineStoreSettings);
     renderOnlineProductList();
     setOnlineStoreStatus(onlineStoreSettings.active ? "Loja online ativa." : "Loja online desativada.", false);
-    loadOnlineOrders();
+    if (onlineCurrentTab === "orders") loadOnlineOrders();
   } catch (e) {
     console.error("Erro loja online:", e);
     if (isOnlineStoreTableMissing(e)) {

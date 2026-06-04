@@ -1279,7 +1279,14 @@
           </div>
         </div>
 
-        <div class="online-store-grid">
+        <div class="online-tabs">
+          <button type="button" class="mode-btn active" id="online-tab-config" onclick="switchOnlineTab('config', this)">Configuracao</button>
+          <button type="button" class="mode-btn" id="online-tab-products" onclick="switchOnlineTab('products', this)">Produtos</button>
+          <button type="button" class="mode-btn" id="online-tab-orders" onclick="switchOnlineTab('orders', this)">Encomendas</button>
+        </div>
+
+        <div class="online-tab-panel" id="online-panel-config">
+          <div class="online-store-grid">
           <section class="online-store-card">
             <div class="card-title">Configuracao da loja</div>
             <div class="online-store-form">
@@ -1329,9 +1336,10 @@
             </div>
             <div class="online-store-status" id="online-store-status">Configura a loja e escolhe os produtos.</div>
           </aside>
+          </div>
         </div>
 
-        <section class="online-store-card">
+        <section class="online-store-card online-tab-panel" id="online-panel-products" style="display:none;">
           <div class="online-products-head">
             <div>
               <div class="card-title">Produtos da vitrine</div>
@@ -1348,7 +1356,7 @@
           </div>
         </section>
 
-        <section class="online-store-card">
+        <section class="online-store-card online-tab-panel" id="online-panel-orders" style="display:none;">
           <div class="online-products-head">
             <div>
               <div class="card-title">Encomendas online</div>
