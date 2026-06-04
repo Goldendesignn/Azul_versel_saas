@@ -221,6 +221,7 @@
     <button class="tab" onclick="goTo('corrections', this)">Correcoes</button>
     <button class="tab" onclick="goTo('revendeurs', this)">Revendedores</button>
     <button class="tab" onclick="goTo('online', this)">Venda Online</button>
+    <button class="tab" onclick="goTo('logistica', this)">Logistica</button>
     <button class="tab" onclick="goTo('settings', this)"> Definicoes</button>
   </div>
 
@@ -1420,6 +1421,137 @@
 
           <div class="online-orders-list" id="online-orders-list">
             <div class="empty">A carregar encomendas...</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="page" id="page-logistica">
+      <div class="logistics-shell">
+        <section class="logistics-hero">
+          <div>
+            <div class="eyebrow">Entregas</div>
+            <h2 class="section-title">Logistica</h2>
+            <p>Planeia entregas manuais, grossistas e encomendas online sem perder o prazo.</p>
+          </div>
+          <button type="button" class="filter-btn" onclick="loadLogisticsDeliveries(true)">Atualizar</button>
+        </section>
+
+        <div class="logistics-tabs">
+          <button type="button" class="mode-btn active" id="log-tab-new" onclick="switchLogisticsTab('new', this)">Nova entrega</button>
+          <button type="button" class="mode-btn" id="log-tab-panel" onclick="switchLogisticsTab('panel', this)">Painel</button>
+          <button type="button" class="mode-btn" id="log-tab-list" onclick="switchLogisticsTab('list', this)">Entregas</button>
+        </div>
+
+        <section class="logistics-card logistics-panel" id="log-panel-new">
+          <div class="card-title">Criar entrega</div>
+          <p class="logistics-muted">Use para entregas de Venda Online ou entregas independentes, como grossistas e clientes diretos.</p>
+
+          <div class="logistics-form">
+            <div class="form-group">
+              <label class="form-label">Data prevista</label>
+              <input type="datetime-local" class="form-input" id="log-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Prioridade</label>
+              <select class="form-input" id="log-priority">
+                <option value="normal">Normal</option>
+                <option value="urgent">Urgente</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cliente</label>
+              <input type="text" class="form-input" id="log-customer" placeholder="Nome do cliente">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefone / WhatsApp</label>
+              <input type="tel" class="form-input" id="log-phone" placeholder="Ex: 244923000000">
+            </div>
+            <div class="form-group logistics-wide">
+              <label class="form-label">Endereco de entrega</label>
+              <input type="text" class="form-input" id="log-address" placeholder="Bairro, rua, ponto de referencia">
+            </div>
+            <div class="form-group logistics-wide">
+              <label class="form-label">Descricao</label>
+              <input type="text" class="form-input" id="log-description" placeholder="Produtos, volumes ou observacao da entrega">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Valor da encomenda</label>
+              <input type="number" class="form-input" id="log-amount" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Taxa de entrega</label>
+              <input type="number" class="form-input" id="log-fee" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Entregador</label>
+              <input type="text" class="form-input" id="log-driver" placeholder="Nome do entregador">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Avisar antes</label>
+              <select class="form-input" id="log-reminder">
+                <option value="30">30 min</option>
+                <option value="60" selected>1 hora</option>
+                <option value="180">3 horas</option>
+                <option value="1440">1 dia</option>
+              </select>
+            </div>
+            <div class="form-group logistics-wide">
+              <label class="form-label">Nota interna</label>
+              <input type="text" class="form-input" id="log-note" placeholder="Ex: ligar antes de sair">
+            </div>
+          </div>
+
+          <button type="button" class="form-submit logistics-submit" onclick="createManualLogisticsDelivery()">Criar entrega</button>
+          <div class="online-store-status" id="logistics-status"></div>
+        </section>
+
+        <section class="logistics-card logistics-panel" id="log-panel-panel" style="display:none;">
+          <div class="online-products-head">
+            <div>
+              <div class="card-title">Painel de entregas</div>
+              <p>Entregas abertas, atrasadas e em rota.</p>
+            </div>
+            <button type="button" class="filter-btn" onclick="loadLogisticsDeliveries(true)">Atualizar</button>
+          </div>
+          <div class="logistics-kpis">
+            <div><span>Abertas</span><strong id="log-kpi-open">0</strong></div>
+            <div><span>Hoje</span><strong id="log-kpi-today">0</strong></div>
+            <div><span>Atrasadas</span><strong id="log-kpi-overdue">0</strong></div>
+            <div><span>Em rota</span><strong id="log-kpi-route">0</strong></div>
+          </div>
+          <div class="logistics-panel-list" id="logistics-priority-list">
+            <div class="empty">A carregar entregas...</div>
+          </div>
+        </section>
+
+        <section class="logistics-card logistics-panel" id="log-panel-list" style="display:none;">
+          <div class="online-products-head">
+            <div>
+              <div class="card-title">Historico e acompanhamento</div>
+              <p>Pesquisa por cliente, telefone, endereco, numero ou entregador.</p>
+            </div>
+            <div class="online-products-actions">
+              <input type="text" class="form-input" id="log-search" placeholder="Pesquisar entrega..." oninput="renderLogisticsDeliveries()">
+              <select class="form-input" id="log-status-filter" onchange="renderLogisticsDeliveries()">
+                <option value="">Todos</option>
+                <option value="pending">Pendentes</option>
+                <option value="scheduled">Agendadas</option>
+                <option value="ready">Prontas</option>
+                <option value="in_route">Em rota</option>
+                <option value="delivered">Entregues</option>
+                <option value="failed">Falhadas</option>
+                <option value="canceled">Canceladas</option>
+              </select>
+              <select class="form-input" id="log-date-filter" onchange="renderLogisticsDeliveries()">
+                <option value="">Todas datas</option>
+                <option value="today">Hoje</option>
+                <option value="overdue">Atrasadas</option>
+              </select>
+            </div>
+          </div>
+          <div class="logistics-list" id="logistics-list">
+            <div class="empty">A carregar entregas...</div>
           </div>
         </section>
       </div>

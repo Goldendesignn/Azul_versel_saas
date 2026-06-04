@@ -203,6 +203,7 @@ var AZUL_TABLE_ACTIONS = {
   corrections_log: "correction:create",
   treasury_entries: "cash:create",
   stock_transfers: "stock:transfer",
+  deliveries: "logistics:create",
   reseller_consignments: "reseller:create",
   hr_employees: "hr:create",
   hr_attendance: "hr:create",
@@ -686,6 +687,15 @@ function getAzulNotificationFromTable(tableName, row) {
     };
   }
 
+  if (tableName === "deliveries") {
+    return {
+      actionType: "logistics:create",
+      title: actor + " criou uma entrega",
+      message: (row.customer_name || "Cliente") + " - " + (row.delivery_number || "entrega") + " - " + fmt(Number(row.amount || 0) + Number(row.delivery_fee || 0)),
+      sourceType: "delivery"
+    };
+  }
+
   if (tableName === "hr_payments") {
     return {
       actionType: "hr:create",
@@ -943,12 +953,14 @@ function startAzulNotifications() {
   if (azulPwaNotificationsReady) registerAzulPushSubscription(false);
   loadAzulNotifications(true);
   checkOnlineOrderReminders(true);
+  checkLogisticsReminders(true);
   startAzulNotificationsRealtime();
 
   if (azulNotificationsTimer) clearInterval(azulNotificationsTimer);
   azulNotificationsTimer = setInterval(function() {
     loadAzulNotifications(true);
     checkOnlineOrderReminders(true);
+    checkLogisticsReminders(true);
   }, 120000);
 }
 
@@ -1134,6 +1146,20 @@ var AZUL_CONTEXT_HELP = {
       "Se ja houve pagamento, faca correcao antes de devolver."
     ],
     tip: "Use nomes de revendedores consistentes para manter a ficha limpa."
+  },
+  logistica: {
+    title: "Logistica",
+    subtitle: "Modulo para planear entregas, acompanhar prazos e ligar encomendas online a entregas reais.",
+    main: [
+      "Crie uma entrega manual para clientes directos, grossistas ou entregas independentes.",
+      "Use o painel para ver entregas abertas, de hoje, em rota e atrasadas.",
+      "Nas encomendas online, use Logistica para transformar o pedido numa entrega acompanhada."
+    ],
+    care: [
+      "Entregas com data prevista geram alertas antes do prazo.",
+      "Ao marcar uma entrega online como entregue, a encomenda tambem fica entregue."
+    ],
+    tip: "Use o estado Em rota para saber exactamente o que saiu para entrega."
   },
   settings: {
     title: "Definicoes",
@@ -1641,6 +1667,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:corrections": { label: "Correcoes", group: "Paginas" },
   "page:revendeurs": { label: "Revendedores", group: "Paginas" },
   "page:online": { label: "Venda Online", group: "Paginas" },
+  "page:logistica": { label: "Logistica", group: "Paginas" },
   "page:rh": { label: "Recursos Humanos", group: "Paginas" },
   "page:settings": { label: "Definicoes", group: "Paginas" },
   "page:import": { label: "Importacao", group: "Paginas" },
@@ -1655,6 +1682,9 @@ var AZUL_PERMISSION_CATALOG = {
   "supplier:view": { label: "Ver fornecedores", group: "Fornecedores" },
   "client_payment:create": { label: "Receber clientes", group: "Pagamentos" },
   "supplier_payment:create": { label: "Pagar fornecedores", group: "Pagamentos" },
+  "logistics:create": { label: "Criar entregas", group: "Logistica" },
+  "logistics:view": { label: "Ver logistica", group: "Logistica" },
+  "logistics:update": { label: "Atualizar entregas", group: "Logistica" },
   "cash:view": { label: "Ver tesouraria", group: "Financeiro" },
   "accounting:view": { label: "Ver contabilidade", group: "Financeiro" },
   "correction:create": { label: "Fazer correcoes", group: "Correcoes" },
@@ -1676,19 +1706,19 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   cashier: {
     name: "Caixa",
-    permissions: ["page:dashboard", "page:venda", "page:clientes", "sale:create", "sale:view", "client:view", "client_payment:create"]
+    permissions: ["page:dashboard", "page:venda", "page:clientes", "page:logistica", "sale:create", "sale:view", "client:view", "client_payment:create", "logistics:create", "logistics:view", "logistics:update"]
   },
   stock: {
     name: "Stock",
-    permissions: ["page:dashboard", "page:achat", "page:transfert", "page:forn", "page:import", "purchase:create", "purchase:view", "stock:transfer", "supplier:view", "supplier_payment:create", "import:create"]
+    permissions: ["page:dashboard", "page:achat", "page:transfert", "page:forn", "page:import", "page:logistica", "purchase:create", "purchase:view", "stock:transfer", "supplier:view", "supplier_payment:create", "import:create", "logistics:create", "logistics:view", "logistics:update"]
   },
   accountant: {
     name: "Contabilista",
-    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:corrections", "page:rh", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "hr:create", "hr:view"]
+    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:corrections", "page:rh", "page:logistica", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "hr:create", "hr:view", "logistics:view"]
   },
   readonly: {
     name: "Leitura",
-    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:rh", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "hr:view"]
+    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:rh", "page:logistica", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "hr:view", "logistics:view"]
   },
   member: {
     name: "Utilizador",
@@ -1833,6 +1863,7 @@ var AZUL_ICON_PATHS = {
   corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
   revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
   online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
+  logistica: '<path d="M10 17H6V6h11v11h-3"></path><path d="M17 9h3l2 4v4h-2"></path><circle cx="7" cy="17" r="2"></circle><circle cx="18" cy="17" r="2"></circle><path d="M7 17h9"></path><path d="M13 10h-3"></path>',
   settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1.82V22a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.82-.33H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1.82V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.21.64.49.86.83.22.34.56.54.96.54H22a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51.63z"></path>',
   import: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path>',
   search: '<circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path>',
@@ -1861,6 +1892,7 @@ var AZUL_PAGE_ICON_MAP = {
   corrections: "corrections",
   revendeurs: "revendeurs",
   online: "online",
+  logistica: "logistica",
   settings: "settings",
   import: "import"
 };
@@ -3816,6 +3848,9 @@ function goTo(page, btn) {
     }
     if (page === 'online') {
       loadOnlineStoreSettings();
+    }
+    if (page === 'logistica') {
+      initLogisticaPage();
     }
     if (page === 'achat') {
       switchCompraTab('novo', document.getElementById('achat-tab-novo'));
@@ -7716,6 +7751,7 @@ function renderOnlineOrderStatusButtons(order) {
     html += '<button type="button" onclick="updateOnlineOrderStatus(\'' + id + '\', \'preparing\')">Preparar</button>';
   }
   if (status !== "delivered" && status !== "canceled") {
+    html += '<button type="button" onclick="sendOnlineOrderToLogistics(\'' + id + '\')">Logistica</button>';
     html += '<button type="button" class="primary" onclick="updateOnlineOrderStatus(\'' + id + '\', \'delivered\')">Entregue</button>';
     html += '<button type="button" class="danger" onclick="updateOnlineOrderStatus(\'' + id + '\', \'canceled\')">Cancelar</button>';
   }
@@ -7861,6 +7897,538 @@ async function checkOnlineOrderReminders(silent) {
     if (!silent && dueRows.length) toast("Alertas de encomenda enviados.", "success");
   } catch (e) {
     console.warn("Erro alertas encomendas:", e);
+  }
+}
+
+var logisticsDeliveries = [];
+var logisticsCurrentTab = "new";
+var logisticsLoading = false;
+
+function isLogisticsTableMissing(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  return msg.indexOf("deliveries") >= 0 &&
+    (msg.indexOf("could not find") >= 0 ||
+      msg.indexOf("schema cache") >= 0 ||
+      msg.indexOf("does not exist") >= 0 ||
+      msg.indexOf("relation") >= 0);
+}
+
+function setLogisticsStatus(message, isError) {
+  var el = document.getElementById("logistics-status");
+  if (!el) return;
+  el.textContent = message || "";
+  el.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function generateLogisticsNumber() {
+  var now = new Date();
+  var stamp = now.toISOString().slice(2, 10).replace(/-/g, "") + "-" +
+    now.toTimeString().slice(0, 8).replace(/:/g, "");
+  return "ENT-" + stamp + "-" + Math.random().toString(16).slice(2, 6).toUpperCase();
+}
+
+function getLogisticsStatusLabel(status) {
+  var labels = {
+    pending: "Pendente",
+    scheduled: "Agendada",
+    ready: "Pronta",
+    in_route: "Em rota",
+    delivered: "Entregue",
+    failed: "Falhada",
+    canceled: "Cancelada"
+  };
+  return labels[status] || status || "Pendente";
+}
+
+function formatLogisticsDate(value) {
+  return formatOnlineOrderDate(value);
+}
+
+function formatLogisticsDateTimeInput(value) {
+  return formatOnlineOrderDateTimeInput(value);
+}
+
+function getLogisticsScheduleState(row) {
+  if (!row || !row.scheduled_for || row.status === "delivered" || row.status === "canceled" || row.status === "failed") return "";
+  var scheduled = new Date(row.scheduled_for);
+  if (isNaN(scheduled.getTime())) return "";
+  var now = new Date();
+  if (scheduled.getTime() < now.getTime()) return "overdue";
+  var sameDay = scheduled.getFullYear() === now.getFullYear() &&
+    scheduled.getMonth() === now.getMonth() &&
+    scheduled.getDate() === now.getDate();
+  return sameDay ? "today" : "planned";
+}
+
+function isLogisticsReminderDue(row) {
+  if (!row || !row.scheduled_for || row.reminder_sent_at) return false;
+  if (row.status === "delivered" || row.status === "canceled" || row.status === "failed") return false;
+  var scheduled = new Date(row.scheduled_for);
+  if (isNaN(scheduled.getTime())) return false;
+  var before = Number(row.reminder_before_minutes);
+  if (!isFinite(before) || before < 0) before = 60;
+  return Date.now() >= scheduled.getTime() - before * 60000;
+}
+
+function normalizeLogisticsPhone(value) {
+  return String(value || "").replace(/[^\d]/g, "");
+}
+
+function buildLogisticsDescriptionFromOrder(order) {
+  var items = getOnlineOrderItems(order);
+  if (!items.length) return order && order.order_number ? "Encomenda " + order.order_number : "Encomenda online";
+  return items.map(function(item) {
+    return (item.product_name || "Produto") + " x" + (Number(item.quantity) || 0);
+  }).join(" | ");
+}
+
+function getLogisticsOpenStatuses() {
+  return ["pending", "scheduled", "ready", "in_route"];
+}
+
+function setDefaultLogisticsDate() {
+  var input = document.getElementById("log-date");
+  if (!input || input.value) return;
+  var date = new Date(Date.now() + 60 * 60000);
+  input.value = formatLogisticsDateTimeInput(date.toISOString());
+}
+
+function initLogisticaPage() {
+  setDefaultLogisticsDate();
+  switchLogisticsTab(logisticsCurrentTab || "new", document.getElementById("log-tab-" + (logisticsCurrentTab || "new")));
+  loadLogisticsDeliveries(false);
+}
+
+function switchLogisticsTab(tab, btn) {
+  logisticsCurrentTab = tab || "new";
+  ["new", "panel", "list"].forEach(function(name) {
+    var panel = document.getElementById("log-panel-" + name);
+    var tabBtn = document.getElementById("log-tab-" + name);
+    if (panel) panel.style.display = name === logisticsCurrentTab ? "" : "none";
+    if (tabBtn) tabBtn.classList.toggle("active", name === logisticsCurrentTab);
+  });
+  if (btn && btn.classList) btn.classList.add("active");
+  if (logisticsCurrentTab === "panel" || logisticsCurrentTab === "list") renderLogisticsDeliveries();
+}
+
+function collectLogisticsFormPayload(source) {
+  source = source || {};
+  var organizationId = getAzulOrganizationId();
+  var hasSourceSchedule = Object.prototype.hasOwnProperty.call(source, "scheduled_for");
+  var scheduleValue = hasSourceSchedule ? source.scheduled_for : String((document.getElementById("log-date") || {}).value || "").trim();
+  var scheduledIso = null;
+
+  if (scheduleValue) {
+    var scheduled = new Date(scheduleValue);
+    if (isNaN(scheduled.getTime())) {
+      throw new Error("Data prevista invalida.");
+    }
+    scheduledIso = scheduled.toISOString();
+  }
+
+  var customerName = source.customer_name || String((document.getElementById("log-customer") || {}).value || "").trim();
+  var customerAddress = source.customer_address || String((document.getElementById("log-address") || {}).value || "").trim();
+  var phone = source.customer_phone || String((document.getElementById("log-phone") || {}).value || "").trim();
+  var description = source.description || String((document.getElementById("log-description") || {}).value || "").trim();
+
+  if (!organizationId) throw new Error("Organizacao invalida. Entre novamente.");
+  if (!customerName) throw new Error("Informe o nome do cliente.");
+  if (!customerAddress) throw new Error("Informe o endereco de entrega.");
+
+  return {
+    organization_id: organizationId,
+    delivery_number: source.delivery_number || generateLogisticsNumber(),
+    source_type: source.source_type || "manual",
+    source_id: source.source_id || null,
+    customer_name: customerName,
+    customer_phone: phone,
+    customer_address: customerAddress,
+    description: description,
+    amount: Number(source.amount != null ? source.amount : (document.getElementById("log-amount") || {}).value) || 0,
+    delivery_fee: Number(source.delivery_fee != null ? source.delivery_fee : (document.getElementById("log-fee") || {}).value) || 0,
+    scheduled_for: scheduledIso,
+    reminder_before_minutes: Math.max(0, Number(source.reminder_before_minutes != null ? source.reminder_before_minutes : (document.getElementById("log-reminder") || {}).value) || 60),
+    reminder_sent_at: null,
+    driver_name: source.driver_name || String((document.getElementById("log-driver") || {}).value || "").trim(),
+    status: source.status || (scheduledIso ? "scheduled" : "pending"),
+    priority: source.priority || (((document.getElementById("log-priority") || {}).value === "urgent") ? "urgent" : "normal"),
+    note: source.note || String((document.getElementById("log-note") || {}).value || "").trim()
+  };
+}
+
+function resetLogisticsForm() {
+  ["log-customer", "log-phone", "log-address", "log-description", "log-driver", "log-note"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  var amount = document.getElementById("log-amount");
+  var fee = document.getElementById("log-fee");
+  var priority = document.getElementById("log-priority");
+  var reminder = document.getElementById("log-reminder");
+  var date = document.getElementById("log-date");
+  if (amount) amount.value = "0";
+  if (fee) fee.value = "0";
+  if (priority) priority.value = "normal";
+  if (reminder) reminder.value = "60";
+  if (date) date.value = "";
+  setDefaultLogisticsDate();
+}
+
+async function createManualLogisticsDelivery() {
+  if (!requireAzulAction("logistics:create", "criar entrega")) return;
+
+  try {
+    var payload = collectLogisticsFormPayload();
+    var result = await insertSingleWithAzulAudit("deliveries", payload);
+    if (result.error) throw result.error;
+
+    resetLogisticsForm();
+    setLogisticsStatus("Entrega criada.", false);
+    toast("Entrega criada.", "success");
+    await loadLogisticsDeliveries(true);
+    switchLogisticsTab("list", document.getElementById("log-tab-list"));
+  } catch (e) {
+    console.error("Erro criar entrega:", e);
+    var msg = isLogisticsTableMissing(e) ? "Executa SQL/logistics_module.sql no Supabase antes de usar Logistica." : (e.message || e);
+    setLogisticsStatus(msg, true);
+    toast("Erro logistica: " + msg, "error");
+  }
+}
+
+async function sendOnlineOrderToLogistics(orderId) {
+  if (!requireAzulAction("logistics:create", "enviar para logistica")) return;
+  var order = (onlineOrders || []).find(function(item) { return String(item.id) === String(orderId); });
+  if (!order) {
+    toast("Encomenda nao encontrada.", "error");
+    return;
+  }
+
+  try {
+    var existing = await supabaseClient
+      .from("deliveries")
+      .select("id, delivery_number")
+      .eq("organization_id", getAzulOrganizationId())
+      .eq("source_type", "online_order")
+      .eq("source_id", orderId)
+      .maybeSingle();
+
+    if (existing.error) throw existing.error;
+    if (existing.data) {
+      toast("Esta encomenda ja esta na logistica: " + existing.data.delivery_number, "success");
+      openLogisticsFromOnline();
+      return;
+    }
+
+    var payload = collectLogisticsFormPayload({
+      source_type: "online_order",
+      source_id: order.id,
+      customer_name: order.customer_name || "Cliente",
+      customer_phone: order.customer_phone || "",
+      customer_address: order.customer_address || "Endereco nao informado",
+      description: buildLogisticsDescriptionFromOrder(order),
+      amount: Number(order.total) || 0,
+      delivery_fee: 0,
+      scheduled_for: order.scheduled_for || null,
+      reminder_before_minutes: Number(order.reminder_before_minutes) || 60,
+      priority: order.priority || "normal",
+      status: order.scheduled_for ? "scheduled" : "pending",
+      note: order.delivery_note || "Criada a partir da Venda Online"
+    });
+
+    var result = await insertSingleWithAzulAudit("deliveries", payload);
+    if (result.error) throw result.error;
+
+    toast("Encomenda enviada para logistica.", "success");
+    await updateOnlineOrderStatus(orderId, order.scheduled_for ? "planned" : "confirmed");
+    await loadLogisticsDeliveries(true);
+    openLogisticsFromOnline();
+  } catch (e) {
+    console.error("Erro enviar logistica:", e);
+    toast("Erro logistica: " + (isLogisticsTableMissing(e) ? "Executa SQL/logistics_module.sql no Supabase." : (e.message || e)), "error");
+  }
+}
+
+function openLogisticsFromOnline() {
+  var tab = Array.prototype.find.call(document.querySelectorAll(".nav .tab"), function(btn) {
+    return String(btn.getAttribute("onclick") || "").indexOf("logistica") >= 0;
+  });
+  goTo("logistica", tab);
+  switchLogisticsTab("list", document.getElementById("log-tab-list"));
+}
+
+async function loadLogisticsDeliveries(force) {
+  if (logisticsLoading && !force) return;
+  logisticsLoading = true;
+
+  var list = document.getElementById("logistics-list");
+  var priority = document.getElementById("logistics-priority-list");
+  if (list && !logisticsDeliveries.length) list.innerHTML = '<div class="empty">A carregar entregas...</div>';
+  if (priority && !logisticsDeliveries.length) priority.innerHTML = '<div class="empty">A carregar entregas...</div>';
+
+  try {
+    var organizationId = getAzulOrganizationId();
+    if (!organizationId) return;
+
+    var result = await supabaseClient
+      .from("deliveries")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(250);
+
+    if (result.error) throw result.error;
+
+    logisticsDeliveries = result.data || [];
+    renderLogisticsDeliveries();
+    checkLogisticsReminders(true);
+    setLogisticsStatus(logisticsDeliveries.length ? "Logistica atualizada." : "Nenhuma entrega criada.", false);
+  } catch (e) {
+    console.error("Erro logistica:", e);
+    var msg = isLogisticsTableMissing(e) ? "Executa SQL/logistics_module.sql no Supabase para ativar o modulo." : "Erro ao carregar entregas: " + (e.message || e);
+    if (list) list.innerHTML = '<div class="empty">' + escapeDespesaHtml(msg) + '</div>';
+    if (priority) priority.innerHTML = '<div class="empty">' + escapeDespesaHtml(msg) + '</div>';
+    setLogisticsStatus(msg, true);
+  } finally {
+    logisticsLoading = false;
+  }
+}
+
+function renderLogisticsKpis() {
+  var openStatuses = getLogisticsOpenStatuses();
+  var open = 0;
+  var today = 0;
+  var overdue = 0;
+  var route = 0;
+
+  logisticsDeliveries.forEach(function(row) {
+    var state = getLogisticsScheduleState(row);
+    if (openStatuses.indexOf(row.status) >= 0) open++;
+    if (state === "today") today++;
+    if (state === "overdue") overdue++;
+    if (row.status === "in_route") route++;
+  });
+
+  var openEl = document.getElementById("log-kpi-open");
+  var todayEl = document.getElementById("log-kpi-today");
+  var overdueEl = document.getElementById("log-kpi-overdue");
+  var routeEl = document.getElementById("log-kpi-route");
+  if (openEl) openEl.textContent = String(open);
+  if (todayEl) todayEl.textContent = String(today);
+  if (overdueEl) overdueEl.textContent = String(overdue);
+  if (routeEl) routeEl.textContent = String(route);
+}
+
+function filterLogisticsRows(rows) {
+  var query = String((document.getElementById("log-search") || {}).value || "").trim().toLowerCase();
+  var status = String((document.getElementById("log-status-filter") || {}).value || "");
+  var dateFilter = String((document.getElementById("log-date-filter") || {}).value || "");
+
+  return (rows || []).filter(function(row) {
+    if (status && row.status !== status) return false;
+    var state = getLogisticsScheduleState(row);
+    if (dateFilter === "today" && state !== "today") return false;
+    if (dateFilter === "overdue" && state !== "overdue") return false;
+    if (!query) return true;
+
+    var text = [
+      row.delivery_number,
+      row.customer_name,
+      row.customer_phone,
+      row.customer_address,
+      row.description,
+      row.driver_name,
+      row.status
+    ].join(" ").toLowerCase();
+    return text.indexOf(query) >= 0;
+  });
+}
+
+function renderLogisticsDeliveries() {
+  renderLogisticsKpis();
+  renderLogisticsPriorityList();
+
+  var list = document.getElementById("logistics-list");
+  if (!list) return;
+
+  var rows = filterLogisticsRows(logisticsDeliveries);
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhuma entrega encontrada.</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(renderLogisticsCard).join("");
+}
+
+function renderLogisticsPriorityList() {
+  var list = document.getElementById("logistics-priority-list");
+  if (!list) return;
+
+  var rows = (logisticsDeliveries || []).filter(function(row) {
+    return getLogisticsOpenStatuses().indexOf(row.status) >= 0;
+  }).sort(function(a, b) {
+    var aState = getLogisticsScheduleState(a) === "overdue" ? 0 : getLogisticsScheduleState(a) === "today" ? 1 : 2;
+    var bState = getLogisticsScheduleState(b) === "overdue" ? 0 : getLogisticsScheduleState(b) === "today" ? 1 : 2;
+    if (aState !== bState) return aState - bState;
+    return new Date(a.scheduled_for || a.created_at || 0).getTime() - new Date(b.scheduled_for || b.created_at || 0).getTime();
+  }).slice(0, 8);
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhuma entrega aberta.</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(renderLogisticsCard).join("");
+}
+
+function renderLogisticsCard(row) {
+  var id = escapeDespesaHtml(row.id || "");
+  var status = escapeDespesaHtml(getLogisticsStatusLabel(row.status));
+  var state = getLogisticsScheduleState(row);
+  var priority = row.priority === "urgent" ? "Urgente" : "Normal";
+  var phone = normalizeLogisticsPhone(row.customer_phone || "");
+  var wa = phone ? "https://wa.me/" + phone : "";
+  var total = Number(row.amount || 0) + Number(row.delivery_fee || 0);
+  var schedule = row.scheduled_for ? formatLogisticsDate(row.scheduled_for) : "Sem data prevista";
+  var source = row.source_type === "online_order" ? "Venda Online" : "Manual";
+
+  return '<article class="logistics-delivery-card ' + (state ? 'schedule-' + state : '') + '">' +
+    '<div class="logistics-delivery-main">' +
+      '<div class="logistics-delivery-title">' +
+        '<strong title="' + escapeDespesaHtml(row.delivery_number || "") + '">' + escapeDespesaHtml(row.delivery_number || "Entrega") + '</strong>' +
+        '<span class="online-order-status">' + status + '</span>' +
+        '<span class="online-order-priority">' + escapeDespesaHtml(priority) + '</span>' +
+        '<span class="logistics-source">' + escapeDespesaHtml(source) + '</span>' +
+      '</div>' +
+      '<div class="logistics-delivery-meta">' +
+        '<b>' + escapeDespesaHtml(row.customer_name || "Cliente") + '</b>' +
+        (row.customer_phone ? ' | ' + escapeDespesaHtml(row.customer_phone) : '') + '<br>' +
+        escapeDespesaHtml(row.customer_address || "") + '<br>' +
+        escapeDespesaHtml(schedule) +
+        (row.driver_name ? ' | Entregador: ' + escapeDespesaHtml(row.driver_name) : '') +
+      '</div>' +
+      (row.description ? '<div class="logistics-delivery-desc">' + escapeDespesaHtml(row.description) + '</div>' : '') +
+      (row.note ? '<div class="logistics-delivery-note">' + escapeDespesaHtml(row.note) + '</div>' : '') +
+    '</div>' +
+    '<div class="logistics-delivery-total">' + fmt(total) + '</div>' +
+    '<div class="logistics-actions">' +
+      (wa ? '<a href="' + wa + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' : '') +
+      renderLogisticsStatusButtons(id, row.status) +
+    '</div>' +
+  '</article>';
+}
+
+function renderLogisticsStatusButtons(id, status) {
+  var html = "";
+  if (status === "pending" || status === "scheduled") html += '<button type="button" onclick="updateLogisticsDeliveryStatus(\'' + id + '\', \'ready\')">Pronta</button>';
+  if (status === "pending" || status === "scheduled" || status === "ready") html += '<button type="button" class="primary" onclick="updateLogisticsDeliveryStatus(\'' + id + '\', \'in_route\')">Em rota</button>';
+  if (getLogisticsOpenStatuses().indexOf(status) >= 0) {
+    html += '<button type="button" class="primary" onclick="updateLogisticsDeliveryStatus(\'' + id + '\', \'delivered\')">Entregue</button>';
+    html += '<button type="button" onclick="updateLogisticsDeliveryStatus(\'' + id + '\', \'failed\')">Falhou</button>';
+    html += '<button type="button" class="danger" onclick="updateLogisticsDeliveryStatus(\'' + id + '\', \'canceled\')">Cancelar</button>';
+  }
+  if (status === "delivered" || status === "failed" || status === "canceled") {
+    html += '<button type="button" onclick="updateLogisticsDeliveryStatus(\'' + id + '\', \'pending\')">Reabrir</button>';
+  }
+  return html;
+}
+
+async function updateLogisticsDeliveryStatus(id, status) {
+  if (!requireAzulAction("logistics:update", "atualizar entrega")) return;
+  if (!id || !status) return;
+
+  var current = (logisticsDeliveries || []).find(function(row) { return String(row.id) === String(id); }) || {};
+  var payload = {
+    status: status,
+    delivered_at: status === "delivered" ? new Date().toISOString() : null
+  };
+
+  try {
+    var result = await supabaseClient
+      .from("deliveries")
+      .update(payload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (result.error) throw result.error;
+
+    if (result.data && result.data.source_type === "online_order" && result.data.source_id) {
+      var onlineStatus = status === "delivered" ? "delivered" : status === "canceled" ? "canceled" : "preparing";
+      await supabaseClient
+        .from("online_orders")
+        .update({ status: onlineStatus })
+        .eq("id", result.data.source_id);
+    }
+
+    await logAzulAction("logistics:update", "logistica", "success", {
+      source_table: "deliveries",
+      source_id: id,
+      status: status
+    });
+
+    await createAzulNotification({
+      actionType: "logistics:update",
+      title: getAzulCurrentUserName() + " atualizou uma entrega",
+      message: (current.delivery_number || "Entrega") + " - " + getLogisticsStatusLabel(status),
+      sourceType: "delivery",
+      sourceId: id,
+      details: {
+        status: status
+      }
+    });
+
+    toast("Entrega atualizada.", "success");
+    await loadLogisticsDeliveries(true);
+    if (onlineCurrentTab === "orders") loadOnlineOrders();
+  } catch (e) {
+    console.error("Erro atualizar entrega:", e);
+    toast("Erro entrega: " + (e.message || e), "error");
+  }
+}
+
+async function checkLogisticsReminders(silent) {
+  try {
+    var organizationId = getAzulOrganizationId();
+    if (!organizationId || typeof createAzulNotification !== "function") return;
+
+    var result = await supabaseClient
+      .from("deliveries")
+      .select("id, delivery_number, customer_name, scheduled_for, reminder_before_minutes, reminder_sent_at, status")
+      .eq("organization_id", organizationId)
+      .not("scheduled_for", "is", null)
+      .is("reminder_sent_at", null)
+      .in("status", getLogisticsOpenStatuses())
+      .limit(50);
+
+    if (result.error) throw result.error;
+
+    var dueRows = (result.data || []).filter(isLogisticsReminderDue);
+    for (var i = 0; i < dueRows.length; i++) {
+      var delivery = dueRows[i];
+      var state = getLogisticsScheduleState(delivery);
+
+      await createAzulNotification({
+        actionType: "logistics:reminder",
+        title: state === "overdue" ? "Entrega atrasada" : "Entrega perto do prazo",
+        message: (delivery.customer_name || "Cliente") + " - " + (delivery.delivery_number || "entrega") + " - " + formatLogisticsDate(delivery.scheduled_for),
+        sourceType: "delivery",
+        sourceId: delivery.id || null,
+        targetRoles: ["owner", "manager"],
+        details: {
+          scheduled_for: delivery.scheduled_for,
+          reminder_before_minutes: delivery.reminder_before_minutes || 60
+        }
+      });
+
+      await supabaseClient
+        .from("deliveries")
+        .update({ reminder_sent_at: new Date().toISOString() })
+        .eq("id", delivery.id);
+    }
+
+    if (!silent && dueRows.length) toast("Alertas de logistica enviados.", "success");
+  } catch (e) {
+    if (!isLogisticsTableMissing(e)) console.warn("Erro alertas logistica:", e);
   }
 }
 //==============modification carde product=====================
@@ -11068,6 +11636,7 @@ function getText(key) {
       tab_corrections: 'Correcoes',
       tab_revendeurs: 'Revendedores',
       tab_online: 'Venda Online',
+      tab_logistica: 'Logistica',
       save_settings: 'Guardar configuracoes',
       reset_setup: 'Reiniciar configuracao',
       clear_cart: 'Limpar',
@@ -11213,6 +11782,7 @@ function syncPageTitles() {
   setPageTitle('page-forn', getText('suppliers_title'));
   setPageTitle('page-comptabilite', getText('tab_comptabilite'));
   setPageTitle('page-corrections', getText('tab_corrections'));
+  setPageTitle('page-logistica', getText('tab_logistica'));
 }
 //appl
 function applyPortugueseText() {
@@ -11220,7 +11790,7 @@ function applyPortugueseText() {
   try {
     document.documentElement.lang = 'pt';
     var tabs = document.querySelectorAll('.nav .tab');
-    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_rh','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_online','tab_settings'];
+    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_rh','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_online','tab_logistica','tab_settings'];
     tabs.forEach(function(tab, index) {
       if (keys[index]) tab.textContent = getText(keys[index]);
     });
