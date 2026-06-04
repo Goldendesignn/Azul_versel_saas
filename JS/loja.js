@@ -52,6 +52,83 @@ function getShopFontFamily(value) {
   return allowed.indexOf(font) >= 0 ? font : allowed[0];
 }
 
+function getShopIdentityKey() {
+  var org = shopParam("org");
+  var slug = shopParam("loja");
+  if (org) return "org:" + org;
+  if (slug) return "slug:" + slug.toLowerCase();
+  return "";
+}
+
+function getShopThemeCacheKey() {
+  var key = getShopIdentityKey();
+  return key ? "azul_shop_theme_" + key : "";
+}
+
+function saveShopThemeCache(store) {
+  var key = getShopThemeCacheKey();
+  if (!key || !store) return;
+
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      store_name: store.store_name || "Loja Azul",
+      welcome_message: store.welcome_message || "",
+      theme_color: normalizeShopColor(store.theme_color),
+      font_family: getShopFontFamily(store.font_family),
+      logo_url: String(store.logo_url || "").trim(),
+      cached_at: Date.now()
+    }));
+  } catch (e) {}
+}
+
+function readShopThemeCache() {
+  var key = getShopThemeCacheKey();
+  if (!key) return null;
+
+  try {
+    return JSON.parse(localStorage.getItem(key) || "null");
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyShopBranding(store, saveCache) {
+  store = store || {};
+  var name = store.store_name || "Loja Azul";
+  var welcome = store.welcome_message || "Adiciona produtos ao carrinho e envia o pedido pelo WhatsApp.";
+  var themeColor = normalizeShopColor(store.theme_color);
+  var fontFamily = getShopFontFamily(store.font_family);
+  var logoUrl = String(store.logo_url || "").trim() || "Assets/icon-192.png";
+
+  document.title = name;
+  document.documentElement.style.setProperty("--blue", themeColor);
+  document.documentElement.style.setProperty("--blue2", darkenShopColor(themeColor));
+  document.documentElement.style.setProperty("--shop-font-family", fontFamily);
+
+  var themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.setAttribute("content", themeColor);
+
+  var shopName = document.getElementById("shopName");
+  var heroTitle = document.getElementById("shopHeroTitle");
+  var welcomeEl = document.getElementById("shopWelcome");
+
+  if (shopName) shopName.textContent = name;
+  if (heroTitle) heroTitle.textContent = name;
+  if (welcomeEl) welcomeEl.textContent = welcome;
+
+  document.querySelectorAll(".shop-brand img").forEach(function(img) {
+    img.src = logoUrl;
+  });
+
+  document.documentElement.classList.remove("shop-style-pending");
+  if (saveCache) saveShopThemeCache(store);
+}
+
+function applyCachedShopBranding() {
+  var cached = readShopThemeCache();
+  if (cached && cached.theme_color) applyShopBranding(cached, false);
+}
+
 function getShopInputValue(id) {
   var el = document.getElementById(id);
   return String(el ? el.value : "").trim();
@@ -140,6 +217,7 @@ async function loadShop() {
   var container = document.getElementById("shopProducts");
 
   if (!org && !slug) {
+    document.documentElement.classList.remove("shop-style-pending");
     if (container) container.innerHTML = '<div class="shop-empty">Link da loja invalido.</div>';
     return;
   }
@@ -154,6 +232,7 @@ async function loadShop() {
 
     var data = result.data || {};
     if (!data.ok) {
+      document.documentElement.classList.remove("shop-style-pending");
       if (container) container.innerHTML = '<div class="shop-empty">Loja indisponivel.</div>';
       return;
     }
@@ -165,35 +244,13 @@ async function loadShop() {
     renderShopCart();
   } catch (e) {
     console.error("Erro loja:", e);
+    document.documentElement.classList.remove("shop-style-pending");
     if (container) container.innerHTML = '<div class="shop-empty">Erro ao carregar loja.</div>';
   }
 }
 
 function applyShopStore() {
-  var name = shopStore.store_name || "Loja Azul";
-  var welcome = shopStore.welcome_message || "Adiciona produtos ao carrinho e envia o pedido pelo WhatsApp.";
-  var themeColor = normalizeShopColor(shopStore.theme_color);
-  var logoUrl = String(shopStore.logo_url || "").trim() || "Assets/icon-192.png";
-
-  document.title = name;
-  document.documentElement.style.setProperty("--blue", themeColor);
-  document.documentElement.style.setProperty("--blue2", darkenShopColor(themeColor));
-  document.body.style.fontFamily = getShopFontFamily(shopStore.font_family);
-
-  var themeMeta = document.querySelector('meta[name="theme-color"]');
-  if (themeMeta) themeMeta.setAttribute("content", themeColor);
-
-  var shopName = document.getElementById("shopName");
-  var heroTitle = document.getElementById("shopHeroTitle");
-  var welcomeEl = document.getElementById("shopWelcome");
-
-  if (shopName) shopName.textContent = name;
-  if (heroTitle) heroTitle.textContent = name;
-  if (welcomeEl) welcomeEl.textContent = welcome;
-
-  document.querySelectorAll(".shop-brand img").forEach(function(img) {
-    img.src = logoUrl;
-  });
+  applyShopBranding(shopStore, true);
 }
 
 function renderShopProducts() {
@@ -495,6 +552,7 @@ window.addEventListener("storage", function(event) {
 });
 
 document.addEventListener("DOMContentLoaded", function() {
+  applyCachedShopBranding();
   bindShopCartToggle();
   loadShop();
 });
