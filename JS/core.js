@@ -942,11 +942,13 @@ function startAzulNotifications() {
   azulPwaNotificationsReady = supportsAzulPwaNotifications() && Notification.permission === "granted";
   if (azulPwaNotificationsReady) registerAzulPushSubscription(false);
   loadAzulNotifications(true);
+  checkOnlineOrderReminders(true);
   startAzulNotificationsRealtime();
 
   if (azulNotificationsTimer) clearInterval(azulNotificationsTimer);
   azulNotificationsTimer = setInterval(function() {
     loadAzulNotifications(true);
+    checkOnlineOrderReminders(true);
   }, 120000);
 }
 
@@ -7504,6 +7506,7 @@ function getOnlineOrderStatusLabel(status) {
   var labels = {
     pending: "Pendente",
     confirmed: "Confirmada",
+    planned: "Planeada",
     preparing: "Em preparacao",
     delivered: "Entregue",
     canceled: "Cancelada"
@@ -7524,6 +7527,57 @@ function formatOnlineOrderDate(value) {
   });
 }
 
+function formatOnlineOrderDateTimeInput(value) {
+  if (!value) return "";
+  var date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  var offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function getOnlineOrderScheduleState(order) {
+  if (!order || !order.scheduled_for || order.status === "delivered" || order.status === "canceled") {
+    return "";
+  }
+
+  var scheduled = new Date(order.scheduled_for);
+  if (isNaN(scheduled.getTime())) return "";
+
+  var now = new Date();
+  if (scheduled.getTime() < now.getTime()) return "overdue";
+
+  var sameDay = scheduled.getFullYear() === now.getFullYear() &&
+    scheduled.getMonth() === now.getMonth() &&
+    scheduled.getDate() === now.getDate();
+
+  if (sameDay) return "today";
+  return "planned";
+}
+
+function isOnlineOrderReminderDue(order) {
+  if (!order || !order.scheduled_for || order.reminder_sent_at) return false;
+  if (order.status === "delivered" || order.status === "canceled") return false;
+
+  var scheduled = new Date(order.scheduled_for);
+  if (isNaN(scheduled.getTime())) return false;
+
+  var before = Number(order.reminder_before_minutes);
+  if (!isFinite(before) || before < 0) before = 60;
+
+  return Date.now() >= scheduled.getTime() - before * 60000;
+}
+
+function getOnlineOrderScheduleLabel(order) {
+  if (!order || !order.scheduled_for) return "Nao planeada";
+
+  var state = getOnlineOrderScheduleState(order);
+  var prefix = "Planeada para ";
+  if (state === "overdue") prefix = "Atrasada desde ";
+  if (state === "today") prefix = "Hoje as ";
+
+  return prefix + formatOnlineOrderDate(order.scheduled_for);
+}
+
 function getOnlineOrderItems(order) {
   var items = order && order.online_order_items;
   return Array.isArray(items) ? items : [];
@@ -7531,25 +7585,25 @@ function getOnlineOrderItems(order) {
 
 function renderOnlineOrderKpis() {
   var pending = 0;
-  var confirmed = 0;
-  var pendingTotal = 0;
+  var planned = 0;
+  var overdue = 0;
 
   onlineOrders.forEach(function(order) {
     if (order.status === "pending") {
       pending++;
-      pendingTotal += Number(order.total) || 0;
     }
-    if (order.status === "confirmed" || order.status === "preparing") confirmed++;
+    if (order.scheduled_for && order.status !== "delivered" && order.status !== "canceled") planned++;
+    if (getOnlineOrderScheduleState(order) === "overdue") overdue++;
   });
 
   var pendingEl = document.getElementById("online-orders-pending");
-  var confirmedEl = document.getElementById("online-orders-confirmed");
-  var totalEl = document.getElementById("online-orders-total");
+  var plannedEl = document.getElementById("online-orders-planned");
+  var overdueEl = document.getElementById("online-orders-overdue");
   var countEl = document.getElementById("online-orders-count");
 
   if (pendingEl) pendingEl.textContent = String(pending);
-  if (confirmedEl) confirmedEl.textContent = String(confirmed);
-  if (totalEl) totalEl.textContent = fmt(pendingTotal);
+  if (plannedEl) plannedEl.textContent = String(planned);
+  if (overdueEl) overdueEl.textContent = String(overdue);
   if (countEl) countEl.textContent = String(onlineOrders.length);
 }
 
@@ -7577,12 +7631,15 @@ function renderOnlineOrders() {
     }).join(" | ");
     var phone = normalizeOnlinePhone(order.customer_phone || "");
     var waLink = phone ? "https://wa.me/" + phone : "";
+    var scheduleState = getOnlineOrderScheduleState(order);
+    var priority = order.priority === "urgent" ? "Urgente" : "Normal";
 
-    return '<article class="online-order-card">' +
+    return '<article class="online-order-card ' + (scheduleState ? 'schedule-' + scheduleState : '') + '">' +
       '<div class="online-order-main">' +
         '<div class="online-order-title">' +
           '<strong>' + escapeDespesaHtml(order.order_number || "Encomenda") + '</strong>' +
           '<span class="online-order-status">' + escapeDespesaHtml(getOnlineOrderStatusLabel(order.status)) + '</span>' +
+          '<span class="online-order-priority">' + escapeDespesaHtml(priority) + '</span>' +
         '</div>' +
         '<div class="online-order-meta">' +
           escapeDespesaHtml(order.customer_name || "Cliente") + ' | ' +
@@ -7590,15 +7647,61 @@ function renderOnlineOrders() {
           escapeDespesaHtml(order.customer_address || "") + '<br>' +
           escapeDespesaHtml(formatOnlineOrderDate(order.created_at || order.createdAt || "")) +
         '</div>' +
+        '<div class="online-order-schedule ' + (scheduleState ? 'is-' + scheduleState : '') + '">' +
+          escapeDespesaHtml(getOnlineOrderScheduleLabel(order)) +
+          (order.delivery_note ? '<br><small>' + escapeDespesaHtml(order.delivery_note) + '</small>' : '') +
+        '</div>' +
         '<div class="online-order-items">' + (itemText || "Sem itens") + '</div>' +
       '</div>' +
       '<div class="online-order-total">' + fmt(order.total || 0) + '</div>' +
+      renderOnlineOrderPlanForm(order) +
       '<div class="online-order-actions">' +
         (waLink ? '<a href="' + waLink + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' : '') +
         renderOnlineOrderStatusButtons(order) +
       '</div>' +
     '</article>';
   }).join("");
+}
+
+function renderOnlineOrderPlanForm(order) {
+  var id = escapeDespesaHtml(order.id || "");
+  var dateValue = escapeDespesaHtml(formatOnlineOrderDateTimeInput(order.scheduled_for));
+  var note = escapeDespesaHtml(order.delivery_note || "");
+  var reminder = Number(order.reminder_before_minutes);
+  if (!isFinite(reminder) || reminder < 0) reminder = 60;
+  var priority = order.priority || "normal";
+
+  function selected(value, current) {
+    return String(value) === String(current) ? " selected" : "";
+  }
+
+  return '<div class="online-order-plan">' +
+    '<div class="online-plan-field">' +
+      '<label>Data prevista</label>' +
+      '<input type="datetime-local" id="online-schedule-' + id + '" value="' + dateValue + '">' +
+    '</div>' +
+    '<div class="online-plan-field">' +
+      '<label>Avisar antes</label>' +
+      '<select id="online-reminder-' + id + '">' +
+        '<option value="30"' + selected(30, reminder) + '>30 min</option>' +
+        '<option value="60"' + selected(60, reminder) + '>1 hora</option>' +
+        '<option value="180"' + selected(180, reminder) + '>3 horas</option>' +
+        '<option value="1440"' + selected(1440, reminder) + '>1 dia</option>' +
+      '</select>' +
+    '</div>' +
+    '<div class="online-plan-field">' +
+      '<label>Prioridade</label>' +
+      '<select id="online-priority-' + id + '">' +
+        '<option value="normal"' + selected("normal", priority) + '>Normal</option>' +
+        '<option value="urgent"' + selected("urgent", priority) + '>Urgente</option>' +
+      '</select>' +
+    '</div>' +
+    '<div class="online-plan-field online-plan-note">' +
+      '<label>Nota interna</label>' +
+      '<input type="text" id="online-note-' + id + '" value="' + note + '" placeholder="Ex: preparar antes das 10h">' +
+    '</div>' +
+    '<button type="button" class="primary" onclick="saveOnlineOrderPlan(\'' + id + '\')">Planear</button>' +
+  '</div>';
 }
 
 function renderOnlineOrderStatusButtons(order) {
@@ -7609,7 +7712,7 @@ function renderOnlineOrderStatusButtons(order) {
   if (status === "pending") {
     html += '<button type="button" class="primary" onclick="updateOnlineOrderStatus(\'' + id + '\', \'confirmed\')">Confirmar</button>';
   }
-  if (status === "pending" || status === "confirmed") {
+  if (status === "pending" || status === "confirmed" || status === "planned") {
     html += '<button type="button" onclick="updateOnlineOrderStatus(\'' + id + '\', \'preparing\')">Preparar</button>';
   }
   if (status !== "delivered" && status !== "canceled") {
@@ -7639,11 +7742,59 @@ async function loadOnlineOrders() {
 
     onlineOrders = result.data || [];
     renderOnlineOrders();
+    checkOnlineOrderReminders(true);
   } catch (e) {
     console.error("Erro encomendas online:", e);
     if (list) {
       list.innerHTML = '<div class="empty">Erro ao carregar encomendas. Executa SQL/online_store.sql no Supabase.</div>';
     }
+  }
+}
+
+async function saveOnlineOrderPlan(orderId) {
+  if (!orderId) return;
+
+  var scheduleInput = document.getElementById("online-schedule-" + orderId);
+  var reminderInput = document.getElementById("online-reminder-" + orderId);
+  var priorityInput = document.getElementById("online-priority-" + orderId);
+  var noteInput = document.getElementById("online-note-" + orderId);
+  var scheduleValue = String(scheduleInput && scheduleInput.value || "").trim();
+
+  if (!scheduleValue) {
+    toast("Escolha a data prevista da encomenda.", "error");
+    return;
+  }
+
+  var scheduled = new Date(scheduleValue);
+  if (isNaN(scheduled.getTime())) {
+    toast("Data prevista invalida.", "error");
+    return;
+  }
+
+  var payload = {
+    scheduled_for: scheduled.toISOString(),
+    reminder_before_minutes: Math.max(0, Number(reminderInput && reminderInput.value) || 60),
+    reminder_sent_at: null,
+    delivery_note: String(noteInput && noteInput.value || "").trim(),
+    priority: priorityInput && priorityInput.value === "urgent" ? "urgent" : "normal",
+    status: "planned"
+  };
+
+  try {
+    var result = await supabaseClient
+      .from("online_orders")
+      .update(payload)
+      .eq("id", orderId)
+      .select()
+      .single();
+
+    if (result.error) throw result.error;
+
+    toast("Encomenda planeada.", "success");
+    await loadOnlineOrders();
+  } catch (e) {
+    console.error("Erro planear encomenda:", e);
+    toast("Erro planear: " + (e.message || e), "error");
   }
 }
 
@@ -7665,6 +7816,51 @@ async function updateOnlineOrderStatus(orderId, status) {
   } catch (e) {
     console.error("Erro atualizar encomenda:", e);
     toast("Erro encomenda: " + (e.message || e), "error");
+  }
+}
+
+async function checkOnlineOrderReminders(silent) {
+  try {
+    var organizationId = getAzulOrganizationId();
+    if (!organizationId || typeof createAzulNotification !== "function") return;
+
+    var result = await supabaseClient
+      .from("online_orders")
+      .select("id, order_number, customer_name, scheduled_for, reminder_before_minutes, reminder_sent_at, status")
+      .eq("organization_id", organizationId)
+      .not("scheduled_for", "is", null)
+      .is("reminder_sent_at", null)
+      .in("status", ["confirmed", "planned", "preparing"])
+      .limit(50);
+
+    if (result.error) throw result.error;
+
+    var dueRows = (result.data || []).filter(isOnlineOrderReminderDue);
+    for (var i = 0; i < dueRows.length; i++) {
+      var order = dueRows[i];
+      var state = getOnlineOrderScheduleState(order);
+      await createAzulNotification({
+        actionType: "online_order:reminder",
+        title: state === "overdue" ? "Encomenda atrasada" : "Encomenda perto do prazo",
+        message: (order.customer_name || "Cliente") + " - " + (order.order_number || "encomenda") + " - " + formatOnlineOrderDate(order.scheduled_for),
+        sourceType: "online_order",
+        sourceId: order.id || null,
+        targetRoles: ["owner", "manager"],
+        details: {
+          scheduled_for: order.scheduled_for,
+          reminder_before_minutes: order.reminder_before_minutes || 60
+        }
+      });
+
+      await supabaseClient
+        .from("online_orders")
+        .update({ reminder_sent_at: new Date().toISOString() })
+        .eq("id", order.id);
+    }
+
+    if (!silent && dueRows.length) toast("Alertas de encomenda enviados.", "success");
+  } catch (e) {
+    console.warn("Erro alertas encomendas:", e);
   }
 }
 //==============modification carde product=====================

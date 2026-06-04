@@ -2070,6 +2070,26 @@ button.az-icon-button,
   font-weight: 900;
 }
 
+.online-order-priority {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 0 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.online-order-card.schedule-overdue {
+  border-color: color-mix(in srgb, var(--red) 42%, var(--border));
+}
+
+.online-order-card.schedule-today {
+  border-color: color-mix(in srgb, var(--orange) 42%, var(--border));
+}
+
 .online-order-meta,
 .online-order-items {
   color: var(--muted);
@@ -2081,12 +2101,88 @@ button.az-icon-button,
   margin-top: 8px;
 }
 
+.online-order-schedule {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.online-order-schedule.is-overdue {
+  border-color: color-mix(in srgb, var(--red) 35%, var(--border));
+  color: var(--red);
+}
+
+.online-order-schedule.is-today {
+  border-color: color-mix(in srgb, var(--orange) 35%, var(--border));
+  color: var(--orange);
+}
+
+.online-order-schedule small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .online-order-total {
   color: var(--blue);
   font-size: 18px;
   font-weight: 900;
   white-space: nowrap;
   text-align: right;
+}
+
+.online-order-plan {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 170px 140px 130px minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.online-plan-field {
+  min-width: 0;
+}
+
+.online-plan-field label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.online-plan-field input,
+.online-plan-field select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.online-order-plan > button {
+  min-height: 36px;
+  border: 1px solid var(--blue);
+  border-radius: 10px;
+  background: var(--blue);
+  color: #fff;
+  padding: 0 14px;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 .online-order-actions {
@@ -6453,6 +6549,14 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
 
   .online-order-total {
     text-align: left;
+  }
+
+  .online-order-plan {
+    grid-template-columns: 1fr;
+  }
+
+  .online-order-plan > button {
+    width: 100%;
   }
 
   .online-order-actions,

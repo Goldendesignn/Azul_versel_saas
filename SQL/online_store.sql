@@ -148,13 +148,48 @@ create table if not exists public.online_orders (
   customer_phone text not null,
   customer_address text not null,
   status text not null default 'pending'
-    check (status in ('pending', 'confirmed', 'preparing', 'delivered', 'canceled')),
+    check (status in ('pending', 'confirmed', 'planned', 'preparing', 'delivered', 'canceled')),
+  scheduled_for timestamp with time zone,
+  reminder_before_minutes integer not null default 60,
+  reminder_sent_at timestamp with time zone,
+  delivery_note text,
+  priority text not null default 'normal'
+    check (priority in ('normal', 'urgent')),
   total numeric not null default 0,
   source text not null default 'whatsapp',
   whatsapp_message text,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now()
 );
+
+alter table public.online_orders
+  drop constraint if exists online_orders_status_check;
+
+alter table public.online_orders
+  add constraint online_orders_status_check
+  check (status in ('pending', 'confirmed', 'planned', 'preparing', 'delivered', 'canceled'));
+
+alter table public.online_orders
+  add column if not exists scheduled_for timestamp with time zone;
+
+alter table public.online_orders
+  add column if not exists reminder_before_minutes integer not null default 60;
+
+alter table public.online_orders
+  add column if not exists reminder_sent_at timestamp with time zone;
+
+alter table public.online_orders
+  add column if not exists delivery_note text;
+
+alter table public.online_orders
+  add column if not exists priority text not null default 'normal';
+
+alter table public.online_orders
+  drop constraint if exists online_orders_priority_check;
+
+alter table public.online_orders
+  add constraint online_orders_priority_check
+  check (priority in ('normal', 'urgent'));
 
 create table if not exists public.online_order_items (
   id uuid primary key default gen_random_uuid(),
@@ -175,6 +210,10 @@ create index if not exists idx_online_orders_org_created
 
 create index if not exists idx_online_orders_org_status
   on public.online_orders (organization_id, status);
+
+create index if not exists idx_online_orders_org_scheduled
+  on public.online_orders (organization_id, scheduled_for)
+  where scheduled_for is not null;
 
 create index if not exists idx_online_order_items_order
   on public.online_order_items (order_id);
