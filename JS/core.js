@@ -1271,7 +1271,7 @@ function closeContextHelp() {
 }
 
 var azulOnboardingIndex = 0;
-var AZUL_ONBOARDING_SEEN_KEY = "azul_onboarding_seen_v1";
+var AZUL_ONBOARDING_SEEN_KEY = "azul_onboarding_seen_v2";
 var AZUL_ONBOARDING_STEPS = [
   {
     title: "Bem-vindo ao Azul",
@@ -1286,16 +1286,30 @@ var AZUL_ONBOARDING_STEPS = [
     ]
   },
   {
-    title: "Configurar a loja",
+    title: "Configurar a loja e o recibo",
     icon: "settings",
     page: "settings",
     target: "#cfg-name",
-    intro: "Nas Definicoes defines a identidade da loja, recibo, moeda, tema, modo de stock e seguranca do ERP.",
+    intro: "Nas Definicoes defines identidade, recibo, moeda, tema, modo de stock, seguranca e preferencias principais.",
     bullets: [
       "Identidade no recibo: nome, slogan, contacto e dados que aparecem no recibo.",
       "Moeda e tema: adapta o ERP ao estilo da loja.",
       "Modo de stock: escolhe se a compra entra na loja ou no armazem.",
+      "Seguranca: podes bloquear o ERP com palavra-passe local.",
       "Guarda as configuracoes antes de comecar a operar."
+    ]
+  },
+  {
+    title: "Gerir utilizadores e roles",
+    icon: "rh",
+    page: "settings",
+    target: "#settings-user-card",
+    intro: "A equipa define quem pode entrar no ERP e o que cada pessoa pode fazer.",
+    bullets: [
+      "O primeiro utilizador da organizacao fica como proprietario.",
+      "Novos utilizadores podem ficar em espera ate o proprietario aprovar.",
+      "Roles controlam acesso a vendas, stock, financeiro, configuracoes e outros modulos.",
+      "Cada acao importante fica ligada ao utilizador que a fez."
     ]
   },
   {
@@ -1325,6 +1339,19 @@ var AZUL_ONBOARDING_STEPS = [
     ]
   },
   {
+    title: "Cadastrar codigo de barras",
+    icon: "barcode",
+    page: "achat",
+    target: "#achat-tab-novo",
+    intro: "Quando o produto tem codigo de barras, guarda o codigo na compra para vender mais rapido depois.",
+    bullets: [
+      "No campo Codigo, podes escrever ou usar o icone de scanner quando estiver disponivel.",
+      "O codigo ajuda a encontrar o produto no POS.",
+      "Produtos importados por CSV tambem podem trazer codigo.",
+      "Usa codigo unico para evitar confusao entre variacoes."
+    ]
+  },
+  {
     title: "Controlar o stock",
     icon: "transfert",
     page: "transfert",
@@ -1335,6 +1362,19 @@ var AZUL_ONBOARDING_STEPS = [
       "Confere stock da loja, armazem e total.",
       "Usa transferencias quando a mercadoria sai do armazem para a loja.",
       "Este modulo ajuda a evitar vender produto acabado."
+    ]
+  },
+  {
+    title: "Ver historico de transferencias",
+    icon: "transfert",
+    page: "transfert",
+    target: "#page-transfert",
+    intro: "As transferencias mostram o movimento entre armazem e loja para saber quem mexeu no stock.",
+    bullets: [
+      "Use quando a mercadoria sai do armazem para a loja.",
+      "O historico ajuda a descobrir erros de quantidade.",
+      "Pesquise por produto quando houver muitos movimentos.",
+      "O stock da loja e o que baixa na venda interna."
     ]
   },
   {
@@ -1361,6 +1401,32 @@ var AZUL_ONBOARDING_STEPS = [
       "Carrinho: ajusta quantidade e preco quando for necessario.",
       "Stock ou Externo: stock baixa a loja; externo nao baixa stock.",
       "Pagamento: confirma cash, express, cartao, credito ou multipagamento."
+    ]
+  },
+  {
+    title: "Vender servicos",
+    icon: "venda",
+    page: "venda",
+    target: "#sale-catalog-services",
+    intro: "Quando vendes servicos, como mao de obra, instalacao, consultoria ou atendimento, usa a aba Servicos na venda.",
+    bullets: [
+      "Servico entra no carrinho como item sem stock.",
+      "Define nome, preco e descricao quando necessario.",
+      "A venda do servico entra nos KPIs, tesouraria e contabilidade.",
+      "Use produto para mercadoria fisica e servico para trabalho vendido."
+    ]
+  },
+  {
+    title: "Usar scanner no POS",
+    icon: "barcode",
+    page: "venda",
+    target: "#barcodeInput",
+    intro: "O scanner ajuda a adicionar produtos ao carrinho com rapidez.",
+    bullets: [
+      "No PC, podes usar leitor USB ou Bluetooth no campo de codigo de barras.",
+      "No telemovel, podes usar a camera para ler o codigo.",
+      "Tambem existe o modo telefone como scanner para enviar produtos para o carrinho do PC.",
+      "Depois do scan, confere o carrinho antes de confirmar o pagamento."
     ]
   },
   {
@@ -1429,6 +1495,45 @@ var AZUL_ONBOARDING_STEPS = [
     ]
   },
   {
+    title: "Criar a loja online",
+    icon: "online",
+    page: "online",
+    target: "#online-panel-config",
+    intro: "Venda Online cria uma vitrine publica para clientes escolherem produtos e enviarem pedido pelo WhatsApp.",
+    bullets: [
+      "Configura nome publico, WhatsApp, mensagem inicial, cor, fonte e logo.",
+      "Seleciona os produtos que devem aparecer na loja publica.",
+      "Ativa e guarda a loja para gerar o link publico.",
+      "Qualquer cliente pode abrir o link sem conta Azul."
+    ]
+  },
+  {
+    title: "Acompanhar encomendas online",
+    icon: "online",
+    page: "online",
+    target: "#online-tab-orders",
+    intro: "As encomendas recebidas pela loja online ficam no sub-onglet Encomendas.",
+    bullets: [
+      "Confirma, prepara, planeia ou cancela a encomenda.",
+      "Define data prevista e aviso antes do prazo.",
+      "Encomendas atrasadas geram alerta para a equipa responsavel.",
+      "Podes enviar uma encomenda para Logistica quando houver entrega."
+    ]
+  },
+  {
+    title: "Planear entregas",
+    icon: "logistica",
+    page: "logistica",
+    target: "#page-logistica",
+    intro: "Logistica acompanha entregas manuais, grossistas e encomendas vindas da Venda Online.",
+    bullets: [
+      "Cria entrega manual quando o pedido nao vem da loja online.",
+      "Usa o painel para ver entregas abertas, de hoje, atrasadas e em rota.",
+      "Muda o estado para pronta, em rota, entregue, falhada ou cancelada.",
+      "O sistema envia alertas antes do prazo definido."
+    ]
+  },
+  {
     title: "Gerir recursos humanos",
     icon: "rh",
     page: "rh",
@@ -1439,6 +1544,19 @@ var AZUL_ONBOARDING_STEPS = [
       "Controla presencas quando precisares.",
       "Regista pagamentos de salario ou adiantamentos.",
       "Consulta historico para saber quem recebeu e quando."
+    ]
+  },
+  {
+    title: "Receber notificacoes",
+    icon: "help",
+    page: "settings",
+    target: "#notificationWrap",
+    intro: "As notificacoes avisam proprietario e gerente quando usuarios fazem acoes importantes.",
+    bullets: [
+      "Vendas, compras, despesas, consignacoes e entregas podem gerar notificacao.",
+      "PWA Push pode avisar mesmo fora da pagina quando estiver configurado.",
+      "O sino no topo mostra notificacoes recentes.",
+      "Use as notificacoes para acompanhar a equipa sem estar sempre perto do caixa."
     ]
   },
   {
