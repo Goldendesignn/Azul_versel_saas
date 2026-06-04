@@ -5,6 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0b3d91">
   <title>Loja Azul</title>
+  <style>
+    html.shop-style-pending {
+      background: #f8f6f1;
+    }
+
+    html.shop-style-pending::before {
+      content: "A carregar loja...";
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      display: grid;
+      place-items: center;
+      background: #f8f6f1;
+      color: #8c877f;
+      font: 800 16px Arial, Helvetica, sans-serif;
+    }
+
+    html.shop-style-pending body {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+  </style>
   <script>
     (function() {
       function param(name) {
@@ -31,7 +53,6 @@
         document.documentElement.style.setProperty("--blue2", darken(cached.theme_color));
         if (cached.font_family) document.documentElement.style.setProperty("--shop-font-family", cached.font_family);
         document.querySelector('meta[name="theme-color"]').setAttribute("content", cached.theme_color);
-        document.documentElement.classList.remove("shop-style-pending");
       } catch (e) {}
     })();
   </script>
