@@ -302,7 +302,7 @@ body {
   width: 100%;
   position: sticky;
   top: 82px;
-  max-height: calc(100vh - 100px);
+  max-height: calc(100vh - 75x);
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
