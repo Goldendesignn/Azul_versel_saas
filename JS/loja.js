@@ -356,6 +356,7 @@ function sendShopCartToWhatsApp() {
 
 function scrollToCart() {
   openShopCart();
+  if (window.matchMedia && window.matchMedia("(max-width: 720px)").matches) return;
   var cart = document.getElementById("shopCart");
   if (cart) cart.scrollIntoView({ behavior: "smooth", block: "end" });
 }
