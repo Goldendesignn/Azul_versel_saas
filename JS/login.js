@@ -206,6 +206,30 @@ async function getProfileByIdentifier(identifier) {
   return Array.isArray(result.data) ? (result.data[0] || null) : (result.data || null);
 }
 
+async function ensureFirstOwnerProfile(profile) {
+  if (!profile || !profile.organization_id) return profile;
+
+  var result = await supabaseClient.rpc("ensure_first_owner_profile", {
+    p_organization_id: profile.organization_id
+  }).maybeSingle();
+
+  if (result.error) {
+    var message = String(result.error.message || "");
+
+    // Mantem compatibilidade enquanto o SQL da V2 ainda nao foi instalado.
+    if (
+      message.indexOf("ensure_first_owner_profile") >= 0 ||
+      message.indexOf("PGRST202") >= 0
+    ) {
+      return profile;
+    }
+
+    throw result.error;
+  }
+
+  return result.data || profile;
+}
+
 async function checkOrganizationAccess(organizationId) {
   var result = await supabaseClient.rpc("check_license_status", {
     p_organization_id: organizationId
@@ -267,6 +291,8 @@ async function restoreSessionFromAuth() {
     return false;
   }
 
+  profile = await ensureFirstOwnerProfile(profile);
+
   if (!isProfileActive(profile) && !isProfilePending(profile)) {
     await supabaseClient.auth.signOut();
     showMessage(getProfileAccessMessage(profile));
@@ -314,6 +340,8 @@ async function loginAccount() {
       btn.textContent = "Entrar";
       return;
     }
+
+    profile = await ensureFirstOwnerProfile(profile);
 
     if (!isProfileActive(profile) && !isProfilePending(profile)) {
       await supabaseClient.auth.signOut();
@@ -445,6 +473,8 @@ if (!hasSession) {
     }
   }
 }
+
+    profile = await ensureFirstOwnerProfile(profile);
 
     if (!isProfileActive(profile) && !isProfilePending(profile)) {
       await supabaseClient.auth.signOut();

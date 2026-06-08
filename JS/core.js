@@ -18672,6 +18672,24 @@ async function getCurrentCoreProfile() {
   var profile = result.data || null;
   if (!profile || String(profile.organization_id) !== String(organizationId)) return null;
 
+  var repairResult = await supabaseClient.rpc("ensure_first_owner_profile", {
+    p_organization_id: organizationId
+  }).maybeSingle();
+
+  if (!repairResult.error && repairResult.data) {
+    profile = repairResult.data;
+  } else if (repairResult.error) {
+    var repairMessage = String(repairResult.error.message || "");
+    var repairCode = String(repairResult.error.code || "");
+
+    if (
+      repairMessage.indexOf("ensure_first_owner_profile") < 0 &&
+      repairCode !== "PGRST202"
+    ) {
+      throw repairResult.error;
+    }
+  }
+
   return profile;
 }
 

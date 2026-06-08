@@ -179,31 +179,37 @@ $function$;
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_list_clients()
  RETURNS TABLE(id uuid, name text, phone text, email text, status text, plan text, created_at timestamp with time zone, expires_at timestamp with time zone, current_license_key text, current_license_status text, activation_count integer, activation_limit integer, active_devices integer, device_limit integer)
- LANGUAGE sql
+ LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+begin
+  if public.is_admin() is not true then
+    raise exception 'ADMIN_REQUIRED';
+  end if;
+
+  return query
   select
     o.id,
-    coalesce(o.name, o.owner_name, 'Client') as name,
-    o.owner_phone as phone,
-    o.owner_email as email,
-    o.status,
-    coalesce(o.plan, 'starter') as plan,
+    coalesce(o.name, o.owner_name, 'Cliente')::text,
+    o.owner_phone::text,
+    o.owner_email::text,
+    o.status::text,
+    coalesce(o.plan, 'starter')::text,
     o.created_at,
     l.expires_at,
-    l.license_key as current_license_key,
-    l.status as current_license_status,
-    coalesce(l.activation_count, 0)::integer as activation_count,
-    coalesce(l.activation_limit, 1)::integer as activation_limit,
-    coalesce(d.active_devices, 0)::integer as active_devices,
-    coalesce(o.device_limit, 1)::integer as device_limit
+    l.license_key::text,
+    l.status::text,
+    coalesce(l.activation_count, 0)::integer,
+    coalesce(l.activation_limit, 1)::integer,
+    coalesce(d.active_devices, 0)::integer,
+    coalesce(o.device_limit, 1)::integer
   from public.organizations o
   left join lateral (
-    select *
-    from public.licenses l
-    where l.organization_id = o.id
-    order by l.created_at desc
+    select li.*
+    from public.licenses li
+    where li.organization_id = o.id
+    order by li.created_at desc
     limit 1
   ) l on true
   left join lateral (
@@ -213,6 +219,7 @@ AS $function$
       and od.active = true
   ) d on true
   order by o.created_at desc;
+end;
 $function$;
 
 -- ============================================================
@@ -1040,7 +1047,7 @@ AS $function$
 declare
   v_license record;
   v_email text := lower(trim(coalesce(p_email, '')));
-  v_profile_count integer := 0;
+  v_owner_count integer := 0;
   v_existing record;
   v_role text;
   v_status text;
@@ -1077,9 +1084,11 @@ begin
   end if;
 
   select count(*)
-    into v_profile_count
+    into v_owner_count
   from public.profiles p
-  where p.organization_id = v_license.organization_id;
+  where p.organization_id = v_license.organization_id
+    and coalesce(nullif(p.role, ''), 'member') = 'owner'
+    and coalesce(nullif(p.status, ''), 'pending') = 'active';
 
   select *
     into v_existing
@@ -1088,7 +1097,7 @@ begin
     and lower(p.email) = v_email
   limit 1;
 
-  if v_profile_count = 0 then
+  if v_owner_count = 0 then
     v_role := 'owner';
     v_status := 'active';
   else
@@ -1113,12 +1122,14 @@ begin
 
     update public.licenses
     set status = 'used',
-        used_at = coalesce(used_at, now())
+        used_at = coalesce(used_at, now()),
+        activation_count = greatest(coalesce(activation_count, 0), 1)
     where id = v_license.license_id;
   end if;
 
   if v_existing.email is null then
     insert into public.profiles (
+      auth_user_id,
       organization_id,
       name,
       phone,
@@ -1128,6 +1139,7 @@ begin
       last_seen_at
     )
     values (
+      auth.uid(),
       v_license.organization_id,
       coalesce(nullif(p_name, ''), v_email),
       coalesce(nullif(p_phone, ''), ''),
@@ -1139,6 +1151,7 @@ begin
   else
     update public.profiles
     set
+      auth_user_id = coalesce(auth_user_id, auth.uid()),
       name = coalesce(nullif(p_name, ''), name, v_email),
       phone = coalesce(nullif(p_phone, ''), phone, ''),
       role = v_role,
