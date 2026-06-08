@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v102";
+const AZUL_CACHE = "azul-pwa-v104";
 
 const AZUL_STATIC_ASSETS = [
   "/",

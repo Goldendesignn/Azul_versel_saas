@@ -145,6 +145,14 @@ function getAuthErrorMessage(error) {
     return "A conta foi criada, mas a sessao ainda nao esta ativa. Confirme o email ou entre novamente.";
   }
 
+  if (msg.indexOf("existing_auth_password_required") >= 0) {
+    return "Este email ja existe na autenticacao. Use a palavra-passe antiga ou elimine o utilizador em Supabase Authentication > Users.";
+  }
+
+  if (msg.indexOf("auth_email_confirmation_required") >= 0) {
+    return "Confirme o email recebido e volte a concluir a ativacao com a mesma licenca.";
+  }
+
   if (msg.indexOf("email") >= 0) {
     return "Verifique o email informado.";
   }
@@ -272,6 +280,15 @@ async function validateLicenseForRegistration(licenseKey) {
 }
 
 async function authenticateRegistrationUser(data) {
+  var signInResult = await supabaseClient.auth.signInWithPassword({
+    email: data.email,
+    password: data.password
+  });
+
+  if (!signInResult.error && signInResult.data && signInResult.data.session) {
+    return signInResult.data.session;
+  }
+
   var signUpResult = await supabaseClient.auth.signUp({
     email: data.email,
     password: data.password,
@@ -283,23 +300,36 @@ async function authenticateRegistrationUser(data) {
     }
   });
 
-  var session = signUpResult.data && signUpResult.data.session;
+  if (signUpResult.error) {
+    var signUpMessage = String(signUpResult.error.message || "").toLowerCase();
 
-  if (signUpResult.error || !session) {
-    var signInResult = await supabaseClient.auth.signInWithPassword({
-      email: data.email,
-      password: data.password
-    });
-
-    if (signInResult.error) {
-      if (signUpResult.error) throw signUpResult.error;
-      throw new Error("AUTH_SESSION_REQUIRED");
+    if (
+      signUpMessage.indexOf("already") >= 0 ||
+      signUpMessage.indexOf("registered") >= 0 ||
+      signUpMessage.indexOf("exists") >= 0
+    ) {
+      throw new Error("EXISTING_AUTH_PASSWORD_REQUIRED");
     }
 
-    session = signInResult.data && signInResult.data.session;
+    throw signUpResult.error;
   }
 
-  if (!session) throw new Error("AUTH_SESSION_REQUIRED");
+  var signUpUser = signUpResult.data && signUpResult.data.user;
+  var identities = signUpUser && Array.isArray(signUpUser.identities)
+    ? signUpUser.identities
+    : null;
+
+  // Supabase pode ocultar que o email ja existe devolvendo um utilizador sem identidade.
+  if (identities && identities.length === 0) {
+    throw new Error("EXISTING_AUTH_PASSWORD_REQUIRED");
+  }
+
+  var session = signUpResult.data && signUpResult.data.session;
+
+  if (!session) {
+    throw new Error("AUTH_EMAIL_CONFIRMATION_REQUIRED");
+  }
+
   return session;
 }
 
@@ -365,9 +395,17 @@ async function loginAccount() {
   showMessage("");
 
   try {
-    var profile = await getProfileByIdentifier(identifier);
+    var profile = null;
+    var authEmail = "";
 
-    if (!profile || !profile.email) {
+    if (isEmail(identifier)) {
+      authEmail = identifier.toLowerCase();
+    } else {
+      profile = await getProfileByIdentifier(identifier);
+      authEmail = profile && profile.email ? profile.email : "";
+    }
+
+    if (!authEmail) {
       showMessage("Conta nao encontrada.");
       btn.disabled = false;
       btn.textContent = "Entrar";
@@ -375,12 +413,23 @@ async function loginAccount() {
     }
 
     var authResult = await supabaseClient.auth.signInWithPassword({
-      email: profile.email,
+      email: authEmail,
       password: password
     });
 
     if (authResult.error) {
       showMessage(getAuthErrorMessage(authResult.error));
+      btn.disabled = false;
+      btn.textContent = "Entrar";
+      return;
+    }
+
+    if (!profile) {
+      profile = await getProfileByIdentifier(authEmail);
+    }
+
+    if (!profile || !profile.organization_id) {
+      showMessage("A conta existe, mas ainda nao esta ligada a uma empresa. Use Criar conta com uma licenca valida.");
       btn.disabled = false;
       btn.textContent = "Entrar";
       return;
