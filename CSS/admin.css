@@ -227,6 +227,25 @@ button {
   min-width: 120px;
 }
 
+.org-actions .delete-account-btn {
+  margin-left: auto;
+  background: #fff1f1;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.org-actions .delete-account-btn:hover {
+  background: #b91c1c;
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .org-actions .delete-account-btn {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 900px) {
   body {
     background: #f7f5ef;
