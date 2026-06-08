@@ -15,7 +15,12 @@
 </head>
 <body>
   <main class="admin-shell">
-    <section id="admin-login" class="admin-login-card">
+    <div id="admin-loading" class="admin-loading" role="status" aria-live="polite">
+      <span class="admin-loading-spinner" aria-hidden="true"></span>
+      <strong>A verificar sessao...</strong>
+    </div>
+
+    <section id="admin-login" class="admin-login-card" hidden>
       <h1>Azul Admin</h1>
         <input id="admin-email" type="email" placeholder="Email admin">
         <input id="admin-password" type="password" placeholder="Palavra-passe admin">
@@ -23,7 +28,7 @@
       <div id="admin-login-msg" class="admin-msg"></div>
     </section>
 
-    <section id="admin-panel" class="admin-panel" style="display:none;">
+    <section id="admin-panel" class="admin-panel" hidden>
       <header class="admin-header">
         <div>
           <h1>Gestao de licencas</h1>

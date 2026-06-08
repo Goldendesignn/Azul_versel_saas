@@ -50,14 +50,16 @@ async function logoutAdmin() {
 }
 
 function showAdminPanel() {
-  document.getElementById("admin-login").style.display = "none";
-  document.getElementById("admin-panel").style.display = "block";
+  document.getElementById("admin-loading").hidden = true;
+  document.getElementById("admin-login").hidden = true;
+  document.getElementById("admin-panel").hidden = false;
   loadOrganizations();
 }
 
 function showAdminLogin(message) {
-  document.getElementById("admin-panel").style.display = "none";
-  document.getElementById("admin-login").style.display = "block";
+  document.getElementById("admin-loading").hidden = true;
+  document.getElementById("admin-panel").hidden = true;
+  document.getElementById("admin-login").hidden = false;
   adminMsg("admin-login-msg", message || "");
 }
 
