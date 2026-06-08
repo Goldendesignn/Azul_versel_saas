@@ -174,7 +174,11 @@ function renderOrganizations() {
           <button onclick="changeOrganizationStatus('${org.id}', '${nextStatus}')">${actionText}</button>
           <button onclick="changeDeviceLimit('${org.id}')">Appareils</button>
           <button type="button" data-devices-preview="${htmlSafe(org.id)}">Ver aparelhos</button>
-          
+          <button
+            type="button"
+            class="delete-account-btn"
+            data-delete-account="${htmlSafe(org.id)}"
+          >Eliminar definitivamente</button>
         </div>
       </div>
     `;
@@ -245,6 +249,54 @@ async function changeDeviceLimit(organizationId) {
 
   loadOrganizations();
 }
+
+async function deleteClientAccount(organizationId) {
+  var organization = organizationsCache.find(function(item) {
+    return item.id === organizationId;
+  });
+  var organizationName = organization && organization.name
+    ? organization.name
+    : "Cliente";
+  var expected = "ELIMINAR";
+  var answer = prompt(
+    'Esta acao elimina definitivamente "' + organizationName +
+    '", os utilizadores, licencas e todos os dados da empresa.\\n\\nEscreve ELIMINAR para confirmar:'
+  );
+
+  if (answer === null) return;
+
+  if (String(answer).trim().toUpperCase() !== expected) {
+    alert("Confirmacao incorreta. A conta nao foi eliminada.");
+    return;
+  }
+
+  if (!confirm("Ultima confirmacao: esta operacao nao pode ser anulada. Continuar?")) {
+    return;
+  }
+
+  var result = await adminSupabaseClient.rpc("admin_delete_client_account", {
+    p_organization_id: organizationId,
+    p_confirmation: expected
+  });
+
+  if (result.error) {
+    alert("Erro ao eliminar: " + result.error.message);
+    return;
+  }
+
+  var preservedAdmins = Number(result.data && result.data.preserved_admin_users || 0);
+  var message = "Conta eliminada definitivamente.";
+
+  if (preservedAdmins > 0) {
+    message += " O acesso Azul Admin foi preservado por seguranca.";
+  }
+
+  alert(message);
+  await loadOrganizations();
+}
+
+window.deleteClientAccount = deleteClientAccount;
+
 function formatAdminDate(value) {
   if (!value) return "-";
 
@@ -366,6 +418,14 @@ window.openDevicesPreview = openDevicesPreview;
 window.closeDevicesPreview = closeDevicesPreview;
 
 document.addEventListener("click", function(event) {
+  var deleteButton = event.target.closest("[data-delete-account]");
+
+  if (deleteButton) {
+    event.preventDefault();
+    deleteClientAccount(deleteButton.getAttribute("data-delete-account"));
+    return;
+  }
+
   var button = event.target.closest("[data-devices-preview]");
 
   if (!button) return;
