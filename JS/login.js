@@ -141,6 +141,10 @@ function getAuthErrorMessage(error) {
     return "A palavra-passe deve ter pelo menos 6 caracteres.";
   }
 
+  if (msg.indexOf("auth_session_required") >= 0) {
+    return "A conta foi criada, mas a sessao ainda nao esta ativa. Confirme o email ou entre novamente.";
+  }
+
   if (msg.indexOf("email") >= 0) {
     return "Verifique o email informado.";
   }
@@ -256,6 +260,47 @@ async function registerLicenseOrTeamAccess(data) {
   }
 
   return result.data || null;
+}
+
+async function validateLicenseForRegistration(licenseKey) {
+  var result = await supabaseClient.rpc("validate_license_registration", {
+    p_license_key: licenseKey
+  }).maybeSingle();
+
+  if (result.error) throw result.error;
+  return result.data || null;
+}
+
+async function authenticateRegistrationUser(data) {
+  var signUpResult = await supabaseClient.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      data: {
+        name: data.nom,
+        phone: data.numero
+      }
+    }
+  });
+
+  var session = signUpResult.data && signUpResult.data.session;
+
+  if (signUpResult.error || !session) {
+    var signInResult = await supabaseClient.auth.signInWithPassword({
+      email: data.email,
+      password: data.password
+    });
+
+    if (signInResult.error) {
+      if (signUpResult.error) throw signUpResult.error;
+      throw new Error("AUTH_SESSION_REQUIRED");
+    }
+
+    session = signInResult.data && signInResult.data.session;
+  }
+
+  if (!session) throw new Error("AUTH_SESSION_REQUIRED");
+  return session;
 }
 
 function saveSession(organization, profile, licenseKey) {
@@ -400,13 +445,21 @@ async function login() {
   showMessage("");
 
   try {
-    var access = await registerLicenseOrTeamAccess(data);
+    var licensePreview = await validateLicenseForRegistration(data.licence);
 
-    if (!access || !access.organization_id) {
+    if (!licensePreview || !licensePreview.organization_id) {
       showMessage("Licenca invalida.");
       btn.disabled = false;
       btn.textContent = "Ativar o meu ERP";
       return;
+    }
+
+    await authenticateRegistrationUser(data);
+
+    var access = await registerLicenseOrTeamAccess(data);
+
+    if (!access || !access.organization_id) {
+      throw new Error("LICENCA_INVALIDA");
     }
 
     var organization = {
@@ -425,55 +478,6 @@ async function login() {
       status: access.status || "pending"
     };
 
-var signUpResult = await supabaseClient.auth.signUp({
-  email: data.email,
-  password: data.password,
-  options: {
-    data: {
-      name: data.nom,
-      phone: data.numero,
-      organization_id: organization.id
-    }
-  }
-});
-
-if (signUpResult.error) {
-  showMessage(getAuthErrorMessage(signUpResult.error));
-  btn.disabled = false;
-  btn.textContent = "Ativar o meu ERP";
-  return;
-}
-
-var hasSession = !!(signUpResult.data && signUpResult.data.session);
-
-if (!hasSession) {
-  var signInResult = await supabaseClient.auth.signInWithPassword({
-    email: data.email,
-    password: data.password
-  });
-
-  if (signInResult.error) {
-    var currentSession = await supabaseClient.auth.getSession();
-
-    if (!(currentSession.data && currentSession.data.session)) {
-      console.warn("Entrada automatica falhou:", signInResult.error);
-
-      showMessage("Conta criada, mas nao foi possivel abrir automaticamente. Entre com o email e a palavra-passe.", "success");
-      showLoginMode("login");
-
-      var loginIdentifier = document.getElementById("login-identifier");
-      var loginPassword = document.getElementById("login-password");
-
-      if (loginIdentifier) loginIdentifier.value = data.email;
-      if (loginPassword) loginPassword.value = "";
-
-      btn.disabled = false;
-      btn.textContent = "Ativar o meu ERP";
-      return;
-    }
-  }
-}
-
     profile = await ensureFirstOwnerProfile(profile);
 
     if (!isProfileActive(profile) && !isProfilePending(profile)) {
@@ -487,7 +491,15 @@ if (!hasSession) {
     openCoreSession(organization, profile, organization.license_key);
 
   } catch (e) {
-    showMessage(getLicenseErrorMessage(e));
+    var message = String(e && e.message ? e.message : e || "");
+    showMessage(
+      message.indexOf("AUTH_") >= 0 ||
+      message.toLowerCase().indexOf("password") >= 0 ||
+      message.toLowerCase().indexOf("email") >= 0 ||
+      message.toLowerCase().indexOf("already") >= 0
+        ? getAuthErrorMessage(e)
+        : getLicenseErrorMessage(e)
+    );
     btn.disabled = false;
     btn.textContent = "Ativar o meu ERP";
   }

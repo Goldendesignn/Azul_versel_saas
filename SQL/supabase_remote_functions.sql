@@ -1036,6 +1036,55 @@ end;
 $function$;
 
 -- ============================================================
+-- Function: public.validate_license_registration(p_license_key text)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.validate_license_registration(p_license_key text)
+ RETURNS TABLE(organization_id uuid, organization_name text, license_key text, plan text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_license record;
+begin
+  select
+    l.organization_id,
+    l.license_key,
+    l.plan,
+    l.expires_at,
+    o.name as organization_name,
+    o.status as organization_status
+  into v_license
+  from public.licenses l
+  join public.organizations o on o.id = l.organization_id
+  where upper(l.license_key) = upper(trim(coalesce(p_license_key, '')))
+  limit 1;
+
+  if v_license.organization_id is null then
+    raise exception 'LICENCA_INVALIDA';
+  end if;
+
+  if v_license.expires_at is not null and v_license.expires_at < now() then
+    raise exception 'LICENCA_EXPIRADA';
+  end if;
+
+  if coalesce(v_license.organization_status, 'pending') in ('suspended', 'blocked', 'inactive') then
+    raise exception 'LICENCA_INATIVA';
+  end if;
+
+  return query
+  select
+    v_license.organization_id,
+    v_license.organization_name::text,
+    v_license.license_key::text,
+    coalesce(v_license.plan, 'starter')::text;
+end;
+$function$;
+
+REVOKE ALL ON FUNCTION public.validate_license_registration(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.validate_license_registration(text) TO anon, authenticated;
+
+-- ============================================================
 -- Function: public.register_license_access(p_license_key text, p_store_name text, p_name text, p_phone text, p_email text)
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.register_license_access(p_license_key text, p_store_name text, p_name text, p_phone text, p_email text)
@@ -1046,14 +1095,23 @@ CREATE OR REPLACE FUNCTION public.register_license_access(p_license_key text, p_
 AS $function$
 declare
   v_license record;
+  v_auth_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
   v_email text := lower(trim(coalesce(p_email, '')));
   v_owner_count integer := 0;
   v_existing record;
   v_role text;
   v_status text;
 begin
+  if auth.uid() is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
   if trim(coalesce(p_license_key, '')) = '' or v_email = '' then
     raise exception 'LICENCA_INVALIDA';
+  end if;
+
+  if v_auth_email = '' or v_auth_email <> v_email then
+    raise exception 'AUTH_EMAIL_MISMATCH';
   end if;
 
   select
@@ -1171,6 +1229,9 @@ begin
     v_status;
 end;
 $function$;
+
+REVOKE ALL ON FUNCTION public.register_license_access(text, text, text, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.register_license_access(text, text, text, text, text) TO authenticated;
 
 -- ============================================================
 -- Function: public.rls_auto_enable()
