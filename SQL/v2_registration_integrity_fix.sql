@@ -1,4 +1,4 @@
--- Azul Gestao V2 - inscricao atomica e reparacao do proprietario M2D.
+-- Azul Gestao V2 - inscricao atomica e integridade do proprietario.
 -- Executar no Supabase de producao.
 
 create or replace function public.validate_license_registration(p_license_key text)
@@ -197,22 +197,3 @@ $$;
 
 revoke all on function public.register_license_access(text, text, text, text, text) from public, anon;
 grant execute on function public.register_license_access(text, text, text, text, text) to authenticated;
-
--- Repare M2D: o email usado na segunda inscricao passa a proprietario.
-update public.profiles
-set role = 'member', status = 'inactive'
-where organization_id = '88b00168-5339-4fef-8fb9-419df83cf3ce'
-  and lower(email) = 'mctrdcr1@gmail.com';
-
-update public.profiles
-set role = 'owner', status = 'active'
-where organization_id = '88b00168-5339-4fef-8fb9-419df83cf3ce'
-  and lower(email) = 'mctrdcr244@gmail.com';
-
-update public.organizations
-set
-  owner_name = 'MOCTAR Doucouré',
-  owner_phone = '976196665',
-  owner_email = 'mctrdcr244@gmail.com',
-  status = 'active'
-where id = '88b00168-5339-4fef-8fb9-419df83cf3ce';
