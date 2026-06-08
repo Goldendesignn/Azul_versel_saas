@@ -100,7 +100,17 @@ async function loadOrganizations() {
   var list = document.getElementById("organizations-list");
   list.innerHTML = '<div class="empty">A carregar...</div>';
 
-  var result = await adminSupabaseClient.rpc("admin_list_clients");
+  var result = await adminSupabaseClient.rpc("admin_list_clients_v2");
+
+  if (
+    result.error &&
+    (
+      String(result.error.message || "").indexOf("admin_list_clients_v2") >= 0 ||
+      String(result.error.code || "") === "PGRST202"
+    )
+  ) {
+    result = await adminSupabaseClient.rpc("admin_list_clients");
+  }
 
   if (result.error) {
     list.innerHTML = '<div class="empty">Erro: ' + htmlSafe(result.error.message) + '</div>';
@@ -148,6 +158,8 @@ function renderOrganizations() {
               Activations: ${htmlSafe(org.activation_count || 0)} / ${htmlSafe(org.activation_limit || 1)}<br>
               Telefone: ${htmlSafe(org.phone || "-")}<br>
               Email: ${htmlSafe(org.email || "-")}<br>
+              Utilizadores: ${htmlSafe(org.active_users != null ? org.active_users : "-")} ativos / ${htmlSafe(org.total_users != null ? org.total_users : "-")} total
+              ${org.pending_users ? " (" + htmlSafe(org.pending_users) + " pendente(s))" : ""}<br>
               Appareils: ${htmlSafe(org.active_devices || 0)} / ${htmlSafe(org.device_limit || 1)}<br>
               Criado: ${htmlSafe(String(org.created_at || "").slice(0, 10))}
             </div>
