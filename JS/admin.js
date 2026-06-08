@@ -33,6 +33,14 @@ async function loginAdmin() {
     return;
   }
 
+  var allowed = await verifyAdminSession();
+
+  if (!allowed) {
+    await adminSupabaseClient.auth.signOut();
+    adminMsg("admin-login-msg", "Esta conta nao tem permissao de administrador.");
+    return;
+  }
+
   showAdminPanel();
 }
 
@@ -45,6 +53,28 @@ function showAdminPanel() {
   document.getElementById("admin-login").style.display = "none";
   document.getElementById("admin-panel").style.display = "block";
   loadOrganizations();
+}
+
+function showAdminLogin(message) {
+  document.getElementById("admin-panel").style.display = "none";
+  document.getElementById("admin-login").style.display = "block";
+  adminMsg("admin-login-msg", message || "");
+}
+
+async function verifyAdminSession() {
+  var userResult = await adminSupabaseClient.auth.getUser();
+
+  if (
+    userResult.error ||
+    !userResult.data ||
+    !userResult.data.user
+  ) {
+    return false;
+  }
+
+  var adminResult = await adminSupabaseClient.rpc("is_admin");
+
+  return !adminResult.error && adminResult.data === true;
 }
 
 function generateLicenseKey() {
@@ -435,9 +465,20 @@ document.addEventListener("click", function(event) {
 });
 
 document.addEventListener("DOMContentLoaded", async function() {
-  var result = await adminSupabaseClient.auth.getSession();
+  var sessionResult = await adminSupabaseClient.auth.getSession();
 
-  if (result.data && result.data.session) {
-    showAdminPanel();
+  if (!sessionResult.data || !sessionResult.data.session) {
+    showAdminLogin("");
+    return;
   }
+
+  var allowed = await verifyAdminSession();
+
+  if (allowed) {
+    showAdminPanel();
+    return;
+  }
+
+  await adminSupabaseClient.auth.signOut();
+  showAdminLogin("A sessao anterior nao era de um administrador. Entre com a conta Azul Admin.");
 });
