@@ -1,5 +1,5 @@
-const SUPABASE_URL = "https://gtgfdxdximyshlusgyit.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_5-KzyXN60M6QZtrG482f-g_xQ32WikV";
+const SUPABASE_URL = "https://nekxpfooskfxeafbpjqp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5la3hwZm9vc2tmeGVhZmJwanFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODA0ODAsImV4cCI6MjA5NTY1NjQ4MH0.mT4edn1tHVG9O5oHqHKv1vaRRx3ufJK1Ru8_J2CbTQI";
 
 function getAzulSupabaseOrganizationHeader() {
   try {
