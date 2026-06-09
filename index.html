@@ -77,7 +77,7 @@
           </label>
           </div>
 
-          <button class="forgot-btn" type="button">Esqueceu a palavra-passe?</button>
+          <button class="forgot-btn" type="button" onclick="showPasswordRecovery()">Esqueceu a palavra-passe?</button>
           <button id="account-login-btn" onclick="loginAccount()">Entrar</button>
 
           <div class="login-divider"><span>Ainda nao tem conta?</span></div>
@@ -85,6 +85,44 @@
           <button class="link-btn" type="button" onclick="showLoginMode('register')">
             Criar conta
           </button>
+        </div>
+
+        <div id="panel-recovery" class="login-panel">
+          <div class="login-header">
+            <p class="login-kicker">Recuperacao segura</p>
+            <h2>Nova palavra-passe</h2>
+            <p>Confirme os dados da conta para recuperar o acesso automaticamente.</p>
+          </div>
+
+          <div class="cont-input-login">
+            <label class="input-field">
+              <span class="field-icon">@</span>
+              <input type="email" placeholder="Email da conta" id="recovery-email" autocomplete="email">
+            </label>
+
+            <label class="input-field">
+              <span class="field-icon">#</span>
+              <input type="text" placeholder="Chave de licenca" id="recovery-license" autocomplete="off" oninput="formatLicenseInput(this)">
+            </label>
+
+            <label class="input-field">
+              <span class="field-icon">L</span>
+              <input type="text" placeholder="Nome exato da loja" id="recovery-store" autocomplete="organization">
+            </label>
+
+            <label class="input-field">
+              <span class="field-icon">*</span>
+              <input type="password" placeholder="Nova palavra-passe" id="recovery-password" autocomplete="new-password">
+            </label>
+
+            <label class="input-field">
+              <span class="field-icon">*</span>
+              <input type="password" placeholder="Confirmar nova palavra-passe" id="recovery-password-confirm" autocomplete="new-password">
+            </label>
+          </div>
+
+          <button id="recovery-submit-btn" type="button" onclick="recoverAccountPassword()">Alterar palavra-passe</button>
+          <button class="link-btn" type="button" onclick="showLoginMode('login')">Voltar ao login</button>
         </div>
 
         <div id="panel-register" class="login-panel">

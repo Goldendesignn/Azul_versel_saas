@@ -291,6 +291,10 @@ button {
   display: none;
 }
 
+.login-tabs[hidden] {
+  display: none !important;
+}
+
 .login-message {
   min-height: 20px;
   color: var(--danger);

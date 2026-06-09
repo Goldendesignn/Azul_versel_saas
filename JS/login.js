@@ -50,17 +50,124 @@ function formatLicenseInput(input) {
 
 function showLoginMode(mode) {
   var isRegister = mode === "register";
+  var isRecovery = mode === "recovery";
+  var loginTabs = document.querySelector(".login-tabs");
   var tabLogin = document.getElementById("tab-login");
   var tabRegister = document.getElementById("tab-register");
   var panelLogin = document.getElementById("panel-login");
   var panelRegister = document.getElementById("panel-register");
+  var panelRecovery = document.getElementById("panel-recovery");
 
-  if (tabLogin) tabLogin.classList.toggle("active", !isRegister);
+  if (tabLogin) tabLogin.classList.toggle("active", !isRegister && !isRecovery);
   if (tabRegister) tabRegister.classList.toggle("active", isRegister);
-  if (panelLogin) panelLogin.classList.toggle("active", !isRegister);
+  if (panelLogin) panelLogin.classList.toggle("active", !isRegister && !isRecovery);
   if (panelRegister) panelRegister.classList.toggle("active", isRegister);
+  if (panelRecovery) panelRecovery.classList.toggle("active", isRecovery);
+  if (loginTabs) loginTabs.hidden = isRecovery;
 
   showMessage("");
+}
+
+function showPasswordRecovery() {
+  var identifier = document.getElementById("login-identifier");
+  var recoveryEmail = document.getElementById("recovery-email");
+
+  if (identifier && recoveryEmail && isEmail(identifier.value)) {
+    recoveryEmail.value = identifier.value.trim().toLowerCase();
+  }
+
+  showLoginMode("recovery");
+}
+
+function getPasswordRecoveryMessage(code) {
+  if (code === "DEVICE_NOT_RECOGNIZED") {
+    return "Este aparelho ainda nao foi autorizado para esta empresa. Contacte o administrador.";
+  }
+
+  if (code === "TOO_MANY_ATTEMPTS") {
+    return "Muitas tentativas. Aguarde 15 minutos e tente novamente.";
+  }
+
+  if (code === "PASSWORD_TOO_SHORT") {
+    return "A nova palavra-passe deve ter pelo menos 8 caracteres.";
+  }
+
+  if (code === "INVALID_INFORMATION") {
+    return "Email, licenca ou nome da loja incorretos.";
+  }
+
+  return "Nao foi possivel alterar a palavra-passe. Tente novamente.";
+}
+
+async function recoverAccountPassword() {
+  var btn = document.getElementById("recovery-submit-btn");
+  var email = document.getElementById("recovery-email").value.trim().toLowerCase();
+  var licenseKey = normalizeLicense(document.getElementById("recovery-license").value);
+  var storeName = document.getElementById("recovery-store").value.trim();
+  var password = document.getElementById("recovery-password").value;
+  var passwordConfirm = document.getElementById("recovery-password-confirm").value;
+
+  if (!email || !licenseKey || !storeName || !password || !passwordConfirm) {
+    showMessage("Preencha todos os campos.");
+    return;
+  }
+
+  if (!isEmail(email)) {
+    showMessage("Informe um email valido.");
+    return;
+  }
+
+  if (password.length < 8) {
+    showMessage("A nova palavra-passe deve ter pelo menos 8 caracteres.");
+    return;
+  }
+
+  if (password !== passwordConfirm) {
+    showMessage("As palavras-passe nao coincidem.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "A verificar...";
+  showMessage("");
+
+  try {
+    var response = await fetch(
+      SUPABASE_URL + "/functions/v1/reset-account-password",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({
+          email: email,
+          license_key: licenseKey,
+          store_name: storeName,
+          new_password: password
+        })
+      }
+    );
+    var payload = await response.json().catch(function() {
+      return {};
+    });
+
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || "SERVER_ERROR");
+    }
+
+    document.getElementById("login-identifier").value = email;
+    document.getElementById("login-password").value = "";
+    document.getElementById("recovery-password").value = "";
+    document.getElementById("recovery-password-confirm").value = "";
+    showLoginMode("login");
+    showMessage("Palavra-passe alterada. Ja pode entrar.", "success");
+  } catch (error) {
+    showMessage(getPasswordRecoveryMessage(String(error && error.message || "")));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Alterar palavra-passe";
+  }
 }
 
 function getOrCreateLoginDeviceId() {
