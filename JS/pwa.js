@@ -72,7 +72,7 @@
       if (button.hasAttribute("data-mobile-loading")) return true;
 
       var label = String(button.textContent || "").trim().toLowerCase();
-      return /(registar|registrar|guardar|confirmar|enviar|atualizar|actualizar|refresh|aplicar|filtrar|pesquisar|gerar|eliminar|desativar|reativar|renovar|importar|transferir|criar|ativar|terminar sessao|entrar)/.test(label);
+      return /(registar|registrar|guardar|confirmar|enviar|atualizar|actualizar|refresh|aplicar|filtrar|pesquisar|gerar|eliminar|desativar|reativar|renovar|importar|transferir|criar|ativar|alterar|terminar sessao|entrar)/.test(label);
     }
 
     function showBusy(button) {
