@@ -3554,9 +3554,50 @@ function getPurchaseStockUpdate(currentWarehouse, currentShop, quantity) {
   };
 }
 
+function normalizePurchaseProductIdentity(value) {
+  return String(value || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function getPurchaseVariationIdentity(value) {
+  return parseVariationList(value)
+    .map(normalizePurchaseProductIdentity)
+    .filter(Boolean)
+    .sort()
+    .join("|");
+}
+
+function isSamePurchaseProduct(existingProduct, productName, category, variations) {
+  if (
+    normalizePurchaseProductIdentity(existingProduct && existingProduct.name) !==
+    normalizePurchaseProductIdentity(productName)
+  ) {
+    return false;
+  }
+
+  var existingVariation = getPurchaseVariationIdentity(
+    existingProduct && (existingProduct.variations || existingProduct.variation)
+  );
+  var incomingVariation = getPurchaseVariationIdentity(variations);
+
+  if (existingVariation !== incomingVariation) {
+    return false;
+  }
+
+  var existingCategory = normalizePurchaseProductIdentity(existingProduct && existingProduct.category);
+  var incomingCategory = normalizePurchaseProductIdentity(category);
+
+  return !existingCategory || !incomingCategory || existingCategory === incomingCategory;
+}
+
 async function upsertProductFromPurchase(item, supplier) {
   var organizationId = getAzulOrganizationId();
 
+  var selectedProductId = String(item.productId || item.product_id || "").trim();
   var productName = String(item.prod || item.name || "").trim();
   var quantity = Number(item.qty || item.quantity) || 0;
   var purchasePrice = Number(item.pa || item.purchasePrice || item.purchase_price || item.price) || 0;
@@ -3575,28 +3616,34 @@ async function upsertProductFromPurchase(item, supplier) {
     .from("products")
     .select("*")
     .eq("organization_id", organizationId);
+  var existingResult;
 
-  if (code) {
-    existingQuery = existingQuery.eq("code", code);
+  if (selectedProductId) {
+    existingResult = await existingQuery
+      .eq("id", selectedProductId)
+      .limit(1);
+  } else if (code) {
+    existingResult = await existingQuery
+      .eq("code", code)
+      .order("created_at", { ascending: true })
+      .limit(1);
   } else {
-    existingQuery = existingQuery
-      .eq("name", productName)
-      .eq("variation", variation)
-      .eq("purchase_price", purchasePrice)
-      .eq("sale_price", salePrice);
+    existingResult = await existingQuery
+      .ilike("name", productName)
+      .order("created_at", { ascending: true })
+      .limit(50);
   }
-
-  var existingResult = await existingQuery
-    .order("created_at", { ascending: false })
-    .limit(1);
 
   if (existingResult.error) {
     throw existingResult.error;
   }
 
-  var existingProduct = existingResult.data && existingResult.data.length
-    ? existingResult.data[0]
-    : null;
+  var existingProducts = existingResult.data || [];
+  var existingProduct = selectedProductId || code
+    ? (existingProducts[0] || null)
+    : (existingProducts.find(function(product) {
+        return isSamePurchaseProduct(product, productName, category, variations);
+      }) || null);
 
   if (existingProduct) {
     var currentWarehouse = Number(existingProduct.stock_warehouse) || 0;
@@ -3695,22 +3742,24 @@ async function savePurchaseToSupabase(data) {
   var purchaseItems = [];
 
   for (var i = 0; i < items.length; i++) {
-    var savedProduct = await upsertProductFromPurchase(items[i], supplier);
+    var purchaseItem = items[i];
+    var savedProduct = await upsertProductFromPurchase(purchaseItem, supplier);
+    var itemVariations = parseVariationList(purchaseItem.variations || purchaseItem.variation || "");
+    var itemVariation = itemVariations.join(" | ");
 
-  purchaseItems.push({
-    product_id: savedProduct.id,
-    product_name: savedProduct.name,
-    category: savedProduct.category || "",
-    code: savedProduct.code || "",
-    photo: savedProduct.photo || "",
-    variation: savedProduct.variation || "",
-    variations: savedProduct.variations || [],
-    purchase_price: Number(savedProduct.purchase_price) || 0,
-    sale_price: Number(savedProduct.sale_price) || 0,
-    quantity: Number(items[i].qty || items[i].quantity) || 0,
-    supplier: supplier
-  });
-
+    purchaseItems.push({
+      product_id: savedProduct.id,
+      product_name: savedProduct.name,
+      category: String(purchaseItem.category || savedProduct.category || ""),
+      code: String(purchaseItem.code || savedProduct.code || ""),
+      photo: String(purchaseItem.photo || savedProduct.photo || ""),
+      variation: itemVariation || savedProduct.variation || "",
+      variations: itemVariations.length ? itemVariations : savedProduct.variations || [],
+      purchase_price: Number(purchaseItem.pa || purchaseItem.purchasePrice || purchaseItem.purchase_price) || 0,
+      sale_price: Number(purchaseItem.pv || purchaseItem.salePrice || purchaseItem.sale_price || purchaseItem.targetMargin) || 0,
+      quantity: Number(purchaseItem.qty || purchaseItem.quantity) || 0,
+      supplier: supplier
+    });
   }
 
   var purchaseResult = await supabaseClient.rpc("create_purchase_for_org", {
@@ -6335,14 +6384,18 @@ function applyfornNamePreset(index, value) {
 
 function applyCompraProductPreset(index, value) {
   achatLines[index].prod = value;
-  var product = (products || []).find(function(p) { return p.name === value; });
+  var normalizedValue = normalizePurchaseProductIdentity(value);
+  var product = (products || []).find(function(p) {
+    return normalizePurchaseProductIdentity(p.name) === normalizedValue;
+  });
+  achatLines[index].productId = product ? (product.id || "") : "";
   if (!product) return;
   achatLines[index].code = achatLines[index].code || product.code || '';
   achatLines[index].category = achatLines[index].category || product.category || '';
   achatLines[index].variation = achatLines[index].variation || product.variation || '';
   achatLines[index].variations = achatLines[index].variations && achatLines[index].variations.length ? achatLines[index].variations : parseVariationList(product.variation || product.variations || []);
   achatLines[index].photo = achatLines[index].photo || product.photo || '';
-  achatLines[index].targetMargin = achatLines[index].targetMargin || product.targetMargin || '';
+  achatLines[index].targetMargin = achatLines[index].targetMargin || product.price || product.targetMargin || '';
   achatLines[index].price = achatLines[index].price || product.purchasePrice || product.price || 0;
   var forn = document.getElementById('a-forn');
   if (forn && !forn.value && product.mainSupplier) forn.value = product.mainSupplier;
@@ -10767,13 +10820,13 @@ function switchClientTab(tab, btn) {
 }
 
 function initCompraLines() {
-  achatLines = [{ date: new Date().toISOString().split('T')[0], prod: '', code: '', category: '', variation: '', variations: [], photo: '', targetMargin: '', qty: 0, price: 0 }];
+  achatLines = [{ date: new Date().toISOString().split('T')[0], productId: '', prod: '', code: '', category: '', variation: '', variations: [], photo: '', targetMargin: '', qty: 0, price: 0 }];
   paiementLines = [];
   renderCompraLines();
 }
 
 function addCompraLine() {
-  achatLines.push({ date: new Date().toISOString().split('T')[0], prod: '', code: '', category: '', variation: '', variations: [], photo: '', targetMargin: '', qty: 0, price: 0 });
+  achatLines.push({ date: new Date().toISOString().split('T')[0], productId: '', prod: '', code: '', category: '', variation: '', variations: [], photo: '', targetMargin: '', qty: 0, price: 0 });
   renderCompraLines();
   setTimeout(function() {
     var inputs = document.querySelectorAll('.al-prod');
@@ -10828,7 +10881,7 @@ function renderCompraLines() {
           //Date
           '<input type="date" class="form-input achat-cell-input" value="' + line.date + '" onchange="achatLines[' + i + '].date=this.value">' +
           //Nom du produit
-          '<input type="text" class="form-input achat-cell-input prod al-prod" value="' + (line.prod || '') + '" placeholder="Produto..." list="prodList" oninput="achatLines[' + i + '].prod=this.value" onchange="applyCompraProductPreset(' + i + ', this.value)">' +
+          '<input type="text" class="form-input achat-cell-input prod al-prod" value="' + (line.prod || '') + '" placeholder="Produto..." list="prodList" oninput="achatLines[' + i + '].prod=this.value;achatLines[' + i + '].productId=\'\'" onchange="applyCompraProductPreset(' + i + ', this.value)">' +
           '<div class="achat-mini-grid">' +
             //code du produit
             renderCompraCodeScannerInput(i, line) +
@@ -11054,6 +11107,7 @@ async function saveCompra() {
 
   var items = (achatLines || []).map(function (line) {
     return {
+      productId: line.productId || "",
       prod: line.prod || "",
       code: line.code || "",
       category: line.category || "",
@@ -11084,6 +11138,7 @@ async function saveCompra() {
   var purchasePayload = {
     forn: supplier,
     items: items,
+    purchaseDate: (achatLines[0] && achatLines[0].date) || "",
     credit: document.getElementById("a-credit").checked,
     payments: paiementLines || []
   };
