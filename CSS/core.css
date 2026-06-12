@@ -3861,6 +3861,718 @@ button.az-icon-button,
   }
 }
 
+/* ANALISE COMERCIAL */
+.sales-performance-actions,
+.sales-analytics-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sales-analytics-shell {
+  width: 100%;
+  display: grid;
+  gap: 14px;
+  padding-bottom: 32px;
+}
+
+.sales-analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 18px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px var(--shadow-soft);
+}
+
+.sales-analytics-header h1 {
+  margin: 3px 0 5px;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.sales-analytics-header p,
+.sales-analytics-card-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.sales-analytics-filters {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.sales-analytics-filters .filter-group,
+.sales-analytics-filters .filter-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.sales-analytics-custom-date {
+  display: none;
+}
+
+.sales-analytics-custom-date.is-visible {
+  display: block;
+}
+
+.sales-analytics-apply {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.sales-analytics-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sales-analytics-tabs .mode-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+}
+
+.sales-analytics-status {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  color: var(--muted);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.sales-analytics-status.success {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 36%, var(--border));
+}
+
+.sales-analytics-status.error {
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 36%, var(--border));
+}
+
+.sales-analytics-status.loading::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  margin-right: 9px;
+  border: 2px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: salesAnalyticsSpin .75s linear infinite;
+}
+
+@keyframes salesAnalyticsSpin {
+  to { transform: rotate(360deg); }
+}
+
+.sales-analytics-panel {
+  display: none;
+}
+
+.sales-analytics-panel.active {
+  display: grid;
+  gap: 14px;
+}
+
+.sales-analytics-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sales-analytics-kpi {
+  min-width: 0;
+  min-height: 116px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--blue);
+  border-radius: 8px;
+}
+
+.sales-analytics-kpi.green {
+  border-top-color: var(--green);
+}
+
+.sales-analytics-kpi span,
+.sales-analytics-detail-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sales-analytics-kpi strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--blue);
+  font-size: 20px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.sales-analytics-kpi.green strong,
+.sales-analytics-table .green,
+.sales-analytics-detail-grid .green {
+  color: var(--green);
+}
+
+.sales-analytics-kpi small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.sales-analytics-overview-grid,
+.sales-analytics-timing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sales-analytics-card {
+  min-width: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--shadow-soft);
+}
+
+.sales-analytics-card-head,
+.sales-analytics-product-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sales-analytics-card-head h3,
+.sales-analytics-product-title h3 {
+  margin: 3px 0 0;
+  font-size: 17px;
+}
+
+.text-action {
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sales-analytics-ranking,
+.sales-analytics-compact-list,
+.sales-analytics-bars {
+  display: grid;
+  gap: 4px;
+}
+
+.sales-analytics-ranking-row,
+.sales-analytics-compact-row {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  color: var(--text);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sales-analytics-ranking-row {
+  cursor: pointer;
+}
+
+.sales-analytics-ranking-row:last-child,
+.sales-analytics-compact-row:last-child {
+  border-bottom: 0;
+}
+
+.sales-analytics-ranking-row strong,
+.sales-analytics-ranking-row small,
+.sales-analytics-compact-row strong,
+.sales-analytics-compact-row small {
+  display: block;
+}
+
+.sales-analytics-ranking-row small,
+.sales-analytics-compact-row small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.sales-analytics-ranking-row b,
+.sales-analytics-compact-row b {
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.sales-analytics-rank {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 900;
+  background: var(--accent-soft);
+  border-radius: 50%;
+}
+
+.sales-analytics-bar-row {
+  display: grid;
+  gap: 6px;
+  padding: 7px 0;
+}
+
+.sales-analytics-bar-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sales-analytics-bar-label span {
+  color: var(--blue);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sales-analytics-bar-track {
+  height: 8px;
+  overflow: hidden;
+  background: var(--surface2);
+  border-radius: 4px;
+}
+
+.sales-analytics-bar-track > span {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+  border-radius: inherit;
+}
+
+.sales-analytics-products-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, .7fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.sales-analytics-search {
+  width: min(280px, 100%);
+}
+
+.sales-analytics-product-tools {
+  display: grid;
+  grid-template-columns: minmax(150px, .8fr) minmax(190px, 1fr);
+  gap: 8px;
+  width: min(520px, 100%);
+}
+
+.sales-analytics-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.sales-analytics-table {
+  min-width: 720px;
+}
+
+.sales-analytics-table tbody tr {
+  cursor: pointer;
+}
+
+.sales-analytics-table tbody tr:hover {
+  background: var(--accent-soft);
+}
+
+.sales-analytics-table td strong,
+.sales-analytics-table td small {
+  display: block;
+}
+
+.sales-analytics-table td small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.sales-analytics-mobile-list {
+  display: none;
+}
+
+.sales-analytics-product-detail {
+  position: sticky;
+  top: 0;
+}
+
+.sales-analytics-product-title p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.sales-analytics-stock-badge {
+  padding: 6px 9px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--accent-soft);
+  border-radius: 6px;
+}
+
+.sales-analytics-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sales-analytics-detail-grid > div {
+  padding: 11px;
+  background: var(--surface2);
+  border-radius: 6px;
+}
+
+.sales-analytics-detail-grid strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--blue);
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.sales-analytics-insight {
+  margin-top: 12px;
+  padding: 12px;
+  border-left: 3px solid var(--blue);
+  background: var(--accent-soft);
+}
+
+.sales-analytics-insight p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.sales-analytics-variation-kpis {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sales-analytics-variation-list {
+  display: grid;
+  gap: 5px;
+}
+
+.sales-analytics-variation-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(280px, 1.4fr);
+  gap: 8px 18px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sales-analytics-variation-row:last-child {
+  border-bottom: 0;
+}
+
+.sales-analytics-variation-main strong,
+.sales-analytics-variation-main small {
+  display: block;
+}
+
+.sales-analytics-variation-main small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.sales-analytics-variation-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  text-align: right;
+}
+
+.sales-analytics-variation-metrics b {
+  color: var(--blue);
+}
+
+.sales-analytics-variation-metrics em {
+  color: var(--green);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.sales-analytics-variation-row .sales-analytics-bar-track {
+  grid-column: 1 / -1;
+}
+
+.sales-analytics-hours {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sales-analytics-hour-card {
+  min-width: 0;
+  padding: 10px;
+  background: var(--surface2);
+  border-radius: 6px;
+}
+
+.sales-analytics-hour-card strong,
+.sales-analytics-hour-card span,
+.sales-analytics-hour-card small {
+  display: block;
+}
+
+.sales-analytics-hour-card strong {
+  color: var(--blue);
+}
+
+.sales-analytics-hour-card span {
+  margin-top: 5px;
+  font-weight: 800;
+}
+
+.sales-analytics-hour-card small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.sales-analytics-heatmap-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.sales-analytics-heatmap {
+  min-width: 900px;
+  display: grid;
+  grid-template-columns: 52px repeat(24, minmax(28px, 1fr));
+  gap: 4px;
+}
+
+.sales-analytics-heatmap-hour,
+.sales-analytics-heatmap-day {
+  display: grid;
+  place-items: center;
+  min-height: 26px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.sales-analytics-heat-cell {
+  min-height: 28px;
+  background: color-mix(in srgb, var(--blue) calc(var(--heat) * 100%), var(--surface2));
+  border: 1px solid color-mix(in srgb, var(--blue) calc(var(--heat) * 55%), var(--border));
+  border-radius: 4px;
+}
+
+html[data-theme="dark"] .sales-analytics-header,
+html[data-theme="dark"] .sales-analytics-filters,
+html[data-theme="dark"] .sales-analytics-kpi,
+html[data-theme="dark"] .sales-analytics-card {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+@media (max-width: 1180px) {
+  .sales-analytics-filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .sales-analytics-apply {
+    grid-column: span 2;
+  }
+
+  .sales-analytics-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .sales-performance-actions,
+  .sales-analytics-header,
+  .sales-analytics-header-actions,
+  .sales-analytics-card-head,
+  .sales-analytics-product-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sales-performance-actions,
+  .sales-analytics-header-actions {
+    width: 100%;
+  }
+
+  .sales-performance-actions > *,
+  .sales-analytics-header-actions > * {
+    width: 100%;
+  }
+
+  .sales-analytics-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-analytics-apply {
+    grid-column: 1 / -1;
+  }
+
+  .sales-analytics-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-analytics-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-analytics-overview-grid,
+  .sales-analytics-timing-grid,
+  .sales-analytics-products-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-analytics-product-detail {
+    position: static;
+  }
+
+  .sales-analytics-table-wrap {
+    display: none;
+  }
+
+  .sales-analytics-product-tools {
+    width: 100%;
+  }
+
+  .sales-analytics-mobile-list {
+    display: grid;
+    gap: 8px;
+  }
+
+  .sales-analytics-product-mobile {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 12px;
+    color: var(--text);
+    text-align: left;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  .sales-analytics-product-mobile strong,
+  .sales-analytics-product-mobile small,
+  .sales-analytics-product-mobile b {
+    display: block;
+  }
+
+  .sales-analytics-product-mobile small {
+    margin-top: 4px;
+    color: var(--muted);
+  }
+
+  .sales-analytics-product-mobile > div:last-child {
+    text-align: right;
+  }
+
+  .sales-analytics-product-mobile b {
+    color: var(--blue);
+    white-space: nowrap;
+  }
+
+  .sales-analytics-hours {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .sales-analytics-header,
+  .sales-analytics-filters,
+  .sales-analytics-card {
+    padding: 12px;
+  }
+
+  .sales-analytics-header h1 {
+    font-size: 23px;
+  }
+
+  .sales-analytics-filters,
+  .sales-analytics-tabs,
+  .sales-analytics-kpis,
+  .sales-analytics-variation-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-analytics-filters .filter-group:first-child,
+  .sales-analytics-filters .filter-group:nth-child(4),
+  .sales-analytics-filters .filter-group:nth-child(5),
+  .sales-analytics-filters .filter-group:nth-child(6),
+  .sales-analytics-custom-date.is-visible,
+  .sales-analytics-apply {
+    grid-column: 1 / -1;
+  }
+
+  .sales-analytics-kpi {
+    min-height: 106px;
+    padding: 11px;
+  }
+
+  .sales-analytics-kpi strong {
+    font-size: 17px;
+  }
+
+  .sales-analytics-ranking-row,
+  .sales-analytics-compact-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .sales-analytics-ranking-row b,
+  .sales-analytics-compact-row b {
+    grid-column: 2;
+  }
+
+  .sales-analytics-variation-row {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-analytics-variation-metrics {
+    text-align: left;
+  }
+
+  .sales-analytics-hours {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-analytics-product-tools {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ===== IMPORTACAO RESPONSIVA ===== */
 @media (max-width: 820px) {
   #page-import,

@@ -993,6 +993,20 @@ var AZUL_CONTEXT_HELP = {
     ],
     tip: "Comece o dia pelo dashboard para ver o que precisa de atencao antes de vender."
   },
+  performance: {
+    title: "Analise comercial",
+    subtitle: "Painel detalhado para entender produtos, lucro, variacoes, clientes e horarios de venda.",
+    main: [
+      "Usa os filtros para comparar um periodo, produto, categoria ou vendedor.",
+      "A vista Produtos mostra faturacao, lucro, margem e quantidade por artigo.",
+      "A vista Dias e horas ajuda a escolher os melhores momentos para abrir, promover ou reforcar a equipe."
+    ],
+    care: [
+      "As horas usam o momento real em que a venda foi registada.",
+      "Quando filtras um produto ou categoria, todos os indicadores passam a mostrar apenas essa selecao."
+    ],
+    tip: "Comeca pelos produtos com maior lucro, nao apenas pelos que mais faturam."
+  },
   venda: {
     title: "Nova venda",
     subtitle: "Modulo para registar vendas, escolher produtos, confirmar pagamento e emitir recibo.",
@@ -1924,6 +1938,9 @@ function azulRoleAllows(kind, key) {
 }
 
 function canAccessAzulPage(page) {
+  if (page === "performance") {
+    return azulRoleAllows("pages", "dashboard");
+  }
   return azulRoleAllows("pages", page);
 }
 
@@ -1998,6 +2015,7 @@ var AZUL_ICON_PATHS = {
 
 var AZUL_PAGE_ICON_MAP = {
   dashboard: "dashboard",
+  performance: "dashboard",
   venda: "venda",
   achat: "achat",
   transfert: "transfert",
@@ -3990,6 +4008,7 @@ function goTo(page, btn) {
       else loadProducts();
     }
     if (page === 'dashboard') loadDashboard();
+    if (page === 'performance') initSalesAnalyticsPage();
     if (page === 'depenses') initDespesasPage();
     if (page === 'rh') initRhPage();
     if (page === 'historique') loadHist();
@@ -4817,7 +4836,7 @@ function translateMainDashboard() {
   setMainDashboardText('#page-dashboard .sales-performance-head .eyebrow', 'sales');
   setMainDashboardText('#page-dashboard .sales-performance-head h2', 'commercialPerformance');
   setMainDashboardText('#page-dashboard .sales-performance-head p', 'commercialIntro');
-  setMainDashboardText('#page-dashboard .sales-performance-head button', 'newSale');
+  setMainDashboardText('#page-dashboard .sales-performance-head .filter-btn', 'newSale');
   setMainDashboardTexts('#page-dashboard .sales-performance-kpi > span', ['averageTicket', 'salesCount', 'soldItems', 'averageMargin']);
   setMainDashboardTexts('#page-dashboard .sales-performance-kpi > small', ['salesTransactions', 'transactions', 'totalQuantity', 'profitSales']);
   setMainDashboardTexts('#page-dashboard .sales-performance-highlight > span', ['bestClient', 'bestSeller', 'dominantOrigin', 'biggestCart']);
@@ -5568,6 +5587,710 @@ function renderDashboardSalesPerformance(data) {
     }
   }
 }
+
+var salesAnalyticsState = {
+  loaded: false,
+  loading: false,
+  data: null,
+  selectedProductIndex: -1
+};
+
+function formatSalesAnalyticsDate(value) {
+  var text = String(value || "").slice(0, 10);
+  if (!text) return "-";
+  var parts = text.split("-");
+  if (parts.length !== 3) return text;
+  return parts[2] + "/" + parts[1] + "/" + parts[0];
+}
+
+function getSalesAnalyticsDateRange() {
+  var periodEl = document.getElementById("salesAnalyticsPeriod");
+  var period = periodEl ? periodEl.value : "month";
+  var now = new Date();
+  var from = new Date(now.getFullYear(), now.getMonth(), 1);
+  var to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (period === "today") {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (period === "7days") {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  } else if (period === "30days") {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+  } else if (period === "custom") {
+    var customFrom = document.getElementById("salesAnalyticsFrom");
+    var customTo = document.getElementById("salesAnalyticsTo");
+    return {
+      period: period,
+      from: customFrom && customFrom.value ? customFrom.value : localDateKey(from),
+      to: customTo && customTo.value ? customTo.value : localDateKey(to)
+    };
+  }
+
+  return {
+    period: period,
+    from: localDateKey(from),
+    to: localDateKey(to)
+  };
+}
+
+function onSalesAnalyticsPeriodChange() {
+  var range = getSalesAnalyticsDateRange();
+  var custom = range.period === "custom";
+
+  Array.prototype.forEach.call(document.querySelectorAll(".sales-analytics-custom-date"), function(group) {
+    group.classList.toggle("is-visible", custom);
+  });
+
+  var from = document.getElementById("salesAnalyticsFrom");
+  var to = document.getElementById("salesAnalyticsTo");
+  if (from && !from.value) from.value = range.from;
+  if (to && !to.value) to.value = range.to;
+}
+
+function setSalesAnalyticsStatus(message, type) {
+  var status = document.getElementById("salesAnalyticsStatus");
+  if (!status) return;
+  status.textContent = message || "";
+  status.className = "sales-analytics-status" + (type ? " " + type : "");
+}
+
+function setSalesAnalyticsLoading(loading) {
+  salesAnalyticsState.loading = !!loading;
+  var button = document.getElementById("salesAnalyticsRefreshBtn");
+  if (!button) return;
+  button.disabled = !!loading;
+  button.classList.toggle("is-loading", !!loading);
+  button.textContent = loading ? "A carregar..." : "Atualizar";
+}
+
+function setSalesAnalyticsSelectOptions(id, rows, placeholder) {
+  var select = document.getElementById(id);
+  if (!select) return;
+  var current = select.value;
+  var html = '<option value="">' + escapeDespesaHtml(placeholder) + '</option>';
+
+  (rows || []).forEach(function(row) {
+    html += '<option value="' + escapeDespesaHtml(row.value) + '">' + escapeDespesaHtml(row.label) + '</option>';
+  });
+
+  select.innerHTML = html;
+  if (current && (rows || []).some(function(row) { return row.value === current; })) {
+    select.value = current;
+  }
+}
+
+function getSalesAnalyticsItemKey(item) {
+  if (item && item.product_id) return "id:" + String(item.product_id);
+  return "name:" + String(item && item.product_name || "Produto").trim().toLowerCase();
+}
+
+function getSalesAnalyticsSeller(sale) {
+  return String(sale && (sale.user_name || sale.seller || sale.vendor || sale.created_by) || "Nao informado").trim() || "Nao informado";
+}
+
+function parseSalesAnalyticsVariations(item) {
+  var values = item && item.variations;
+
+  if (typeof values === "string") {
+    try {
+      values = JSON.parse(values);
+    } catch (e) {
+      values = values.split(/[|,;/]+/);
+    }
+  }
+
+  if (!Array.isArray(values)) values = [];
+
+  if (!values.length && item && item.variation) {
+    values = String(item.variation).split(/[|,;/]+/);
+  }
+
+  return values.map(function(value) {
+    return String(value || "").trim();
+  }).filter(function(value) {
+    var normalized = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return value && normalized !== "servico";
+  });
+}
+
+function buildSalesAnalyticsData(sales, items, productRows, filters) {
+  sales = sales || [];
+  items = items || [];
+  productRows = productRows || [];
+  filters = filters || {};
+
+  var productById = {};
+  var productByName = {};
+  productRows.forEach(function(product) {
+    if (product.id) productById[String(product.id)] = product;
+    productByName[String(product.name || "").trim().toLowerCase()] = product;
+  });
+
+  var sellerFilter = String(filters.seller || "");
+  var filteredSales = sales.filter(function(sale) {
+    return !sellerFilter || getSalesAnalyticsSeller(sale) === sellerFilter;
+  });
+  var allowedSaleIds = {};
+  filteredSales.forEach(function(sale) {
+    allowedSaleIds[String(sale.id)] = true;
+  });
+
+  var productFilter = String(filters.product || "");
+  var categoryFilter = String(filters.category || "");
+  var filteredItems = items.filter(function(item) {
+    if (!allowedSaleIds[String(item.sale_id)]) return false;
+    var product = productById[String(item.product_id || "")] ||
+      productByName[String(item.product_name || "").trim().toLowerCase()] || {};
+    var itemCategory = String(product.category || (isDashboardServiceSaleItem(item) ? "Servicos" : "Sem categoria"));
+
+    if (productFilter && getSalesAnalyticsItemKey(item) !== productFilter) return false;
+    if (categoryFilter && itemCategory !== categoryFilter) return false;
+    return true;
+  });
+
+  var filteredSaleIds = {};
+  filteredItems.forEach(function(item) {
+    filteredSaleIds[String(item.sale_id)] = true;
+  });
+  filteredSales = filteredSales.filter(function(sale) {
+    return filteredSaleIds[String(sale.id)] || (!productFilter && !categoryFilter && !items.length);
+  });
+
+  var saleById = {};
+  filteredSales.forEach(function(sale) {
+    saleById[String(sale.id)] = sale;
+  });
+
+  var amountBySale = {};
+  filteredItems.forEach(function(item) {
+    var id = String(item.sale_id);
+    amountBySale[id] = (amountBySale[id] || 0) + (Number(item.total) || 0);
+  });
+
+  var hasItemFilter = !!(productFilter || categoryFilter);
+  var revenue = filteredSales.reduce(function(sum, sale) {
+    var id = String(sale.id);
+    return sum + (hasItemFilter ? (amountBySale[id] || 0) : (Number(sale.total) || amountBySale[id] || 0));
+  }, 0);
+  var profit = filteredItems.reduce(function(sum, item) {
+    return sum + (Number(item.profit) || 0);
+  }, 0);
+  var quantity = filteredItems.reduce(function(sum, item) {
+    return sum + (Number(item.quantity) || 0);
+  }, 0);
+
+  var productMap = {};
+  var variationMap = {};
+  filteredItems.forEach(function(item) {
+    var key = getSalesAnalyticsItemKey(item);
+    var product = productById[String(item.product_id || "")] ||
+      productByName[String(item.product_name || "").trim().toLowerCase()] || {};
+    var qty = Number(item.quantity) || 0;
+    var total = Number(item.total) || 0;
+    var itemProfit = Number(item.profit) || 0;
+
+    if (!productMap[key]) {
+      productMap[key] = {
+        key: key,
+        name: item.product_name || product.name || "Produto",
+        category: product.category || (isDashboardServiceSaleItem(item) ? "Servicos" : "Sem categoria"),
+        quantity: 0,
+        revenue: 0,
+        profit: 0,
+        saleIds: {},
+        stock: (Number(product.stock_shop) || 0) + (Number(product.stock_warehouse) || 0),
+        unitPrice: 0
+      };
+    }
+
+    productMap[key].quantity += qty;
+    productMap[key].revenue += total;
+    productMap[key].profit += itemProfit;
+    productMap[key].saleIds[String(item.sale_id)] = true;
+    if (qty > 0) productMap[key].unitPrice = total / qty;
+
+    var variations = parseSalesAnalyticsVariations(item);
+    if (!variations.length) variations = ["Sem variacao"];
+
+    variations.forEach(function(variation) {
+      var variationKey = String(variation).toLowerCase();
+      if (!variationMap[variationKey]) {
+        variationMap[variationKey] = {
+          name: variation,
+          quantity: 0,
+          revenue: 0,
+          profit: 0,
+          products: {}
+        };
+      }
+      variationMap[variationKey].quantity += qty;
+      variationMap[variationKey].revenue += total;
+      variationMap[variationKey].profit += itemProfit;
+      variationMap[variationKey].products[key] = true;
+    });
+  });
+
+  var productsData = Object.keys(productMap).map(function(key) {
+    var row = productMap[key];
+    row.salesCount = Object.keys(row.saleIds).length;
+    row.margin = row.revenue > 0 ? (row.profit / row.revenue) * 100 : 0;
+    row.averagePrice = row.quantity > 0 ? row.revenue / row.quantity : 0;
+    return row;
+  }).sort(function(a, b) {
+    return b.revenue - a.revenue;
+  });
+
+  var variationsData = Object.keys(variationMap).map(function(key) {
+    var row = variationMap[key];
+    row.productCount = Object.keys(row.products).length;
+    row.margin = row.revenue > 0 ? (row.profit / row.revenue) * 100 : 0;
+    return row;
+  }).sort(function(a, b) {
+    return b.quantity - a.quantity;
+  });
+
+  var clientsMap = {};
+  var sellersMap = {};
+  var dailyMap = {};
+  var weekdayMap = {};
+  var hourMap = {};
+  var heatmap = {};
+  var weekdayLabels = ["Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"];
+
+  filteredSales.forEach(function(sale) {
+    var saleId = String(sale.id);
+    var saleAmount = hasItemFilter ? (amountBySale[saleId] || 0) : (Number(sale.total) || amountBySale[saleId] || 0);
+    var client = String(sale.client_name || "Anonimo").trim() || "Anonimo";
+    var seller = getSalesAnalyticsSeller(sale);
+    var dateKey = String(sale.sale_date || sale.created_at || "").slice(0, 10);
+    var createdAt = sale.created_at ? new Date(sale.created_at) : null;
+
+    if (!clientsMap[client]) clientsMap[client] = { name: client, total: 0, count: 0 };
+    clientsMap[client].total += saleAmount;
+    clientsMap[client].count += 1;
+
+    if (!sellersMap[seller]) sellersMap[seller] = { name: seller, total: 0, count: 0 };
+    sellersMap[seller].total += saleAmount;
+    sellersMap[seller].count += 1;
+
+    if (dateKey) {
+      if (!dailyMap[dateKey]) dailyMap[dateKey] = { name: dateKey, total: 0, count: 0 };
+      dailyMap[dateKey].total += saleAmount;
+      dailyMap[dateKey].count += 1;
+    }
+
+    if (createdAt && !isNaN(createdAt.getTime())) {
+      var weekday = createdAt.getDay();
+      var hour = createdAt.getHours();
+      var weekdayName = weekdayLabels[weekday];
+
+      if (!weekdayMap[weekday]) weekdayMap[weekday] = { name: weekdayName, total: 0, count: 0, index: weekday };
+      weekdayMap[weekday].total += saleAmount;
+      weekdayMap[weekday].count += 1;
+
+      if (!hourMap[hour]) hourMap[hour] = { hour: hour, total: 0, count: 0 };
+      hourMap[hour].total += saleAmount;
+      hourMap[hour].count += 1;
+      heatmap[weekday + ":" + hour] = (heatmap[weekday + ":" + hour] || 0) + saleAmount;
+    }
+  });
+
+  var clients = Object.keys(clientsMap).map(function(key) { return clientsMap[key]; }).sort(function(a, b) { return b.total - a.total; });
+  var sellers = Object.keys(sellersMap).map(function(key) { return sellersMap[key]; }).sort(function(a, b) { return b.total - a.total; });
+  var daily = Object.keys(dailyMap).map(function(key) { return dailyMap[key]; }).sort(function(a, b) { return a.name.localeCompare(b.name); });
+  var weekdays = Object.keys(weekdayMap).map(function(key) { return weekdayMap[key]; }).sort(function(a, b) { return a.index - b.index; });
+  var hours = Object.keys(hourMap).map(function(key) { return hourMap[key]; }).sort(function(a, b) { return a.hour - b.hour; });
+  var bestDay = daily.slice().sort(function(a, b) { return b.total - a.total; })[0] || null;
+  var bestHour = hours.slice().sort(function(a, b) { return b.total - a.total; })[0] || null;
+  var bestVariationProfit = variationsData.slice().sort(function(a, b) { return b.profit - a.profit; })[0] || null;
+
+  return {
+    revenue: revenue,
+    profit: profit,
+    margin: revenue > 0 ? (profit / revenue) * 100 : 0,
+    ticket: filteredSales.length ? revenue / filteredSales.length : 0,
+    salesCount: filteredSales.length,
+    quantity: quantity,
+    productCount: productsData.length,
+    products: productsData,
+    variations: variationsData,
+    clients: clients,
+    sellers: sellers,
+    daily: daily,
+    weekdays: weekdays,
+    hours: hours,
+    heatmap: heatmap,
+    bestDay: bestDay,
+    bestHour: bestHour,
+    bestVariation: variationsData[0] || null,
+    bestVariationProfit: bestVariationProfit
+  };
+}
+
+function getSalesAnalyticsFilters() {
+  var range = getSalesAnalyticsDateRange();
+  return {
+    from: range.from,
+    to: range.to,
+    product: document.getElementById("salesAnalyticsProduct") ? document.getElementById("salesAnalyticsProduct").value : "",
+    category: document.getElementById("salesAnalyticsCategory") ? document.getElementById("salesAnalyticsCategory").value : "",
+    seller: document.getElementById("salesAnalyticsSeller") ? document.getElementById("salesAnalyticsSeller").value : ""
+  };
+}
+
+async function getSalesAnalyticsFromSupabase(filters) {
+  var organizationId = getAzulOrganizationId();
+  var salesQuery = supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gte("sale_date", filters.from)
+    .lte("sale_date", filters.to)
+    .order("sale_date", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  var salesResult = await salesQuery;
+  if (salesResult.error) throw salesResult.error;
+
+  var sales = salesResult.data || [];
+  var items = sales.length ? await fetchSaleItemsBySaleIds(sales.map(function(sale) { return sale.id; })) : [];
+  var resellerProjection = await getResellerSalesProjectionFromSupabase(filters);
+  sales = sales.concat(resellerProjection.sales || []);
+  items = items.concat(resellerProjection.items || []);
+
+  var productsResult = await supabaseClient
+    .from("products")
+    .select("id,name,category,stock_shop,stock_warehouse")
+    .eq("organization_id", organizationId)
+    .order("name", { ascending: true });
+
+  if (productsResult.error) throw productsResult.error;
+  var productRows = productsResult.data || [];
+
+  var productOptionsMap = {};
+  items.forEach(function(item) {
+    var key = getSalesAnalyticsItemKey(item);
+    if (!productOptionsMap[key]) {
+      productOptionsMap[key] = {
+        value: key,
+        label: item.product_name || "Produto"
+      };
+    }
+  });
+
+  var categoriesMap = {};
+  productRows.forEach(function(product) {
+    var category = String(product.category || "Sem categoria").trim() || "Sem categoria";
+    categoriesMap[category] = true;
+  });
+  if (items.some(isDashboardServiceSaleItem)) categoriesMap.Servicos = true;
+
+  var sellersMap = {};
+  sales.forEach(function(sale) {
+    sellersMap[getSalesAnalyticsSeller(sale)] = true;
+  });
+
+  setSalesAnalyticsSelectOptions(
+    "salesAnalyticsProduct",
+    Object.keys(productOptionsMap).map(function(key) { return productOptionsMap[key]; }).sort(function(a, b) { return a.label.localeCompare(b.label); }),
+    "Todos os produtos"
+  );
+  setSalesAnalyticsSelectOptions(
+    "salesAnalyticsCategory",
+    Object.keys(categoriesMap).sort().map(function(category) { return { value: category, label: category }; }),
+    "Todas as categorias"
+  );
+  setSalesAnalyticsSelectOptions(
+    "salesAnalyticsSeller",
+    Object.keys(sellersMap).sort().map(function(seller) { return { value: seller, label: seller }; }),
+    "Todos os vendedores"
+  );
+
+  return buildSalesAnalyticsData(sales, items, productRows, filters);
+}
+
+function renderSalesAnalyticsBarList(id, rows, labelFn) {
+  var container = document.getElementById(id);
+  if (!container) return;
+  rows = rows || [];
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty">Sem dados neste periodo.</div>';
+    return;
+  }
+
+  var max = rows.reduce(function(value, row) {
+    return Math.max(value, Number(row.total) || 0);
+  }, 0) || 1;
+
+  container.innerHTML = rows.map(function(row) {
+    var width = Math.max(3, ((Number(row.total) || 0) / max) * 100);
+    return '<div class="sales-analytics-bar-row">' +
+      '<div class="sales-analytics-bar-label"><strong>' + escapeDespesaHtml(labelFn ? labelFn(row) : row.name) + '</strong><span>' + fmt(row.total || 0) + '</span></div>' +
+      '<div class="sales-analytics-bar-track"><span style="width:' + width.toFixed(2) + '%"></span></div>' +
+    '</div>';
+  }).join("");
+}
+
+function renderSalesAnalyticsCompactList(id, rows) {
+  var container = document.getElementById(id);
+  if (!container) return;
+  rows = (rows || []).slice(0, 6);
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty">Sem dados neste periodo.</div>';
+    return;
+  }
+
+  container.innerHTML = rows.map(function(row, index) {
+    return '<div class="sales-analytics-compact-row">' +
+      '<span class="sales-analytics-rank">' + (index + 1) + '</span>' +
+      '<div><strong>' + escapeDespesaHtml(row.name) + '</strong><small>' + row.count + ' venda(s)</small></div>' +
+      '<b>' + fmt(row.total || 0) + '</b>' +
+    '</div>';
+  }).join("");
+}
+
+function renderSalesAnalyticsSummary(data) {
+  var set = function(id, value) {
+    var element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+
+  set("salesAnalyticsRevenue", fmt(data.revenue || 0));
+  set("salesAnalyticsRevenueSub", data.salesCount + " venda(s)");
+  set("salesAnalyticsProfit", fmt(data.profit || 0));
+  set("salesAnalyticsProfitSub", "Margem " + (Number(data.margin || 0).toFixed(1)).replace(".", ",") + "%");
+  set("salesAnalyticsTicket", fmt(data.ticket || 0));
+  set("salesAnalyticsQuantity", new Intl.NumberFormat(getLocale()).format(data.quantity || 0));
+  set("salesAnalyticsQuantitySub", data.productCount + " produto(s) diferente(s)");
+  set("salesAnalyticsBestDay", data.bestDay ? formatSalesAnalyticsDate(data.bestDay.name) : "-");
+  set("salesAnalyticsBestDaySub", fmt(data.bestDay ? data.bestDay.total : 0));
+  set("salesAnalyticsBestHour", data.bestHour ? String(data.bestHour.hour).padStart(2, "0") + ":00" : "-");
+  set("salesAnalyticsBestHourSub", (data.bestHour ? data.bestHour.count : 0) + " venda(s)");
+
+  var top = document.getElementById("salesAnalyticsTopProducts");
+  var topRows = (data.products || []).slice(0, 6);
+  if (top) {
+    top.innerHTML = topRows.length ? topRows.map(function(row, index) {
+      return '<button type="button" class="sales-analytics-ranking-row" onclick="openSalesAnalyticsProduct(' + (data.products || []).indexOf(row) + ')">' +
+        '<span class="sales-analytics-rank">' + (index + 1) + '</span>' +
+        '<div><strong>' + escapeDespesaHtml(row.name) + '</strong><small>' + new Intl.NumberFormat(getLocale()).format(row.quantity || 0) + ' un. | Lucro ' + fmt(row.profit || 0) + '</small></div>' +
+        '<b>' + fmt(row.revenue || 0) + '</b>' +
+      '</button>';
+    }).join("") : '<div class="empty">Sem produtos vendidos neste periodo.</div>';
+  }
+
+  renderSalesAnalyticsBarList("salesAnalyticsDailyBars", (data.daily || []).slice(-14), function(row) {
+    return formatSalesAnalyticsDate(row.name);
+  });
+  renderSalesAnalyticsCompactList("salesAnalyticsClients", data.clients);
+  renderSalesAnalyticsCompactList("salesAnalyticsSellers", data.sellers);
+}
+
+function renderSalesAnalyticsProducts() {
+  var data = salesAnalyticsState.data || {};
+  var productsData = (data.products || []).slice();
+  var search = document.getElementById("salesAnalyticsProductSearch");
+  var sort = document.getElementById("salesAnalyticsProductSort");
+  var term = String(search && search.value || "").trim().toLowerCase();
+  var sortKey = String(sort && sort.value || "revenue");
+  productsData.sort(function(a, b) {
+    return (Number(b[sortKey]) || 0) - (Number(a[sortKey]) || 0);
+  });
+  var filtered = productsData.map(function(row, index) {
+    return { row: row, index: (data.products || []).indexOf(row) };
+  }).filter(function(entry) {
+    return !term || [entry.row.name, entry.row.category].join(" ").toLowerCase().indexOf(term) >= 0;
+  });
+  var body = document.getElementById("salesAnalyticsProductsBody");
+  var mobile = document.getElementById("salesAnalyticsProductsMobile");
+
+  if (body) {
+    body.innerHTML = filtered.length ? filtered.map(function(entry) {
+      var row = entry.row;
+      return '<tr tabindex="0" onclick="openSalesAnalyticsProduct(' + entry.index + ')" onkeydown="if(event.key===\'Enter\')openSalesAnalyticsProduct(' + entry.index + ')">' +
+        '<td><strong>' + escapeDespesaHtml(row.name) + '</strong><small>' + escapeDespesaHtml(row.category) + '</small></td>' +
+        '<td>' + new Intl.NumberFormat(getLocale()).format(row.quantity || 0) + '</td>' +
+        '<td>' + fmt(row.revenue || 0) + '</td>' +
+        '<td class="green">' + fmt(row.profit || 0) + '</td>' +
+        '<td>' + (Number(row.margin || 0).toFixed(1)).replace(".", ",") + '%</td>' +
+        '<td>' + row.salesCount + '</td>' +
+      '</tr>';
+    }).join("") : '<tr><td colspan="6" class="empty">Nenhum produto encontrado.</td></tr>';
+  }
+
+  if (mobile) {
+    mobile.innerHTML = filtered.length ? filtered.map(function(entry) {
+      var row = entry.row;
+      return '<button type="button" class="sales-analytics-product-mobile" onclick="openSalesAnalyticsProduct(' + entry.index + ')">' +
+        '<div><strong>' + escapeDespesaHtml(row.name) + '</strong><small>' + escapeDespesaHtml(row.category) + ' | ' + new Intl.NumberFormat(getLocale()).format(row.quantity || 0) + ' un.</small></div>' +
+        '<div><b>' + fmt(row.revenue || 0) + '</b><small>Lucro ' + fmt(row.profit || 0) + '</small></div>' +
+      '</button>';
+    }).join("") : '<div class="empty">Nenhum produto encontrado.</div>';
+  }
+}
+
+function openSalesAnalyticsProduct(index) {
+  var data = salesAnalyticsState.data || {};
+  var row = (data.products || [])[Number(index)];
+  if (!row) return;
+  salesAnalyticsState.selectedProductIndex = Number(index);
+  switchSalesAnalyticsTab("products");
+
+  var detail = document.getElementById("salesAnalyticsProductDetail");
+  if (!detail) return;
+  detail.innerHTML =
+    '<div class="sales-analytics-product-title">' +
+      '<div><span class="eyebrow">Detalhe do produto</span><h3>' + escapeDespesaHtml(row.name) + '</h3><p>' + escapeDespesaHtml(row.category) + '</p></div>' +
+      '<span class="sales-analytics-stock-badge">' + new Intl.NumberFormat(getLocale()).format(row.stock || 0) + ' em stock</span>' +
+    '</div>' +
+    '<div class="sales-analytics-detail-grid">' +
+      '<div><span>Faturacao</span><strong>' + fmt(row.revenue || 0) + '</strong></div>' +
+      '<div><span>Lucro</span><strong class="green">' + fmt(row.profit || 0) + '</strong></div>' +
+      '<div><span>Margem</span><strong>' + (Number(row.margin || 0).toFixed(1)).replace(".", ",") + '%</strong></div>' +
+      '<div><span>Quantidade</span><strong>' + new Intl.NumberFormat(getLocale()).format(row.quantity || 0) + '</strong></div>' +
+      '<div><span>Preco medio</span><strong>' + fmt(row.averagePrice || 0) + '</strong></div>' +
+      '<div><span>Vendas</span><strong>' + row.salesCount + '</strong></div>' +
+    '</div>' +
+    '<div class="sales-analytics-insight">' +
+      '<strong>Leitura rapida</strong>' +
+      '<p>' + (row.margin >= 30 ? 'Boa margem. Este produto contribui bem para o lucro.' : row.margin > 0 ? 'Margem moderada. Confirma o preco de compra e o preco de venda.' : 'Produto sem lucro registado. Verifica custos e precos.') + '</p>' +
+    '</div>';
+}
+
+function renderSalesAnalyticsVariations(data) {
+  var set = function(id, value) {
+    var element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+  set("salesAnalyticsBestVariation", data.bestVariation ? data.bestVariation.name : "-");
+  set("salesAnalyticsBestVariationSub", new Intl.NumberFormat(getLocale()).format(data.bestVariation ? data.bestVariation.quantity : 0) + " unidades");
+  set("salesAnalyticsBestVariationProfit", data.bestVariationProfit ? data.bestVariationProfit.name : "-");
+  set("salesAnalyticsBestVariationProfitSub", fmt(data.bestVariationProfit ? data.bestVariationProfit.profit : 0));
+
+  var list = document.getElementById("salesAnalyticsVariationsList");
+  var rows = data.variations || [];
+  if (!list) return;
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhuma variacao registada neste periodo.</div>';
+    return;
+  }
+
+  var max = rows.reduce(function(value, row) { return Math.max(value, row.quantity || 0); }, 0) || 1;
+  list.innerHTML = rows.map(function(row) {
+    var width = Math.max(3, ((row.quantity || 0) / max) * 100);
+    return '<div class="sales-analytics-variation-row">' +
+      '<div class="sales-analytics-variation-main"><strong>' + escapeDespesaHtml(row.name) + '</strong><small>' + row.productCount + ' produto(s)</small></div>' +
+      '<div class="sales-analytics-variation-metrics"><span>' + new Intl.NumberFormat(getLocale()).format(row.quantity || 0) + ' un.</span><b>' + fmt(row.revenue || 0) + '</b><em>Lucro ' + fmt(row.profit || 0) + '</em></div>' +
+      '<div class="sales-analytics-bar-track"><span style="width:' + width.toFixed(2) + '%"></span></div>' +
+    '</div>';
+  }).join("");
+}
+
+function renderSalesAnalyticsTiming(data) {
+  renderSalesAnalyticsBarList("salesAnalyticsWeekdays", data.weekdays || [], function(row) {
+    return row.name;
+  });
+
+  var hoursContainer = document.getElementById("salesAnalyticsHours");
+  var hours = data.hours || [];
+  if (hoursContainer) {
+    hoursContainer.innerHTML = hours.length ? hours.map(function(row) {
+      return '<div class="sales-analytics-hour-card">' +
+        '<strong>' + String(row.hour).padStart(2, "0") + ':00</strong>' +
+        '<span>' + fmt(row.total || 0) + '</span>' +
+        '<small>' + row.count + ' venda(s)</small>' +
+      '</div>';
+    }).join("") : '<div class="empty">Sem horarios disponiveis.</div>';
+  }
+
+  var heatmapContainer = document.getElementById("salesAnalyticsHeatmap");
+  if (!heatmapContainer) return;
+  var weekdayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+  var maxHeat = Object.keys(data.heatmap || {}).reduce(function(value, key) {
+    return Math.max(value, Number(data.heatmap[key]) || 0);
+  }, 0) || 1;
+  var html = '<div class="sales-analytics-heatmap-corner"></div>';
+  for (var hour = 0; hour < 24; hour++) {
+    html += '<div class="sales-analytics-heatmap-hour">' + String(hour).padStart(2, "0") + '</div>';
+  }
+  weekdayLabels.forEach(function(day, weekday) {
+    html += '<div class="sales-analytics-heatmap-day">' + day + '</div>';
+    for (var heatHour = 0; heatHour < 24; heatHour++) {
+      var value = Number((data.heatmap || {})[weekday + ":" + heatHour]) || 0;
+      var intensity = value > 0 ? Math.max(0.14, value / maxHeat) : 0;
+      html += '<div class="sales-analytics-heat-cell" style="--heat:' + intensity.toFixed(3) + '" title="' +
+        escapeDespesaHtml(day + " " + String(heatHour).padStart(2, "0") + ":00 - " + fmt(value)) + '"></div>';
+    }
+  });
+  heatmapContainer.innerHTML = html;
+}
+
+function renderSalesAnalytics(data) {
+  salesAnalyticsState.data = data;
+  renderSalesAnalyticsSummary(data);
+  renderSalesAnalyticsProducts();
+  renderSalesAnalyticsVariations(data);
+  renderSalesAnalyticsTiming(data);
+
+  if (salesAnalyticsState.selectedProductIndex >= 0) {
+    openSalesAnalyticsProduct(salesAnalyticsState.selectedProductIndex);
+  }
+}
+
+function switchSalesAnalyticsTab(tab, button) {
+  var target = document.getElementById("sales-analytics-" + tab);
+  if (!target) return;
+  Array.prototype.forEach.call(document.querySelectorAll(".sales-analytics-panel"), function(panel) {
+    panel.classList.remove("active");
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sales-analytics-tab]"), function(tabButton) {
+    tabButton.classList.toggle("active", tabButton.getAttribute("data-sales-analytics-tab") === tab);
+  });
+  target.classList.add("active");
+  if (button && button.classList) button.classList.add("active");
+}
+
+async function loadSalesAnalytics(force) {
+  if (salesAnalyticsState.loading) return;
+  if (salesAnalyticsState.loaded && !force) return;
+  var filters = getSalesAnalyticsFilters();
+  setSalesAnalyticsLoading(true);
+  setSalesAnalyticsStatus("A analisar vendas de " + formatSalesAnalyticsDate(filters.from) + " ate " + formatSalesAnalyticsDate(filters.to) + "...", "loading");
+
+  try {
+    var data = await getSalesAnalyticsFromSupabase(filters);
+    salesAnalyticsState.loaded = true;
+    salesAnalyticsState.selectedProductIndex = -1;
+    renderSalesAnalytics(data);
+    setSalesAnalyticsStatus(
+      data.salesCount
+        ? data.salesCount + " venda(s) analisada(s) entre " + formatSalesAnalyticsDate(filters.from) + " e " + formatSalesAnalyticsDate(filters.to) + "."
+        : "Nenhuma venda encontrada para os filtros escolhidos.",
+      data.salesCount ? "success" : "empty"
+    );
+    applyAzulIcons();
+  } catch (e) {
+    console.error("Erro analise comercial:", e);
+    setSalesAnalyticsStatus("Nao foi possivel carregar a analise: " + (e.message || e), "error");
+    toast("Erro na analise comercial: " + (e.message || e), "error");
+  } finally {
+    setSalesAnalyticsLoading(false);
+  }
+}
+
+function initSalesAnalyticsPage() {
+  onSalesAnalyticsPeriodChange();
+  loadSalesAnalytics(true);
+}
+
+window.initSalesAnalyticsPage = initSalesAnalyticsPage;
+window.loadSalesAnalytics = loadSalesAnalytics;
+window.onSalesAnalyticsPeriodChange = onSalesAnalyticsPeriodChange;
+window.switchSalesAnalyticsTab = switchSalesAnalyticsTab;
+window.renderSalesAnalyticsProducts = renderSalesAnalyticsProducts;
+window.openSalesAnalyticsProduct = openSalesAnalyticsProduct;
 
 function getDashboardAccountingSummary(sales, saleItems, expenseRows, productRows, debts, quickTreasury) {
   sales = sales || [];
