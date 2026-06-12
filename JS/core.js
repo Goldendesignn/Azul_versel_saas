@@ -12519,6 +12519,7 @@ function getText(key) {
       revconsselect : 'Selecione um consignacao.',
       revendeurselcttext: 'Escolha um revendedor para ver os seus registos em curso',
       tab_dashboard: 'Dashboard',
+      tab_performance: 'Analise Comercial',
       tab_venda: 'Nova Venda',
       tab_achat: 'Nova Compra',
       tab_transfert: 'Estoque',
@@ -12686,9 +12687,28 @@ function applyPortugueseText() {
   try {
     document.documentElement.lang = 'pt';
     var tabs = document.querySelectorAll('.nav .tab');
-    var keys = ['tab_dashboard','tab_venda','tab_achat','tab_transfert','tab_clientes','tab_depenses','tab_rh','tab_forn','tab_tresorerie','tab_comptabilite','tab_corrections','tab_revendeurs','tab_online','tab_logistica','tab_settings'];
-    tabs.forEach(function(tab, index) {
-      if (keys[index]) tab.textContent = getText(keys[index]);
+    var tabKeysByPage = {
+      dashboard: 'tab_dashboard',
+      performance: 'tab_performance',
+      venda: 'tab_venda',
+      achat: 'tab_achat',
+      transfert: 'tab_transfert',
+      clientes: 'tab_clientes',
+      depenses: 'tab_depenses',
+      rh: 'tab_rh',
+      forn: 'tab_forn',
+      tresorerie: 'tab_tresorerie',
+      comptabilite: 'tab_comptabilite',
+      corrections: 'tab_corrections',
+      revendeurs: 'tab_revendeurs',
+      online: 'tab_online',
+      logistica: 'tab_logistica',
+      settings: 'tab_settings'
+    };
+    tabs.forEach(function(tab) {
+      var page = extractGoToPage(tab.getAttribute('onclick'));
+      var key = tabKeysByPage[page];
+      if (key) tab.textContent = getText(key);
     });
 
     var ui = {
