@@ -519,21 +519,24 @@
   <div class="sales-performance-head">
     <div>
       <div class="eyebrow">Vendas</div>
-      <h2>Performance commerciale</h2>
+      <h2>Performance comercial</h2>
       <p>Ticket medio, margem, clientes e ritmo de vendas.</p>
     </div>
-    <button class="filter-btn" onclick="goTo('venda', null)">Nova venda</button>
+    <div class="sales-performance-actions">
+      <button class="dashboard-see-all" onclick="goTo('performance', null)">Analise completa</button>
+      <button class="filter-btn" onclick="goTo('venda', null)">Nova venda</button>
+    </div>
   </div>
 
   <div class="sales-performance-grid">
     <div class="sales-performance-kpi">
-      <span>Ticket moyen</span>
+      <span>Ticket medio</span>
       <strong id="sales-perf-average-ticket">0 Kz</strong>
       <small>total vendas / transacoes</small>
     </div>
 
     <div class="sales-performance-kpi">
-      <span>Nombre de ventes</span>
+      <span>Numero de vendas</span>
       <strong id="sales-perf-sales-count">0</strong>
       <small>transactions</small>
     </div>
@@ -545,7 +548,7 @@
     </div>
 
     <div class="sales-performance-kpi green">
-      <span>Marge moyenne</span>
+      <span>Margem media</span>
       <strong id="sales-perf-margin">0%</strong>
       <small>profit / ventes</small>
     </div>
@@ -579,19 +582,19 @@
     </div>
 
     <div class="sales-performance-highlight">
-      <span>Meilleur vendeur</span>
+      <span>Melhor vendedor</span>
       <strong id="sales-perf-best-seller">-</strong>
       <small id="sales-perf-best-seller-total">0 Kz</small>
     </div>
 
     <div class="sales-performance-highlight">
-      <span>Origine dominante</span>
+      <span>Origem dominante</span>
       <strong id="sales-perf-origin">-</strong>
       <small id="sales-perf-origin-total">0 Kz</small>
     </div>
 
     <div class="sales-performance-highlight">
-      <span>Plus gros panier</span>
+      <span>Maior venda</span>
       <strong id="sales-perf-biggest-sale">0 Kz</strong>
       <small id="sales-perf-biggest-sale-client">-</small>
     </div>
@@ -607,7 +610,7 @@
     </div>
 
     <div class="sales-performance-list-card">
-      <div class="card-title">Origine des ventes</div>
+      <div class="card-title">Origem das vendas</div>
 <div id="sales-perf-origin-list" class="dashboard-preview-list">
   <div class="empty">A carregar...</div>
 </div>
@@ -770,6 +773,252 @@
           <button class="dashboard-see-all" onclick="goTo('depenses', null)">Ver tudo</button>
         </div>
       </div>
+    </div>
+
+    <!-- ANALISE COMERCIAL -->
+    <div class="page" id="page-performance">
+      <section class="sales-analytics-shell">
+        <header class="sales-analytics-header">
+          <div>
+            <div class="eyebrow">Vendas</div>
+            <h1>Analise comercial</h1>
+            <p>Produtos, lucro, variacoes, clientes e melhores horarios num unico painel.</p>
+          </div>
+          <div class="sales-analytics-header-actions">
+            <button type="button" class="mode-btn" onclick="goTo('dashboard', null)">Voltar ao dashboard</button>
+            <button type="button" class="filter-btn" id="salesAnalyticsRefreshBtn" onclick="loadSalesAnalytics(true)">Atualizar</button>
+          </div>
+        </header>
+
+        <div class="sales-analytics-filters">
+          <div class="filter-group">
+            <label class="form-label" for="salesAnalyticsPeriod">Periodo</label>
+            <select class="filter-input" id="salesAnalyticsPeriod" onchange="onSalesAnalyticsPeriodChange()">
+              <option value="today">Hoje</option>
+              <option value="7days">Ultimos 7 dias</option>
+              <option value="30days">Ultimos 30 dias</option>
+              <option value="month" selected>Este mes</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+          <div class="filter-group sales-analytics-custom-date">
+            <label class="form-label" for="salesAnalyticsFrom">De</label>
+            <input class="filter-input" type="date" id="salesAnalyticsFrom">
+          </div>
+          <div class="filter-group sales-analytics-custom-date">
+            <label class="form-label" for="salesAnalyticsTo">Ate</label>
+            <input class="filter-input" type="date" id="salesAnalyticsTo">
+          </div>
+          <div class="filter-group">
+            <label class="form-label" for="salesAnalyticsProduct">Produto</label>
+            <select class="filter-input" id="salesAnalyticsProduct">
+              <option value="">Todos os produtos</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="form-label" for="salesAnalyticsCategory">Categoria</label>
+            <select class="filter-input" id="salesAnalyticsCategory">
+              <option value="">Todas as categorias</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="form-label" for="salesAnalyticsSeller">Vendedor</label>
+            <select class="filter-input" id="salesAnalyticsSeller">
+              <option value="">Todos os vendedores</option>
+            </select>
+          </div>
+          <button type="button" class="filter-btn sales-analytics-apply" onclick="loadSalesAnalytics(true)">Aplicar filtros</button>
+        </div>
+
+        <div class="sales-analytics-tabs" role="tablist" aria-label="Vistas da analise comercial">
+          <button type="button" class="mode-btn active" data-sales-analytics-tab="summary" onclick="switchSalesAnalyticsTab('summary', this)">Resumo</button>
+          <button type="button" class="mode-btn" data-sales-analytics-tab="products" onclick="switchSalesAnalyticsTab('products', this)">Produtos</button>
+          <button type="button" class="mode-btn" data-sales-analytics-tab="variations" onclick="switchSalesAnalyticsTab('variations', this)">Variacoes</button>
+          <button type="button" class="mode-btn" data-sales-analytics-tab="timing" onclick="switchSalesAnalyticsTab('timing', this)">Dias e horas</button>
+        </div>
+
+        <div class="sales-analytics-status" id="salesAnalyticsStatus">Escolhe um periodo para analisar as vendas.</div>
+
+        <div class="sales-analytics-panel active" id="sales-analytics-summary">
+          <div class="sales-analytics-kpis">
+            <article class="sales-analytics-kpi">
+              <span>Faturacao</span>
+              <strong id="salesAnalyticsRevenue">0 Kz</strong>
+              <small id="salesAnalyticsRevenueSub">0 vendas</small>
+            </article>
+            <article class="sales-analytics-kpi green">
+              <span>Lucro bruto</span>
+              <strong id="salesAnalyticsProfit">0 Kz</strong>
+              <small id="salesAnalyticsProfitSub">Margem 0%</small>
+            </article>
+            <article class="sales-analytics-kpi">
+              <span>Ticket medio</span>
+              <strong id="salesAnalyticsTicket">0 Kz</strong>
+              <small>valor medio por venda</small>
+            </article>
+            <article class="sales-analytics-kpi">
+              <span>Artigos vendidos</span>
+              <strong id="salesAnalyticsQuantity">0</strong>
+              <small id="salesAnalyticsQuantitySub">0 produtos diferentes</small>
+            </article>
+            <article class="sales-analytics-kpi">
+              <span>Melhor dia</span>
+              <strong id="salesAnalyticsBestDay">-</strong>
+              <small id="salesAnalyticsBestDaySub">0 Kz</small>
+            </article>
+            <article class="sales-analytics-kpi">
+              <span>Hora mais forte</span>
+              <strong id="salesAnalyticsBestHour">-</strong>
+              <small id="salesAnalyticsBestHourSub">0 vendas</small>
+            </article>
+          </div>
+
+          <div class="sales-analytics-overview-grid">
+            <article class="sales-analytics-card">
+              <div class="sales-analytics-card-head">
+                <div>
+                  <span class="eyebrow">Ranking</span>
+                  <h3>Produtos com maior faturacao</h3>
+                </div>
+                <button type="button" class="text-action" onclick="switchSalesAnalyticsTab('products')">Ver produtos</button>
+              </div>
+              <div id="salesAnalyticsTopProducts" class="sales-analytics-ranking"></div>
+            </article>
+
+            <article class="sales-analytics-card">
+              <div class="sales-analytics-card-head">
+                <div>
+                  <span class="eyebrow">Ritmo</span>
+                  <h3>Vendas por dia</h3>
+                </div>
+              </div>
+              <div id="salesAnalyticsDailyBars" class="sales-analytics-bars"></div>
+            </article>
+
+            <article class="sales-analytics-card">
+              <div class="sales-analytics-card-head">
+                <div>
+                  <span class="eyebrow">Clientes</span>
+                  <h3>Quem mais comprou</h3>
+                </div>
+              </div>
+              <div id="salesAnalyticsClients" class="sales-analytics-compact-list"></div>
+            </article>
+
+            <article class="sales-analytics-card">
+              <div class="sales-analytics-card-head">
+                <div>
+                  <span class="eyebrow">Equipe</span>
+                  <h3>Desempenho por vendedor</h3>
+                </div>
+              </div>
+              <div id="salesAnalyticsSellers" class="sales-analytics-compact-list"></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="sales-analytics-panel" id="sales-analytics-products">
+          <div class="sales-analytics-products-layout">
+            <article class="sales-analytics-card sales-analytics-table-card">
+              <div class="sales-analytics-card-head">
+                <div>
+                  <span class="eyebrow">Produtos</span>
+                  <h3>Rentabilidade por produto</h3>
+                </div>
+                <div class="sales-analytics-product-tools">
+                  <select class="filter-input" id="salesAnalyticsProductSort" onchange="renderSalesAnalyticsProducts()">
+                    <option value="revenue">Maior faturacao</option>
+                    <option value="profit">Maior lucro</option>
+                    <option value="quantity">Maior quantidade</option>
+                    <option value="margin">Maior margem</option>
+                  </select>
+                  <input class="filter-input sales-analytics-search" type="search" id="salesAnalyticsProductSearch" placeholder="Pesquisar produto..." oninput="renderSalesAnalyticsProducts()">
+                </div>
+              </div>
+              <div class="sales-analytics-table-wrap">
+                <table class="data-table sales-analytics-table">
+                  <thead>
+                    <tr>
+                      <th>Produto</th>
+                      <th>Qtd</th>
+                      <th>Faturacao</th>
+                      <th>Lucro</th>
+                      <th>Margem</th>
+                      <th>Vendas</th>
+                    </tr>
+                  </thead>
+                  <tbody id="salesAnalyticsProductsBody"></tbody>
+                </table>
+              </div>
+              <div id="salesAnalyticsProductsMobile" class="sales-analytics-mobile-list"></div>
+            </article>
+
+            <aside class="sales-analytics-card sales-analytics-product-detail" id="salesAnalyticsProductDetail">
+              <div class="empty">Seleciona um produto para ver os detalhes.</div>
+            </aside>
+          </div>
+        </div>
+
+        <div class="sales-analytics-panel" id="sales-analytics-variations">
+          <div class="sales-analytics-kpis sales-analytics-variation-kpis">
+            <article class="sales-analytics-kpi">
+              <span>Variacao mais vendida</span>
+              <strong id="salesAnalyticsBestVariation">-</strong>
+              <small id="salesAnalyticsBestVariationSub">0 unidades</small>
+            </article>
+            <article class="sales-analytics-kpi green">
+              <span>Variacao mais lucrativa</span>
+              <strong id="salesAnalyticsBestVariationProfit">-</strong>
+              <small id="salesAnalyticsBestVariationProfitSub">0 Kz</small>
+            </article>
+          </div>
+          <article class="sales-analytics-card">
+            <div class="sales-analytics-card-head">
+              <div>
+                <span class="eyebrow">Tamanhos, cores e modelos</span>
+                <h3>Desempenho das variacoes</h3>
+              </div>
+            </div>
+            <div id="salesAnalyticsVariationsList" class="sales-analytics-variation-list"></div>
+          </article>
+        </div>
+
+        <div class="sales-analytics-panel" id="sales-analytics-timing">
+          <div class="sales-analytics-timing-grid">
+            <article class="sales-analytics-card">
+              <div class="sales-analytics-card-head">
+                <div>
+                  <span class="eyebrow">Semana</span>
+                  <h3>Melhores dias para vender</h3>
+                </div>
+              </div>
+              <div id="salesAnalyticsWeekdays" class="sales-analytics-bars"></div>
+            </article>
+            <article class="sales-analytics-card">
+              <div class="sales-analytics-card-head">
+                <div>
+                  <span class="eyebrow">Horario</span>
+                  <h3>Movimento por hora</h3>
+                </div>
+              </div>
+              <div id="salesAnalyticsHours" class="sales-analytics-hours"></div>
+            </article>
+          </div>
+
+          <article class="sales-analytics-card sales-analytics-heatmap-card">
+            <div class="sales-analytics-card-head">
+              <div>
+                <span class="eyebrow">Mapa de calor</span>
+                <h3>Quando a loja vende mais</h3>
+              </div>
+              <small>Quanto mais forte a cor, maior a faturacao.</small>
+            </div>
+            <div class="sales-analytics-heatmap-wrap">
+              <div id="salesAnalyticsHeatmap" class="sales-analytics-heatmap"></div>
+            </div>
+          </article>
+        </div>
+      </section>
     </div>
 
     <!-- NOVA VENDA -->
