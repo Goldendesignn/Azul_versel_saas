@@ -2,6 +2,9 @@ var shopStore = null;
 var shopProducts = [];
 var shopCart = [];
 var shopCartOpen = false;
+var shopHeroIndex = 0;
+var shopHeroTimer = null;
+var shopHeroTouchStartX = 0;
 
 function shopParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
@@ -73,6 +76,7 @@ function saveShopThemeCache(store) {
     localStorage.setItem(key, JSON.stringify({
       store_name: store.store_name || "Loja Azul",
       hero_title: store.hero_title || "Escolha os produtos",
+      hero_slides: normalizeShopHeroSlides(store.hero_slides),
       welcome_message: store.welcome_message || "",
       theme_color: normalizeShopColor(store.theme_color),
       font_family: getShopFontFamily(store.font_family),
@@ -93,6 +97,111 @@ function readShopThemeCache() {
   }
 }
 
+function normalizeShopHeroSlides(value) {
+  var rows = Array.isArray(value) ? value : [];
+  return rows.slice(0, 10).filter(function(row) {
+    return row && String(row.image_url || "").trim();
+  }).map(function(row) {
+    return {
+      image_url: String(row.image_url || "").trim(),
+      title: String(row.title || "").trim(),
+      subtitle: String(row.subtitle || "").trim(),
+      button_label: String(row.button_label || "").trim()
+    };
+  });
+}
+
+function stopShopHeroAutoplay() {
+  if (!shopHeroTimer) return;
+  clearInterval(shopHeroTimer);
+  shopHeroTimer = null;
+}
+
+function startShopHeroAutoplay() {
+  stopShopHeroAutoplay();
+  var slides = document.querySelectorAll(".shop-hero-slide");
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (slides.length < 2 || reduceMotion || document.hidden) return;
+  shopHeroTimer = setInterval(function() {
+    showShopHeroSlide(shopHeroIndex + 1);
+  }, 5500);
+}
+
+function showShopHeroSlide(index, restart) {
+  var slides = document.querySelectorAll(".shop-hero-slide");
+  var dots = document.querySelectorAll(".shop-hero-dot");
+  if (!slides.length) return;
+
+  shopHeroIndex = (Number(index) + slides.length) % slides.length;
+  slides.forEach(function(slide, slideIndex) {
+    var active = slideIndex === shopHeroIndex;
+    slide.classList.toggle("is-active", active);
+    slide.setAttribute("aria-hidden", active ? "false" : "true");
+  });
+  dots.forEach(function(dot, dotIndex) {
+    var active = dotIndex === shopHeroIndex;
+    dot.classList.toggle("is-active", active);
+    dot.setAttribute("aria-current", active ? "true" : "false");
+  });
+  if (restart) startShopHeroAutoplay();
+}
+
+function scrollToShopProducts() {
+  var products = document.getElementById("shopProducts");
+  if (products) products.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderShopHero(store) {
+  var track = document.getElementById("shopHeroTrack");
+  var dots = document.getElementById("shopHeroDots");
+  var prev = document.getElementById("shopHeroPrev");
+  var next = document.getElementById("shopHeroNext");
+  if (!track || !dots) return;
+
+  var slides = normalizeShopHeroSlides(store && store.hero_slides);
+  var fallbackTitle = shopEscape(store.hero_title || "Escolha os produtos");
+  var fallbackMessage = shopEscape(store.welcome_message || "Adiciona produtos ao carrinho e envia o pedido pelo WhatsApp.");
+  var hero = document.getElementById("shopHero");
+  if (hero) hero.classList.toggle("is-fallback", !slides.length);
+
+  if (!slides.length) {
+    track.innerHTML =
+      '<article class="shop-hero-slide is-active shop-hero-fallback" aria-hidden="false">' +
+        '<div class="shop-hero-content">' +
+          '<span>Compra pelo WhatsApp</span>' +
+          '<h1 id="shopHeroTitle">' + fallbackTitle + '</h1>' +
+          '<p id="shopWelcome">' + fallbackMessage + '</p>' +
+        '</div>' +
+      '</article>';
+  } else {
+    track.innerHTML = slides.map(function(slide, index) {
+      var title = shopEscape(slide.title || store.hero_title || "Escolha os produtos");
+      var subtitle = shopEscape(slide.subtitle || store.welcome_message || "");
+      var button = shopEscape(slide.button_label || "Ver produtos");
+      return '<article class="shop-hero-slide' + (index === 0 ? ' is-active' : '') + '" aria-hidden="' + (index === 0 ? 'false' : 'true') + '">' +
+        '<img src="' + shopEscape(slide.image_url) + '" alt="" ' +
+          (index === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"') + '>' +
+        '<div class="shop-hero-shade"></div>' +
+        '<div class="shop-hero-content">' +
+          '<span>Compra pelo WhatsApp</span>' +
+          '<h1>' + title + '</h1>' +
+          (subtitle ? '<p>' + subtitle + '</p>' : '') +
+          '<button type="button" class="shop-hero-cta" onclick="scrollToShopProducts()">' + button + '</button>' +
+        '</div>' +
+      '</article>';
+    }).join("");
+  }
+
+  dots.innerHTML = slides.length > 1 ? slides.map(function(_, index) {
+    return '<button type="button" class="shop-hero-dot' + (index === 0 ? ' is-active' : '') + '" onclick="showShopHeroSlide(' + index + ', true)" aria-label="Ver imagem ' + (index + 1) + '" aria-current="' + (index === 0 ? 'true' : 'false') + '"></button>';
+  }).join("") : "";
+
+  if (prev) prev.hidden = slides.length < 2;
+  if (next) next.hidden = slides.length < 2;
+  shopHeroIndex = 0;
+  startShopHeroAutoplay();
+}
+
 function applyShopBranding(store, saveCache) {
   store = store || {};
   var name = store.store_name || "Loja Azul";
@@ -111,12 +220,12 @@ function applyShopBranding(store, saveCache) {
   if (themeMeta) themeMeta.setAttribute("content", themeColor);
 
   var shopName = document.getElementById("shopName");
-  var heroTitle = document.getElementById("shopHeroTitle");
-  var welcomeEl = document.getElementById("shopWelcome");
 
   if (shopName) shopName.textContent = name;
-  if (heroTitle) heroTitle.textContent = hero;
-  if (welcomeEl) welcomeEl.textContent = welcome;
+  renderShopHero(Object.assign({}, store, {
+    hero_title: hero,
+    welcome_message: welcome
+  }));
 
   document.querySelectorAll(".shop-brand img").forEach(function(img) {
     img.src = logoUrl;
@@ -556,5 +665,33 @@ window.addEventListener("storage", function(event) {
 document.addEventListener("DOMContentLoaded", function() {
   applyCachedShopBranding();
   bindShopCartToggle();
+  var hero = document.getElementById("shopHero");
+  var prev = document.getElementById("shopHeroPrev");
+  var next = document.getElementById("shopHeroNext");
+
+  if (prev) prev.addEventListener("click", function() {
+    showShopHeroSlide(shopHeroIndex - 1, true);
+  });
+  if (next) next.addEventListener("click", function() {
+    showShopHeroSlide(shopHeroIndex + 1, true);
+  });
+  if (hero) {
+    hero.addEventListener("mouseenter", stopShopHeroAutoplay);
+    hero.addEventListener("mouseleave", startShopHeroAutoplay);
+    hero.addEventListener("touchstart", function(event) {
+      shopHeroTouchStartX = event.touches && event.touches[0] ? event.touches[0].clientX : 0;
+    }, { passive: true });
+    hero.addEventListener("touchend", function(event) {
+      var endX = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientX : 0;
+      var distance = endX - shopHeroTouchStartX;
+      if (Math.abs(distance) > 45) {
+        showShopHeroSlide(shopHeroIndex + (distance < 0 ? 1 : -1), true);
+      }
+    }, { passive: true });
+  }
+  document.addEventListener("visibilitychange", function() {
+    if (document.hidden) stopShopHeroAutoplay();
+    else startShopHeroAutoplay();
+  });
   loadShop();
 });

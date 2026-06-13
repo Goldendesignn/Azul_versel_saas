@@ -75,12 +75,19 @@
       </button>
     </header>
 
-    <section class="shop-hero">
-      <div>
-        <span>Compra pelo WhatsApp</span>
-        <h1 id="shopHeroTitle">Escolha os produtos</h1>
-        <p id="shopWelcome">Adiciona produtos ao carrinho e envia o pedido pelo WhatsApp.</p>
+    <section class="shop-hero" id="shopHero" aria-label="Destaques da loja">
+      <div class="shop-hero-track" id="shopHeroTrack">
+        <article class="shop-hero-slide is-active shop-hero-fallback">
+          <div class="shop-hero-content">
+            <span>Compra pelo WhatsApp</span>
+            <h1 id="shopHeroTitle">Escolha os produtos</h1>
+            <p id="shopWelcome">Adiciona produtos ao carrinho e envia o pedido pelo WhatsApp.</p>
+          </div>
+        </article>
       </div>
+      <button type="button" class="shop-hero-arrow shop-hero-prev" id="shopHeroPrev" aria-label="Imagem anterior">&lsaquo;</button>
+      <button type="button" class="shop-hero-arrow shop-hero-next" id="shopHeroNext" aria-label="Proxima imagem">&rsaquo;</button>
+      <div class="shop-hero-dots" id="shopHeroDots" aria-label="Escolher imagem"></div>
     </section>
 
     <div class="shop-content-grid">

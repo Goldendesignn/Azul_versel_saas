@@ -5,6 +5,7 @@ create table if not exists public.online_store_settings (
   whatsapp_phone text,
   store_name text,
   hero_title text,
+  hero_slides jsonb not null default '[]'::jsonb,
   welcome_message text,
   theme_color text not null default '#0b3d91',
   font_family text not null default 'Arial, Helvetica, sans-serif',
@@ -19,6 +20,9 @@ alter table public.online_store_settings
   add column if not exists hero_title text;
 
 alter table public.online_store_settings
+  add column if not exists hero_slides jsonb not null default '[]'::jsonb;
+
+alter table public.online_store_settings
   add column if not exists theme_color text not null default '#0b3d91';
 
 alter table public.online_store_settings
@@ -26,6 +30,71 @@ alter table public.online_store_settings
 
 alter table public.online_store_settings
   add column if not exists logo_url text;
+
+insert into storage.buckets (
+  id,
+  name,
+  public,
+  file_size_limit,
+  allowed_mime_types
+)
+values (
+  'online-store-assets',
+  'online-store-assets',
+  true,
+  6291456,
+  array['image/png', 'image/jpeg', 'image/webp']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists online_store_assets_public_read on storage.objects;
+create policy online_store_assets_public_read
+on storage.objects
+for select
+to public
+using (bucket_id = 'online-store-assets');
+
+drop policy if exists online_store_assets_insert_by_org on storage.objects;
+create policy online_store_assets_insert_by_org
+on storage.objects
+for insert
+to public
+with check (
+  bucket_id = 'online-store-assets'
+  and (storage.foldername(name))[1] =
+    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+);
+
+drop policy if exists online_store_assets_update_by_org on storage.objects;
+create policy online_store_assets_update_by_org
+on storage.objects
+for update
+to public
+using (
+  bucket_id = 'online-store-assets'
+  and (storage.foldername(name))[1] =
+    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+)
+with check (
+  bucket_id = 'online-store-assets'
+  and (storage.foldername(name))[1] =
+    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+);
+
+drop policy if exists online_store_assets_delete_by_org on storage.objects;
+create policy online_store_assets_delete_by_org
+on storage.objects
+for delete
+to public
+using (
+  bucket_id = 'online-store-assets'
+  and (storage.foldername(name))[1] =
+    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+);
 
 create index if not exists idx_online_store_settings_slug
   on public.online_store_settings (slug)
@@ -127,6 +196,7 @@ begin
       'whatsapp_phone', v_settings.whatsapp_phone,
       'store_name', v_settings.store_name,
       'hero_title', v_settings.hero_title,
+      'hero_slides', v_settings.hero_slides,
       'welcome_message', v_settings.welcome_message,
       'theme_color', v_settings.theme_color,
       'font_family', v_settings.font_family,
@@ -138,6 +208,7 @@ begin
 end;
 $$;
 
+revoke all on function public.get_online_store(uuid, text) from public;
 grant execute on function public.get_online_store(uuid, text) to anon, authenticated;
 
 create table if not exists public.online_orders (
