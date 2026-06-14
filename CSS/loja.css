@@ -134,6 +134,18 @@ html.shop-style-pending .shop-shell {
   box-shadow: var(--shadow);
 }
 
+.shop-header-label {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 13px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .shop-hero.is-fallback {
   min-height: 170px;
 }
@@ -185,10 +197,7 @@ html.shop-style-pending .shop-shell {
 }
 
 .shop-content-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 390px;
-  gap: 14px;
-  align-items: start;
+  display: block;
   margin-top: 16px;
 }
 
@@ -423,12 +432,18 @@ html.shop-style-pending .shop-shell {
   background: var(--surface);
   box-shadow: 0 10px 24px rgba(0,0,0,.06);
   transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  cursor: pointer;
 }
 
 .shop-product-card:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--blue) 35%, var(--border));
   box-shadow: 0 18px 34px rgba(0,0,0,.11);
+}
+
+.shop-product-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 28%, transparent);
+  outline-offset: 3px;
 }
 
 .shop-product-card.is-out {
@@ -484,10 +499,29 @@ html.shop-style-pending .shop-shell {
 }
 
 .shop-product-actions {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px;
+  display: block;
   padding: 0 14px 14px;
+}
+
+.shop-view-btn {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 14px;
+  background: var(--blue);
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.shop-view-btn span {
+  font-size: 18px;
 }
 
 .shop-qty {
@@ -713,7 +747,7 @@ html.shop-style-pending .shop-shell {
 
 @media (max-width: 720px) {
   .shop-shell {
-    padding: 12px 10px 96px;
+    padding: 12px 10px 30px;
   }
 
   .shop-header {
@@ -797,7 +831,6 @@ html.shop-style-pending .shop-shell {
   }
 
   .shop-product-actions {
-    grid-template-columns: 1fr;
     padding: 0 10px 10px;
   }
 

@@ -16,6 +16,9 @@ create table if not exists public.online_store_settings (
   updated_at timestamp with time zone not null default now()
 );
 
+alter table public.products
+  add column if not exists description text;
+
 alter table public.online_store_settings
   add column if not exists hero_title text;
 
@@ -178,6 +181,7 @@ begin
     'stock_shop', p.stock_shop,
     'photo', p.photo,
     'code', p.code,
+    'description', p.description,
     'variation', p.variation,
     'variations', p.variations
   ) order by p.name asc), '[]'::jsonb)
@@ -406,14 +410,15 @@ begin
   with requested_raw as (
     select
       nullif(item->>'product_id', '')::uuid as product_id,
-      greatest(1, coalesce(nullif(item->>'quantity', '')::integer, 1)) as quantity
+      greatest(1, coalesce(nullif(item->>'quantity', '')::integer, 1)) as quantity,
+      nullif(trim(item->>'variation'), '') as variation
     from jsonb_array_elements(p_items) item
     where nullif(item->>'product_id', '') is not null
   ),
   requested as (
-    select product_id, sum(quantity)::integer as quantity
+    select product_id, variation, sum(quantity)::integer as quantity
     from requested_raw
-    group by product_id
+    group by product_id, variation
   ),
   inserted as (
     insert into public.online_order_items (
@@ -433,7 +438,7 @@ begin
       p.id,
       p.name,
       p.code,
-      p.variation,
+      coalesce(r.variation, p.variation),
       r.quantity,
       coalesce(p.sale_price, 0),
       r.quantity * coalesce(p.sale_price, 0)

@@ -2065,14 +2065,14 @@ button.az-icon-button,
 
 .online-products-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
   gap: 10px;
 }
 
 .online-product-card {
   min-height: 96px;
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
+  grid-template-columns: 62px minmax(150px, .7fr) minmax(210px, 1.3fr);
   gap: 10px;
   align-items: center;
   border: 1px solid var(--border);
@@ -2081,10 +2081,18 @@ button.az-icon-button,
   background: var(--surface2);
 }
 
+.online-product-select {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  display: block;
+  cursor: pointer;
+}
+
 .online-product-card img,
 .online-product-placeholder {
-  width: 58px;
-  height: 58px;
+  width: 62px;
+  height: 62px;
   border-radius: 12px;
   object-fit: cover;
   background: color-mix(in srgb, var(--blue) 12%, var(--surface));
@@ -2133,6 +2141,48 @@ button.az-icon-button,
   width: 20px;
   height: 20px;
   accent-color: var(--blue);
+}
+
+.online-product-select .online-product-check {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  margin: 0;
+  box-shadow: 0 0 0 3px var(--surface2);
+}
+
+.online-product-description {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.online-product-description span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.online-product-description textarea {
+  width: 100%;
+  min-height: 58px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  outline: none;
+}
+
+.online-product-description textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 10%, transparent);
 }
 
 .online-order-kpis {
@@ -7841,6 +7891,14 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
 
   .online-products-list {
     grid-template-columns: 1fr;
+  }
+
+  .online-product-card {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+
+  .online-product-description {
+    grid-column: 1 / -1;
   }
 
   .online-order-kpis {

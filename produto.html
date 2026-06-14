@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt" class="shop-style-pending">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b3d91">
+  <title>Produto</title>
+  <style>
+    html.shop-style-pending {
+      background: #f8f6f1;
+    }
+
+    html.shop-style-pending::before {
+      content: "A carregar produto...";
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      display: grid;
+      place-items: center;
+      background: #f8f6f1;
+      color: #8c877f;
+      font: 800 16px Arial, Helvetica, sans-serif;
+    }
+
+    html.shop-style-pending body {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+  </style>
+  <script>
+    (function() {
+      function param(name) {
+        return new URLSearchParams(window.location.search).get(name) || "";
+      }
+      function validColor(value) {
+        return /^#[0-9a-f]{6}$/i.test(String(value || "").trim());
+      }
+      function darken(hex) {
+        var color = String(hex || "#0b3d91").slice(1);
+        return "#" + [0, 2, 4].map(function(start) {
+          var part = Math.max(0, Math.round(parseInt(color.slice(start, start + 2), 16) * 0.62));
+          return part.toString(16).padStart(2, "0");
+        }).join("");
+      }
+      var org = param("org");
+      var slug = param("loja");
+      var key = org ? "org:" + org : (slug ? "slug:" + slug.toLowerCase() : "");
+      if (!key) return;
+      try {
+        var cached = JSON.parse(localStorage.getItem("azul_shop_theme_" + key) || "{}");
+        if (!cached || !validColor(cached.theme_color)) return;
+        document.documentElement.style.setProperty("--blue", cached.theme_color);
+        document.documentElement.style.setProperty("--blue2", darken(cached.theme_color));
+        if (cached.font_family) document.documentElement.style.setProperty("--shop-font-family", cached.font_family);
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", cached.theme_color);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="Assets/icon-192.png" type="image/png">
+  <link rel="stylesheet" href="CSS/produto.css">
+</head>
+<body>
+  <main class="product-page-shell">
+    <header class="product-page-header">
+      <button type="button" class="product-back-button" id="productBackButton" aria-label="Voltar para a loja">&larr;</button>
+      <div class="product-store-brand">
+        <img src="Assets/icon-192.png" id="productStoreLogo" alt="">
+        <div>
+          <strong id="productStoreName">Loja Azul</strong>
+          <span>Ver catalogo</span>
+        </div>
+      </div>
+      <span class="product-header-badge">WhatsApp</span>
+    </header>
+
+    <section class="product-detail" id="productDetail">
+      <div class="product-loading">A carregar produto...</div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="JS/supabase.js"></script>
+  <script src="JS/produto.js"></script>
+  <script src="JS/pwa.js"></script>
+</body>
+</html>

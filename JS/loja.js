@@ -303,6 +303,7 @@ function productSearchText(product) {
     product.name,
     product.category,
     product.code,
+    product.description,
     product.variation,
     Array.isArray(product.variations) ? product.variations.join(" ") : product.variations
   ].map(function(value) {
@@ -438,7 +439,6 @@ async function loadShop() {
     applyShopStore();
     renderShopCategories();
     renderShopProducts();
-    renderShopCart();
   } catch (e) {
     console.error("Erro loja:", e);
     document.documentElement.classList.remove("shop-style-pending");
@@ -448,6 +448,16 @@ async function loadShop() {
 
 function applyShopStore() {
   applyShopBranding(shopStore, true);
+}
+
+function openShopProduct(id) {
+  var url = new URL("produto.html", window.location.href);
+  var org = shopParam("org");
+  var slug = shopParam("loja");
+  if (org) url.searchParams.set("org", org);
+  if (slug) url.searchParams.set("loja", slug);
+  url.searchParams.set("produto", id);
+  window.location.href = url.toString();
 }
 
 function renderShopProducts() {
@@ -473,7 +483,6 @@ function renderShopProducts() {
     var category = shopEscape(product.category || "Produto");
     var price = Number(product.sale_price) || 0;
     var stock = Number(product.stock_shop) || 0;
-    var hasStockLimit = shopStore.show_stock && stock > 0;
     var isOut = shopStore.show_stock && stock <= 0;
     var photo = String(product.photo || "").trim();
     var firstLetter = shopEscape(String(product.name || "A").charAt(0).toUpperCase());
@@ -486,7 +495,7 @@ function renderShopProducts() {
       : '<div class="shop-product-image">' + firstLetter + '</div>';
     var meta = category + (variation ? " | " + variation : "") + " | " + shopEscape(stockText);
 
-    return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '">' +
+    return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '" role="link" tabindex="0" onclick="openShopProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openShopProduct(\'' + id + '\')}">' +
       image +
       '<div class="shop-product-info">' +
         '<strong title="' + name + '">' + name + '</strong>' +
@@ -494,12 +503,7 @@ function renderShopProducts() {
         '<div class="shop-product-price">' + shopMoney(price) + '</div>' +
       '</div>' +
       '<div class="shop-product-actions">' +
-        '<div class="shop-qty">' +
-          '<button type="button" onclick="changeShopQty(\'' + id + '\', -1)">-</button>' +
-          '<span id="shop-qty-' + id + '">1</span>' +
-          '<button type="button" onclick="changeShopQty(\'' + id + '\', 1)"' + (hasStockLimit ? ' data-stock="' + stock + '"' : '') + '>+</button>' +
-        '</div>' +
-        '<button type="button" class="shop-add-btn" onclick="addShopProduct(\'' + id + '\')"' + (isOut ? ' disabled' : '') + '>' + (isOut ? 'Esgotado' : 'Adicionar') + '</button>' +
+        '<button type="button" class="shop-view-btn" tabindex="-1">' + (isOut ? 'Ver produto esgotado' : 'Ver produto') + ' <span aria-hidden="true">&rarr;</span></button>' +
       '</div>' +
     '</article>';
   }).join("");
@@ -753,7 +757,6 @@ window.addEventListener("storage", function(event) {
 
 document.addEventListener("DOMContentLoaded", function() {
   applyCachedShopBranding();
-  bindShopCartToggle();
   var hero = document.getElementById("shopHero");
   var prev = document.getElementById("shopHeroPrev");
   var next = document.getElementById("shopHeroNext");

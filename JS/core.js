@@ -2366,6 +2366,7 @@ function mapSupabaseProduct(row) {
     mainSupplier: row.supplier || "",
     photo: row.photo || "",
     code: row.code || "",
+    description: row.description || "",
     variation: row.variation || variations.join(" | "),
     variations: variations,
     entries: Number(row.stock_warehouse) + Number(row.stock_shop),
@@ -2380,7 +2381,7 @@ async function getProductsFromSupabase() {
 
   var result = await supabaseClient
     .from("products")
-    .select("id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,variation,variations,photo")
+    .select("id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,description,variation,variations,photo")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
@@ -8009,6 +8010,7 @@ var onlineSelectedProductIds = {};
 var onlineStoreLink = "";
 var onlineStoreLoading = false;
 var onlineHeroSlides = [];
+var onlineProductDescriptionDirty = {};
 var onlineOrders = [];
 var onlineCurrentTab = "config";
 
@@ -8448,11 +8450,9 @@ function applyOnlineStoreForm(settings) {
 }
 
 function collectSelectedOnlineProductIds() {
-  var ids = [];
-  document.querySelectorAll(".online-product-check").forEach(function(input) {
-    if (input.checked && input.value) ids.push(input.value);
+  return Object.keys(onlineSelectedProductIds).filter(function(id) {
+    return !!onlineSelectedProductIds[id];
   });
-  return ids;
 }
 
 function renderOnlineProductList() {
@@ -8479,16 +8479,51 @@ function renderOnlineProductList() {
       ? '<img src="' + safePhoto + '" alt="' + safeName + '">'
       : '<div class="online-product-placeholder">' + escapeDespesaHtml(String(product.name || "A").charAt(0).toUpperCase()) + '</div>';
 
-    return '<label class="online-product-card">' +
-      img +
-      '<span class="online-product-info">' +
+    return '<article class="online-product-card">' +
+      '<label class="online-product-select">' +
+        img +
+        '<input class="online-product-check" type="checkbox" value="' + escapeDespesaHtml(id) + '"' + checked + ' onchange="syncOnlineProductSelection(this)">' +
+      '</label>' +
+      '<div class="online-product-info">' +
         '<strong title="' + safeName + '">' + safeName + '</strong>' +
         '<span>' + fmt(product.salePrice || product.price || 0) + '</span>' +
         '<small>' + escapeDespesaHtml(product.category || "Sem categoria") + ' | Loja: ' + (Number(product.stockBoutique) || 0) + '</small>' +
-      '</span>' +
-      '<input class="online-product-check" type="checkbox" value="' + escapeDespesaHtml(id) + '"' + checked + ' onchange="syncOnlineProductSelection(this)">' +
-    '</label>';
+      '</div>' +
+      '<label class="online-product-description">' +
+        '<span>Descricao da ficha online</span>' +
+        '<textarea rows="2" maxlength="600" placeholder="Ex: Tecido leve, corte confortavel e acabamento premium." oninput="setOnlineProductDescription(\'' + escapeDespesaHtml(id) + '\', this.value)">' + escapeDespesaHtml(product.description || "") + '</textarea>' +
+      '</label>' +
+    '</article>';
   }).join("");
+}
+
+function setOnlineProductDescription(productId, value) {
+  var id = String(productId || "");
+  if (!id) return;
+  var product = (products || []).find(function(row) {
+    return String(row.id || "") === id;
+  });
+  var description = String(value || "").slice(0, 600);
+  if (product) product.description = description;
+  onlineProductDescriptionDirty[id] = description.trim();
+}
+
+async function saveOnlineProductDescriptions(organizationId) {
+  var ids = Object.keys(onlineProductDescriptionDirty);
+  if (!ids.length) return;
+
+  var results = await Promise.all(ids.map(function(id) {
+    return supabaseClient
+      .from("products")
+      .update({ description: onlineProductDescriptionDirty[id] })
+      .eq("organization_id", organizationId)
+      .eq("id", id);
+  }));
+  var failed = results.find(function(result) {
+    return result && result.error;
+  });
+  if (failed && failed.error) throw failed.error;
+  onlineProductDescriptionDirty = {};
 }
 
 function syncOnlineProductSelection(input) {
@@ -8595,6 +8630,8 @@ async function saveOnlineStoreSettings() {
   };
 
   try {
+    await saveOnlineProductDescriptions(organizationId);
+
     var result = await supabaseClient
       .from("online_store_settings")
       .upsert(payload, { onConflict: "organization_id" })
