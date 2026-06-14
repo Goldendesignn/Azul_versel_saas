@@ -1,5 +1,6 @@
 var productStore = null;
 var productItem = null;
+var productStoreProducts = [];
 var productQuantity = 1;
 var productSelectedVariation = "";
 
@@ -100,6 +101,70 @@ function normalizeProductVariations(product) {
   });
 }
 
+function productPageUrl(productId) {
+  var url = new URL("produto.html", window.location.href);
+  var org = productParam("org");
+  var slug = productParam("loja");
+  if (org) url.searchParams.set("org", org);
+  if (slug) url.searchParams.set("loja", slug);
+  url.searchParams.set("produto", productId);
+  return url.toString();
+}
+
+function openSimilarProduct(productId) {
+  window.location.href = productPageUrl(productId);
+}
+
+function getSimilarProducts() {
+  if (!productItem) return [];
+  var currentId = String(productItem.id || "");
+  var category = String(productItem.category || "").trim().toLowerCase();
+  var available = productStoreProducts.filter(function(item) {
+    return String(item.id || "") !== currentId;
+  });
+  var sameCategory = available.filter(function(item) {
+    return category && String(item.category || "").trim().toLowerCase() === category;
+  });
+  var otherProducts = available.filter(function(item) {
+    return sameCategory.indexOf(item) < 0;
+  });
+  return sameCategory.concat(otherProducts).slice(0, 4);
+}
+
+function renderSimilarProducts() {
+  var rows = getSimilarProducts();
+  if (!rows.length) return "";
+
+  return '<section class="similar-products-section">' +
+    '<div class="similar-products-heading">' +
+      '<div><span>Continua a descobrir</span><h2>Produtos similares</h2></div>' +
+      '<a href="' + productEscape(productCatalogUrl()) + '">Ver todo o catalogo</a>' +
+    '</div>' +
+    '<div class="similar-products-grid">' +
+      rows.map(function(item) {
+        var id = productEscape(item.id);
+        var name = productEscape(item.name || "Produto");
+        var photo = String(item.photo || "").trim();
+        var stock = Number(item.stock_shop) || 0;
+        var isOut = productStore.show_stock && stock <= 0;
+        var image = photo
+          ? '<img src="' + productEscape(photo) + '" alt="' + name + '" loading="lazy">'
+          : '<span>' + productEscape(String(item.name || "A").charAt(0).toUpperCase()) + '</span>';
+
+        return '<article class="similar-product-card' + (isOut ? ' is-out' : '') + '" tabindex="0" role="link" onclick="openSimilarProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openSimilarProduct(\'' + id + '\')}">' +
+          '<div class="similar-product-image">' + image + '</div>' +
+          '<div class="similar-product-content">' +
+            '<small>' + productEscape(item.category || "Produto") + '</small>' +
+            '<strong title="' + name + '">' + name + '</strong>' +
+            '<b>' + productMoney(item.sale_price) + '</b>' +
+            '<span>' + (isOut ? 'Esgotado' : 'Ver produto') + ' &rarr;</span>' +
+          '</div>' +
+        '</article>';
+      }).join("") +
+    '</div>' +
+  '</section>';
+}
+
 function renderProductDetail() {
   var container = document.getElementById("productDetail");
   if (!container || !productItem) return;
@@ -165,7 +230,8 @@ function renderProductDetail() {
           '</button>' +
         '</div>' +
       '</div>' +
-    '</div>';
+    '</div>' +
+    renderSimilarProducts();
 }
 
 function selectProductVariation(encodedLabel, button) {
@@ -331,7 +397,8 @@ async function loadProductPage() {
     if (!data.ok) throw new Error(data.message || "Loja indisponivel.");
 
     productStore = data.store || {};
-    productItem = (Array.isArray(data.products) ? data.products : []).find(function(item) {
+    productStoreProducts = Array.isArray(data.products) ? data.products : [];
+    productItem = productStoreProducts.find(function(item) {
       return String(item.id) === String(productId);
     }) || null;
     if (!productItem) throw new Error("Produto indisponivel nesta loja.");
