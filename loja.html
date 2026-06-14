@@ -90,6 +90,18 @@
       <div class="shop-hero-dots" id="shopHeroDots" aria-label="Escolher imagem"></div>
     </section>
 
+    <section class="shop-category-bar" aria-label="Categorias de produtos">
+      <div class="shop-category-label">
+        <span class="shop-category-label-icon" aria-hidden="true">&#9776;</span>
+        <strong>Categorias</strong>
+      </div>
+      <button type="button" class="shop-category-scroll shop-category-scroll-prev" onclick="scrollShopCategories(-1)" aria-label="Categorias anteriores">&lsaquo;</button>
+      <div class="shop-category-track" id="shopCategoryTrack">
+        <button type="button" class="shop-category-chip is-active">Todos</button>
+      </div>
+      <button type="button" class="shop-category-scroll shop-category-scroll-next" onclick="scrollShopCategories(1)" aria-label="Proximas categorias">&rsaquo;</button>
+    </section>
+
     <div class="shop-content-grid">
       <div class="shop-catalog-panel">
         <section class="shop-search">

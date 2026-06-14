@@ -5,6 +5,8 @@ var shopCartOpen = false;
 var shopHeroIndex = 0;
 var shopHeroTimer = null;
 var shopHeroTouchStartX = 0;
+var shopCategories = [];
+var shopActiveCategory = "";
 
 function shopParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
@@ -309,6 +311,89 @@ function productSearchText(product) {
   }).join(" ");
 }
 
+function normalizeShopCategory(value) {
+  return String(value || "").trim().toLocaleLowerCase("pt");
+}
+
+function buildShopCategories() {
+  var byKey = {};
+
+  (shopProducts || []).forEach(function(product) {
+    var label = String(product.category || "").trim() || "Sem categoria";
+    var key = normalizeShopCategory(label);
+    if (!byKey[key]) {
+      byKey[key] = {
+        key: key,
+        label: label,
+        count: 0
+      };
+    }
+    byKey[key].count += 1;
+  });
+
+  shopCategories = Object.keys(byKey).map(function(key) {
+    return byKey[key];
+  }).sort(function(a, b) {
+    return a.label.localeCompare(b.label, "pt", { sensitivity: "base" });
+  });
+
+  if (shopActiveCategory && !byKey[shopActiveCategory]) {
+    shopActiveCategory = "";
+  }
+}
+
+function renderShopCategories() {
+  var track = document.getElementById("shopCategoryTrack");
+  if (!track) return;
+
+  buildShopCategories();
+  var rows = [{
+    key: "",
+    label: "Todos",
+    count: shopProducts.length
+  }].concat(shopCategories);
+
+  track.innerHTML = rows.map(function(category, index) {
+    var active = category.key === shopActiveCategory;
+    return '<button type="button" class="shop-category-chip' + (active ? ' is-active' : '') + '"' +
+      ' onclick="selectShopCategory(' + index + ', this)"' +
+      ' aria-pressed="' + (active ? 'true' : 'false') + '">' +
+        '<span>' + shopEscape(category.label) + '</span>' +
+        '<small>' + category.count + '</small>' +
+      '</button>';
+  }).join("");
+}
+
+function selectShopCategory(index, button) {
+  var rows = [{
+    key: "",
+    label: "Todos",
+    count: shopProducts.length
+  }].concat(shopCategories);
+  var selected = rows[Number(index)] || rows[0];
+  shopActiveCategory = selected.key;
+
+  document.querySelectorAll(".shop-category-chip").forEach(function(chip) {
+    var active = chip === button;
+    chip.classList.toggle("is-active", active);
+    chip.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+
+  if (button && typeof button.scrollIntoView === "function") {
+    button.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }
+  renderShopProducts();
+}
+
+function scrollShopCategories(direction) {
+  var track = document.getElementById("shopCategoryTrack");
+  if (!track) return;
+  track.scrollBy({
+    left: Number(direction || 1) * Math.max(220, track.clientWidth * .72),
+    behavior: "smooth"
+  });
+}
+
 function findShopProduct(id) {
   return shopProducts.find(function(item) {
     return String(item.id) === String(id);
@@ -351,6 +436,7 @@ async function loadShop() {
     shopStore = data.store || {};
     shopProducts = Array.isArray(data.products) ? data.products : [];
     applyShopStore();
+    renderShopCategories();
     renderShopProducts();
     renderShopCart();
   } catch (e) {
@@ -369,9 +455,12 @@ function renderShopProducts() {
   if (!container) return;
 
   var q = String((document.getElementById("shopSearch") || {}).value || "").trim().toLowerCase();
-  var list = q ? shopProducts.filter(function(product) {
-    return productSearchText(product).indexOf(q) >= 0;
-  }) : shopProducts;
+  var list = shopProducts.filter(function(product) {
+    var category = normalizeShopCategory(product.category || "Sem categoria");
+    var matchesCategory = !shopActiveCategory || category === shopActiveCategory;
+    var matchesSearch = !q || productSearchText(product).indexOf(q) >= 0;
+    return matchesCategory && matchesSearch;
+  });
 
   if (!list.length) {
     container.innerHTML = '<div class="shop-empty">Nenhum produto encontrado.</div>';
