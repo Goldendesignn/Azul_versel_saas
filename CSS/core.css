@@ -7340,6 +7340,44 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   font-size: 13px;
 }
 
+.correction-item-details {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.correction-item-details span {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px 10px;
+}
+
+.correction-item-details small,
+.correction-item-details strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.correction-item-details small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.correction-item-details strong {
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 13px;
+}
+
 .correction-meta {
   display: flex;
   gap: 14px;
@@ -9698,6 +9736,10 @@ textarea,
 
   .correction-search-card {
     grid-template-columns: 1fr;
+  }
+
+  .correction-item-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .correction-action {

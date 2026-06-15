@@ -2368,6 +2368,7 @@ function mapSupabaseProduct(row) {
     code: row.code || "",
     variation: row.variation || variations.join(" | "),
     variations: variations,
+    hiddenFromPos: !!row.hidden_from_pos,
     entries: Number(row.stock_warehouse) + Number(row.stock_shop),
     exits: 0
   };
@@ -2378,14 +2379,23 @@ async function getProductsFromSupabase() {
   var organizationId = getAzulOrganizationId();
   if (!organizationId) return [];
 
+  var selectColumns = "id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,variation,variations,photo,hidden_from_pos";
   var result = await supabaseClient
     .from("products")
-    .select("id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,variation,variations,photo")
+    .select(selectColumns)
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
   if (result.error) {
-    throw result.error;
+    var msg = String(result.error.message || result.error || "").toLowerCase();
+    if (msg.indexOf("hidden_from_pos") >= 0 || msg.indexOf("schema cache") >= 0) {
+      result = await supabaseClient
+        .from("products")
+        .select("id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,variation,variations,photo")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false });
+    }
+    if (result.error) throw result.error;
   }
 
   return (result.data || []).map(mapSupabaseProduct);
@@ -6817,6 +6827,7 @@ function normalizeProductList(list) {
       variations: parseVariationList(product.variations || product.variation || ''),
       purchasePrice: parseFloat(product.purchasePrice) || parseFloat(product.price) || 0,
       targetMargin: parseFloat(product.targetMargin) || 0,
+      hiddenFromPos: !!product.hiddenFromPos,
       mainSupplier: String(product.mainSupplier || product.supplier || ''),
       supplier: String(product.supplier || product.mainSupplier || '')
     };
@@ -9281,7 +9292,7 @@ function renderProds(list) {
     return;
   }
   list = (Array.isArray(list) ? list : []).filter(function(product) {
-    return product && product.name;
+    return product && product.name && !product.hiddenFromPos;
   });
   if (!list.length) {
     g.innerHTML = '<div class="empty" style="grid-column:1/-1">Sem produtos</div>';
@@ -16239,6 +16250,7 @@ async function getInventoryMovementSummaryFromSupabase() {
   }));
 
   purchaseItems.forEach(function(item) {
+    if (item.corrected_at) return;
     addInventoryMove(summary, item.product_id, item.product_name, "entries", item.quantity);
   });
 
@@ -16342,6 +16354,7 @@ async function fetchExistingPurchaseImportKeys(rows) {
   }));
 
   purchaseItems.forEach(function(item) {
+    if (item.corrected_at) return;
     var purchase = purchaseById[item.purchase_id];
     if (!purchase) return;
 
@@ -18067,6 +18080,7 @@ function correctionSourceLabel(type) {
   var map = {
     sale: "Venda",
     purchase: "Compra",
+    purchase_item: "Produto comprado",
     expense: "Despesa",
     client_payment: "Pagamento client",
     supplier_payment: "Pagamento fornecedor"
@@ -18190,19 +18204,55 @@ async function fetchCorrectionsRows(type, search) {
 
     if (purchasesResult.error) throw purchasesResult.error;
 
-    return (purchasesResult.data || []).filter(function(row) {
-      var text = [row.supplier, row.total, row.remaining_amount].join(" ").toLowerCase();
-      return String(row.supplier || "").indexOf("Anulacao - ") !== 0 &&
+    var purchaseRows = (purchasesResult.data || []).filter(function(row) {
+      return String(row.supplier || "").indexOf("Anulacao - ") !== 0;
+    });
+
+    var purchaseById = {};
+    purchaseRows.forEach(function(row) {
+      purchaseById[row.id] = row;
+    });
+
+    var purchaseItems = await fetchPurchaseItemsByPurchaseIds(purchaseRows.map(function(row) {
+      return row.id;
+    }));
+
+    return (purchaseItems || []).filter(function(item) {
+      var purchase = purchaseById[item.purchase_id] || {};
+      var quantity = Number(item.quantity) || 0;
+      var corrected = !!item.corrected_at;
+      var text = [
+        item.product_name,
+        item.code,
+        item.variation,
+        item.category,
+        item.supplier,
+        purchase.supplier,
+        quantity,
+        item.purchase_price,
+        item.sale_price
+      ].join(" ").toLowerCase();
+
+      return !corrected &&
+        quantity > 0 &&
         (!search || text.indexOf(search) >= 0);
-    }).map(function(row) {
+    }).map(function(item) {
+      var purchase = purchaseById[item.purchase_id] || {};
+      var quantity = Number(item.quantity) || 0;
+      var purchasePrice = Number(item.purchase_price) || 0;
+      var salePrice = Number(item.sale_price) || 0;
+
       return {
-        id: row.id,
-        sourceType: "purchase",
-        title: "Compra fornecedor",
-        subtitle: row.supplier || "Fornecedor",
-        date: String(row.created_at || "").slice(0, 10),
-        amount: Number(row.total) || 0,
-        raw: row
+        id: item.id,
+        sourceType: "purchase_item",
+        title: item.product_name || "Produto comprado",
+        subtitle: (purchase.supplier || item.supplier || "Fornecedor") +
+          " - Qtd " + quantity +
+          " - Compra " + fmt(purchasePrice) +
+          " - Venda " + fmt(salePrice),
+        date: String(item.created_at || purchase.created_at || "").slice(0, 10),
+        amount: quantity * purchasePrice,
+        raw: Object.assign({}, item, { purchase: purchase })
       };
     });
   }
@@ -18296,6 +18346,31 @@ async function fetchCorrectionsRows(type, search) {
   return rows;
 }
 
+function renderPurchaseItemCorrectionDetails(item) {
+  item = item || {};
+  var purchase = item.purchase || {};
+  var quantity = Number(item.quantity) || 0;
+  var purchasePrice = Number(item.purchase_price) || 0;
+  var salePrice = Number(item.sale_price) || 0;
+  var total = quantity * purchasePrice;
+  var meta = [
+    { label: "Fornecedor", value: purchase.supplier || item.supplier || "-" },
+    { label: "Quantidade", value: quantity },
+    { label: "Preco compra", value: fmt(purchasePrice) },
+    { label: "Preco venda", value: fmt(salePrice) },
+    { label: "Codigo", value: item.code || "-" },
+    { label: "Variacao", value: item.variation || "-" },
+    { label: "Total da linha", value: fmt(total) }
+  ];
+
+  return '<div class="correction-item-details">' +
+    meta.map(function(row) {
+      return '<span><small>' + correctionSafe(row.label) + '</small><strong>' +
+        correctionSafe(row.value) + '</strong></span>';
+    }).join("") +
+  '</div>';
+}
+
 async function loadCorrections() {
   var list = document.getElementById("correction-list");
   var search = document.getElementById("correction-search");
@@ -18323,6 +18398,7 @@ async function loadCorrections() {
           '<div class="correction-type">' + correctionSafe(correctionSourceLabel(row.sourceType)) + '</div>' +
           '<h3>' + correctionSafe(row.title) + '</h3>' +
           '<p>' + correctionSafe(row.subtitle) + '</p>' +
+          (row.sourceType === "purchase_item" ? renderPurchaseItemCorrectionDetails(row.raw || {}) : '') +
           renderActionAuthor(row.raw || {}) +
           '<div class="correction-meta">' +
             '<span>' + correctionSafe(row.date || "-") + '</span>' +
@@ -18332,7 +18408,7 @@ async function loadCorrections() {
         '</div>' +
         '<button class="correction-action" ' + (cancelled ? 'disabled' : '') +
           ' data-correction-type="' + correctionSafe(row.sourceType) + '" data-correction-id="' + correctionSafe(row.id) + '">' +
-          (cancelled ? 'Corrigido' : 'Anular') +
+          (cancelled ? 'Corrigido' : row.sourceType === "purchase_item" ? 'Corrigir item' : 'Anular') +
         '</button>' +
       '</div>';
     }).join("");
@@ -18355,11 +18431,16 @@ async function confirmCorrectionCancel(sourceType, id) {
     return;
   }
 
-  if (!confirm("Confirmar anulacao controlada?")) return;
+  var confirmText = sourceType === "purchase_item"
+    ? "Confirmar correcao deste produto comprado? O stock e o total da compra serao ajustados."
+    : "Confirmar anulacao controlada?";
+
+  if (!confirm(confirmText)) return;
 
   try {
     if (sourceType === "sale") await cancelSaleWithCorrection(id, reason);
     else if (sourceType === "purchase") await cancelPurchaseWithCorrection(id, reason);
+    else if (sourceType === "purchase_item") await cancelPurchaseItemWithCorrection(id, reason);
     else if (sourceType === "expense") await cancelExpenseWithCorrection(id, reason);
     else if (sourceType === "client_payment") await cancelClientPaymentWithCorrection(id, reason);
     else if (sourceType === "supplier_payment") await cancelSupplierPaymentWithCorrection(id, reason);
@@ -18522,6 +18603,177 @@ async function cancelSaleWithCorrection(saleId, reason) {
 
   await reverseAccountingForSource("sale", saleId, "sale_correction", correction.id, correctionToday(), "Anulacao venda " + (sale.receipt_no || ""));
   await insertCorrectionLog("sale", saleId, "cancel", correction.id, reason);
+}
+
+function isMissingPurchaseItemCorrectionColumns(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  return (msg.indexOf("corrected_at") >= 0 ||
+      msg.indexOf("corrected_by") >= 0 ||
+      msg.indexOf("corrected_by_name") >= 0 ||
+      msg.indexOf("correction_reason") >= 0 ||
+      msg.indexOf("correction_type") >= 0) &&
+    (msg.indexOf("schema cache") >= 0 ||
+      msg.indexOf("column") >= 0 ||
+      msg.indexOf("could not find") >= 0);
+}
+
+function isMissingHiddenFromPosColumn(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  return msg.indexOf("hidden_from_pos") >= 0 &&
+    (msg.indexOf("schema cache") >= 0 ||
+      msg.indexOf("column") >= 0 ||
+      msg.indexOf("could not find") >= 0);
+}
+
+async function reduceProductStockForPurchaseCorrection(productId, quantity) {
+  quantity = Math.abs(Number(quantity) || 0);
+  if (!productId || quantity <= 0) return;
+
+  var productResult = await supabaseClient
+    .from("products")
+    .select("id,stock_shop,stock_warehouse")
+    .eq("id", productId)
+    .limit(1);
+
+  if (productResult.error) throw productResult.error;
+  if (!productResult.data || !productResult.data.length) return;
+
+  var product = productResult.data[0];
+  var shop = Math.max(0, Number(product.stock_shop) || 0);
+  var warehouse = Math.max(0, Number(product.stock_warehouse) || 0);
+  var remaining = quantity;
+
+  var fromShop = Math.min(shop, remaining);
+  shop -= fromShop;
+  remaining -= fromShop;
+
+  var fromWarehouse = Math.min(warehouse, remaining);
+  warehouse -= fromWarehouse;
+
+  var update = {
+    stock_shop: shop,
+    stock_warehouse: warehouse,
+    hidden_from_pos: shop + warehouse <= 0
+  };
+
+  var updateResult = await supabaseClient
+    .from("products")
+    .update(update)
+    .eq("id", productId);
+
+  if (updateResult.error && isMissingHiddenFromPosColumn(updateResult.error)) {
+    delete update.hidden_from_pos;
+    updateResult = await supabaseClient
+      .from("products")
+      .update(update)
+      .eq("id", productId);
+  }
+
+  if (updateResult.error) throw updateResult.error;
+}
+
+async function markPurchaseItemAsCorrected(itemId, reason) {
+  var audit = await getAzulAuditFields();
+  var payload = {
+    corrected_at: new Date().toISOString(),
+    corrected_by: audit.created_by || null,
+    corrected_by_name: audit.user_name || getAzulCurrentUserName(),
+    correction_reason: reason || "",
+    correction_type: "item_cancel"
+  };
+
+  var result = await supabaseClient
+    .from("purchase_items")
+    .update(payload)
+    .eq("id", itemId);
+
+  if (result.error && isMissingPurchaseItemCorrectionColumns(result.error)) {
+    throw new Error("A base ainda nao tem os campos de correcao por produto. Executa a migracao purchase_item_corrections antes de corrigir compras.");
+  }
+
+  if (result.error) throw result.error;
+}
+
+async function cancelPurchaseItemWithCorrection(itemId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var itemResult = await supabaseClient
+    .from("purchase_items")
+    .select("*")
+    .eq("id", itemId)
+    .single();
+
+  if (itemResult.error) throw itemResult.error;
+  var item = itemResult.data;
+
+  if (item.corrected_at) {
+    throw new Error("Este produto comprado ja foi corrigido.");
+  }
+
+  var purchaseResult = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", item.purchase_id)
+    .single();
+
+  if (purchaseResult.error) throw purchaseResult.error;
+  var purchase = purchaseResult.data;
+
+  var quantity = Math.abs(Number(item.quantity) || 0);
+  var lineTotal = quantity * (Number(item.purchase_price) || 0);
+
+  if (quantity <= 0 || lineTotal <= 0) {
+    throw new Error("Linha de compra invalida para correcao.");
+  }
+
+  await reduceProductStockForPurchaseCorrection(item.product_id, quantity);
+
+  var oldTotal = Math.max(0, Number(purchase.total) || 0);
+  var oldPaid = Math.max(0, Number(purchase.paid_amount) || 0);
+  var oldRemaining = Math.max(0, Number(purchase.remaining_amount) || 0);
+  var newTotal = Math.max(0, oldTotal - lineTotal);
+  var debtReduction = Math.min(oldRemaining, lineTotal);
+  var paidReduction = Math.min(oldPaid, Math.max(0, lineTotal - debtReduction));
+  var newRemaining = Math.max(0, oldRemaining - debtReduction);
+  var newPaid = Math.max(0, oldPaid - paidReduction);
+
+  var purchaseUpdate = await supabaseClient
+    .from("purchases")
+    .update({
+      total: newTotal,
+      paid_amount: newPaid,
+      remaining_amount: newRemaining,
+      is_credit: newRemaining > 0
+    })
+    .eq("organization_id", organizationId)
+    .eq("id", purchase.id);
+
+  if (purchaseUpdate.error) throw purchaseUpdate.error;
+
+  await markPurchaseItemAsCorrected(item.id, reason);
+
+  var accountingLines = [
+    { account: "13", debit: 0, credit: lineTotal }
+  ];
+
+  if (paidReduction > 0) {
+    accountingLines.push({ account: "11", debit: paidReduction, credit: 0 });
+  }
+
+  if (debtReduction > 0) {
+    accountingLines.push({ account: "21", debit: debtReduction, credit: 0 });
+  }
+
+  await createAccountingEntry(
+    "purchase_item_correction",
+    item.id,
+    correctionToday(),
+    "Correcao produto comprado: " + (item.product_name || ""),
+    accountingLines
+  );
+
+  await insertCorrectionLog("purchase_item", item.id, "item_cancel", purchase.id, reason);
 }
 
 async function cancelPurchaseWithCorrection(purchaseId, reason) {
