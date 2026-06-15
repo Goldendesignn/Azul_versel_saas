@@ -144,20 +144,28 @@ function renderSimilarProducts() {
       rows.map(function(item) {
         var id = productEscape(item.id);
         var name = productEscape(item.name || "Produto");
+        var category = productEscape(item.category || "Produto");
         var photo = String(item.photo || "").trim();
         var stock = Number(item.stock_shop) || 0;
         var isOut = productStore.show_stock && stock <= 0;
+        var variation = productEscape(item.variation || "");
+        var stockText = productStore.show_stock
+          ? (stock > 0 ? "Disponivel: " + stock : "Esgotado")
+          : "Disponivel";
+        var meta = category + (variation ? " | " + variation : "") + " | " + productEscape(stockText);
         var image = photo
-          ? '<img src="' + productEscape(photo) + '" alt="' + name + '" loading="lazy">'
-          : '<span>' + productEscape(String(item.name || "A").charAt(0).toUpperCase()) + '</span>';
+          ? '<div class="shop-product-image"><img src="' + productEscape(photo) + '" alt="' + name + '" loading="lazy"></div>'
+          : '<div class="shop-product-image">' + productEscape(String(item.name || "A").charAt(0).toUpperCase()) + '</div>';
 
-        return '<article class="similar-product-card' + (isOut ? ' is-out' : '') + '" tabindex="0" role="link" onclick="openSimilarProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openSimilarProduct(\'' + id + '\')}">' +
-          '<div class="similar-product-image">' + image + '</div>' +
-          '<div class="similar-product-content">' +
-            '<small>' + productEscape(item.category || "Produto") + '</small>' +
+        return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '" tabindex="0" role="link" onclick="openSimilarProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openSimilarProduct(\'' + id + '\')}">' +
+          image +
+          '<div class="shop-product-info">' +
             '<strong title="' + name + '">' + name + '</strong>' +
-            '<b>' + productMoney(item.sale_price) + '</b>' +
-            '<span>' + (isOut ? 'Esgotado' : 'Ver produto') + ' &rarr;</span>' +
+            '<small title="' + meta + '">' + meta + '</small>' +
+            '<div class="shop-product-price">' + productMoney(item.sale_price) + '</div>' +
+          '</div>' +
+          '<div class="shop-product-actions">' +
+            '<button type="button" class="shop-view-btn" tabindex="-1">' + (isOut ? 'Ver produto esgotado' : 'Ver produto') + ' <span aria-hidden="true">&rarr;</span></button>' +
           '</div>' +
         '</article>';
       }).join("") +
