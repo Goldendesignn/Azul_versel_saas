@@ -12651,7 +12651,7 @@ function applyPortugueseText() {
       settings: 'tab_settings'
     };
     tabs.forEach(function(tab) {
-      var page = extractGoToPage(tab.getAttribute('onclick'));
+      var page = tab.dataset.page || extractGoToPage(tab.getAttribute('onclick'));
       var key = tabKeysByPage[page];
       if (key) tab.textContent = getText(key);
     });
