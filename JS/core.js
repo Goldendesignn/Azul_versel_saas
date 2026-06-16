@@ -1177,6 +1177,20 @@ var AZUL_CONTEXT_HELP = {
     ],
     tip: "Use o estado Em rota para saber exactamente o que saiu para entrega."
   },
+  importacoes: {
+    title: "Importacoes",
+    subtitle: "Modulo para seguir compras internacionais desde o pedido ate a conferencia em Angola.",
+    main: [
+      "Registe cada encomenda com fornecedor, tracking, data prevista, frete e produtos pedidos.",
+      "Actualize o estado conforme a mercadoria passa por producao, transito, alfandega e chegada.",
+      "Na conferencia, informe quantidades recebidas, danificadas e em falta antes de enviar ao stock."
+    ],
+    care: [
+      "So valide a importacao quando a contagem fisica estiver confirmada.",
+      "Produtos danificados ou em falta devem ficar registados para negociar com o fornecedor."
+    ],
+    tip: "Use Importacoes para saber o que ainda esta a caminho e evitar misturar mercadoria nao conferida com o stock real."
+  },
   settings: {
     title: "Definicoes",
     subtitle: "Modulo para configurar identidade da loja, recibo, utilizadores, roles, stock e seguranca.",
@@ -1343,7 +1357,7 @@ var AZUL_ONBOARDING_STEPS = [
   },
   {
     title: "Seguir importacoes internacionais",
-    icon: "import",
+    icon: "importTracking",
     page: "importacoes",
     target: "#page-importacoes",
     intro: "Quando compras mercadoria fora de Angola, usa Importacoes para acompanhar a encomenda ate chegar e conferir antes de entrar no stock.",
@@ -2019,6 +2033,7 @@ var AZUL_ICON_PATHS = {
   revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
   online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
   logistica: '<path d="M10 17H6V6h11v11h-3"></path><path d="M17 9h3l2 4v4h-2"></path><circle cx="7" cy="17" r="2"></circle><circle cx="18" cy="17" r="2"></circle><path d="M7 17h9"></path><path d="M13 10h-3"></path>',
+  importTracking: '<path d="M3 7h11v10H3z"></path><path d="M14 10h3l4 4v3h-7z"></path><circle cx="7" cy="17" r="2"></circle><circle cx="18" cy="17" r="2"></circle><path d="M7 7V4h9v4"></path><path d="M10 11h3"></path>',
   settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1.82V22a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.82-.33H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1.82V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.21.64.49.86.83.22.34.56.54.96.54H22a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51.63z"></path>',
   import: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path>',
   search: '<circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path>',
@@ -2049,6 +2064,7 @@ var AZUL_PAGE_ICON_MAP = {
   revendeurs: "revendeurs",
   online: "online",
   logistica: "logistica",
+  importacoes: "importTracking",
   settings: "settings",
   import: "import"
 };
@@ -11736,6 +11752,42 @@ function renderMobileCartPage() {
 
 
 // ===== RECEIPT =====
+function normalizeReceiptPhone(value) {
+  var phone = String(value || "").replace(/[^\d]/g, "");
+  if (phone.length === 9) phone = "244" + phone;
+  return phone;
+}
+
+function ensureReceiptUrlProtocol(value) {
+  var url = String(value || "").trim();
+  if (!url) return "";
+  if (/^(https?:\/\/|mailto:|tel:|whatsapp:)/i.test(url)) return url;
+  return "https://" + url;
+}
+
+function getReceiptQrTarget() {
+  var cfg = config || {};
+  var mode = cfg.receiptQrMode || "none";
+  if (mode === "link") {
+    return ensureReceiptUrlProtocol(cfg.receiptQrLink);
+  }
+  if (mode === "whatsapp") {
+    var phone = normalizeReceiptPhone(cfg.receiptQrPhone || cfg.phone);
+    if (!phone) return "";
+    return "https://wa.me/" + phone;
+  }
+  return "";
+}
+
+function syncReceiptQrFieldsVisibility() {
+  var modeEl = document.getElementById("cfg-receipt-qr-mode");
+  var mode = modeEl ? modeEl.value : "none";
+  var linkWrap = document.getElementById("cfg-receipt-qr-link-wrap");
+  var phoneWrap = document.getElementById("cfg-receipt-qr-phone-wrap");
+  if (linkWrap) linkWrap.style.display = mode === "link" ? "block" : "none";
+  if (phoneWrap) phoneWrap.style.display = mode === "whatsapp" ? "block" : "none";
+}
+
 function showReceipt(d) {
   var cur = window._currency || 'Kz';
 
@@ -11772,6 +11824,20 @@ function showReceipt(d) {
   if (discountLine && discountValue) {
     discountLine.style.display = desconto > 0 ? 'flex' : 'none';
     discountValue.textContent = desconto > 0 ? ('-' + fmt(desconto)) : '';
+  }
+
+  var qrWrap = document.getElementById('r-qr-wrap');
+  var qrImg = document.getElementById('r-qr-img');
+  var qrLabel = document.getElementById('r-qr-label');
+  var qrTarget = getReceiptQrTarget();
+  if (qrWrap && qrImg) {
+    qrWrap.style.display = qrTarget ? 'block' : 'none';
+    qrImg.src = qrTarget ? "https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=" + encodeURIComponent(qrTarget) : "";
+    if (qrLabel) {
+      qrLabel.textContent = (config && config.receiptQrMode) === "whatsapp"
+        ? "Leia para falar no WhatsApp"
+        : "Leia para abrir o link";
+    }
   }
 
   // Aplicar config personnalisation
@@ -11834,6 +11900,8 @@ function printReceipt() {
     '.r-table td { padding:1mm 0; border-bottom:1px dotted #d6d6d6; vertical-align:top; color:#000; font-weight:600; }' +
     '.r-table td:last-child { text-align:right; font-weight:700; }' +
     '.r-total { display:flex; justify-content:space-between; font-size:' + Math.max(textSize + 2, 11) + 'pt; font-weight:800; color:#000; margin-top:2mm; border-top:2px solid #000; padding-top:1mm; }' +
+    '.r-qr { text-align:center; margin:3mm auto 1mm; color:#000; font-size:' + Math.max(textSize - 2, 7) + 'pt; font-weight:700; }' +
+    '.r-qr img { display:block; width:22mm; height:22mm; object-fit:contain; margin:0 auto 1mm; }' +
     '.r-thanks { text-align:center; font-size:' + Math.max(textSize - 1, 8) + 'pt; color:#000; font-style:normal; font-weight:600; margin-top:3mm; }' +
     '.r-actions { display:none; }' +
     '#r-address-line, #r-phone-line { font-size:' + Math.max(textSize - 1, 8) + 'pt; text-align:center; color:#000; font-weight:600; margin-bottom:1mm; }' +
@@ -12908,6 +12976,9 @@ var config = {
   receiptFontSize: '10',
   receiptLogo: '',
   receiptLogoSize: '16',
+  receiptQrMode: 'none',
+  receiptQrLink: '',
+  receiptQrPhone: '',
   footer: 'Obrigado pela sua preferencia!',
   showDate: true,
   showClient: true,
@@ -13509,6 +13580,9 @@ function saveAllSettings() {
   config.receiptFontSize = (document.getElementById('cfg-font-size') || {}).value || config.receiptFontSize || '10';
   config.receiptLogo = ((document.getElementById('cfg-logo-url') || {}).value || '').trim();
   config.receiptLogoSize = (document.getElementById('cfg-logo-size') || {}).value || config.receiptLogoSize || '16';
+  config.receiptQrMode = ((document.getElementById('cfg-receipt-qr-mode') || {}).value || 'none');
+  config.receiptQrLink = ((document.getElementById('cfg-receipt-qr-link') || {}).value || '').trim();
+  config.receiptQrPhone = ((document.getElementById('cfg-receipt-qr-phone') || {}).value || '').trim();
   config.showDate    = document.getElementById('cfg-show-date').checked;
   config.showClient  = document.getElementById('cfg-show-client').checked;
   config.showPayment = document.getElementById('cfg-show-payment').checked;
@@ -13719,6 +13793,13 @@ function applyConfig() {
   if (cfgLogoUrl) cfgLogoUrl.value = config.receiptLogo || '';
   var cfgLogoSize = document.getElementById('cfg-logo-size');
   if (cfgLogoSize) cfgLogoSize.value = config.receiptLogoSize || '16';
+  var cfgReceiptQrMode = document.getElementById('cfg-receipt-qr-mode');
+  if (cfgReceiptQrMode) cfgReceiptQrMode.value = config.receiptQrMode || 'none';
+  var cfgReceiptQrLink = document.getElementById('cfg-receipt-qr-link');
+  if (cfgReceiptQrLink) cfgReceiptQrLink.value = config.receiptQrLink || '';
+  var cfgReceiptQrPhone = document.getElementById('cfg-receipt-qr-phone');
+  if (cfgReceiptQrPhone) cfgReceiptQrPhone.value = config.receiptQrPhone || '';
+  syncReceiptQrFieldsVisibility();
   // Sync cases a cocher
   var sd = document.getElementById('cfg-show-date');
   if (sd) sd.checked = config.showDate !== false;

@@ -2465,6 +2465,25 @@ button.az-icon-button,
   padding: 18px;
 }
 
+.import-orders-hero-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  align-self: center;
+  background: color-mix(in srgb, var(--blue) 12%, var(--surface));
+  color: var(--blue);
+  border: 1px solid color-mix(in srgb, var(--blue) 20%, var(--border));
+}
+
+.import-orders-hero-icon .az-icon {
+  width: 24px;
+  height: 24px;
+}
+
 .import-orders-hero h2 {
   margin: 2px 0 5px;
   font-size: 28px;
@@ -3528,6 +3547,20 @@ button.az-icon-button,
 .r-table th { text-align: left; color: #000; font-weight: 700; padding-bottom: 5px; border-bottom: 1px solid #d0d0d0; }
 .r-table td { padding: 6px 0; border-bottom: 1px dotted #d9d9d9; color: #000; font-weight: 600; }
 .r-total { display: flex; justify-content: space-between; font-size: 16px; font-weight: 800; margin-top: 10px; color: #000; }
+.r-qr {
+  text-align: center;
+  margin: 12px auto 4px;
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+}
+.r-qr img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin: 0 auto 4px;
+}
 .r-thanks { text-align: center; font-size: 11px; color: #000; font-style: normal; font-weight: 600; margin-top: 12px; }
 
 .achat-lines-wrap {
@@ -8009,6 +8042,12 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   .import-orders-card .online-products-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .import-orders-hero-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
   }
 
   .import-orders-hero .filter-btn,
