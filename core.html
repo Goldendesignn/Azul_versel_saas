@@ -212,6 +212,7 @@
     <button class="tab" data-page="performance" onclick="goTo('performance', this)">Analise Comercial</button>
     <button class="tab" data-page="venda" onclick="goTo('venda', this)">Nova Venda</button>
     <button class="tab" data-page="achat" onclick="goTo('achat', this)">Nova Compra</button>
+    <button class="tab" data-page="importacoes" onclick="goTo('importacoes', this)">Importações</button>
     <button class="tab" data-page="transfert" id="tab-transfert" onclick="goTo('transfert', this)">Estoque</button>
     <button class="tab" data-page="clientes" onclick="goTo('clientes', this)">Clientes</button>
     <button class="tab" data-page="depenses" onclick="goTo('depenses', this)">Despesas</button>
@@ -1671,6 +1672,152 @@
 
           <div class="online-orders-list" id="online-orders-list">
             <div class="empty">A carregar encomendas...</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="page" id="page-importacoes">
+      <div class="import-orders-shell">
+        <section class="import-orders-hero">
+          <div>
+            <div class="eyebrow">Importacoes</div>
+            <h2 class="section-title">Seguimento de importacoes</h2>
+            <p>Acompanha encomendas internacionais ate a chegada em Angola, confere faltas e danos antes de enviar para o stock.</p>
+          </div>
+          <button type="button" class="filter-btn" onclick="loadImportOrders(true)">Atualizar</button>
+        </section>
+
+        <div class="import-orders-tabs">
+          <button type="button" class="mode-btn active" id="import-tab-new" onclick="switchImportTab('new', this)">Nova importacao</button>
+          <button type="button" class="mode-btn" id="import-tab-list" onclick="switchImportTab('list', this)">Acompanhamento</button>
+          <button type="button" class="mode-btn" id="import-tab-check" onclick="switchImportTab('check', this)">Conferencia</button>
+        </div>
+
+        <section class="import-orders-card import-orders-panel" id="import-panel-new">
+          <div class="card-title">Registar encomenda internacional</div>
+          <p class="logistics-muted">Regista a compra antes dela chegar. O stock so aumenta depois da conferencia e validacao.</p>
+
+          <div class="import-orders-form">
+            <div class="form-group">
+              <label class="form-label">Numero</label>
+              <input type="text" class="form-input" id="import-order-no" placeholder="Automatico se vazio">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fornecedor</label>
+              <input type="text" class="form-input" id="import-supplier" placeholder="Fornecedor / fabrica">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Pais de origem</label>
+              <input type="text" class="form-input" id="import-origin" placeholder="Ex: China">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Agente / despachante</label>
+              <input type="text" class="form-input" id="import-agent" placeholder="Opcional">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Transportadora</label>
+              <input type="text" class="form-input" id="import-carrier" placeholder="Navio, aviao, camiao...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tracking</label>
+              <input type="text" class="form-input" id="import-tracking" placeholder="Codigo de rastreio">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data da encomenda</label>
+              <input type="date" class="form-input" id="import-order-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Previsao de chegada</label>
+              <input type="date" class="form-input" id="import-expected">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Frete</label>
+              <input type="number" class="form-input" id="import-shipping" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alfandega</label>
+              <input type="number" class="form-input" id="import-customs" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Outros custos</label>
+              <input type="number" class="form-input" id="import-other-cost" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group import-orders-wide">
+              <label class="form-label">Notas</label>
+              <input type="text" class="form-input" id="import-notes" placeholder="Ex: contentor, pagamento, observacoes">
+            </div>
+          </div>
+
+          <div class="import-orders-items-head">
+            <div>
+              <div class="card-title">Produtos encomendados</div>
+              <p>Preenche os produtos que estao a caminho. A quantidade recebida sera confirmada depois.</p>
+            </div>
+            <button type="button" class="filter-btn" onclick="addImportItemLine()">+ Produto</button>
+          </div>
+          <div class="import-orders-items" id="import-items-body"></div>
+
+          <div class="import-orders-total">
+            <span>Total previsto</span>
+            <strong id="import-order-total">0 Kz</strong>
+          </div>
+
+          <button type="button" class="form-submit import-orders-submit" onclick="saveImportOrder()">Guardar importacao</button>
+          <div class="online-store-status" id="import-orders-status"></div>
+        </section>
+
+        <section class="import-orders-card import-orders-panel" id="import-panel-list" style="display:none;">
+          <div class="online-products-head">
+            <div>
+              <div class="card-title">Acompanhamento</div>
+              <p>Pesquisa por fornecedor, numero, tracking, transportadora ou pais.</p>
+            </div>
+            <div class="online-products-actions">
+              <input type="text" class="form-input" id="import-search" placeholder="Pesquisar importacao..." oninput="renderImportOrders()">
+              <select class="form-input" id="import-status-filter" onchange="renderImportOrders()">
+                <option value="">Todos</option>
+                <option value="ordered">Encomendada</option>
+                <option value="paid">Paga</option>
+                <option value="production">Em producao</option>
+                <option value="shipped">Enviada</option>
+                <option value="transit">Em transito</option>
+                <option value="arrived_angola">Chegou em Angola</option>
+                <option value="checking">Em conferencia</option>
+                <option value="completed">Validada</option>
+                <option value="cancelled">Cancelada</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="import-orders-kpis">
+            <div><span>Abertas</span><strong id="import-kpi-open">0</strong></div>
+            <div><span>Em transito</span><strong id="import-kpi-transit">0</strong></div>
+            <div><span>Chegaram</span><strong id="import-kpi-arrived">0</strong></div>
+            <div><span>Valor previsto</span><strong id="import-kpi-total">0 Kz</strong></div>
+          </div>
+
+          <div class="import-orders-list" id="import-orders-list">
+            <div class="empty">A carregar importacoes...</div>
+          </div>
+        </section>
+
+        <section class="import-orders-card import-orders-panel" id="import-panel-check" style="display:none;">
+          <div class="online-products-head">
+            <div>
+              <div class="card-title">Conferencia da mercadoria</div>
+              <p id="import-check-info">Seleciona uma importacao em Acompanhamento para conferir.</p>
+            </div>
+            <button type="button" class="filter-btn" onclick="switchImportTab('list', document.getElementById('import-tab-list'))">Ver importacoes</button>
+          </div>
+
+          <div class="import-check-list" id="import-check-list">
+            <div class="empty">Nenhuma importacao selecionada.</div>
+          </div>
+
+          <div class="import-check-actions">
+            <button type="button" class="filter-btn" onclick="saveImportConference()">Guardar conferencia</button>
+            <button type="button" class="form-submit" onclick="validateImportToStock()">Validar e enviar ao stock</button>
           </div>
         </section>
       </div>

@@ -204,6 +204,8 @@ var AZUL_TABLE_ACTIONS = {
   treasury_entries: "cash:create",
   stock_transfers: "stock:transfer",
   deliveries: "logistics:create",
+  import_orders: "import_order:create",
+  import_order_items: "import_order:create",
   reseller_consignments: "reseller:create",
   hr_employees: "hr:create",
   hr_attendance: "hr:create",
@@ -1340,6 +1342,19 @@ var AZUL_ONBOARDING_STEPS = [
     ]
   },
   {
+    title: "Seguir importacoes internacionais",
+    icon: "import",
+    page: "importacoes",
+    target: "#page-importacoes",
+    intro: "Quando compras mercadoria fora de Angola, usa Importacoes para acompanhar a encomenda ate chegar e conferir antes de entrar no stock.",
+    bullets: [
+      "Regista fornecedor, tracking, data prevista, frete e produtos encomendados.",
+      "Actualiza o estado quando a mercadoria estiver em producao, transito ou chegar em Angola.",
+      "Na conferencia, informa recebido, danificado e em falta.",
+      "So depois de validar a importacao os produtos bons entram no stock."
+    ]
+  },
+  {
     title: "Adicionar o primeiro produto",
     icon: "achat",
     page: "achat",
@@ -1800,6 +1815,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:revendeurs": { label: "Revendedores", group: "Paginas" },
   "page:online": { label: "Venda Online", group: "Paginas" },
   "page:logistica": { label: "Logistica", group: "Paginas" },
+  "page:importacoes": { label: "Importacoes", group: "Paginas" },
   "page:rh": { label: "Recursos Humanos", group: "Paginas" },
   "page:settings": { label: "Definicoes", group: "Paginas" },
   "page:import": { label: "Importacao", group: "Paginas" },
@@ -1817,6 +1833,10 @@ var AZUL_PERMISSION_CATALOG = {
   "logistics:create": { label: "Criar entregas", group: "Logistica" },
   "logistics:view": { label: "Ver logistica", group: "Logistica" },
   "logistics:update": { label: "Atualizar entregas", group: "Logistica" },
+  "import_order:create": { label: "Criar importacoes", group: "Importacoes" },
+  "import_order:view": { label: "Ver importacoes", group: "Importacoes" },
+  "import_order:update": { label: "Atualizar importacoes", group: "Importacoes" },
+  "import_order:receive": { label: "Validar mercadoria", group: "Importacoes" },
   "cash:view": { label: "Ver tesouraria", group: "Financeiro" },
   "accounting:view": { label: "Ver contabilidade", group: "Financeiro" },
   "correction:create": { label: "Fazer correcoes", group: "Correcoes" },
@@ -1842,15 +1862,15 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   stock: {
     name: "Stock",
-    permissions: ["page:dashboard", "page:achat", "page:transfert", "page:forn", "page:import", "page:logistica", "purchase:create", "purchase:view", "stock:transfer", "supplier:view", "supplier_payment:create", "import:create", "logistics:create", "logistics:view", "logistics:update"]
+    permissions: ["page:dashboard", "page:achat", "page:importacoes", "page:transfert", "page:forn", "page:import", "page:logistica", "purchase:create", "purchase:view", "stock:transfer", "supplier:view", "supplier_payment:create", "import:create", "import_order:create", "import_order:view", "import_order:update", "import_order:receive", "logistics:create", "logistics:view", "logistics:update"]
   },
   accountant: {
     name: "Contabilista",
-    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:corrections", "page:rh", "page:logistica", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "hr:create", "hr:view", "logistics:view"]
+    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:corrections", "page:rh", "page:logistica", "page:importacoes", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "hr:create", "hr:view", "logistics:view", "import_order:view"]
   },
   readonly: {
     name: "Leitura",
-    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:rh", "page:logistica", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "hr:view", "logistics:view"]
+    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:rh", "page:logistica", "page:importacoes", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "hr:view", "logistics:view", "import_order:view"]
   },
   member: {
     name: "Utilizador",
@@ -3998,6 +4018,9 @@ function goTo(page, btn) {
     }
     if (page === 'logistica') {
       initLogisticaPage();
+    }
+    if (page === 'importacoes') {
+      initImportacoesPage();
     }
     if (page === 'achat') {
       switchCompraTab('novo', document.getElementById('achat-tab-novo'));
@@ -8752,6 +8775,569 @@ async function checkOnlineOrderReminders(silent) {
   }
 }
 
+var importOrders = [];
+var importCurrentTab = "new";
+var importSelectedOrderId = "";
+var importLoading = false;
+
+function isImportOrdersTableMissing(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  return (msg.indexOf("import_orders") >= 0 || msg.indexOf("import_order_items") >= 0) &&
+    (msg.indexOf("could not find") >= 0 ||
+      msg.indexOf("schema cache") >= 0 ||
+      msg.indexOf("does not exist") >= 0 ||
+      msg.indexOf("relation") >= 0);
+}
+
+function setImportStatus(message, isError) {
+  var el = document.getElementById("import-orders-status");
+  if (!el) return;
+  el.textContent = message || "";
+  el.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function importNumber(value) {
+  var n = Number(String(value || "").replace(/\s/g, "").replace(",", "."));
+  return isFinite(n) ? n : 0;
+}
+
+function generateImportOrderNo() {
+  var now = new Date();
+  var stamp = now.toISOString().slice(2, 10).replace(/-/g, "") + "-" +
+    now.toTimeString().slice(0, 8).replace(/:/g, "");
+  return "IMP-" + stamp + "-" + Math.random().toString(16).slice(2, 6).toUpperCase();
+}
+
+function getImportStatusLabel(status) {
+  var labels = {
+    ordered: "Encomendada",
+    paid: "Paga",
+    production: "Em producao",
+    shipped: "Enviada",
+    transit: "Em transito",
+    arrived_angola: "Chegou em Angola",
+    checking: "Em conferencia",
+    completed: "Validada",
+    cancelled: "Cancelada"
+  };
+  return labels[status] || status || "Encomendada";
+}
+
+function getImportStatusOptions(selected) {
+  return ["ordered", "paid", "production", "shipped", "transit", "arrived_angola", "checking", "completed", "cancelled"].map(function(status) {
+    return '<option value="' + status + '"' + (status === selected ? " selected" : "") + ">" + getImportStatusLabel(status) + "</option>";
+  }).join("");
+}
+
+function initImportacoesPage() {
+  setDefaultImportDate();
+  ["import-shipping", "import-customs", "import-other-cost"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && !el.dataset.importTotalBound) {
+      el.dataset.importTotalBound = "1";
+      el.addEventListener("input", updateImportOrderTotal);
+    }
+  });
+  if (!document.querySelector("#import-items-body .import-item-row")) addImportItemLine();
+  switchImportTab(importCurrentTab || "new", document.getElementById("import-tab-" + (importCurrentTab || "new")));
+  loadImportOrders(false);
+}
+
+function setDefaultImportDate() {
+  var input = document.getElementById("import-order-date");
+  if (input && !input.value) input.value = new Date().toISOString().slice(0, 10);
+}
+
+function switchImportTab(tab, btn) {
+  importCurrentTab = tab || "new";
+  ["new", "list", "check"].forEach(function(name) {
+    var panel = document.getElementById("import-panel-" + name);
+    var tabBtn = document.getElementById("import-tab-" + name);
+    if (panel) panel.style.display = name === importCurrentTab ? "" : "none";
+    if (tabBtn) tabBtn.classList.toggle("active", name === importCurrentTab);
+  });
+  if (btn && btn.classList) btn.classList.add("active");
+  if (importCurrentTab === "list") renderImportOrders();
+  if (importCurrentTab === "check") renderImportCheck();
+}
+
+function addImportItemLine(data) {
+  data = data || {};
+  var body = document.getElementById("import-items-body");
+  if (!body) return;
+  var div = document.createElement("div");
+  div.className = "import-item-row";
+  div.innerHTML =
+    '<input class="form-input import-field" data-field="product_name" placeholder="Produto" value="' + escapeDespesaHtml(data.product_name || data.name || "") + '">' +
+    '<input class="form-input import-field" data-field="code" placeholder="Codigo" value="' + escapeDespesaHtml(data.code || "") + '">' +
+    '<input class="form-input import-field" data-field="category" placeholder="Categoria" value="' + escapeDespesaHtml(data.category || "") + '">' +
+    '<input class="form-input import-field" data-field="variation" placeholder="Variacao" value="' + escapeDespesaHtml(data.variation || "") + '">' +
+    '<input class="form-input import-field" data-field="photo" placeholder="Foto URL/base64" value="' + escapeDespesaHtml(data.photo || "") + '">' +
+    '<input class="form-input import-field" data-field="ordered_quantity" type="number" min="0" step="1" placeholder="Qtd" value="' + escapeDespesaHtml(data.ordered_quantity || data.qty || "") + '">' +
+    '<input class="form-input import-field" data-field="purchase_price" type="number" min="0" step="0.01" placeholder="P. compra" value="' + escapeDespesaHtml(data.purchase_price || data.pa || "") + '">' +
+    '<input class="form-input import-field" data-field="sale_price" type="number" min="0" step="0.01" placeholder="P. venda" value="' + escapeDespesaHtml(data.sale_price || data.pv || "") + '">' +
+    '<button type="button" class="danger mini" onclick="removeImportItemLine(this)">X</button>';
+  body.appendChild(div);
+  Array.prototype.forEach.call(div.querySelectorAll(".import-field"), function(input) {
+    input.addEventListener("input", updateImportOrderTotal);
+  });
+  updateImportOrderTotal();
+}
+
+function removeImportItemLine(btn) {
+  var row = btn && btn.closest ? btn.closest(".import-item-row") : null;
+  if (row) row.remove();
+  if (!document.querySelector("#import-items-body .import-item-row")) addImportItemLine();
+  updateImportOrderTotal();
+}
+
+function getImportFormItems() {
+  return Array.prototype.map.call(document.querySelectorAll("#import-items-body .import-item-row"), function(row) {
+    var item = {};
+    Array.prototype.forEach.call(row.querySelectorAll(".import-field"), function(input) {
+      item[input.dataset.field] = input.value;
+    });
+    item.product_name = String(item.product_name || "").trim();
+    item.code = String(item.code || "").trim();
+    item.category = String(item.category || "").trim();
+    item.variation = String(item.variation || "").trim();
+    item.photo = String(item.photo || "").trim();
+    item.ordered_quantity = Math.max(0, importNumber(item.ordered_quantity));
+    item.purchase_price = Math.max(0, importNumber(item.purchase_price));
+    item.sale_price = Math.max(0, importNumber(item.sale_price));
+    item.variations = parseVariationList(item.variation);
+    return item;
+  }).filter(function(item) {
+    return item.product_name || item.ordered_quantity || item.purchase_price || item.sale_price;
+  });
+}
+
+function updateImportOrderTotal() {
+  var total = getImportFormItems().reduce(function(sum, item) {
+    return sum + (Number(item.ordered_quantity) || 0) * (Number(item.purchase_price) || 0);
+  }, 0);
+  var shipping = importNumber((document.getElementById("import-shipping") || {}).value);
+  var customs = importNumber((document.getElementById("import-customs") || {}).value);
+  var other = importNumber((document.getElementById("import-other-cost") || {}).value);
+  var el = document.getElementById("import-order-total");
+  if (el) el.textContent = fmt(total + shipping + customs + other);
+}
+
+async function saveImportOrder() {
+  if (!requireAzulAction("import_order:create", "criar importacao")) return;
+  try {
+    var organizationId = getAzulOrganizationId();
+    if (!organizationId) throw new Error("Organizacao invalida. Entre novamente.");
+    var supplier = String((document.getElementById("import-supplier") || {}).value || "").trim();
+    if (!supplier) throw new Error("Informe o fornecedor.");
+    var items = getImportFormItems();
+    if (!items.length) throw new Error("Adiciona pelo menos um produto.");
+    var invalid = items.find(function(item) { return !item.product_name || !item.ordered_quantity || !item.purchase_price; });
+    if (invalid) throw new Error("Produto, quantidade e preco de compra sao obrigatorios.");
+
+    var supplierTotal = items.reduce(function(sum, item) {
+      return sum + (Number(item.ordered_quantity) || 0) * (Number(item.purchase_price) || 0);
+    }, 0);
+    var orderNoInput = document.getElementById("import-order-no");
+    var orderNo = String(orderNoInput && orderNoInput.value || "").trim() || generateImportOrderNo();
+    if (orderNoInput) orderNoInput.value = orderNo;
+
+    var payload = {
+      organization_id: organizationId,
+      order_no: orderNo,
+      supplier: supplier,
+      origin_country: String((document.getElementById("import-origin") || {}).value || "").trim(),
+      agent_name: String((document.getElementById("import-agent") || {}).value || "").trim(),
+      carrier: String((document.getElementById("import-carrier") || {}).value || "").trim(),
+      tracking_no: String((document.getElementById("import-tracking") || {}).value || "").trim(),
+      order_date: String((document.getElementById("import-order-date") || {}).value || "").trim() || new Date().toISOString().slice(0, 10),
+      expected_arrival: String((document.getElementById("import-expected") || {}).value || "").trim() || null,
+      supplier_total: supplierTotal,
+      shipping_cost: importNumber((document.getElementById("import-shipping") || {}).value),
+      customs_cost: importNumber((document.getElementById("import-customs") || {}).value),
+      other_cost: importNumber((document.getElementById("import-other-cost") || {}).value),
+      notes: String((document.getElementById("import-notes") || {}).value || "").trim(),
+      status: "ordered"
+    };
+
+    var orderResult = await insertSingleWithAzulAudit("import_orders", payload);
+    if (orderResult.error) throw orderResult.error;
+    var order = orderResult.data;
+
+    var itemRows = items.map(function(item) {
+      return {
+        organization_id: organizationId,
+        order_id: order.id,
+        product_name: item.product_name,
+        code: item.code,
+        category: item.category,
+        variation: item.variation,
+        variations: item.variations || [],
+        photo: item.photo,
+        ordered_quantity: item.ordered_quantity,
+        received_quantity: 0,
+        damaged_quantity: 0,
+        missing_quantity: 0,
+        purchase_price: item.purchase_price,
+        sale_price: item.sale_price,
+        notes: ""
+      };
+    });
+
+    var itemResult = await insertRowsWithAzulAudit("import_order_items", itemRows, "id");
+    if (itemResult.error) throw itemResult.error;
+
+    await createAzulNotification({
+      actionType: "import_order:create",
+      title: getAzulCurrentUserName() + " criou importacao",
+      message: orderNo + " - " + supplier + " - " + fmt(supplierTotal),
+      sourceType: "import_order",
+      sourceId: order.id
+    });
+
+    resetImportOrderForm();
+    await loadImportOrders(true);
+    toast("Importacao guardada.", "success");
+    setImportStatus("Importacao guardada.", false);
+    switchImportTab("list", document.getElementById("import-tab-list"));
+  } catch (e) {
+    console.error("Erro importacao:", e);
+    var msg = isImportOrdersTableMissing(e) ? "Executa a migration import_orders_tracking no Supabase." : (e.message || e);
+    setImportStatus(msg, true);
+    toast("Erro importacao: " + msg, "error");
+  }
+}
+
+function resetImportOrderForm() {
+  ["import-order-no", "import-supplier", "import-origin", "import-agent", "import-carrier", "import-tracking", "import-expected", "import-notes"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  ["import-shipping", "import-customs", "import-other-cost"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = "0";
+  });
+  var body = document.getElementById("import-items-body");
+  if (body) body.innerHTML = "";
+  setDefaultImportDate();
+  addImportItemLine();
+}
+
+async function loadImportOrders(force) {
+  if (importLoading) return;
+  if (!force && importOrders.length) {
+    renderImportOrders();
+    return;
+  }
+  if (!canRunAzulAction("import_order:view") && !canRunAzulAction("import_order:create")) return;
+
+  importLoading = true;
+  try {
+    var organizationId = getAzulOrganizationId();
+    if (!organizationId) throw new Error("Organizacao invalida. Entre novamente.");
+    var orderResult = await supabaseClient
+      .from("import_orders")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (orderResult.error) throw orderResult.error;
+    var orders = orderResult.data || [];
+    var ids = orders.map(function(row) { return row.id; });
+    var items = [];
+
+    if (ids.length) {
+      var itemResult = await supabaseClient
+        .from("import_order_items")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .in("order_id", ids);
+      if (itemResult.error) throw itemResult.error;
+      items = itemResult.data || [];
+    }
+
+    importOrders = orders.map(function(order) {
+      order.items = items.filter(function(item) { return String(item.order_id) === String(order.id); });
+      return order;
+    });
+    renderImportOrders();
+    renderImportCheck();
+  } catch (e) {
+    console.error("Erro carregar importacoes:", e);
+    var msg = isImportOrdersTableMissing(e) ? "Executa a migration import_orders_tracking no Supabase." : (e.message || e);
+    var list = document.getElementById("import-orders-list");
+    if (list) list.innerHTML = '<div class="empty">Erro: ' + escapeDespesaHtml(msg) + '</div>';
+  } finally {
+    importLoading = false;
+  }
+}
+
+function getImportOrderById(id) {
+  return (importOrders || []).find(function(order) { return String(order.id) === String(id); }) || null;
+}
+
+function renderImportOrders() {
+  var list = document.getElementById("import-orders-list");
+  if (!list) return;
+  var search = String((document.getElementById("import-search") || {}).value || "").toLowerCase().trim();
+  var status = String((document.getElementById("import-status-filter") || {}).value || "");
+  var rows = (importOrders || []).filter(function(order) {
+    var text = [order.order_no, order.supplier, order.origin_country, order.agent_name, order.tracking_no, order.carrier].join(" ").toLowerCase();
+    return (!search || text.indexOf(search) >= 0) && (!status || order.status === status);
+  });
+
+  renderImportKpis(importOrders || []);
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty">Nenhuma importacao encontrada.</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(renderImportOrderCard).join("");
+}
+
+function renderImportKpis(rows) {
+  var open = rows.filter(function(row) { return ["ordered", "paid", "production", "shipped", "transit", "arrived_angola", "checking"].indexOf(row.status) >= 0; }).length;
+  var transit = rows.filter(function(row) { return row.status === "shipped" || row.status === "transit"; }).length;
+  var arrived = rows.filter(function(row) { return row.status === "arrived_angola" || row.status === "checking"; }).length;
+  var total = rows.filter(function(row) { return row.status !== "cancelled"; }).reduce(function(sum, row) {
+    return sum + (Number(row.supplier_total) || 0) + (Number(row.shipping_cost) || 0) + (Number(row.customs_cost) || 0) + (Number(row.other_cost) || 0);
+  }, 0);
+  var map = {
+    "import-kpi-open": open,
+    "import-kpi-transit": transit,
+    "import-kpi-arrived": arrived,
+    "import-kpi-total": fmt(total)
+  };
+  Object.keys(map).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = map[id];
+  });
+}
+
+function renderImportOrderCard(order) {
+  var id = escapeDespesaHtml(order.id || "");
+  var items = order.items || [];
+  var orderedQty = items.reduce(function(sum, item) { return sum + (Number(item.ordered_quantity) || 0); }, 0);
+  var receivedQty = items.reduce(function(sum, item) { return sum + (Number(item.received_quantity) || 0); }, 0);
+  var total = (Number(order.supplier_total) || 0) + (Number(order.shipping_cost) || 0) + (Number(order.customs_cost) || 0) + (Number(order.other_cost) || 0);
+  var meta = [
+    order.origin_country || "",
+    order.tracking_no ? "Tracking: " + order.tracking_no : "",
+    order.expected_arrival ? "Chegada: " + order.expected_arrival : ""
+  ].filter(Boolean).join(" | ");
+
+  return '<article class="import-order-card">' +
+    '<div class="import-order-main">' +
+      '<div>' +
+        '<strong title="' + escapeDespesaHtml(order.order_no || "") + '">' + escapeDespesaHtml(order.order_no || "Importacao") + '</strong>' +
+        '<span>' + escapeDespesaHtml(order.supplier || "Fornecedor") + '</span>' +
+        '<small>' + escapeDespesaHtml(meta || "Sem tracking") + '</small>' +
+      '</div>' +
+      '<div class="import-order-amount">' + fmt(total) + '</div>' +
+    '</div>' +
+    '<div class="import-order-progress">' +
+      '<span>' + items.length + ' produto(s)</span>' +
+      '<span>Pedido: ' + orderedQty + '</span>' +
+      '<span>Recebido: ' + receivedQty + '</span>' +
+    '</div>' +
+    '<div class="import-order-actions">' +
+      '<select class="form-input" onchange="updateImportOrderStatus(\'' + id + '\', this.value)">' + getImportStatusOptions(order.status || "ordered") + '</select>' +
+      '<button type="button" class="filter-btn" onclick="openImportCheck(\'' + id + '\')">Conferir</button>' +
+    '</div>' +
+  '</article>';
+}
+
+async function updateImportOrderStatus(id, status) {
+  if (!requireAzulAction("import_order:update", "atualizar importacao")) return;
+  try {
+    var payload = { status: status, updated_at: new Date().toISOString() };
+    if (status === "arrived_angola" && !((getImportOrderById(id) || {}).arrived_at)) {
+      payload.arrived_at = new Date().toISOString().slice(0, 10);
+    }
+    var result = await supabaseClient
+      .from("import_orders")
+      .update(payload)
+      .eq("organization_id", getAzulOrganizationId())
+      .eq("id", id);
+    if (result.error) throw result.error;
+    await loadImportOrders(true);
+    toast("Estado atualizado.", "success");
+  } catch (e) {
+    toast("Erro importacao: " + (e.message || e), "error");
+  }
+}
+
+function openImportCheck(id) {
+  importSelectedOrderId = id;
+  switchImportTab("check", document.getElementById("import-tab-check"));
+}
+
+function renderImportCheck() {
+  var info = document.getElementById("import-check-info");
+  var list = document.getElementById("import-check-list");
+  if (!list) return;
+  var order = getImportOrderById(importSelectedOrderId);
+  if (!order) {
+    if (info) info.textContent = "Seleciona uma importacao em Acompanhamento para conferir.";
+    list.innerHTML = '<div class="empty">Nenhuma importacao selecionada.</div>';
+    return;
+  }
+  if (info) {
+    info.textContent = (order.order_no || "Importacao") + " - " + (order.supplier || "Fornecedor") + " - " + getImportStatusLabel(order.status);
+  }
+  var items = order.items || [];
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">Esta importacao nao tem produtos.</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(item) {
+    var missing = Number(item.missing_quantity);
+    if (!missing && item.received_quantity) {
+      missing = Math.max(0, (Number(item.ordered_quantity) || 0) - (Number(item.received_quantity) || 0));
+    }
+    return '<div class="import-check-row" data-id="' + escapeDespesaHtml(item.id || "") + '">' +
+      '<div class="import-check-product">' +
+        '<strong>' + escapeDespesaHtml(item.product_name || "Produto") + '</strong>' +
+        '<small>' + escapeDespesaHtml([item.code, item.category, item.variation].filter(Boolean).join(" | ") || "Sem detalhe") + '</small>' +
+      '</div>' +
+      '<label>Pedido<input class="form-input" type="number" readonly value="' + (Number(item.ordered_quantity) || 0) + '"></label>' +
+      '<label>Recebido<input class="form-input import-check-input" data-field="received_quantity" type="number" min="0" step="1" value="' + (Number(item.received_quantity) || 0) + '"></label>' +
+      '<label>Dano<input class="form-input import-check-input" data-field="damaged_quantity" type="number" min="0" step="1" value="' + (Number(item.damaged_quantity) || 0) + '"></label>' +
+      '<label>Falta<input class="form-input import-check-input" data-field="missing_quantity" type="number" min="0" step="1" value="' + missing + '"></label>' +
+      '<label>Nota<input class="form-input import-check-input" data-field="notes" type="text" value="' + escapeDespesaHtml(item.notes || "") + '"></label>' +
+    '</div>';
+  }).join("");
+}
+
+function collectImportConferenceRows() {
+  return Array.prototype.map.call(document.querySelectorAll("#import-check-list .import-check-row"), function(row) {
+    var data = { id: row.dataset.id };
+    Array.prototype.forEach.call(row.querySelectorAll(".import-check-input"), function(input) {
+      data[input.dataset.field] = input.value;
+    });
+    data.received_quantity = Math.max(0, importNumber(data.received_quantity));
+    data.damaged_quantity = Math.max(0, importNumber(data.damaged_quantity));
+    data.missing_quantity = Math.max(0, importNumber(data.missing_quantity));
+    data.notes = String(data.notes || "").trim();
+    return data;
+  });
+}
+
+async function saveImportConference() {
+  if (!requireAzulAction("import_order:update", "guardar conferencia")) return;
+  try {
+    var order = getImportOrderById(importSelectedOrderId);
+    if (!order) throw new Error("Seleciona uma importacao.");
+    var rows = collectImportConferenceRows();
+    for (var i = 0; i < rows.length; i++) {
+      var result = await supabaseClient
+        .from("import_order_items")
+        .update({
+          received_quantity: rows[i].received_quantity,
+          damaged_quantity: rows[i].damaged_quantity,
+          missing_quantity: rows[i].missing_quantity,
+          notes: rows[i].notes,
+          updated_at: new Date().toISOString()
+        })
+        .eq("organization_id", getAzulOrganizationId())
+        .eq("id", rows[i].id);
+      if (result.error) throw result.error;
+    }
+    await supabaseClient
+      .from("import_orders")
+      .update({
+        status: order.status === "completed" ? "completed" : "checking",
+        arrived_at: order.arrived_at || new Date().toISOString().slice(0, 10),
+        updated_at: new Date().toISOString()
+      })
+      .eq("organization_id", getAzulOrganizationId())
+      .eq("id", order.id);
+    await loadImportOrders(true);
+    toast("Conferencia guardada.", "success");
+    return true;
+  } catch (e) {
+    toast("Erro conferencia: " + (e.message || e), "error");
+    return false;
+  }
+}
+
+async function validateImportToStock() {
+  if (!requireAzulAction("import_order:receive", "validar mercadoria")) return;
+  try {
+    var order = getImportOrderById(importSelectedOrderId);
+    if (!order) throw new Error("Seleciona uma importacao.");
+    if (order.status === "completed") throw new Error("Esta importacao ja foi validada.");
+    var saved = await saveImportConference();
+    if (!saved) throw new Error("A conferencia nao foi guardada.");
+    order = getImportOrderById(importSelectedOrderId) || order;
+    var items = order.items || [];
+    var costs = (Number(order.shipping_cost) || 0) + (Number(order.customs_cost) || 0) + (Number(order.other_cost) || 0);
+    var validLines = items.map(function(item) {
+      var received = Number(item.received_quantity) || 0;
+      var damaged = Number(item.damaged_quantity) || 0;
+      var goodQty = Math.max(0, received - damaged);
+      return { item: item, goodQty: goodQty, base: goodQty * (Number(item.purchase_price) || 0) };
+    }).filter(function(row) {
+      return row.goodQty > 0;
+    });
+
+    if (!validLines.length) throw new Error("Nenhuma quantidade boa para enviar ao stock.");
+    var subtotal = validLines.reduce(function(sum, row) { return sum + row.base; }, 0);
+    var purchaseItems = validLines.map(function(row) {
+      var allocated = subtotal > 0 ? (row.base / subtotal) * costs : 0;
+      var finalPurchasePrice = row.goodQty > 0 ? (Number(row.item.purchase_price) || 0) + allocated / row.goodQty : (Number(row.item.purchase_price) || 0);
+      return {
+        name: row.item.product_name,
+        category: row.item.category || "",
+        code: row.item.code || "",
+        variation: row.item.variation || "",
+        variations: row.item.variations || [],
+        photo: row.item.photo || "",
+        qty: row.goodQty,
+        pa: finalPurchasePrice,
+        pv: Number(row.item.sale_price) || 0
+      };
+    });
+
+    var purchase = await savePurchaseToSupabase({
+      supplier: order.supplier,
+      purchaseDate: order.arrived_at || new Date().toISOString().slice(0, 10),
+      credit: false,
+      items: purchaseItems
+    });
+
+    var updateResult = await supabaseClient
+      .from("import_orders")
+      .update({
+        status: "completed",
+        validated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("organization_id", getAzulOrganizationId())
+      .eq("id", order.id);
+    if (updateResult.error) throw updateResult.error;
+
+    await createAzulNotification({
+      actionType: "import_order:receive",
+      title: getAzulCurrentUserName() + " validou importacao",
+      message: (order.order_no || "Importacao") + " enviada ao stock.",
+      sourceType: "import_order",
+      sourceId: order.id,
+      details: { purchase_id: purchase && purchase.id ? purchase.id : null }
+    });
+
+    await loadProducts(true);
+    await loadImportOrders(true);
+    toast("Importacao validada e stock atualizado.", "success");
+    switchImportTab("list", document.getElementById("import-tab-list"));
+  } catch (e) {
+    console.error("Erro validar importacao:", e);
+    toast("Erro validar importacao: " + (e.message || e), "error");
+  }
+}
+
 var logisticsDeliveries = [];
 var logisticsCurrentTab = "new";
 var logisticsLoading = false;
@@ -12490,6 +13076,7 @@ function getText(key) {
       tab_revendeurs: 'Revendedores',
       tab_online: 'Venda Online',
       tab_logistica: 'Logistica',
+      tab_importacoes: 'Importacoes',
       save_settings: 'Guardar configuracoes',
       reset_setup: 'Reiniciar configuracao',
       clear_cart: 'Limpar',
@@ -12636,6 +13223,7 @@ function syncPageTitles() {
   setPageTitle('page-comptabilite', getText('tab_comptabilite'));
   setPageTitle('page-corrections', getText('tab_corrections'));
   setPageTitle('page-logistica', getText('tab_logistica'));
+  setPageTitle('page-importacoes', getText('tab_importacoes'));
 }
 //appl
 function applyPortugueseText() {
@@ -12659,6 +13247,7 @@ function applyPortugueseText() {
       revendeurs: 'tab_revendeurs',
       online: 'tab_online',
       logistica: 'tab_logistica',
+      importacoes: 'tab_importacoes',
       settings: 'tab_settings'
     };
     tabs.forEach(function(tab) {
