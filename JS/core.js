@@ -18081,12 +18081,39 @@ function correctionSourceLabel(type) {
     sale: "Venda",
     purchase: "Compra",
     purchase_item: "Produto comprado",
+    sale_payment: "Pagamento venda",
+    purchase_payment: "Pagamento compra",
     expense: "Despesa",
     client_payment: "Pagamento client",
-    supplier_payment: "Pagamento fornecedor"
+    supplier_payment: "Pagamento fornecedor",
+    reseller_payment: "Pagamento revendedor"
   };
 
   return map[type] || type;
+}
+
+function parseCorrectionPaymentLines(lines) {
+  if (Array.isArray(lines)) return lines;
+
+  if (typeof lines === "string" && lines.trim()) {
+    try {
+      var parsed = JSON.parse(lines);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+async function fetchCorrectionRowsSafely(label, loader) {
+  try {
+    return await loader();
+  } catch (e) {
+    console.warn("Correcoes pagamento indisponivel (" + label + "):", e);
+    return [];
+  }
 }
 
 function switchCorrectionTab(type, btn) {
@@ -18287,50 +18314,143 @@ async function fetchCorrectionsRows(type, search) {
 
   var rows = [];
 
-  var clientPaymentsResult = await supabaseClient
-    .from("client_payments")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .gt("amount", 0)
-    .order("payment_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(60);
+  rows = rows.concat(await fetchCorrectionRowsSafely("vendas", async function() {
+    var salesResult = await supabaseClient
+      .from("sales")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("sale_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(80);
 
-  if (clientPaymentsResult.error) throw clientPaymentsResult.error;
+    if (salesResult.error) throw salesResult.error;
 
-  rows = rows.concat((clientPaymentsResult.data || []).map(function(row) {
-    return {
-      id: row.id,
-      sourceType: "client_payment",
-      title: "Pagamento client",
-      subtitle: row.client_name || "Cliente",
-      date: row.payment_date || String(row.created_at || "").slice(0, 10),
-      amount: Number(row.amount) || 0,
-      raw: row
-    };
+    return (salesResult.data || []).filter(function(row) {
+      var paymentLines = parseCorrectionPaymentLines(row.payment_lines);
+      var paid = getCashInAmountFromPaymentLines(paymentLines, row.total);
+      var text = [row.receipt_no, row.client_name, row.payment_summary, row.sale_type].join(" ").toLowerCase();
+
+      return paid > 0 &&
+        String(row.sale_type || "").toLowerCase() !== "correction" &&
+        String(row.receipt_no || "").indexOf("ANN-") !== 0 &&
+        (!search || text.indexOf(search) >= 0);
+    }).map(function(row) {
+      var paymentLines = parseCorrectionPaymentLines(row.payment_lines);
+      var paid = getCashInAmountFromPaymentLines(paymentLines, row.total);
+
+      return {
+        id: row.id,
+        sourceType: "sale_payment",
+        title: "Pagamento venda " + (row.receipt_no || "-"),
+        subtitle: (row.client_name || "Anonimo") + " - " + (row.payment_summary || "Pagamento directo"),
+        date: row.sale_date || String(row.created_at || "").slice(0, 10),
+        amount: paid,
+        raw: row
+      };
+    });
   }));
 
-  var supplierPaymentsResult = await supabaseClient
-    .from("supplier_payments")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .gt("amount", 0)
-    .order("payment_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(60);
+  rows = rows.concat(await fetchCorrectionRowsSafely("compras", async function() {
+    var purchasesResult = await supabaseClient
+      .from("purchases")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .gt("paid_amount", 0)
+      .order("created_at", { ascending: false })
+      .limit(80);
 
-  if (supplierPaymentsResult.error) throw supplierPaymentsResult.error;
+    if (purchasesResult.error) throw purchasesResult.error;
 
-  rows = rows.concat((supplierPaymentsResult.data || []).map(function(row) {
-    return {
-      id: row.id,
-      sourceType: "supplier_payment",
-      title: "Pagamento fornecedor",
-      subtitle: row.supplier || "Fornecedor",
-      date: row.payment_date || String(row.created_at || "").slice(0, 10),
-      amount: Number(row.amount) || 0,
-      raw: row
-    };
+    return (purchasesResult.data || []).filter(function(row) {
+      var text = [row.supplier, row.total, row.paid_amount, row.remaining_amount].join(" ").toLowerCase();
+      return String(row.supplier || "").indexOf("Anulacao - ") !== 0 &&
+        (!search || text.indexOf(search) >= 0);
+    }).map(function(row) {
+      return {
+        id: row.id,
+        sourceType: "purchase_payment",
+        title: "Pagamento compra",
+        subtitle: row.supplier || "Fornecedor",
+        date: String(row.created_at || "").slice(0, 10),
+        amount: Number(row.paid_amount) || 0,
+        raw: row
+      };
+    });
+  }));
+
+  rows = rows.concat(await fetchCorrectionRowsSafely("clientes", async function() {
+    var clientPaymentsResult = await supabaseClient
+      .from("client_payments")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .gt("amount", 0)
+      .order("payment_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (clientPaymentsResult.error) throw clientPaymentsResult.error;
+
+    return (clientPaymentsResult.data || []).map(function(row) {
+      return {
+        id: row.id,
+        sourceType: "client_payment",
+        title: "Pagamento cliente",
+        subtitle: row.client_name || "Cliente",
+        date: row.payment_date || String(row.created_at || "").slice(0, 10),
+        amount: Number(row.amount) || 0,
+        raw: row
+      };
+    });
+  }));
+
+  rows = rows.concat(await fetchCorrectionRowsSafely("fornecedores", async function() {
+    var supplierPaymentsResult = await supabaseClient
+      .from("supplier_payments")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .gt("amount", 0)
+      .order("payment_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (supplierPaymentsResult.error) throw supplierPaymentsResult.error;
+
+    return (supplierPaymentsResult.data || []).map(function(row) {
+      return {
+        id: row.id,
+        sourceType: "supplier_payment",
+        title: "Pagamento fornecedor",
+        subtitle: row.supplier || "Fornecedor",
+        date: row.payment_date || String(row.created_at || "").slice(0, 10),
+        amount: Number(row.amount) || 0,
+        raw: row
+      };
+    });
+  }));
+
+  rows = rows.concat(await fetchCorrectionRowsSafely("revendedores", async function() {
+    var resellerResult = await supabaseClient
+      .from("reseller_consignments")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .gt("paid_amount", 0)
+      .order("consignment_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    if (resellerResult.error) throw resellerResult.error;
+
+    return (resellerResult.data || []).map(function(row) {
+      return {
+        id: row.id,
+        sourceType: "reseller_payment",
+        title: "Pagamento revendedor",
+        subtitle: (row.reseller_name || "Revendedor") + " - " + (row.consignment_no || ""),
+        date: row.consignment_date || String(row.created_at || "").slice(0, 10),
+        amount: Number(row.paid_amount) || 0,
+        raw: row
+      };
+    });
   }));
 
   if (search) {
@@ -18441,9 +18561,12 @@ async function confirmCorrectionCancel(sourceType, id) {
     if (sourceType === "sale") await cancelSaleWithCorrection(id, reason);
     else if (sourceType === "purchase") await cancelPurchaseWithCorrection(id, reason);
     else if (sourceType === "purchase_item") await cancelPurchaseItemWithCorrection(id, reason);
+    else if (sourceType === "sale_payment") await cancelSalePaymentWithCorrection(id, reason);
+    else if (sourceType === "purchase_payment") await cancelPurchasePaymentWithCorrection(id, reason);
     else if (sourceType === "expense") await cancelExpenseWithCorrection(id, reason);
     else if (sourceType === "client_payment") await cancelClientPaymentWithCorrection(id, reason);
     else if (sourceType === "supplier_payment") await cancelSupplierPaymentWithCorrection(id, reason);
+    else if (sourceType === "reseller_payment") await cancelResellerPaymentWithCorrection(id, reason);
     else throw new Error("Type de correction inconnu.");
 
     toast("Correction enregistree.", "success");
@@ -18774,6 +18897,188 @@ async function cancelPurchaseItemWithCorrection(itemId, reason) {
   );
 
   await insertCorrectionLog("purchase_item", item.id, "item_cancel", purchase.id, reason);
+}
+
+async function createOrIncreaseClientDebtForPaymentCorrection(sale, amount) {
+  var organizationId = getAzulOrganizationId();
+  amount = Math.abs(Number(amount) || 0);
+  if (!sale || !sale.id || amount <= 0) return;
+
+  var debtResult = await supabaseClient
+    .from("client_debts")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("sale_id", sale.id)
+    .limit(1);
+
+  if (debtResult.error) throw debtResult.error;
+
+  if (debtResult.data && debtResult.data.length) {
+    var debt = debtResult.data[0];
+    var remaining = (Number(debt.remaining_amount) || 0) + amount;
+    var total = (Number(debt.total_amount) || 0) + amount;
+
+    var updateDebt = await supabaseClient
+      .from("client_debts")
+      .update({
+        total_amount: total,
+        remaining_amount: remaining,
+        status: remaining > 0 ? "open" : "paid"
+      })
+      .eq("organization_id", organizationId)
+      .eq("id", debt.id);
+
+    if (updateDebt.error) throw updateDebt.error;
+    return;
+  }
+
+  var insertDebt = await supabaseClient
+    .from("client_debts")
+    .insert({
+      organization_id: organizationId,
+      sale_id: sale.id,
+      client_name: sale.client_name || "Anonimo",
+      total_amount: amount,
+      paid_amount: 0,
+      remaining_amount: amount,
+      status: "open"
+    });
+
+  if (insertDebt.error) throw insertDebt.error;
+}
+
+async function cancelSalePaymentWithCorrection(saleId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var saleResult = await supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", saleId)
+    .single();
+
+  if (saleResult.error) throw saleResult.error;
+  var sale = saleResult.data;
+  var total = Number(sale.total) || 0;
+  var paymentLines = parseCorrectionPaymentLines(sale.payment_lines);
+  var paidAmount = getCashInAmountFromPaymentLines(paymentLines, total);
+  var creditAmount = getCreditoAmountFromPaymentLines(paymentLines, total);
+
+  if (paidAmount <= 0) throw new Error("Esta venda nao tem pagamento directo para corrigir.");
+
+  var newCredit = Math.min(total, creditAmount + paidAmount);
+  var newLines = [{ method: "Credito", montant: newCredit }];
+
+  var updateSale = await supabaseClient
+    .from("sales")
+    .update({
+      payment_lines: newLines,
+      payment_summary: "Credito: " + newCredit + " (pagamento corrigido)"
+    })
+    .eq("organization_id", organizationId)
+    .eq("id", sale.id);
+
+  if (updateSale.error) throw updateSale.error;
+
+  await createOrIncreaseClientDebtForPaymentCorrection(sale, paidAmount);
+
+  await createAccountingEntry(
+    "sale_payment_correction",
+    sale.id,
+    correctionToday(),
+    "Correcao pagamento venda " + (sale.receipt_no || ""),
+    [
+      { account: "12", debit: paidAmount, credit: 0 },
+      { account: "11", debit: 0, credit: paidAmount }
+    ]
+  );
+
+  await insertCorrectionLog("sale_payment", sale.id, "payment_cancel", sale.id, reason);
+}
+
+async function cancelPurchasePaymentWithCorrection(purchaseId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var purchaseResult = await supabaseClient
+    .from("purchases")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", purchaseId)
+    .single();
+
+  if (purchaseResult.error) throw purchaseResult.error;
+  var purchase = purchaseResult.data;
+  var paidAmount = Number(purchase.paid_amount) || 0;
+
+  if (paidAmount <= 0) throw new Error("Esta compra nao tem pagamento directo para corrigir.");
+
+  var updatePurchase = await supabaseClient
+    .from("purchases")
+    .update({
+      paid_amount: 0,
+      remaining_amount: (Number(purchase.remaining_amount) || 0) + paidAmount,
+      is_credit: true
+    })
+    .eq("organization_id", organizationId)
+    .eq("id", purchase.id);
+
+  if (updatePurchase.error) throw updatePurchase.error;
+
+  await createAccountingEntry(
+    "purchase_payment_correction",
+    purchase.id,
+    correctionToday(),
+    "Correcao pagamento compra " + (purchase.supplier || ""),
+    [
+      { account: "11", debit: paidAmount, credit: 0 },
+      { account: "21", debit: 0, credit: paidAmount }
+    ]
+  );
+
+  await insertCorrectionLog("purchase_payment", purchase.id, "payment_cancel", purchase.id, reason);
+}
+
+async function cancelResellerPaymentWithCorrection(consignmentId, reason) {
+  var organizationId = getAzulOrganizationId();
+
+  var consignmentResult = await supabaseClient
+    .from("reseller_consignments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", consignmentId)
+    .single();
+
+  if (consignmentResult.error) throw consignmentResult.error;
+  var consignment = consignmentResult.data;
+  var paidAmount = Number(consignment.paid_amount) || 0;
+
+  if (paidAmount <= 0) throw new Error("Esta consignacao nao tem pagamento para corrigir.");
+
+  var updateConsignment = await supabaseClient
+    .from("reseller_consignments")
+    .update({
+      paid_amount: 0,
+      status: "open",
+      payment_summary: "",
+      closed_at: null
+    })
+    .eq("organization_id", organizationId)
+    .eq("id", consignment.id);
+
+  if (updateConsignment.error) throw updateConsignment.error;
+
+  await createAccountingEntry(
+    "reseller_payment_correction",
+    consignment.id,
+    correctionToday(),
+    "Correcao pagamento revendedor " + (consignment.reseller_name || ""),
+    [
+      { account: "71", debit: paidAmount, credit: 0 },
+      { account: "11", debit: 0, credit: paidAmount }
+    ]
+  );
+
+  await insertCorrectionLog("reseller_payment", consignment.id, "payment_cancel", consignment.id, reason);
 }
 
 async function cancelPurchaseWithCorrection(purchaseId, reason) {
