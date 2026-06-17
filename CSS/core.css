@@ -3,6 +3,7 @@
   --surface: #ffffff;
   --surface2: #f0ede6;
   --border: #e0dbd0;
+  --soft: #f7f4ed;
  /* --blue: #0b3d91;
   --blue2: #0b3d91;*/
   --text: #1a1a1a;
@@ -20,7 +21,14 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --shadow-soft: rgba(0, 0, 0, .32);
+  --bg: #111418;
+  --surface: #1a1f26;
+  --surface2: #242a33;
+  --soft: #20262e;
+  --border: #37404c;
+  --text: #f4f7fb;
+  --muted: #aeb8c6;
+  --shadow-soft: rgba(0, 0, 0, .38);
 }
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -79,9 +87,10 @@ textarea {
 html[data-theme="dark"] input,
 html[data-theme="dark"] select,
 html[data-theme="dark"] textarea {
-  background: var(--surface) !important;
+  background: var(--surface2) !important;
   color: var(--text) !important;
   border-color: var(--border) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
 }
 
 html[data-theme="dark"] input::placeholder,
@@ -92,11 +101,18 @@ html[data-theme="dark"] textarea::placeholder {
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .kpi,
 html[data-theme="dark"] .prod-card,
+html[data-theme="dark"] .product-card,
 html[data-theme="dark"] .cart,
 html[data-theme="dark"] .modal,
 html[data-theme="dark"] .payment-modal,
+html[data-theme="dark"] .pos-right,
+html[data-theme="dark"] .search-wrap,
+html[data-theme="dark"] .barcode-pos-panel,
+html[data-theme="dark"] .barcode-inline-field,
+html[data-theme="dark"] .data-table,
 html[data-theme="dark"] .notification-panel,
 html[data-theme="dark"] .context-help-panel,
+html[data-theme="dark"] .onboarding-panel,
 html[data-theme="dark"] .mobile-card-list > *,
 html[data-theme="dark"] .mobile-sale-card,
 html[data-theme="dark"] .mobile-stock-card,
@@ -141,6 +157,131 @@ html[data-theme="dark"] .approval-lock-card {
   border-color: var(--border) !important;
 }
 
+html[data-theme="dark"] .header,
+html[data-theme="dark"] .nav,
+html[data-theme="dark"] .content {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .header,
+html[data-theme="dark"] .nav {
+  background: color-mix(in srgb, var(--surface) 92%, #000);
+}
+
+html[data-theme="dark"] .tab {
+  color: color-mix(in srgb, var(--muted) 92%, var(--text));
+}
+
+html[data-theme="dark"] .tab:hover,
+html[data-theme="dark"] .tab.active {
+  color: var(--blue);
+}
+
+html[data-theme="dark"] .mode-btn,
+html[data-theme="dark"] .filter-btn,
+html[data-theme="dark"] .import-tab,
+html[data-theme="dark"] .supplier-card-btn,
+html[data-theme="dark"] .dashboard-see-all,
+html[data-theme="dark"] .mobile-cart-bar,
+html[data-theme="dark"] .mobile-achat-summary {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .mode-btn.active,
+html[data-theme="dark"] .filter-btn.active,
+html[data-theme="dark"] .import-tab.active {
+  background: var(--blue) !important;
+  color: var(--accent-text) !important;
+  border-color: var(--blue) !important;
+}
+
+html[data-theme="dark"] .data-table th,
+html[data-theme="dark"] .data-table thead td,
+html[data-theme="dark"] table thead th {
+  background: color-mix(in srgb, var(--surface2) 80%, var(--bg)) !important;
+  color: var(--muted) !important;
+}
+
+html[data-theme="dark"] .data-table tr:hover td {
+  background: color-mix(in srgb, var(--blue) 10%, var(--surface2)) !important;
+}
+
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .top-item,
+html[data-theme="dark"] .client-history-item,
+html[data-theme="dark"] .az-client-kpi,
+html[data-theme="dark"] .supplier-kpis div,
+html[data-theme="dark"] .supplier-debt-mini,
+html[data-theme="dark"] .important-alerts-kpi,
+html[data-theme="dark"] .accounting-summary-kpi,
+html[data-theme="dark"] .accounting-result-box,
+html[data-theme="dark"] .accounting-mini-list,
+html[data-theme="dark"] .accounting-balance-grid div {
+  background: var(--surface2) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .team-user-status.active {
+  background: rgba(34, 197, 94, .16);
+  color: #86efac;
+}
+
+html[data-theme="dark"] .team-user-status.pending {
+  background: rgba(245, 158, 11, .16);
+  color: #fcd34d;
+}
+
+html[data-theme="dark"] .team-user-status.inactive,
+html[data-theme="dark"] .team-user-status.suspended {
+  background: rgba(239, 68, 68, .16);
+  color: #fca5a5;
+}
+
+html[data-theme="dark"] .prod-img,
+html[data-theme="dark"] .mobile-cart-img,
+html[data-theme="dark"] .reseller-product-img,
+html[data-theme="dark"] .online-product-placeholder {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 88%, #fff), var(--surface)) !important;
+}
+
+html[data-theme="dark"] .cart-foot,
+html[data-theme="dark"] .mobile-cart-page,
+html[data-theme="dark"] .mobile-payment-card,
+html[data-theme="dark"] .payment-panel,
+html[data-theme="dark"] .payment-modal-card,
+html[data-theme="dark"] .payment-modal-status,
+html[data-theme="dark"] .quick-payment-strip,
+html[data-theme="dark"] .phone-scanner-cart,
+html[data-theme="dark"] .barcode-cart-strip {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .cart-foot > div[style*="margin-bottom:8px;"],
+html[data-theme="dark"] .cart-foot > div[style*="display:flex;gap:6px;margin-bottom:10px;"],
+html[data-theme="dark"] .payment-line,
+html[data-theme="dark"] .payment-summary,
+html[data-theme="dark"] .mobile-cart-actions,
+html[data-theme="dark"] .mobile-cart-qty,
+html[data-theme="dark"] .reseller-summary-box,
+html[data-theme="dark"] .reseller-open-card,
+html[data-theme="dark"] .reseller-cart-card,
+html[data-theme="dark"] .reseller-action-card,
+html[data-theme="dark"] .reseller-history-card,
+html[data-theme="dark"] .logistics-card,
+html[data-theme="dark"] .online-store-card,
+html[data-theme="dark"] .import-orders-card {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
 html[data-theme="dark"] .approval-lock-screen {
   background:
     radial-gradient(circle at top, color-mix(in srgb, var(--blue) 16%, transparent), transparent 36%),
@@ -150,7 +291,9 @@ html[data-theme="dark"] .approval-lock-screen {
 html[data-theme="dark"] [style*="background:#fff"],
 html[data-theme="dark"] [style*="background: #fff"],
 html[data-theme="dark"] [style*="background:#ffffff"],
-html[data-theme="dark"] [style*="background: #ffffff"] {
+html[data-theme="dark"] [style*="background: #ffffff"],
+html[data-theme="dark"] [style*="background:white"],
+html[data-theme="dark"] [style*="background: white"] {
   background: var(--surface) !important;
   color: var(--text) !important;
 }
@@ -2875,10 +3018,7 @@ button.az-icon-button,
   flex: 0 0 200px;
   border-radius: 10px; 
   object-fit: cover;
-  background: black;
-}
-.prod-img {
-  background: #f0f0f0;
+  background: var(--surface);
   position: relative;
 }
 
@@ -3083,7 +3223,11 @@ button.az-icon-button,
   max-height: none;
   overflow: visible;
   flex-shrink: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(240,237,230,0.96));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface) 96%, transparent),
+    color-mix(in srgb, var(--surface2) 96%, transparent)
+  );
 }
 .total-row {
   display: flex;
@@ -7064,7 +7208,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
 }
 
 .debt-dashboard-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 18px;
@@ -7151,7 +7295,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px;
-  background: rgba(255,255,255,.72);
+  background: var(--surface2);
 }
 
 .debt-row {
@@ -7197,7 +7341,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
 }
 #page-dashboard .purchase-dashboard-card {
   width: 100%;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 18px;
@@ -7248,7 +7392,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
 #page-dashboard .purchase-kpi {
   min-width: 0;
   background: var(--surface2);
-  border: 1px solid rgba(0,0,0,.04);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px;
 }
@@ -7296,7 +7440,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px;
-  background: rgba(255,255,255,.78);
+  background: var(--surface2);
 }
 
 #page-dashboard .purchase-main-supplier strong {
@@ -10061,6 +10205,62 @@ textarea,
   .correction-action {
     width: 100%;
   }
+}
+
+/* Dark mode final dashboard pass: keep this near the end so older dashboard rules cannot repaint white panels. */
+html[data-theme="dark"] #page-dashboard .dash-filters,
+html[data-theme="dark"] #page-dashboard .quick-treasury-card,
+html[data-theme="dark"] #page-dashboard .debt-dashboard-card,
+html[data-theme="dark"] #page-dashboard .purchase-dashboard-card,
+html[data-theme="dark"] #page-dashboard .smart-stock-card,
+html[data-theme="dark"] #page-dashboard .sales-performance-card,
+html[data-theme="dark"] #page-dashboard .accounting-summary-card,
+html[data-theme="dark"] #page-dashboard .important-alerts-card {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .24) !important;
+}
+
+html[data-theme="dark"] #page-dashboard .quick-treasury-main,
+html[data-theme="dark"] #page-dashboard .quick-treasury-mini,
+html[data-theme="dark"] #page-dashboard .debt-kpi,
+html[data-theme="dark"] #page-dashboard .debt-list-card,
+html[data-theme="dark"] #page-dashboard .purchase-kpi,
+html[data-theme="dark"] #page-dashboard .purchase-main-supplier,
+html[data-theme="dark"] #page-dashboard .purchase-latest-card,
+html[data-theme="dark"] #page-dashboard .smart-stock-kpi,
+html[data-theme="dark"] #page-dashboard .smart-stock-list-card,
+html[data-theme="dark"] #page-dashboard .sales-performance-kpi,
+html[data-theme="dark"] #page-dashboard .sales-services-kpi,
+html[data-theme="dark"] #page-dashboard .sales-performance-highlight,
+html[data-theme="dark"] #page-dashboard .sales-performance-list-card,
+html[data-theme="dark"] #page-dashboard .accounting-summary-kpi,
+html[data-theme="dark"] #page-dashboard .accounting-result-box,
+html[data-theme="dark"] #page-dashboard .accounting-mini-list,
+html[data-theme="dark"] #page-dashboard .accounting-balance-grid div,
+html[data-theme="dark"] #page-dashboard .important-alerts-kpi,
+html[data-theme="dark"] #page-dashboard .important-alert-row {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] #page-dashboard .important-alert-row.critical {
+  background: color-mix(in srgb, var(--red) 10%, var(--surface2)) !important;
+  border-color: color-mix(in srgb, var(--red) 42%, var(--border)) !important;
+}
+
+html[data-theme="dark"] #page-dashboard .important-alert-row.warning {
+  background: color-mix(in srgb, var(--orange) 10%, var(--surface2)) !important;
+  border-color: color-mix(in srgb, var(--orange) 42%, var(--border)) !important;
+}
+
+html[data-theme="dark"] #page-dashboard .dashboard-see-all,
+html[data-theme="dark"] #page-dashboard .important-alert-action {
+  background: var(--blue) !important;
+  color: var(--accent-text) !important;
+  border-color: var(--blue) !important;
 }
 .team-settings-card {
   overflow: hidden;

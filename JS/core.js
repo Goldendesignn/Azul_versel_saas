@@ -2232,8 +2232,16 @@ function isAzulNetworkError(error) {
 
 function allowOfflineLicenseAccess(reason) {
   var organizationId = localStorage.getItem("azul_organization_id");
+  var lastCheck = localStorage.getItem("azul_license_last_check_at");
+  var offlineGraceMs = 72 * 60 * 60 * 1000;
+  var lastCheckTime = lastCheck ? new Date(lastCheck).getTime() : 0;
+  var hasRecentLicenseCheck = lastCheckTime && (Date.now() - lastCheckTime <= offlineGraceMs);
 
-  if (!organizationId) {
+  if (!organizationId || !hasRecentLicenseCheck) {
+    localStorage.removeItem("azul_offline_mode");
+    if (typeof toast === "function") {
+      toast("Sem internet e a licenca nao foi verificada recentemente. Entra novamente quando tiveres conexao.", "error");
+    }
     return false;
   }
 
@@ -2297,15 +2305,15 @@ function getCoreLicenseErrorMessage(error) {
   var msg = String(error && error.message ? error.message : error || "");
 
   if (msg.indexOf("LICENCA_INATIVA") >= 0) {
-    return "Licence desactivee. Contacte l'administrateur.";
+    return "Licenca desativada. Contacte o administrador.";
   }
 
   if (msg.indexOf("LICENCA_EXPIRADA") >= 0) {
-    return "Licence expiree. Renouvelle ton abonnement.";
+    return "Licenca expirada. Renove a subscricao.";
   }
 
   if (msg.indexOf("ORGANIZATION_NOT_FOUND") >= 0) {
-    return "Licence introuvable.";
+    return "Licenca nao encontrada.";
   }
 
   return "Licenca invalida.";
@@ -12997,6 +13005,12 @@ function loadSettings() {
       config = Object.assign({}, config, JSON.parse(saved) || {});
     }
   } catch(e) {}
+  try {
+    var savedTheme = localStorage.getItem('azul_theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      config.theme = savedTheme;
+    }
+  } catch(e) {}
   selectedSetupColor = config.color || selectedSetupColor || '#0b3d91';
   selectedSetupColor2 = config.color2 || selectedSetupColor2 || '#071e4f';
   selectedSetupTheme = config.theme || selectedSetupTheme || 'light';
@@ -13028,8 +13042,10 @@ function selectStockMode(mode) {
 }
 
 function selectTheme(theme, btn) {
+  theme = theme === 'dark' ? 'dark' : 'light';
   selectedSetupTheme = theme;
   config.theme = theme;
+  try { localStorage.setItem('azul_theme', theme); } catch(e) {}
   document.querySelectorAll('[id^="theme-"],[id^="cfg-theme-"]').forEach(function(b) {
     b.classList.remove('active');
     b.style.borderColor = '';
@@ -13043,6 +13059,7 @@ function selectTheme(theme, btn) {
     b.style.background = 'color-mix(in srgb, var(--blue) 10%, transparent)';
   });
   applyConfig();
+  saveConfig();
 }
 
 function finishSetup() {
@@ -13616,7 +13633,11 @@ function saveSettings() {
 }
 
 function saveConfig() {
-  try { localStorage.setItem('pos_config', JSON.stringify(config)); } catch(e) {}
+  try {
+    config.theme = config.theme === 'dark' ? 'dark' : 'light';
+    localStorage.setItem('azul_theme', config.theme);
+    localStorage.setItem('pos_config', JSON.stringify(config));
+  } catch(e) {}
 }
 
 function normalizeHexColor(value, fallback) {
@@ -13697,7 +13718,7 @@ function applyConfig() {
   selectedSetupColor2 = config.color2 || selectedSetupColor2 || '#071e4f';
   selectedSetupTheme = config.theme || selectedSetupTheme || 'light';
   root.setAttribute('data-theme', selectedSetupTheme);
-  var themeBackground = selectedSetupTheme === 'dark' ? '#0b0f14' : '#ffffff';
+  var themeBackground = selectedSetupTheme === 'dark' ? '#111418' : '#ffffff';
   var readableColor = readableAccentColor(selectedSetupColor, themeBackground);
   var readableColor2 = readableAccentColor(selectedSetupColor2, themeBackground);
   root.style.setProperty('--blue', readableColor);
@@ -13708,16 +13729,18 @@ function applyConfig() {
 
   // Apply theme
   if (selectedSetupTheme === 'dark') {
-    root.style.setProperty('--bg', '#0b0f14');
-    root.style.setProperty('--surface', '#151a21');
-    root.style.setProperty('--surface2', '#202733');
-    root.style.setProperty('--border', '#364152');
-    root.style.setProperty('--text', '#f8fafc');
-    root.style.setProperty('--muted', '#b6c0cc');
+    root.style.setProperty('--bg', '#111418');
+    root.style.setProperty('--surface', '#1a1f26');
+    root.style.setProperty('--surface2', '#242a33');
+    root.style.setProperty('--soft', '#20262e');
+    root.style.setProperty('--border', '#37404c');
+    root.style.setProperty('--text', '#f4f7fb');
+    root.style.setProperty('--muted', '#aeb8c6');
   } else {
     root.style.setProperty('--bg', '#f5f5f0');
     root.style.setProperty('--surface', '#ffffff');
     root.style.setProperty('--surface2', '#f0ede6');
+    root.style.setProperty('--soft', '#f7f4ed');
     root.style.setProperty('--border', '#e0dbd0');
     root.style.setProperty('--text', '#1a1a1a');
     root.style.setProperty('--muted', '#9a9590');
@@ -20606,13 +20629,25 @@ async function logoutPendingApproval() {
 
 async function getCurrentCoreProfile() {
   var organizationId = localStorage.getItem("azul_organization_id");
-  var userResult = await supabaseClient.auth.getUser();
+  var user = null;
 
-  if (userResult.error || !userResult.data || !userResult.data.user) {
-    return null;
+  try {
+    var sessionResult = await supabaseClient.auth.getSession();
+    if (sessionResult && sessionResult.data && sessionResult.data.session && sessionResult.data.session.user) {
+      user = sessionResult.data.session.user;
+    }
+  } catch (sessionError) {
+    console.warn("Sessao local indisponivel:", sessionError);
   }
 
-  var user = userResult.data.user;
+  if (!user) {
+    var userResult = await supabaseClient.auth.getUser();
+    if (userResult.error || !userResult.data || !userResult.data.user) {
+      return null;
+    }
+    user = userResult.data.user;
+  }
+
   var email = user.email || "";
 
   if (!email || !organizationId) return null;
@@ -20696,6 +20731,10 @@ async function verifyCurrentUserAccess() {
 
     return true;
   } catch (e) {
+    if (isAzulNetworkError(e) && allowOfflineLicenseAccess(e)) {
+      return true;
+    }
+
     alert("Erro ao validar utilizador: " + (e.message || e));
     await supabaseClient.auth.signOut();
     clearAzulSession();
