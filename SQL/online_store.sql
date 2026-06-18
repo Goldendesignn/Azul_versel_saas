@@ -5,6 +5,7 @@ create table if not exists public.online_store_settings (
   whatsapp_phone text,
   store_name text,
   hero_title text,
+  hero_slides jsonb not null default '[]'::jsonb,
   welcome_message text,
   theme_color text not null default '#0b3d91',
   font_family text not null default 'Arial, Helvetica, sans-serif',
@@ -19,6 +20,9 @@ alter table public.online_store_settings
   add column if not exists hero_title text;
 
 alter table public.online_store_settings
+  add column if not exists hero_slides jsonb not null default '[]'::jsonb;
+
+alter table public.online_store_settings
   add column if not exists theme_color text not null default '#0b3d91';
 
 alter table public.online_store_settings
@@ -27,25 +31,26 @@ alter table public.online_store_settings
 alter table public.online_store_settings
   add column if not exists logo_url text;
 
+alter table public.products
+  add column if not exists description text;
+
 create index if not exists idx_online_store_settings_slug
   on public.online_store_settings (slug)
   where active = true;
 
 alter table public.online_store_settings enable row level security;
 
-grant select, insert, update on public.online_store_settings to anon, authenticated;
+grant select on public.online_store_settings to anon, authenticated;
+grant insert, update on public.online_store_settings to authenticated;
 
 drop policy if exists online_store_settings_manage_by_org on public.online_store_settings;
+drop policy if exists online_store_settings_member_manage on public.online_store_settings;
 create policy online_store_settings_manage_by_org
 on public.online_store_settings
 for all
-to public
-using (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-)
-with check (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
+to authenticated
+using (public.is_org_member(organization_id))
+with check (public.is_org_member(organization_id));
 
 drop policy if exists online_store_settings_public_active on public.online_store_settings;
 create policy online_store_settings_public_active
@@ -109,6 +114,7 @@ begin
     'stock_shop', p.stock_shop,
     'photo', p.photo,
     'code', p.code,
+    'description', p.description,
     'variation', p.variation,
     'variations', p.variations
   ) order by p.name asc), '[]'::jsonb)
@@ -127,6 +133,7 @@ begin
       'whatsapp_phone', v_settings.whatsapp_phone,
       'store_name', v_settings.store_name,
       'hero_title', v_settings.hero_title,
+      'hero_slides', v_settings.hero_slides,
       'welcome_message', v_settings.welcome_message,
       'theme_color', v_settings.theme_color,
       'font_family', v_settings.font_family,
@@ -221,29 +228,27 @@ create index if not exists idx_online_order_items_order
 alter table public.online_orders enable row level security;
 alter table public.online_order_items enable row level security;
 
-grant select, update on public.online_orders to anon, authenticated;
-grant select on public.online_order_items to anon, authenticated;
+revoke all on public.online_orders from anon;
+revoke all on public.online_order_items from anon;
+grant select, update on public.online_orders to authenticated;
+grant select on public.online_order_items to authenticated;
 
 drop policy if exists online_orders_manage_by_org on public.online_orders;
+drop policy if exists online_orders_member_manage on public.online_orders;
 create policy online_orders_manage_by_org
 on public.online_orders
 for all
-to public
-using (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-)
-with check (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
+to authenticated
+using (public.is_org_member(organization_id))
+with check (public.is_org_member(organization_id));
 
 drop policy if exists online_order_items_select_by_org on public.online_order_items;
+drop policy if exists online_order_items_member_select on public.online_order_items;
 create policy online_order_items_select_by_org
 on public.online_order_items
 for select
-to public
-using (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
+to authenticated
+using (public.is_org_member(organization_id));
 
 create or replace function public.touch_online_orders_updated_at()
 returns trigger
@@ -335,14 +340,15 @@ begin
   with requested_raw as (
     select
       nullif(item->>'product_id', '')::uuid as product_id,
-      greatest(1, coalesce(nullif(item->>'quantity', '')::integer, 1)) as quantity
+      greatest(1, coalesce(nullif(item->>'quantity', '')::integer, 1)) as quantity,
+      nullif(trim(item->>'variation'), '') as variation
     from jsonb_array_elements(p_items) item
     where nullif(item->>'product_id', '') is not null
   ),
   requested as (
-    select product_id, sum(quantity)::integer as quantity
+    select product_id, variation, sum(quantity)::integer as quantity
     from requested_raw
-    group by product_id
+    group by product_id, variation
   ),
   inserted as (
     insert into public.online_order_items (
@@ -362,7 +368,7 @@ begin
       p.id,
       p.name,
       p.code,
-      p.variation,
+      coalesce(r.variation, p.variation),
       r.quantity,
       coalesce(p.sale_price, 0),
       r.quantity * coalesce(p.sale_price, 0)
