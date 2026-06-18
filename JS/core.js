@@ -8892,7 +8892,7 @@ function initImportacoesPage() {
     }
   });
   if (!document.querySelector("#import-items-body .import-item-row")) addImportItemLine();
-  switchImportTab(importCurrentTab || "new", document.getElementById("import-tab-" + (importCurrentTab || "new")));
+  switchImportOrderTab(importCurrentTab || "new", document.getElementById("import-tab-" + (importCurrentTab || "new")));
   loadImportOrders(false);
 }
 
@@ -8901,7 +8901,7 @@ function setDefaultImportDate() {
   if (input && !input.value) input.value = new Date().toISOString().slice(0, 10);
 }
 
-function switchImportTab(tab, btn) {
+function switchImportOrderTab(tab, btn) {
   importCurrentTab = tab || "new";
   ["new", "list", "check"].forEach(function(name) {
     var panel = document.getElementById("import-panel-" + name);
@@ -9052,7 +9052,7 @@ async function saveImportOrder() {
     await loadImportOrders(true);
     toast("Importacao guardada.", "success");
     setImportStatus("Importacao guardada.", false);
-    switchImportTab("list", document.getElementById("import-tab-list"));
+    switchImportOrderTab("list", document.getElementById("import-tab-list"));
   } catch (e) {
     console.error("Erro importacao:", e);
     var msg = isImportOrdersTableMissing(e) ? "Executa a migration import_orders_tracking no Supabase." : (e.message || e);
@@ -9224,7 +9224,7 @@ async function updateImportOrderStatus(id, status) {
 
 function openImportCheck(id) {
   importSelectedOrderId = id;
-  switchImportTab("check", document.getElementById("import-tab-check"));
+  switchImportOrderTab("check", document.getElementById("import-tab-check"));
 }
 
 function renderImportCheck() {
@@ -9384,7 +9384,7 @@ async function validateImportToStock() {
     await loadProducts(true);
     await loadImportOrders(true);
     toast("Importacao validada e stock atualizado.", "success");
-    switchImportTab("list", document.getElementById("import-tab-list"));
+    switchImportOrderTab("list", document.getElementById("import-tab-list"));
   } catch (e) {
     console.error("Erro validar importacao:", e);
     toast("Erro validar importacao: " + (e.message || e), "error");
@@ -18768,7 +18768,7 @@ async function importExpenseCsvRows() {
     }
   }
 }
-function switchImportTab(tab) {
+function switchDataImportTab(tab) {
   var panels = {
     purchases: document.getElementById("import-panel-purchases"),
     sales: document.getElementById("import-panel-sales"),
@@ -18786,6 +18786,17 @@ function switchImportTab(tab) {
     if (tabs[key]) tabs[key].classList.toggle("active", key === tab);
   });
 }
+
+function switchImportTab(tab, btn) {
+  if (["new", "list", "check"].indexOf(tab) >= 0) {
+    return switchImportOrderTab(tab, btn);
+  }
+  return switchDataImportTab(tab);
+}
+
+window.switchImportOrderTab = switchImportOrderTab;
+window.switchDataImportTab = switchDataImportTab;
+window.switchImportTab = switchImportTab;
 
 var correctionCurrentType = "sale";
 var correctionSearchTimer = null;

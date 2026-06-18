@@ -1702,9 +1702,9 @@
         </section>
 
         <div class="import-orders-tabs">
-          <button type="button" class="mode-btn active" id="import-tab-new" onclick="switchImportTab('new', this)">Nova importacao</button>
-          <button type="button" class="mode-btn" id="import-tab-list" onclick="switchImportTab('list', this)">Acompanhamento</button>
-          <button type="button" class="mode-btn" id="import-tab-check" onclick="switchImportTab('check', this)">Conferencia</button>
+          <button type="button" class="mode-btn active" id="import-tab-new" onclick="switchImportOrderTab('new', this)">Nova importacao</button>
+          <button type="button" class="mode-btn" id="import-tab-list" onclick="switchImportOrderTab('list', this)">Acompanhamento</button>
+          <button type="button" class="mode-btn" id="import-tab-check" onclick="switchImportOrderTab('check', this)">Conferencia</button>
         </div>
 
         <section class="import-orders-card import-orders-panel" id="import-panel-new">
@@ -1821,7 +1821,7 @@
               <div class="card-title">Conferencia da mercadoria</div>
               <p id="import-check-info">Seleciona uma importacao em Acompanhamento para conferir.</p>
             </div>
-            <button type="button" class="filter-btn" onclick="switchImportTab('list', document.getElementById('import-tab-list'))">Ver importacoes</button>
+            <button type="button" class="filter-btn" onclick="switchImportOrderTab('list', document.getElementById('import-tab-list'))">Ver importacoes</button>
           </div>
 
           <div class="import-check-list" id="import-check-list">
@@ -2261,13 +2261,13 @@
       <button type="button" class="import-ghost-btn" onclick="goTo('settings', null)">Voltar as definicoes</button>
     </div>
    <div class="import-tabs">
-    <button type="button" class="import-tab active" id="import-tab-purchases" onclick="switchImportTab('purchases')">
+    <button type="button" class="import-tab active" id="import-tab-purchases" onclick="switchDataImportTab('purchases')">
       Compras
     </button>
-    <button type="button" class="import-tab" id="import-tab-sales" onclick="switchImportTab('sales')">
+    <button type="button" class="import-tab" id="import-tab-sales" onclick="switchDataImportTab('sales')">
       Vendas
     </button>
-    <button type="button" class="import-tab" id="import-tab-expenses" onclick="switchImportTab('expenses')">
+    <button type="button" class="import-tab" id="import-tab-expenses" onclick="switchDataImportTab('expenses')">
       Despesas
     </button>
   </div>
