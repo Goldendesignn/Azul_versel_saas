@@ -1565,12 +1565,23 @@
                 <input type="text" class="form-input" id="online-slug" placeholder="Ex: minha-loja">
               </div>
               <div class="form-group online-wide">
-                <label class="form-label">Titulo do painel</label>
+                <label class="form-label">Titulo padrao</label>
                 <input type="text" class="form-input" id="online-hero-title" placeholder="Ex: Promocao especial da semana">
+                <small class="online-field-help">Usado quando o carrossel ainda nao tem imagens.</small>
               </div>
               <div class="form-group online-wide">
-                <label class="form-label">Mensagem inicial</label>
+                <label class="form-label">Mensagem padrao</label>
                 <input type="text" class="form-input" id="online-message" placeholder="Ex: Ola, quero comprar estes produtos">
+              </div>
+              <div class="form-group online-wide">
+                <div class="online-carousel-heading">
+                  <div>
+                    <label class="form-label">Carrossel principal</label>
+                    <small class="online-field-help">Adiciona ate 10 imagens. Elas mudam automaticamente na loja publica.</small>
+                  </div>
+                  <button class="filter-btn" type="button" onclick="addOnlineHeroSlide()">+ Adicionar imagem</button>
+                </div>
+                <div class="online-carousel-editor" id="online-carousel-editor"></div>
               </div>
               <div class="form-group">
                 <label class="form-label">Cor principal</label>
@@ -1633,7 +1644,7 @@
           <div class="online-products-head">
             <div>
               <div class="card-title">Produtos da vitrine</div>
-              <p>Seleciona os produtos que vao aparecer na pagina publica.</p>
+              <p>Seleciona os produtos e escreve a descricao que aparecera na ficha de cada produto.</p>
             </div>
             <div class="online-products-actions">
               <input type="text" class="form-input" id="online-product-search" placeholder="Pesquisar produto..." oninput="renderOnlineProductList()">

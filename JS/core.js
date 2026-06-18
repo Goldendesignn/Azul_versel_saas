@@ -8088,8 +8088,218 @@ var onlineStoreSettings = null;
 var onlineSelectedProductIds = {};
 var onlineStoreLink = "";
 var onlineStoreLoading = false;
+var onlineHeroSlides = [];
+var onlineProductDescriptionDirty = {};
 var onlineOrders = [];
 var onlineCurrentTab = "config";
+
+function onlineHeroSlideId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  return "slide-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+}
+
+function normalizeOnlineHeroSlides(value) {
+  var rows = Array.isArray(value) ? value : [];
+  return rows.slice(0, 10).map(function(row) {
+    row = row && typeof row === "object" ? row : {};
+    return {
+      id: String(row.id || onlineHeroSlideId()),
+      image_url: String(row.image_url || "").trim(),
+      title: String(row.title || "").trim().slice(0, 90),
+      subtitle: String(row.subtitle || "").trim().slice(0, 180),
+      button_label: String(row.button_label || "").trim().slice(0, 32)
+    };
+  });
+}
+
+function onlineHeroSlideIndex(slideId) {
+  return onlineHeroSlides.findIndex(function(slide) {
+    return String(slide.id) === String(slideId);
+  });
+}
+
+function renderOnlineHeroSlides() {
+  var editor = document.getElementById("online-carousel-editor");
+  if (!editor) return;
+
+  if (!onlineHeroSlides.length) {
+    editor.innerHTML =
+      '<div class="online-carousel-empty">' +
+        '<strong>Nenhuma imagem adicionada</strong>' +
+        '<span>A loja mostra o titulo e a mensagem padrao ate adicionares a primeira imagem.</span>' +
+      '</div>';
+    return;
+  }
+
+  editor.innerHTML = onlineHeroSlides.map(function(slide, index) {
+    var safeId = escapeDespesaHtml(slide.id);
+    var safeImage = escapeDespesaHtml(slide.image_url);
+    var safeTitle = escapeDespesaHtml(slide.title);
+    var safeSubtitle = escapeDespesaHtml(slide.subtitle);
+    var safeButton = escapeDespesaHtml(slide.button_label);
+    var preview = safeImage
+      ? '<img src="' + safeImage + '" alt="">'
+      : '<div class="online-slide-placeholder">Imagem ' + (index + 1) + '</div>';
+
+    return '<article class="online-slide-editor" data-slide-id="' + safeId + '">' +
+      '<div class="online-slide-preview">' + preview +
+        '<span>' + (index + 1) + '</span>' +
+      '</div>' +
+      '<div class="online-slide-fields">' +
+        '<label>Imagem' +
+          '<input type="text" class="form-input" value="' + safeImage + '" placeholder="URL da imagem" onchange="updateOnlineHeroSlide(\'' + safeId + '\', \'image_url\', this.value)">' +
+        '</label>' +
+        '<label>Titulo' +
+          '<input type="text" class="form-input" maxlength="90" value="' + safeTitle + '" placeholder="Ex: Nova colecao" oninput="updateOnlineHeroSlide(\'' + safeId + '\', \'title\', this.value)">' +
+        '</label>' +
+        '<label>Texto' +
+          '<input type="text" class="form-input" maxlength="180" value="' + safeSubtitle + '" placeholder="Mensagem curta da campanha" oninput="updateOnlineHeroSlide(\'' + safeId + '\', \'subtitle\', this.value)">' +
+        '</label>' +
+        '<label>Botao' +
+          '<input type="text" class="form-input" maxlength="32" value="' + safeButton + '" placeholder="Ex: Ver produtos" oninput="updateOnlineHeroSlide(\'' + safeId + '\', \'button_label\', this.value)">' +
+        '</label>' +
+      '</div>' +
+      '<div class="online-slide-actions">' +
+        '<label class="filter-btn online-slide-upload" for="online-slide-file-' + safeId + '">Carregar</label>' +
+        '<input type="file" id="online-slide-file-' + safeId + '" accept="image/png,image/jpeg,image/webp" onchange="uploadOnlineHeroSlide(this, \'' + safeId + '\')" hidden>' +
+        '<button type="button" class="filter-btn ghost" onclick="moveOnlineHeroSlide(\'' + safeId + '\', -1)"' + (index === 0 ? ' disabled' : '') + ' aria-label="Mover para cima">&#8593;</button>' +
+        '<button type="button" class="filter-btn ghost" onclick="moveOnlineHeroSlide(\'' + safeId + '\', 1)"' + (index === onlineHeroSlides.length - 1 ? ' disabled' : '') + ' aria-label="Mover para baixo">&#8595;</button>' +
+        '<button type="button" class="filter-btn danger" onclick="removeOnlineHeroSlide(\'' + safeId + '\')">Remover</button>' +
+      '</div>' +
+    '</article>';
+  }).join("");
+}
+
+function addOnlineHeroSlide() {
+  if (onlineHeroSlides.length >= 10) {
+    toast("O carrossel aceita no maximo 10 imagens.", "error");
+    return;
+  }
+
+  onlineHeroSlides.push({
+    id: onlineHeroSlideId(),
+    image_url: "",
+    title: "",
+    subtitle: "",
+    button_label: "Ver produtos"
+  });
+  renderOnlineHeroSlides();
+}
+
+function updateOnlineHeroSlide(slideId, field, value) {
+  var index = onlineHeroSlideIndex(slideId);
+  if (index < 0) return;
+  if (["image_url", "title", "subtitle", "button_label"].indexOf(field) < 0) return;
+  onlineHeroSlides[index][field] = String(value || "").trim();
+  if (field === "image_url") renderOnlineHeroSlides();
+}
+
+function moveOnlineHeroSlide(slideId, direction) {
+  var index = onlineHeroSlideIndex(slideId);
+  var target = index + Number(direction || 0);
+  if (index < 0 || target < 0 || target >= onlineHeroSlides.length) return;
+  var moved = onlineHeroSlides.splice(index, 1)[0];
+  onlineHeroSlides.splice(target, 0, moved);
+  renderOnlineHeroSlides();
+}
+
+function removeOnlineHeroSlide(slideId) {
+  var index = onlineHeroSlideIndex(slideId);
+  if (index < 0) return;
+  onlineHeroSlides.splice(index, 1);
+  renderOnlineHeroSlides();
+}
+
+function compressOnlineHeroImage(file) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(event) {
+      var img = new Image();
+      img.onload = function() {
+        var ratio = Math.min(1, 1920 / img.width, 1400 / img.height);
+        var canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * ratio));
+        canvas.height = Math.max(1, Math.round(img.height * ratio));
+        var ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(function(blob) {
+          resolve(blob || file);
+        }, "image/webp", .86);
+      };
+      img.onerror = function() { resolve(file); };
+      img.src = String(event.target && event.target.result || "");
+    };
+    reader.onerror = function() { resolve(file); };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadOnlineHeroSlide(input, slideId) {
+  var file = input && input.files && input.files[0];
+  var index = onlineHeroSlideIndex(slideId);
+  if (!file || index < 0) return;
+
+  if (!/^image\/(png|jpe?g|webp)$/i.test(file.type || "")) {
+    toast("Escolha uma imagem PNG, JPG ou WebP.", "error");
+    input.value = "";
+    return;
+  }
+  if (file.size > 6 * 1024 * 1024) {
+    toast("Imagem muito pesada. Usa uma imagem com menos de 6 MB.", "error");
+    input.value = "";
+    return;
+  }
+
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) return;
+  var uploadLabel = input.previousElementSibling;
+  if (uploadLabel) {
+    uploadLabel.classList.add("is-loading");
+    uploadLabel.textContent = "A carregar...";
+  }
+  input.disabled = true;
+
+  try {
+    var blob = await compressOnlineHeroImage(file);
+    var keptOriginal = blob === file;
+    var originalExtension = file.type === "image/png" ? "png" : (file.type === "image/webp" ? "webp" : "jpg");
+    var extension = keptOriginal ? originalExtension : "webp";
+    var contentType = keptOriginal ? file.type : "image/webp";
+    var path = organizationId + "/hero/" + slideId + "-" + Date.now() + "." + extension;
+    var upload = await supabaseClient.storage
+      .from("online-store-assets")
+      .upload(path, blob, {
+        cacheControl: "31536000",
+        contentType: contentType,
+        upsert: false
+      });
+    if (upload.error) throw upload.error;
+
+    var publicResult = supabaseClient.storage.from("online-store-assets").getPublicUrl(path);
+    var publicUrl = publicResult && publicResult.data ? publicResult.data.publicUrl : "";
+    if (!publicUrl) throw new Error("Nao foi possivel obter o link da imagem.");
+
+    onlineHeroSlides[index].image_url = publicUrl;
+    renderOnlineHeroSlides();
+    toast("Imagem adicionada ao carrossel.", "success");
+  } catch (e) {
+    console.error("Erro imagem do carrossel:", e);
+    toast("Erro ao carregar imagem: " + (e.message || e), "error");
+  } finally {
+    input.disabled = false;
+    input.value = "";
+    if (uploadLabel && document.body.contains(uploadLabel)) {
+      uploadLabel.classList.remove("is-loading");
+      uploadLabel.textContent = "Carregar";
+    }
+  }
+}
 
 function normalizeOnlinePhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
@@ -8307,6 +8517,8 @@ function applyOnlineStoreForm(settings) {
   if (logoUrl) logoUrl.value = settings.logo_url || config.logo || "";
   updateOnlineLogoPreview(logoUrl ? logoUrl.value : "");
   if (showStock) showStock.checked = settings.show_stock !== false;
+  onlineHeroSlides = normalizeOnlineHeroSlides(settings.hero_slides);
+  renderOnlineHeroSlides();
 
   onlineSelectedProductIds = {};
   (Array.isArray(settings.product_ids) ? settings.product_ids : []).forEach(function(id) {
@@ -8317,11 +8529,9 @@ function applyOnlineStoreForm(settings) {
 }
 
 function collectSelectedOnlineProductIds() {
-  var ids = [];
-  document.querySelectorAll(".online-product-check").forEach(function(input) {
-    if (input.checked && input.value) ids.push(input.value);
+  return Object.keys(onlineSelectedProductIds).filter(function(id) {
+    return !!onlineSelectedProductIds[id];
   });
-  return ids;
 }
 
 function renderOnlineProductList() {
@@ -8348,16 +8558,51 @@ function renderOnlineProductList() {
       ? '<img src="' + safePhoto + '" alt="' + safeName + '">'
       : '<div class="online-product-placeholder">' + escapeDespesaHtml(String(product.name || "A").charAt(0).toUpperCase()) + '</div>';
 
-    return '<label class="online-product-card">' +
-      img +
-      '<span class="online-product-info">' +
+    return '<article class="online-product-card">' +
+      '<label class="online-product-select">' +
+        img +
+        '<input class="online-product-check" type="checkbox" value="' + escapeDespesaHtml(id) + '"' + checked + ' onchange="syncOnlineProductSelection(this)">' +
+      '</label>' +
+      '<div class="online-product-info">' +
         '<strong title="' + safeName + '">' + safeName + '</strong>' +
         '<span>' + fmt(product.salePrice || product.price || 0) + '</span>' +
         '<small>' + escapeDespesaHtml(product.category || "Sem categoria") + ' | Loja: ' + (Number(product.stockBoutique) || 0) + '</small>' +
-      '</span>' +
-      '<input class="online-product-check" type="checkbox" value="' + escapeDespesaHtml(id) + '"' + checked + ' onchange="syncOnlineProductSelection(this)">' +
-    '</label>';
+      '</div>' +
+      '<label class="online-product-description">' +
+        '<span>Descricao da ficha online</span>' +
+        '<textarea rows="2" maxlength="600" placeholder="Ex: Tecido leve, corte confortavel e acabamento premium." oninput="setOnlineProductDescription(\'' + escapeDespesaHtml(id) + '\', this.value)">' + escapeDespesaHtml(product.description || "") + '</textarea>' +
+      '</label>' +
+    '</article>';
   }).join("");
+}
+
+function setOnlineProductDescription(productId, value) {
+  var id = String(productId || "");
+  if (!id) return;
+  var product = (products || []).find(function(row) {
+    return String(row.id || "") === id;
+  });
+  var description = String(value || "").slice(0, 600);
+  if (product) product.description = description;
+  onlineProductDescriptionDirty[id] = description.trim();
+}
+
+async function saveOnlineProductDescriptions(organizationId) {
+  var ids = Object.keys(onlineProductDescriptionDirty);
+  if (!ids.length) return;
+
+  var results = await Promise.all(ids.map(function(id) {
+    return supabaseClient
+      .from("products")
+      .update({ description: onlineProductDescriptionDirty[id] })
+      .eq("organization_id", organizationId)
+      .eq("id", id);
+  }));
+  var failed = results.find(function(result) {
+    return result && result.error;
+  });
+  if (failed && failed.error) throw failed.error;
+  onlineProductDescriptionDirty = {};
 }
 
 function syncOnlineProductSelection(input) {
@@ -8401,6 +8646,7 @@ async function loadOnlineStoreSettings(forceRefresh) {
       whatsapp_phone: config.phone || "",
       store_name: config.name || localStorage.getItem("azul_organization_name") || "Azul",
       hero_title: "Escolha os produtos",
+      hero_slides: [],
       welcome_message: "Ola, quero comprar estes produtos:",
       theme_color: "#0b3d91",
       font_family: "Arial, Helvetica, sans-serif",
@@ -8451,6 +8697,9 @@ async function saveOnlineStoreSettings() {
     whatsapp_phone: phone,
     store_name: String((document.getElementById("online-store-name") || {}).value || config.name || "Azul").trim(),
     hero_title: String((document.getElementById("online-hero-title") || {}).value || "Escolha os produtos").trim(),
+    hero_slides: normalizeOnlineHeroSlides(onlineHeroSlides).filter(function(slide) {
+      return !!slide.image_url;
+    }),
     welcome_message: String((document.getElementById("online-message") || {}).value || "Ola, quero comprar estes produtos:").trim(),
     theme_color: normalizeOnlineColor((document.getElementById("online-theme-color-text") || {}).value || (document.getElementById("online-theme-color") || {}).value),
     font_family: getOnlineFontFamily((document.getElementById("online-font-family") || {}).value),
@@ -8460,6 +8709,8 @@ async function saveOnlineStoreSettings() {
   };
 
   try {
+    await saveOnlineProductDescriptions(organizationId);
+
     var result = await supabaseClient
       .from("online_store_settings")
       .upsert(payload, { onConflict: "organization_id" })
@@ -20792,6 +21043,44 @@ function showPendingApprovalScreen(profile) {
   document.body.appendChild(screen);
 }
 
+function showSecurityAccessBlockedScreen(error) {
+  var existing = document.getElementById("approval-lock-screen");
+  if (existing) existing.remove();
+
+  window.azulAccessBlocked = true;
+  document.body.classList.add("approval-locked");
+
+  var detail = approvalSafeText(error && error.message ? error.message : "A base de dados recusou a validacao da sessao.");
+
+  var screen = document.createElement("div");
+  screen.id = "approval-lock-screen";
+  screen.className = "approval-lock-screen";
+  screen.innerHTML = `
+    <div class="approval-lock-card" role="dialog" aria-modal="true" aria-labelledby="approval-lock-title">
+      <div class="approval-lock-head">
+        <div class="approval-lock-mark">!</div>
+      </div>
+      <div class="approval-lock-body">
+        <p class="approval-lock-eyebrow">Seguranca</p>
+        <h1 id="approval-lock-title">Acesso bloqueado</h1>
+        <p class="approval-lock-text">
+          A tua sessao existe, mas o ERP nao conseguiu confirmar as permissoes desta loja com seguranca.
+        </p>
+        <div class="approval-lock-user">
+          <strong>Protecao dos dados activa</strong>
+          <span>${detail}</span>
+        </div>
+        <p class="approval-lock-hint">
+          Entra novamente. Se continuar, o administrador deve verificar as politicas de seguranca Supabase desta instalacao.
+        </p>
+        <button type="button" onclick="logoutPendingApproval()">Voltar ao login</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(screen);
+}
+
 async function logoutPendingApproval() {
   try {
     await supabaseClient.auth.signOut();
@@ -20925,8 +21214,9 @@ async function verifyCurrentUserAccess() {
 
     if (isAzulPermissionError(e) && await hasCurrentSupabaseUser()) {
       console.warn("Validacao bloqueada por permissao Supabase:", e);
-      toast("Nao foi possivel validar a sessao na base de dados. Verifica as permissoes Supabase.", "error");
-      return true;
+      showSecurityAccessBlockedScreen(e);
+      toast("Acesso bloqueado ate a sessao ser validada com seguranca.", "error");
+      return false;
     }
 
     alert("Erro ao validar utilizador: " + (e.message || e));
