@@ -2230,6 +2230,35 @@ function isAzulNetworkError(error) {
     msg.indexOf("timeout") >= 0;
 }
 
+function isAzulPermissionError(error) {
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  var code = String(error && error.code ? error.code : "").toUpperCase();
+
+  return code === "42501" ||
+    msg.indexOf("permission denied") >= 0 ||
+    msg.indexOf("row-level security") >= 0 ||
+    msg.indexOf("violates row-level security") >= 0;
+}
+
+async function hasCurrentSupabaseUser() {
+  try {
+    var sessionResult = await supabaseClient.auth.getSession();
+    if (sessionResult && sessionResult.data && sessionResult.data.session && sessionResult.data.session.user) {
+      return true;
+    }
+  } catch (e) {
+    console.warn("Sessao local nao confirmada:", e);
+  }
+
+  try {
+    var userResult = await supabaseClient.auth.getUser();
+    return !!(userResult && userResult.data && userResult.data.user);
+  } catch (e2) {
+    console.warn("Utilizador Supabase nao confirmado:", e2);
+    return false;
+  }
+}
+
 function allowOfflineLicenseAccess(reason) {
   var organizationId = localStorage.getItem("azul_organization_id");
   var lastCheck = localStorage.getItem("azul_license_last_check_at");
@@ -20793,8 +20822,20 @@ async function verifyCurrentUserAccess() {
     var profile = await getCurrentCoreProfile();
 
     if (!profile) {
-      alert("Sessao de utilizador invalida. Entre novamente.");
-      await supabaseClient.auth.signOut();
+      if (await hasCurrentSupabaseUser()) {
+        var orgName = localStorage.getItem("azul_org_name") || "esta loja";
+        showPendingApprovalScreen({
+          organization_id: localStorage.getItem("azul_organization_id"),
+          name: localStorage.getItem("azul_user_name") || "Utilizador",
+          email: "",
+          status: "pending",
+          organization_name: orgName
+        });
+        toast("Sessao encontrada, mas o perfil ainda nao esta autorizado ou visivel.", "error");
+        return false;
+      }
+
+      alert("Sessao expirada. Entra novamente.");
       clearAzulSession();
       window.location.replace("index.html");
       return false;
@@ -20825,10 +20866,13 @@ async function verifyCurrentUserAccess() {
       return true;
     }
 
+    if (isAzulPermissionError(e) && await hasCurrentSupabaseUser()) {
+      console.warn("Validacao bloqueada por permissao Supabase:", e);
+      toast("Nao foi possivel validar a sessao na base de dados. Verifica as permissoes Supabase.", "error");
+      return true;
+    }
+
     alert("Erro ao validar utilizador: " + (e.message || e));
-    await supabaseClient.auth.signOut();
-    clearAzulSession();
-    window.location.replace("index.html");
     return false;
   }
 }
