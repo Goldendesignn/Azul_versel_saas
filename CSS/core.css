@@ -21,13 +21,13 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #111418;
-  --surface: #1a1f26;
-  --surface2: #242a33;
-  --soft: #20262e;
-  --border: #37404c;
-  --text: #f4f7fb;
-  --muted: #aeb8c6;
+  --bg: #070b10;
+  --surface: #111821;
+  --surface2: #1a2430;
+  --soft: #15202b;
+  --border: #334155;
+  --text: #f8fafc;
+  --muted: #cbd5e1;
   --shadow-soft: rgba(0, 0, 0, .38);
 }
 body {
@@ -7825,6 +7825,129 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   cursor: not-allowed;
 }
 
+.correction-action.is-processing {
+  background: var(--blue);
+  color: var(--accent-text);
+  cursor: wait;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.correction-spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
+  animation: correctionSpin .75s linear infinite;
+}
+
+@keyframes correctionSpin {
+  to { transform: rotate(360deg); }
+}
+
+.correction-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(10, 14, 24, .28);
+  backdrop-filter: blur(3px);
+}
+
+.correction-confirm-card {
+  width: min(430px, 100%);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 22px 60px rgba(0,0,0,.18);
+}
+
+.correction-confirm-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  background: color-mix(in srgb, var(--blue) 14%, var(--surface));
+  color: var(--blue);
+  border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--border));
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.correction-confirm-card h3 {
+  margin: 4px 0 8px;
+  font-size: 24px;
+}
+
+.correction-confirm-card p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.correction-confirm-card label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.correction-confirm-card textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--input-bg, var(--surface));
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.correction-confirm-card textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 14%, transparent);
+}
+
+.correction-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.correction-confirm-actions button {
+  height: 44px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.correction-confirm-actions .ghost {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.correction-confirm-actions .primary {
+  background: var(--blue);
+  border: 1px solid var(--blue);
+  color: var(--accent-text);
+}
+
 #page-dashboard .smart-stock-row {
   display: flex;
   justify-content: space-between;
@@ -10205,6 +10328,167 @@ textarea,
   .correction-action {
     width: 100%;
   }
+}
+
+/* Dark mode hardening: keep this final so older light-card rules cannot leak through. */
+html[data-theme="dark"] body,
+html[data-theme="dark"] #app,
+html[data-theme="dark"] .content,
+html[data-theme="dark"] .page {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] .header,
+html[data-theme="dark"] .nav,
+html[data-theme="dark"] .mobile-menu,
+html[data-theme="dark"] .mobile-menu-panel {
+  background: #0d131b !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .cart,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .data-table,
+html[data-theme="dark"] .correction-card,
+html[data-theme="dark"] .correction-hero,
+html[data-theme="dark"] .correction-search-card,
+html[data-theme="dark"] .correction-notice,
+html[data-theme="dark"] .quick-treasury-card,
+html[data-theme="dark"] .debt-dashboard-card,
+html[data-theme="dark"] .purchase-dashboard-card,
+html[data-theme="dark"] .smart-stock-card,
+html[data-theme="dark"] .sales-performance-card,
+html[data-theme="dark"] .accounting-summary-card,
+html[data-theme="dark"] .important-alerts-card,
+html[data-theme="dark"] .dashboard-module,
+html[data-theme="dark"] .dashboard-section,
+html[data-theme="dark"] .dashboard-panel,
+html[data-theme="dark"] .analytics-card,
+html[data-theme="dark"] .online-store-card,
+html[data-theme="dark"] .logistics-card,
+html[data-theme="dark"] .import-card,
+html[data-theme="dark"] .import-panel,
+html[data-theme="dark"] .import-orders-card,
+html[data-theme="dark"] .reseller-open-card,
+html[data-theme="dark"] .reseller-action-card,
+html[data-theme="dark"] .reseller-history-card,
+html[data-theme="dark"] .supplier-profile-card,
+html[data-theme="dark"] .supplier-form-card,
+html[data-theme="dark"] .supplier-search-card,
+html[data-theme="dark"] .az-client-hero,
+html[data-theme="dark"] .az-client-history,
+html[data-theme="dark"] .settings-user-card,
+html[data-theme="dark"] .settings-team-card {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .28) !important;
+}
+
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .top-item,
+html[data-theme="dark"] .dashboard-preview-list,
+html[data-theme="dark"] .dashboard-preview-list > *,
+html[data-theme="dark"] .dashboard-card-list,
+html[data-theme="dark"] .dashboard-card-list > *,
+html[data-theme="dark"] .smart-stock-row,
+html[data-theme="dark"] .sales-performance-row,
+html[data-theme="dark"] .accounting-summary-row,
+html[data-theme="dark"] .purchase-dashboard-row,
+html[data-theme="dark"] .debt-dashboard-row,
+html[data-theme="dark"] .important-alert-item,
+html[data-theme="dark"] .important-alerts-kpi,
+html[data-theme="dark"] .accounting-summary-kpi,
+html[data-theme="dark"] .accounting-result-box,
+html[data-theme="dark"] .accounting-mini-list,
+html[data-theme="dark"] .accounting-balance-grid > *,
+html[data-theme="dark"] .supplier-kpis > *,
+html[data-theme="dark"] .client-history-item,
+html[data-theme="dark"] .az-client-kpi,
+html[data-theme="dark"] .mobile-card-list > *,
+html[data-theme="dark"] .mobile-sale-card,
+html[data-theme="dark"] .mobile-stock-card,
+html[data-theme="dark"] .mobile-expense-card,
+html[data-theme="dark"] .mobile-treasury-card,
+html[data-theme="dark"] .mobile-accounting-card {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] table,
+html[data-theme="dark"] thead,
+html[data-theme="dark"] tbody,
+html[data-theme="dark"] tr,
+html[data-theme="dark"] th,
+html[data-theme="dark"] td {
+  background-color: transparent !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .data-table th,
+html[data-theme="dark"] table thead th,
+html[data-theme="dark"] table thead td {
+  background: #1d2835 !important;
+  color: var(--muted) !important;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .form-input,
+html[data-theme="dark"] .filter-input {
+  background: #0d131b !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .empty,
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] small,
+html[data-theme="dark"] .form-label,
+html[data-theme="dark"] .eyebrow,
+html[data-theme="dark"] .date-txt {
+  color: var(--muted) !important;
+}
+
+html[data-theme="dark"] [style*="background: #fff"],
+html[data-theme="dark"] [style*="background:#fff"],
+html[data-theme="dark"] [style*="background: #ffffff"],
+html[data-theme="dark"] [style*="background:#ffffff"],
+html[data-theme="dark"] [style*="background: white"],
+html[data-theme="dark"] [style*="background:white"],
+html[data-theme="dark"] [style*="background-color: #fff"],
+html[data-theme="dark"] [style*="background-color:#fff"],
+html[data-theme="dark"] [style*="background-color: #ffffff"],
+html[data-theme="dark"] [style*="background-color:#ffffff"],
+html[data-theme="dark"] [style*="background-color: white"],
+html[data-theme="dark"] [style*="background-color:white"] {
+  background: var(--surface) !important;
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] [style*="color: #333"],
+html[data-theme="dark"] [style*="color:#333"],
+html[data-theme="dark"] [style*="color: #1a1a1a"],
+html[data-theme="dark"] [style*="color:#1a1a1a"],
+html[data-theme="dark"] [style*="color: black"],
+html[data-theme="dark"] [style*="color:black"] {
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] #receiptBox,
+html[data-theme="dark"] #receiptBox *,
+html[data-theme="dark"] .r-table,
+html[data-theme="dark"] .r-table * {
+  background: #fff !important;
+  color: #000 !important;
 }
 
 /* Dark mode final dashboard pass: keep this near the end so older dashboard rules cannot repaint white panels. */

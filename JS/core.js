@@ -13718,7 +13718,7 @@ function applyConfig() {
   selectedSetupColor2 = config.color2 || selectedSetupColor2 || '#071e4f';
   selectedSetupTheme = config.theme || selectedSetupTheme || 'light';
   root.setAttribute('data-theme', selectedSetupTheme);
-  var themeBackground = selectedSetupTheme === 'dark' ? '#111418' : '#ffffff';
+  var themeBackground = selectedSetupTheme === 'dark' ? '#070b10' : '#ffffff';
   var readableColor = readableAccentColor(selectedSetupColor, themeBackground);
   var readableColor2 = readableAccentColor(selectedSetupColor2, themeBackground);
   root.style.setProperty('--blue', readableColor);
@@ -13729,13 +13729,13 @@ function applyConfig() {
 
   // Apply theme
   if (selectedSetupTheme === 'dark') {
-    root.style.setProperty('--bg', '#111418');
-    root.style.setProperty('--surface', '#1a1f26');
-    root.style.setProperty('--surface2', '#242a33');
-    root.style.setProperty('--soft', '#20262e');
-    root.style.setProperty('--border', '#37404c');
-    root.style.setProperty('--text', '#f4f7fb');
-    root.style.setProperty('--muted', '#aeb8c6');
+    root.style.setProperty('--bg', '#070b10');
+    root.style.setProperty('--surface', '#111821');
+    root.style.setProperty('--surface2', '#1a2430');
+    root.style.setProperty('--soft', '#15202b');
+    root.style.setProperty('--border', '#334155');
+    root.style.setProperty('--text', '#f8fafc');
+    root.style.setProperty('--muted', '#cbd5e1');
   } else {
     root.style.setProperty('--bg', '#f5f5f0');
     root.style.setProperty('--surface', '#ffffff');
@@ -18777,12 +18777,84 @@ function correctionSourceLabel(type) {
     sale_payment: "Pagamento venda",
     purchase_payment: "Pagamento compra",
     expense: "Despesa",
-    client_payment: "Pagamento client",
+    client_payment: "Pagamento cliente",
     supplier_payment: "Pagamento fornecedor",
     reseller_payment: "Pagamento revendedor"
   };
 
   return map[type] || type;
+}
+
+function openCorrectionConfirmDialog(sourceType) {
+  return new Promise(function(resolve) {
+    var existing = document.getElementById("correctionConfirmOverlay");
+    if (existing) existing.remove();
+
+    var isPurchaseItem = sourceType === "purchase_item";
+    var overlay = document.createElement("div");
+    overlay.id = "correctionConfirmOverlay";
+    overlay.className = "correction-confirm-overlay";
+    overlay.innerHTML =
+      '<div class="correction-confirm-card" role="dialog" aria-modal="true">' +
+        '<div class="correction-confirm-icon">!</div>' +
+        '<div class="eyebrow">Confirmacao</div>' +
+        '<h3>' + (isPurchaseItem ? "Corrigir este produto comprado?" : "Anular este movimento?") + '</h3>' +
+        '<p>' + (isPurchaseItem
+          ? "O stock, o total da compra e os saldos relacionados serao ajustados de forma controlada."
+          : "A operacao antiga nao sera apagada. O sistema vai criar uma correcao auditada para manter o historico limpo.") + '</p>' +
+        '<label>Motivo da correcao</label>' +
+        '<textarea id="correctionReasonInput" rows="3" placeholder="Ex: quantidade errada, preco errado, pagamento duplicado..."></textarea>' +
+        '<div class="correction-confirm-actions">' +
+          '<button type="button" class="ghost" id="correctionCancelDialogBtn">Cancelar</button>' +
+          '<button type="button" class="primary" id="correctionConfirmDialogBtn">Confirmar correcao</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    var input = document.getElementById("correctionReasonInput");
+    var cancelBtn = document.getElementById("correctionCancelDialogBtn");
+    var confirmBtn = document.getElementById("correctionConfirmDialogBtn");
+
+    function close(value) {
+      overlay.remove();
+      resolve(value);
+    }
+
+    cancelBtn.onclick = function() { close(null); };
+    overlay.onclick = function(event) {
+      if (event.target === overlay) close(null);
+    };
+    confirmBtn.onclick = function() {
+      var reason = String(input.value || "").trim();
+      if (!reason) {
+        toast("Escreve o motivo da correcao.", "error");
+        input.focus();
+        return;
+      }
+      close(reason);
+    };
+
+    setTimeout(function() { input.focus(); }, 30);
+  });
+}
+
+function startCorrectionButtonLoading(button) {
+  if (!button) return null;
+  var ctx = { button: button, html: button.innerHTML, disabled: button.disabled };
+  button.disabled = true;
+  button.classList.add("is-processing");
+  button.innerHTML = '<span class="correction-spinner"></span><span>A corrigir...</span>';
+  showActionToast("A corrigir movimento...");
+  return ctx;
+}
+
+function stopCorrectionButtonLoading(ctx) {
+  if (!ctx || !ctx.button) return;
+  ctx.button.innerHTML = ctx.html;
+  ctx.button.disabled = ctx.disabled;
+  ctx.button.classList.remove("is-processing");
+  hideActionToast();
 }
 
 function parseCorrectionPaymentLines(lines) {
@@ -18846,7 +18918,7 @@ async function getCorrectionLogsForRows(rows) {
       logs[String(log.source_type) + ":" + String(log.source_id)] = log;
     });
   } catch (e) {
-    console.warn("Corrections log indisponible:", e);
+    console.warn("Registo de correcoes indisponivel:", e);
   }
 
   return logs;
@@ -18878,7 +18950,7 @@ async function insertCorrectionLog(sourceType, sourceId, correctionType, correct
       }
     });
   } catch (e) {
-    console.warn("Correction log non enregistre:", e);
+    console.warn("Registo de correcao nao gravado:", e);
   }
 }
 
@@ -19231,25 +19303,13 @@ async function loadCorrections() {
   }
 }
 
-async function confirmCorrectionCancel(sourceType, id) {
+async function confirmCorrectionCancel(sourceType, id, button) {
   if (!requireAzulAction("correction:create", "corrigir movimentos")) return;
 
-  var reason = prompt("Por que deseja anular este movimento?");
-
+  var reason = await openCorrectionConfirmDialog(sourceType);
   if (reason === null) return;
-  reason = String(reason || "").trim();
 
-  if (!reason) {
-    toast("Ajoute une raison pour la correction.", "error");
-    return;
-  }
-
-  var confirmText = sourceType === "purchase_item"
-    ? "Confirmar correcao deste produto comprado? O stock e o total da compra serao ajustados."
-    : "Confirmar anulacao controlada?";
-
-  if (!confirm(confirmText)) return;
-
+  var loadingCtx = startCorrectionButtonLoading(button);
   try {
     if (sourceType === "sale") await cancelSaleWithCorrection(id, reason);
     else if (sourceType === "purchase") await cancelPurchaseWithCorrection(id, reason);
@@ -19260,15 +19320,17 @@ async function confirmCorrectionCancel(sourceType, id) {
     else if (sourceType === "client_payment") await cancelClientPaymentWithCorrection(id, reason);
     else if (sourceType === "supplier_payment") await cancelSupplierPaymentWithCorrection(id, reason);
     else if (sourceType === "reseller_payment") await cancelResellerPaymentWithCorrection(id, reason);
-    else throw new Error("Type de correction inconnu.");
+    else throw new Error("Tipo de correcao desconhecido.");
 
-    toast("Correction enregistree.", "success");
+    toast("Correcao registada com sucesso.", "success");
     await loadProducts(true);
     loadCorrections();
     loadDashboard();
   } catch (e) {
     console.error("Erro correcao:", e);
     toast("Erro correcao: " + (e.message || e), "error");
+  } finally {
+    stopCorrectionButtonLoading(loadingCtx);
   }
 }
 
@@ -19972,7 +20034,7 @@ document.addEventListener("click", function(event) {
   var button = event.target.closest("[data-correction-type][data-correction-id]");
   if (!button || button.disabled) return;
   event.preventDefault();
-  confirmCorrectionCancel(button.getAttribute("data-correction-type"), button.getAttribute("data-correction-id"));
+  confirmCorrectionCancel(button.getAttribute("data-correction-type"), button.getAttribute("data-correction-id"), button);
 });
 
 // ===== UTILS =====
