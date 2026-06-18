@@ -1181,15 +1181,40 @@ var AZUL_CONTEXT_HELP = {
     title: "Importacoes",
     subtitle: "Modulo para seguir compras internacionais desde o pedido ate a conferencia em Angola.",
     main: [
-      "Registe cada encomenda com fornecedor, tracking, data prevista, frete e produtos pedidos.",
-      "Actualize o estado conforme a mercadoria passa por producao, transito, alfandega e chegada.",
-      "Na conferencia, informe quantidades recebidas, danificadas e em falta antes de enviar ao stock."
+      "Use este modulo quando a mercadoria ainda nao chegou a loja. Ele serve para acompanhar a encomenda sem misturar com o stock real.",
+      "A importacao passa por tres momentos: registar a encomenda, acompanhar o transporte e conferir a mercadoria quando chegar.",
+      "So depois da conferencia e validacao os produtos bons entram no stock."
+    ],
+    steps: [
+      "1. Em Nova importacao, escreva os dados gerais da encomenda: fornecedor, pais, transportadora, tracking e previsao de chegada.",
+      "2. Adicione cada produto encomendado com nome, codigo, categoria, variacao, quantidade, preco de compra e preco de venda.",
+      "3. Guarde a importacao. Ela fica em Acompanhamento para poder mudar o estado quando houver novidades.",
+      "4. Quando a mercadoria chegar, abra Conferencia e conte produto por produto.",
+      "5. Preencha recebido, danificado e em falta. Se tudo estiver certo, clique em Validar e enviar ao stock."
+    ],
+    fields: [
+      "Fornecedor: quem vendeu a mercadoria. Exemplo: Fabrica China, Loja Guangzhou, Fornecedor Adidas.",
+      "Pais de origem: onde a mercadoria saiu. Ajuda a saber a rota e comparar prazos.",
+      "Agente / despachante: pessoa ou empresa que ajuda na entrega ou alfandega. Pode ficar vazio.",
+      "Transportadora: navio, aviao, camiao, DHL, agente privado ou outro meio usado.",
+      "Tracking: codigo de rastreio. Se nao existir, escreva uma referencia interna.",
+      "Data da encomenda: dia em que fez o pedido ao fornecedor.",
+      "Previsao de chegada: data esperada para a mercadoria chegar. O Azul usa isso para alertas.",
+      "Frete, alfandega e outros custos: custos extra da importacao. Preencha 0 se ainda nao souber.",
+      "Produto: nome claro do artigo. Exemplo: Tenis Nike Air Force Branco.",
+      "Codigo: referencia, SKU ou codigo de barras. Ajuda muito quando ha muitos produtos.",
+      "Variacao: tamanho, cor ou modelo. Exemplo: 40 branco, M preto, 128GB azul.",
+      "Qtd: quantidade encomendada. Na conferencia voce confirma quanto chegou realmente.",
+      "P. compra: quanto custou cada unidade ao comprar.",
+      "P. venda: preco que deseja vender ao cliente."
     ],
     care: [
-      "So valide a importacao quando a contagem fisica estiver confirmada.",
-      "Produtos danificados ou em falta devem ficar registados para negociar com o fornecedor."
+      "Nao valide a importacao antes da mercadoria chegar. Validar aumenta o stock.",
+      "Se houver produtos danificados ou em falta, registe isso na conferencia antes de enviar ao stock.",
+      "Se ainda nao sabe frete ou alfandega, pode guardar com 0 e actualizar depois.",
+      "Use sempre nomes e codigos consistentes para evitar produtos duplicados."
     ],
-    tip: "Use Importacoes para saber o que ainda esta a caminho e evitar misturar mercadoria nao conferida com o stock real."
+    tip: "Regra simples: encomenda que ainda esta a caminho fica em Importacoes; mercadoria ja contada e aprovada entra no stock."
   },
   settings: {
     title: "Definicoes",
@@ -1209,15 +1234,34 @@ var AZUL_CONTEXT_HELP = {
     title: "Importacao",
     subtitle: "Modulo para importar compras, vendas e despesas via CSV modelo.",
     main: [
-      "Baixe sempre o modelo CSV antes de preencher dados.",
-      "Verifique a pre-visualizacao antes de importar.",
-      "Grandes importacoes devem ser feitas por tipo: compras, depois vendas, depois despesas."
+      "Use este modulo para carregar dados antigos ou muitos registos de uma so vez.",
+      "O Azul trabalha com modelos CSV para evitar erro de colunas.",
+      "Existem tres importacoes separadas: compras, vendas e despesas."
+    ],
+    steps: [
+      "1. Escolha o separador certo: Compras, Vendas ou Despesas.",
+      "2. Clique em Baixar modelo CSV.",
+      "3. Abra o ficheiro no Excel ou Google Sheets e preencha sem mudar o nome das colunas.",
+      "4. Guarde ou baixe novamente como CSV.",
+      "5. Clique em Escolher ficheiro CSV e confira a pre-visualizacao.",
+      "6. Se os valores estiverem certos, clique em Importar."
+    ],
+    fields: [
+      "Compras: cria produtos, actualiza stock e cria fornecedores quando necessario.",
+      "Vendas: cria historico de vendas antigas. Se houver credito, cria divida do cliente.",
+      "Despesas: cria historico de gastos e actualiza os relatorios.",
+      "Data: use sempre o formato ano-mes-dia quando possivel. Exemplo: 2026-06-18.",
+      "Quantidade e valores: use apenas numeros. Evite escrever Kz dentro das celulas.",
+      "Foto: pode ser link ou base64. Se nao tiver imagem, deixe vazio.",
+      "Numero do recibo: nas vendas, pode deixar vazio para o Azul gerar automaticamente."
     ],
     care: [
-      "Evite alterar os nomes das colunas do modelo.",
-      "Duplicados podem ser rejeitados conforme as regras do importador."
+      "Nao altere os nomes das colunas. Se mudar uma coluna, o Azul pode nao reconhecer o ficheiro.",
+      "Importe primeiro compras, depois vendas, depois despesas. Assim o stock e historico ficam mais coerentes.",
+      "Teste com 3 a 5 linhas antes de importar ficheiros grandes.",
+      "Duplicados podem ser ignorados para proteger os dados ja existentes."
     ],
-    tip: "Teste primeiro com poucas linhas antes de importar ficheiros grandes."
+    tip: "Para um primeiro teste, use poucos produtos reais. Se a pre-visualizacao estiver correcta, entao importe o ficheiro completo."
   }
 };
 
@@ -1260,6 +1304,8 @@ function renderContextHelp(pageKey) {
 
   body.innerHTML =
     section("Como usar", data.main) +
+    section("Passo a passo", data.steps) +
+    section("Campos importantes", data.fields) +
     section("Atencao", data.care) +
     '<div class="context-help-tip"><strong>Dica rapida</strong>' + escapeDespesaHtml(data.tip || "") + '</div>';
 }
