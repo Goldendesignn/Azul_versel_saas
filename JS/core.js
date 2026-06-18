@@ -18760,6 +18760,20 @@ function switchImportTab(tab) {
 
 var correctionCurrentType = "sale";
 var correctionSearchTimer = null;
+var correctionFetchWarnings = [];
+var CORRECTION_FETCH_LIMIT = 1000;
+
+function getCorrectionDate(row, preferredField) {
+  row = row || {};
+  return String(row[preferredField] || row.created_at || row.sale_date || row.payment_date || row.expense_date || row.consignment_date || "").slice(0, 10);
+}
+
+function correctionTextMatches(search, parts) {
+  if (!search) return true;
+  return (parts || []).map(function(part) {
+    return String(part === null || part === undefined ? "" : part);
+  }).join(" ").toLowerCase().indexOf(search) >= 0;
+}
 
 function correctionToday() {
   return new Date().toISOString().split("T")[0];
@@ -18877,6 +18891,7 @@ async function fetchCorrectionRowsSafely(label, loader) {
     return await loader();
   } catch (e) {
     console.warn("Correcoes pagamento indisponivel (" + label + "):", e);
+    correctionFetchWarnings.push(label);
     return [];
   }
 }
@@ -18957,6 +18972,7 @@ async function insertCorrectionLog(sourceType, sourceId, correctionType, correct
 async function fetchCorrectionsRows(type, search) {
   var organizationId = getAzulOrganizationId();
   search = String(search || "").trim().toLowerCase();
+  correctionFetchWarnings = [];
 
   if (type === "sale") {
     var salesResult = await supabaseClient
@@ -18964,22 +18980,21 @@ async function fetchCorrectionsRows(type, search) {
       .select("*")
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(CORRECTION_FETCH_LIMIT);
 
     if (salesResult.error) throw salesResult.error;
 
     return (salesResult.data || []).filter(function(row) {
-      var text = [row.receipt_no, row.client_name, row.payment_summary, row.sale_type].join(" ").toLowerCase();
       return String(row.sale_type || "").toLowerCase() !== "correction" &&
         String(row.receipt_no || "").indexOf("ANN-") !== 0 &&
-        (!search || text.indexOf(search) >= 0);
+        correctionTextMatches(search, [row.receipt_no, row.client_name, row.payment_summary, row.sale_type, row.total, row.user_name, row.created_by]);
     }).map(function(row) {
       return {
         id: row.id,
         sourceType: "sale",
         title: "Venda " + (row.receipt_no || "-"),
         subtitle: (row.client_name || "Anonimo") + " - " + (row.sale_type || "interno"),
-        date: row.sale_date || String(row.created_at || "").slice(0, 10),
+        date: getCorrectionDate(row, "sale_date"),
         amount: Number(row.total) || 0,
         raw: row
       };
@@ -18992,7 +19007,7 @@ async function fetchCorrectionsRows(type, search) {
       .select("*")
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(CORRECTION_FETCH_LIMIT);
 
     if (purchasesResult.error) throw purchasesResult.error;
 
@@ -19013,7 +19028,7 @@ async function fetchCorrectionsRows(type, search) {
       var purchase = purchaseById[item.purchase_id] || {};
       var quantity = Number(item.quantity) || 0;
       var corrected = !!item.corrected_at;
-      var text = [
+      var textParts = [
         item.product_name,
         item.code,
         item.variation,
@@ -19023,11 +19038,11 @@ async function fetchCorrectionsRows(type, search) {
         quantity,
         item.purchase_price,
         item.sale_price
-      ].join(" ").toLowerCase();
+      ];
 
       return !corrected &&
         quantity > 0 &&
-        (!search || text.indexOf(search) >= 0);
+        correctionTextMatches(search, textParts);
     }).map(function(item) {
       var purchase = purchaseById[item.purchase_id] || {};
       var quantity = Number(item.quantity) || 0;
@@ -19042,7 +19057,7 @@ async function fetchCorrectionsRows(type, search) {
           " - Qtd " + quantity +
           " - Compra " + fmt(purchasePrice) +
           " - Venda " + fmt(salePrice),
-        date: String(item.created_at || purchase.created_at || "").slice(0, 10),
+        date: getCorrectionDate(item, "created_at") || getCorrectionDate(purchase, "created_at"),
         amount: quantity * purchasePrice,
         raw: Object.assign({}, item, { purchase: purchase })
       };
@@ -19056,21 +19071,28 @@ async function fetchCorrectionsRows(type, search) {
       .eq("organization_id", organizationId)
       .order("expense_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(CORRECTION_FETCH_LIMIT);
 
     if (expensesResult.error) throw expensesResult.error;
 
     return (expensesResult.data || []).filter(function(row) {
-      var text = [row.category, row.description, row.amount].join(" ").toLowerCase();
       return String(row.category || "").indexOf("Anulacao - ") !== 0 &&
-        (!search || text.indexOf(search) >= 0);
+        correctionTextMatches(search, [
+          row.category,
+          row.description,
+          row.amount,
+          row.expense_date,
+          row.created_at,
+          row.user_name,
+          row.created_by
+        ]);
     }).map(function(row) {
       return {
         id: row.id,
         sourceType: "expense",
         title: row.category || "Despesa",
         subtitle: row.description || "Sem descricao",
-        date: row.expense_date || String(row.created_at || "").slice(0, 10),
+        date: getCorrectionDate(row, "expense_date"),
         amount: Number(row.amount) || 0,
         raw: row
       };
@@ -19086,19 +19108,17 @@ async function fetchCorrectionsRows(type, search) {
       .eq("organization_id", organizationId)
       .order("sale_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(CORRECTION_FETCH_LIMIT);
 
     if (salesResult.error) throw salesResult.error;
 
     return (salesResult.data || []).filter(function(row) {
       var paymentLines = parseCorrectionPaymentLines(row.payment_lines);
       var paid = getCashInAmountFromPaymentLines(paymentLines, row.total);
-      var text = [row.receipt_no, row.client_name, row.payment_summary, row.sale_type].join(" ").toLowerCase();
-
       return paid > 0 &&
         String(row.sale_type || "").toLowerCase() !== "correction" &&
         String(row.receipt_no || "").indexOf("ANN-") !== 0 &&
-        (!search || text.indexOf(search) >= 0);
+        correctionTextMatches(search, [row.receipt_no, row.client_name, row.payment_summary, row.sale_type, paid, row.total, row.user_name, row.created_by]);
     }).map(function(row) {
       var paymentLines = parseCorrectionPaymentLines(row.payment_lines);
       var paid = getCashInAmountFromPaymentLines(paymentLines, row.total);
@@ -19108,7 +19128,7 @@ async function fetchCorrectionsRows(type, search) {
         sourceType: "sale_payment",
         title: "Pagamento venda " + (row.receipt_no || "-"),
         subtitle: (row.client_name || "Anonimo") + " - " + (row.payment_summary || "Pagamento directo"),
-        date: row.sale_date || String(row.created_at || "").slice(0, 10),
+        date: getCorrectionDate(row, "sale_date"),
         amount: paid,
         raw: row
       };
@@ -19122,21 +19142,20 @@ async function fetchCorrectionsRows(type, search) {
       .eq("organization_id", organizationId)
       .gt("paid_amount", 0)
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(CORRECTION_FETCH_LIMIT);
 
     if (purchasesResult.error) throw purchasesResult.error;
 
     return (purchasesResult.data || []).filter(function(row) {
-      var text = [row.supplier, row.total, row.paid_amount, row.remaining_amount].join(" ").toLowerCase();
       return String(row.supplier || "").indexOf("Anulacao - ") !== 0 &&
-        (!search || text.indexOf(search) >= 0);
+        correctionTextMatches(search, [row.supplier, row.total, row.paid_amount, row.remaining_amount, row.created_at, row.user_name, row.created_by]);
     }).map(function(row) {
       return {
         id: row.id,
         sourceType: "purchase_payment",
         title: "Pagamento compra",
         subtitle: row.supplier || "Fornecedor",
-        date: String(row.created_at || "").slice(0, 10),
+        date: getCorrectionDate(row, "created_at"),
         amount: Number(row.paid_amount) || 0,
         raw: row
       };
@@ -19151,17 +19170,19 @@ async function fetchCorrectionsRows(type, search) {
       .gt("amount", 0)
       .order("payment_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(CORRECTION_FETCH_LIMIT);
 
     if (clientPaymentsResult.error) throw clientPaymentsResult.error;
 
-    return (clientPaymentsResult.data || []).map(function(row) {
+    return (clientPaymentsResult.data || []).filter(function(row) {
+      return correctionTextMatches(search, [row.client_name, row.amount, row.note, row.payment_date, row.created_at, row.user_name, row.created_by]);
+    }).map(function(row) {
       return {
         id: row.id,
         sourceType: "client_payment",
         title: "Pagamento cliente",
         subtitle: row.client_name || "Cliente",
-        date: row.payment_date || String(row.created_at || "").slice(0, 10),
+        date: getCorrectionDate(row, "payment_date"),
         amount: Number(row.amount) || 0,
         raw: row
       };
@@ -19176,17 +19197,19 @@ async function fetchCorrectionsRows(type, search) {
       .gt("amount", 0)
       .order("payment_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(CORRECTION_FETCH_LIMIT);
 
     if (supplierPaymentsResult.error) throw supplierPaymentsResult.error;
 
-    return (supplierPaymentsResult.data || []).map(function(row) {
+    return (supplierPaymentsResult.data || []).filter(function(row) {
+      return correctionTextMatches(search, [row.supplier, row.amount, row.note, row.payment_date, row.created_at, row.user_name, row.created_by]);
+    }).map(function(row) {
       return {
         id: row.id,
         sourceType: "supplier_payment",
         title: "Pagamento fornecedor",
         subtitle: row.supplier || "Fornecedor",
-        date: row.payment_date || String(row.created_at || "").slice(0, 10),
+        date: getCorrectionDate(row, "payment_date"),
         amount: Number(row.amount) || 0,
         raw: row
       };
@@ -19201,17 +19224,19 @@ async function fetchCorrectionsRows(type, search) {
       .gt("paid_amount", 0)
       .order("consignment_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(80);
+      .limit(CORRECTION_FETCH_LIMIT);
 
     if (resellerResult.error) throw resellerResult.error;
 
-    return (resellerResult.data || []).map(function(row) {
+    return (resellerResult.data || []).filter(function(row) {
+      return correctionTextMatches(search, [row.reseller_name, row.consignment_no, row.paid_amount, row.payment_summary, row.consignment_date, row.created_at, row.user_name, row.created_by]);
+    }).map(function(row) {
       return {
         id: row.id,
         sourceType: "reseller_payment",
         title: "Pagamento revendedor",
         subtitle: (row.reseller_name || "Revendedor") + " - " + (row.consignment_no || ""),
-        date: row.consignment_date || String(row.created_at || "").slice(0, 10),
+        date: getCorrectionDate(row, "consignment_date"),
         amount: Number(row.paid_amount) || 0,
         raw: row
       };
@@ -19269,7 +19294,10 @@ async function loadCorrections() {
     var logs = await getCorrectionLogsForRows(rows);
 
     if (!rows.length) {
-      list.innerHTML = '<div class="empty">Nenhum movimento encontrado.</div>';
+      var warningText = correctionFetchWarnings.length
+        ? '<br><small>Algumas fontes nao responderam: ' + correctionSafe(correctionFetchWarnings.join(", ")) + '. Atualiza a pagina e tenta novamente.</small>'
+        : '';
+      list.innerHTML = '<div class="empty">Nenhum movimento encontrado.' + warningText + '</div>';
       return;
     }
 
