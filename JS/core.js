@@ -10514,9 +10514,9 @@ function renderCart() {
           '<button class="ci-del" onclick="removeItem(' + i + ')">x</button>' +
         '</div>' +
         '<div class="cart-item-main">' +
-          '<div style="display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 6px;">' +
+          '<div class="qty-ctrl">' +
             '<button class="qbtn" style="background:none;width:18px;height:18px;" onclick="chgQty(' + i + ',-1)">-</button>' +
-            '<span class="qnum">' + item.qty + '</span>' +
+            '<input class="qnum cart-qty-input" type="number" min="1" step="1" inputmode="numeric" value="' + (item.qty || 1) + '" onclick="event.stopPropagation();" onchange="setCartQty(' + i + ', this.value)" onkeydown="if(event.keyCode===13){this.blur();}">' +
             '<button class="qbtn" style="background:none;width:18px;height:18px;" onclick="chgQty(' + i + ',1)">+</button>' +
           '</div>' +
           '<input type="number" class="ci-price-input" placeholder="' + getText('sale_price_placeholder') + '" value="' + (item.price||'') + '" min="0" onchange="updatePrice(' + i + ', this.value)" oninput="updatePrice(' + i + ', this.value)">' +
@@ -10537,7 +10537,8 @@ function renderCart() {
 }
 
 function chgQty(i, d) {
-  var newQty = cart[i].qty + d;
+  if (!cart[i]) return;
+  var newQty = (Number(cart[i].qty) || 0) + d;
 
   if (newQty <= 0) {
     cart.splice(i, 1);
@@ -10546,6 +10547,27 @@ function chgQty(i, d) {
   }
 
   cart[i].qty = newQty;
+  renderCart();
+}
+
+function setCartQty(i, value) {
+  if (!cart[i]) return;
+
+  var raw = String(value == null ? "" : value).trim().replace(",", ".");
+  var qty = Math.floor(Number(raw));
+
+  if (!raw || !isFinite(qty)) {
+    renderCart();
+    return;
+  }
+
+  if (qty <= 0) {
+    cart.splice(i, 1);
+    renderCart();
+    return;
+  }
+
+  cart[i].qty = qty;
   renderCart();
 }
 
@@ -12070,7 +12092,7 @@ function renderMobileCartPage() {
             '<button class="mobile-cart-delete" onclick="removeItem(' + index + '); renderMobileCartPage(); event.stopPropagation();">x</button>' +
             '<div class="mobile-cart-qty">' +
               '<button onclick="chgQty(' + index + ', -1); renderMobileCartPage(); event.stopPropagation();">-</button>' +
-              '<span>' + item.qty + '</span>' +
+              '<input class="mobile-cart-qty-input" type="number" min="1" step="1" inputmode="numeric" value="' + (item.qty || 1) + '" onclick="event.stopPropagation();" onchange="setCartQty(' + index + ', this.value); renderMobileCartPage();" onkeydown="if(event.keyCode===13){this.blur();}">' +
               '<button onclick="chgQty(' + index + ', 1); renderMobileCartPage(); event.stopPropagation();">+</button>' +
             '</div>' +
           '</div>' +

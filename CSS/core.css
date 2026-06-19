@@ -3350,7 +3350,16 @@ button.az-icon-button,
   -webkit-box-orient: vertical;
 }
 .ci-price { font-size: 10px; color: var(--muted); }
-.qty-ctrl { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.qty-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
 .qbtn {
   width: 22px; height: 22px;
   background: var(--border); border: none; border-radius: 4px;
@@ -3360,6 +3369,24 @@ button.az-icon-button,
 }
 .qbtn:hover { background: var(--blue); color: var(--accent-text); }
 .qnum { font-size: 12px; width: 18px; text-align: center; }
+.cart-qty-input {
+  width: 44px;
+  min-width: 44px;
+  height: 24px;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+  appearance: textfield;
+}
+.cart-qty-input::-webkit-outer-spin-button,
+.cart-qty-input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
 .ci-total {
   font-size: 12px;
   color: var(--blue);
@@ -5838,6 +5865,26 @@ html[data-theme="dark"] .sales-analytics-card {
     font-weight: 900;
     min-width: 18px;
     text-align: center;
+  }
+
+  .mobile-cart-qty-input {
+    width: 58px;
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 900;
+    text-align: center;
+    outline: none;
+    appearance: textfield;
+  }
+
+  .mobile-cart-qty-input::-webkit-outer-spin-button,
+  .mobile-cart-qty-input::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
   }
 
   .mobile-payment-card,
@@ -9523,6 +9570,7 @@ html[data-erp-locked="1"] body > :not(#erpLockOverlay) {
   }
 
   .mobile-cart-qty button,
+  .mobile-cart-qty-input,
   .mobile-add-pay {
     background: var(--surface2) !important;
   }
