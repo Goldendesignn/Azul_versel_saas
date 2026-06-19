@@ -12113,6 +12113,44 @@ function getReceiptQrTarget() {
   return "";
 }
 
+function buildReceiptQrUrl(target, size, margin) {
+  target = String(target || "").trim();
+  if (!target) return "";
+  size = size || 180;
+  margin = margin || 8;
+  return "https://api.qrserver.com/v1/create-qr-code/?size=" + size + "x" + size + "&margin=" + margin + "&data=" + encodeURIComponent(target);
+}
+
+function syncReceiptSettingsFromForm() {
+  var nameEl = document.getElementById('cfg-name');
+  var sloganEl = document.getElementById('cfg-slogan');
+  var currencyEl = document.getElementById('cfg-currency');
+  if (nameEl) config.name = nameEl.value.trim() || config.name;
+  if (sloganEl) config.slogan = sloganEl.value.trim() || config.slogan;
+  if (currencyEl) config.currency = currencyEl.value || config.currency;
+  config.address = ((document.getElementById('cfg-address') || {}).value || '').trim();
+  config.phone = ((document.getElementById('cfg-phone') || {}).value || '').trim();
+  config.nif = ((document.getElementById('cfg-nif') || {}).value || '').trim();
+  config.footer = ((document.getElementById('cfg-footer') || {}).value || '').trim() || 'Obrigado pela sua preferencia!';
+  config.receiptFont = ((document.getElementById('cfg-font') || {}).value || config.receiptFont || 'DM Sans');
+  config.receiptFontSize = ((document.getElementById('cfg-font-size') || {}).value || config.receiptFontSize || '10');
+  config.receiptLogo = ((document.getElementById('cfg-logo-url') || {}).value || '').trim();
+  config.receiptLogoSize = ((document.getElementById('cfg-logo-size') || {}).value || config.receiptLogoSize || '16');
+  config.receiptQrMode = ((document.getElementById('cfg-receipt-qr-mode') || {}).value || 'none');
+  config.receiptQrLink = ((document.getElementById('cfg-receipt-qr-link') || {}).value || '').trim();
+  config.receiptQrPhone = ((document.getElementById('cfg-receipt-qr-phone') || {}).value || '').trim();
+  var showDate = document.getElementById('cfg-show-date');
+  var showClient = document.getElementById('cfg-show-client');
+  var showPayment = document.getElementById('cfg-show-payment');
+  var showRecibo = document.getElementById('cfg-show-recibo');
+  var showAddress = document.getElementById('cfg-show-address');
+  if (showDate) config.showDate = showDate.checked;
+  if (showClient) config.showClient = showClient.checked;
+  if (showPayment) config.showPayment = showPayment.checked;
+  if (showRecibo) config.showRecibo = showRecibo.checked;
+  if (showAddress) config.showAddress = showAddress.checked;
+}
+
 function syncReceiptQrFieldsVisibility() {
   var modeEl = document.getElementById("cfg-receipt-qr-mode");
   var mode = modeEl ? modeEl.value : "none";
@@ -12120,6 +12158,34 @@ function syncReceiptQrFieldsVisibility() {
   var phoneWrap = document.getElementById("cfg-receipt-qr-phone-wrap");
   if (linkWrap) linkWrap.style.display = mode === "link" ? "block" : "none";
   if (phoneWrap) phoneWrap.style.display = mode === "whatsapp" ? "block" : "none";
+}
+
+function getSampleReceiptData() {
+  var cur = window._currency || (config && config.currency) || 'Kz';
+  return {
+    recibo: 'AZ-EXEMPLO-001',
+    date: new Date().toISOString().split('T')[0],
+    client: 'Cliente exemplo',
+    pagamento: 'Cash: 5 000 ' + cur,
+    total: 5000,
+    items: [
+      { name: 'Produto exemplo', qty: 1, price: 3500, regularPrice: 3500 },
+      { name: 'Servico exemplo', qty: 1, price: 1500, regularPrice: 1500 }
+    ]
+  };
+}
+
+function previewReceiptFromSettings() {
+  syncReceiptSettingsFromForm();
+  applyConfig();
+  showReceipt(getSampleReceiptData());
+}
+
+function printReceiptFromSettings() {
+  previewReceiptFromSettings();
+  setTimeout(function() {
+    printReceipt();
+  }, 120);
 }
 
 function showReceipt(d) {
@@ -12166,7 +12232,8 @@ function showReceipt(d) {
   var qrTarget = getReceiptQrTarget();
   if (qrWrap && qrImg) {
     qrWrap.style.display = qrTarget ? 'block' : 'none';
-    qrImg.src = qrTarget ? "https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=" + encodeURIComponent(qrTarget) : "";
+    qrImg.src = qrTarget ? buildReceiptQrUrl(qrTarget, 180, 8) : "";
+    qrImg.setAttribute("data-qr-target", qrTarget || "");
     if (qrLabel) {
       qrLabel.textContent = (config && config.receiptQrMode) === "whatsapp"
         ? "Leia para falar no WhatsApp"
@@ -12180,13 +12247,18 @@ function showReceipt(d) {
   // Adresse et telephone
   var addrEl = document.getElementById('r-address-line');
   var phoneEl = document.getElementById('r-phone-line');
+  var nifEl = document.getElementById('r-nif-line');
   if (addrEl) {
-    addrEl.textContent = cfg.address || '';
+    addrEl.textContent = cfg.address ? ('Endereco: ' + cfg.address) : '';
     addrEl.style.display = cfg.address && cfg.showAddress !== false ? 'block' : 'none';
   }
   if (phoneEl) {
-    phoneEl.textContent = cfg.phone || '';
+    phoneEl.textContent = cfg.phone ? ('Telefone: ' + cfg.phone) : '';
     phoneEl.style.display = cfg.phone && cfg.showAddress !== false ? 'block' : 'none';
+  }
+  if (nifEl) {
+    nifEl.textContent = cfg.nif ? ('NIF: ' + cfg.nif) : '';
+    nifEl.style.display = cfg.nif && cfg.showAddress !== false ? 'block' : 'none';
   }
 
   // Cases a cocher - afficher/cacher les lignes
@@ -12212,11 +12284,17 @@ function closeReceipt() {
 }
 
 function printReceipt() {
-  var content = document.getElementById('receiptBox').innerHTML;
+  var receiptBox = document.getElementById('receiptBox');
+  if (!receiptBox) return;
+  var content = receiptBox.innerHTML;
   var textFont = (config && config.receiptFont) || 'DM Sans';
   var textSize = parseInt((config && config.receiptFontSize) || '10', 10);
   var logoSize = parseInt((config && config.receiptLogoSize) || '16', 10);
   var w = window.open('', '_blank', 'width=320,height=700');
+  if (!w) {
+    toast('O navegador bloqueou a janela de impressao.', 'error');
+    return;
+  }
   w.document.write('<!DOCTYPE html><html><head>' +
     '<meta charset="UTF-8">' +
     '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans&display=swap" rel="stylesheet">' +
@@ -12235,13 +12313,53 @@ function printReceipt() {
     '.r-table td:last-child { text-align:right; font-weight:700; }' +
     '.r-total { display:flex; justify-content:space-between; font-size:' + Math.max(textSize + 2, 11) + 'pt; font-weight:800; color:#000; margin-top:2mm; border-top:2px solid #000; padding-top:1mm; }' +
     '.r-qr { text-align:center; margin:3mm auto 1mm; color:#000; font-size:' + Math.max(textSize - 2, 7) + 'pt; font-weight:700; }' +
-    '.r-qr img { display:block; width:22mm; height:22mm; object-fit:contain; margin:0 auto 1mm; }' +
+    '.r-qr img { display:block; width:24mm; height:24mm; object-fit:contain; margin:0 auto 1mm; image-rendering:pixelated; }' +
     '.r-thanks { text-align:center; font-size:' + Math.max(textSize - 1, 8) + 'pt; color:#000; font-style:normal; font-weight:600; margin-top:3mm; }' +
     '.r-actions { display:none; }' +
-    '#r-address-line, #r-phone-line { font-size:' + Math.max(textSize - 1, 8) + 'pt; text-align:center; color:#000; font-weight:600; margin-bottom:1mm; }' +
+    '#r-address-line, #r-phone-line, #r-nif-line { font-size:' + Math.max(textSize - 1, 8) + 'pt; text-align:center; color:#000; font-weight:700; margin-bottom:1mm; }' +
     '</style></head><body>' + content + '</body></html>');
   w.document.close();
-  setTimeout(function() { w.print(); }, 600);
+  waitForReceiptPrintAssets(w, function() {
+    w.focus();
+    w.print();
+  });
+}
+
+function waitForReceiptPrintAssets(win, callback) {
+  var done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    callback();
+  }
+  try {
+    var doc = win.document;
+    var images = Array.prototype.slice.call(doc.images || []);
+    if (!images.length) {
+      setTimeout(finish, 150);
+      return;
+    }
+    var pending = images.length;
+    function oneDone() {
+      pending -= 1;
+      if (pending <= 0) setTimeout(finish, 150);
+    }
+    images.forEach(function(img) {
+      if (img.complete && img.naturalWidth > 0) {
+        oneDone();
+        return;
+      }
+      if (img.decode) {
+        img.decode().then(oneDone).catch(oneDone);
+      } else {
+        img.onload = oneDone;
+        img.onerror = oneDone;
+      }
+    });
+    setTimeout(finish, 3500);
+  } catch (e) {
+    setTimeout(finish, 700);
+  }
 }
 
 // ===== ACHAT =====
@@ -13306,6 +13424,7 @@ var config = {
   // Champs du recibo
   address: '',
   phone: '',
+  nif: '',
   receiptFont: 'DM Sans',
   receiptFontSize: '10',
   receiptLogo: '',
@@ -13911,26 +14030,7 @@ function applyPortugueseText() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Textos fixos aplicados apenas por configuracao/carregamento para evitar loops de UI.
 function saveAllSettings() {
-  config.name     = document.getElementById('cfg-name').value.trim() || config.name;
-  config.slogan   = document.getElementById('cfg-slogan').value.trim() || config.slogan;
-  config.currency = document.getElementById('cfg-currency').value;
-
-  // Champs du recibo
-  config.address     = document.getElementById('cfg-address').value.trim();
-  config.phone       = document.getElementById('cfg-phone').value.trim();
-  config.footer      = document.getElementById('cfg-footer').value.trim() || 'Obrigado pela sua preferencia!';
-  config.receiptFont = (document.getElementById('cfg-font') || {}).value || config.receiptFont || 'DM Sans';
-  config.receiptFontSize = (document.getElementById('cfg-font-size') || {}).value || config.receiptFontSize || '10';
-  config.receiptLogo = ((document.getElementById('cfg-logo-url') || {}).value || '').trim();
-  config.receiptLogoSize = (document.getElementById('cfg-logo-size') || {}).value || config.receiptLogoSize || '16';
-  config.receiptQrMode = ((document.getElementById('cfg-receipt-qr-mode') || {}).value || 'none');
-  config.receiptQrLink = ((document.getElementById('cfg-receipt-qr-link') || {}).value || '').trim();
-  config.receiptQrPhone = ((document.getElementById('cfg-receipt-qr-phone') || {}).value || '').trim();
-  config.showDate    = document.getElementById('cfg-show-date').checked;
-  config.showClient  = document.getElementById('cfg-show-client').checked;
-  config.showPayment = document.getElementById('cfg-show-payment').checked;
-  config.showRecibo  = document.getElementById('cfg-show-recibo').checked;
-  config.showAddress = document.getElementById('cfg-show-address').checked;
+  syncReceiptSettingsFromForm();
   var modeRadio   = document.querySelector('input[name="cfgStockMode"]:checked');
   if (modeRadio) {
     config.stockMode = modeRadio.value;
@@ -14132,6 +14232,8 @@ function applyConfig() {
   if (cfgAddr) cfgAddr.value = config.address || '';
   var cfgPhone = document.getElementById('cfg-phone');
   if (cfgPhone) cfgPhone.value = config.phone || '';
+  var cfgNif = document.getElementById('cfg-nif');
+  if (cfgNif) cfgNif.value = config.nif || '';
   var cfgFooter = document.getElementById('cfg-footer');
   if (cfgFooter) cfgFooter.value = config.footer || '';
   var cfgFont = document.getElementById('cfg-font');
@@ -14163,6 +14265,8 @@ function applyConfig() {
   if (cfgAddr) cfgAddr.value = config.address || '';
   var cfgPhone = document.getElementById('cfg-phone');
   if (cfgPhone) cfgPhone.value = config.phone || '';
+  var cfgNif = document.getElementById('cfg-nif');
+  if (cfgNif) cfgNif.value = config.nif || '';
   var cfgFooter = document.getElementById('cfg-footer');
   if (cfgFooter) cfgFooter.value = config.footer || '';
   var showFields = ['date','client','payment','recibo','address'];

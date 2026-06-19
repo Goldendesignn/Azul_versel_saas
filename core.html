@@ -2144,6 +2144,10 @@
               <input type="text" class="form-input" id="cfg-phone" placeholder="Ex: +244 923 000 000">
             </div>
             <div class="form-group">
+              <label class="form-label">NIF</label>
+              <input type="text" class="form-input" id="cfg-nif" placeholder="Ex: 5000000000">
+            </div>
+            <div class="form-group">
               <label class="form-label">Mensagem de rodape do recibo</label>
               <input type="text" class="form-input" id="cfg-footer" placeholder="Ex: Obrigado pela sua preferencia!">
             </div>
@@ -2224,6 +2228,10 @@
                   <input type="checkbox" id="cfg-show-address" checked> Endereco/Tel
                 </label>
               </div>
+            </div>
+            <div class="receipt-settings-actions">
+              <button type="button" class="receipt-preview-btn" onclick="previewReceiptFromSettings()">Previsualizar recibo</button>
+              <button type="button" class="receipt-print-btn" onclick="printReceiptFromSettings()">Imprimir teste</button>
             </div>
           </div>
         </div>
@@ -3360,6 +3368,7 @@
     <!-- Endereco e telefone - mostrados se estiverem preenchidos em Definicoes -->
     <div class="r-meta" id="r-address-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
     <div class="r-meta" id="r-phone-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
+    <div class="r-meta" id="r-nif-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
     <hr class="r-divider">
     <!-- Infos vente - affichees selon les cases cochees dans Definicoes -->
     <div class="r-meta" id="r-num-line">N Recibo: <b id="r-num"></b></div>

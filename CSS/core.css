@@ -3877,6 +3877,14 @@ button.az-icon-button,
 .r-divider { border: none; border-top: 1px dashed #bdbdbd; margin: 10px 0; }
 .r-meta { font-size: 11px; color: #000; font-weight: 600; margin-bottom: 4px; }
 .r-meta b { color: #000; font-weight: 700; }
+#r-address-line,
+#r-phone-line,
+#r-nif-line {
+  color: #000 !important;
+  font-family: inherit !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+}
 .r-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 10px 0; color: #000; }
 .r-table th { text-align: left; color: #000; font-weight: 700; padding-bottom: 5px; border-bottom: 1px solid #d0d0d0; }
 .r-table td { padding: 6px 0; border-bottom: 1px dotted #d9d9d9; color: #000; font-weight: 600; }
@@ -4083,6 +4091,31 @@ button.az-icon-button,
   padding: 9px 14px; background: #f0f0f0; color: #333;
   border: none; border-radius: 5px; cursor: pointer;
   font-family: 'DM Sans', sans-serif; font-size: 12px;
+}
+.receipt-settings-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.receipt-preview-btn,
+.receipt-print-btn {
+  min-height: 42px;
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.receipt-preview-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.receipt-print-btn {
+  background: var(--blue);
+  border: 1px solid var(--blue);
+  color: var(--accent-text);
 }
 
 /*  TOAST  */
