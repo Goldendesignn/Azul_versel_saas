@@ -9131,6 +9131,7 @@ var importOrders = [];
 var importCurrentTab = "new";
 var importSelectedOrderId = "";
 var importLoading = false;
+var importOrderSaving = false;
 
 function isImportOrdersTableMissing(error) {
   var msg = String(error && error.message ? error.message : error || "").toLowerCase();
@@ -9146,6 +9147,23 @@ function setImportStatus(message, isError) {
   if (!el) return;
   el.textContent = message || "";
   el.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function setImportOrderSaving(isSaving) {
+  var btn = document.getElementById("import-order-save-btn");
+  if (!btn) return;
+  btn.disabled = !!isSaving;
+  btn.classList.toggle("is-loading", !!isSaving);
+  btn.textContent = isSaving ? "A guardar..." : "Guardar importacao";
+}
+
+function getImportOrderErrorMessage(error) {
+  var raw = String(error && error.message ? error.message : error || "");
+  if (raw.indexOf("import_orders_org_order_no_unique") >= 0 || raw.toLowerCase().indexOf("duplicate key") >= 0) {
+    return "Esta referencia de importacao ja existe. Deixe o campo Numero vazio para gerar outro automaticamente ou escreva um numero diferente.";
+  }
+  if (isImportOrdersTableMissing(error)) return "Executa a migration import_orders_tracking no Supabase.";
+  return raw || "Erro desconhecido.";
 }
 
 function importNumber(value) {
@@ -9276,7 +9294,14 @@ function updateImportOrderTotal() {
 }
 
 async function saveImportOrder() {
+  if (importOrderSaving) {
+    setImportStatus("A importacao ja esta a ser guardada. Aguarde um momento.", false);
+    return;
+  }
   if (!requireAzulAction("import_order:create", "criar importacao")) return;
+  importOrderSaving = true;
+  setImportOrderSaving(true);
+  setImportStatus("A guardar importacao...", false);
   try {
     var organizationId = getAzulOrganizationId();
     if (!organizationId) throw new Error("Organizacao invalida. Entre novamente.");
@@ -9354,9 +9379,12 @@ async function saveImportOrder() {
     switchImportOrderTab("list", document.getElementById("import-tab-list"));
   } catch (e) {
     console.error("Erro importacao:", e);
-    var msg = isImportOrdersTableMissing(e) ? "Executa a migration import_orders_tracking no Supabase." : (e.message || e);
+    var msg = getImportOrderErrorMessage(e);
     setImportStatus(msg, true);
     toast("Erro importacao: " + msg, "error");
+  } finally {
+    importOrderSaving = false;
+    setImportOrderSaving(false);
   }
 }
 

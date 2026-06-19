@@ -2927,6 +2927,35 @@ button.az-icon-button,
   margin-top: 14px;
 }
 
+.import-orders-submit:disabled {
+  opacity: .78;
+  cursor: wait;
+}
+
+.import-orders-submit.is-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.import-orders-submit.is-loading::after {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 10px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 999px;
+  vertical-align: -2px;
+  animation: azulSpin .75s linear infinite;
+}
+
+@keyframes azulSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .import-orders-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
