@@ -12714,7 +12714,7 @@ function renderCompraLines() {
       '</td>' +
       //Supprimer 
       '<td style="text-align:center;">' +
-        '<button onclick="removeCompraLine(' + i + ')" class="achat-remove-btn">Supprimer</button>' +
+        '<button onclick="removeCompraLine(' + i + ')" class="achat-remove-btn">X</button>' +
       '</td>';
 
     tbody.appendChild(tr);
