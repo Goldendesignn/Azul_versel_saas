@@ -4538,7 +4538,7 @@ function mockData(fn) {
     byCategory: [
       { category: 'renda', total: 12000 },
       { category: 'transporte', total: 9500 },
-      { category: 'Electricite', total: 6000 },
+      { category: 'Electricidade', total: 6000 },
       { category: 'Outro', total: 4000 }
     ],
     byDay: [
@@ -4552,7 +4552,7 @@ function mockData(fn) {
   if (fn === 'getHistoriqueDespesas') return [
     { date: '17/04/2026', category: 'transporte', description: 'Taxi fornecedor', amount: 5000 },
     { date: '16/04/2026', category: 'renda', description: 'Part du local', amount: 12000 },
-    { date: '15/04/2026', category: 'Electricite', description: 'Recharge compteur', amount: 6000 },
+    { date: '15/04/2026', category: 'Electricidade', description: 'Recharge compteur', amount: 6000 },
     { date: '14/04/2026', category: 'Outro', description: 'Eau', amount: 4000 }
   ];
   if (fn === 'confirmerPagamentoConsignations') return { success:true, recibo:'CONS-TEST-001' };
@@ -14617,7 +14617,7 @@ function activarEdicao() {
 
 // ===== DEPENSES =====
 function getStoredDespesaCategorias() {
-  var defaults = ['renda', 'Electricite', 'transporte', 'salário', 'Outro'];
+  var defaults = ['renda', 'Electricidade', 'transporte', 'salário', 'Outro'];
   try {
     var raw = localStorage.getItem('depenseCategorias');
     if (!raw) return defaults.slice();
@@ -18897,7 +18897,7 @@ function downloadExpenseCsvTemplate() {
     "date,category,description,amount\n" +
     "2026-05-20,transporte,Taxi livraison,5000\n" +
     "2026-05-20,renda,renda loja,150000\n" +
-    "2026-05-20,Electricite,Facture energie,35000\n";
+    "2026-05-20,Electricidade,Facture energie,35000\n";
 
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   var url = URL.createObjectURL(blob);
