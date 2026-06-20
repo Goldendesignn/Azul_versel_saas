@@ -1239,11 +1239,11 @@ var AZUL_CONTEXT_HELP = {
     subtitle: "Modulo para seguir compras internacionais desde o pedido ate a conferencia em Angola.",
     main: [
       "Use este modulo quando a mercadoria ainda nao chegou a loja. Ele serve para acompanhar a encomenda sem misturar com o stock real.",
-      "A importacao passa por tres momentos: registar a encomenda, acompanhar o transporte e conferir a mercadoria quando chegar.",
+      "A importacao passa por tres momentos: registar a encomenda, acompanhar o transportee e conferir a mercadoria quando chegar.",
       "So depois da conferencia e validacao os produtos bons entram no stock."
     ],
     steps: [
-      "1. Em Nova importacao, escreva os dados gerais da encomenda: fornecedor, pais, transportadora, tracking e previsao de chegada.",
+      "1. Em Nova importacao, escreva os dados gerais da encomenda: fornecedor, pais, transporteadora, tracking e previsao de chegada.",
       "2. Adicione cada produto encomendado com nome, codigo, categoria, variacao, quantidade, preco de compra e preco de venda.",
       "3. Guarde a importacao. Ela fica em Acompanhamento para poder mudar o estado quando houver novidades.",
       "4. Quando a mercadoria chegar, abra Conferencia e conte produto por produto.",
@@ -1253,13 +1253,13 @@ var AZUL_CONTEXT_HELP = {
       "Fornecedor: quem vendeu a mercadoria. Exemplo: Fabrica China, Loja Guangzhou, Fornecedor Adidas.",
       "Pais de origem: onde a mercadoria saiu. Ajuda a saber a rota e comparar prazos.",
       "Agente / despachante: pessoa ou empresa que trata do envio, retirada, documento ou desalfandegamento da mercadoria. Exemplo: Agente Joao China, Despachante Kilamba, Empresa XPTO Despachos. Se nao usou ninguem, deixe vazio.",
-      "Transportadora: navio, aviao, camiao, DHL, agente privado ou outro meio usado.",
+      "transporteadora: navio, aviao, camiao, DHL, agente privado ou outro meio usado.",
       "Tracking: codigo de rastreio. Se nao existir, escreva uma referencia interna.",
       "Data da encomenda: dia em que fez o pedido ao fornecedor.",
       "Previsao de chegada: data esperada para a mercadoria chegar. O Azul usa isso para alertas.",
-      "Frete: valor pago para transportar a mercadoria do pais de origem ate Angola ou ate ao teu agente. Exemplo: pagou 120 000 Kz pelo transporte China -> Luanda, coloque 120000.",
+      "Frete: valor pago para transportear a mercadoria do pais de origem ate Angola ou ate ao teu agente. Exemplo: pagou 120 000 Kz pelo transportee China -> Luanda, coloque 120000.",
       "Alfandega: valor pago para liberar a mercadoria na alfandega, incluindo direitos, taxas ou despacho. Exemplo: pagou 75 000 Kz para retirar a carga no aeroporto/porto, coloque 75000.",
-      "Outros custos: despesas extra ligadas a essa importacao que nao sao frete nem alfandega. Exemplo: motoqueiro, descarga, armazenagem, embalagem, gorjeta, transporte do aeroporto ate a loja. Se pagou 15 000 Kz de entrega ate a loja, coloque 15000.",
+      "Outros custos: despesas extra ligadas a essa importacao que nao sao frete nem alfandega. Exemplo: motoqueiro, descarga, armazenagem, embalagem, gorjeta, transportee do aeroporto ate a loja. Se pagou 15 000 Kz de entrega ate a loja, coloque 15000.",
       "Produto: nome claro do artigo. Exemplo: Tenis Nike Air Force Branco.",
       "Codigo: referencia, SKU ou codigo de barras. Ajuda muito quando ha muitos produtos.",
       "Variacao: tamanho, cor ou modelo. Exemplo: 40 branco, M preto, 128GB azul.",
@@ -1595,7 +1595,7 @@ var AZUL_ONBOARDING_STEPS = [
     icon: "depenses",
     page: "depenses",
     target: "#dep-panel-new",
-    intro: "Nas Despesas registas custos da loja como renda, transporte, salario, energia ou outras saidas de caixa.",
+    intro: "Nas Despesas registas custos da loja como renda, transportee, salario, energia ou outras saidas de caixa.",
     bullets: [
       "Escolhe a data e o tipo de despesa.",
       "Escreve uma descricao simples para reconhecer o gasto depois.",
@@ -4504,7 +4504,7 @@ function mockData(fn) {
     count: 4,
     entries: [
       {date:'03/04/2026', type:'Venda', desc:'Venda DUK-2604-0001 - Blazer', income:27000, expense:0, balance:128000},
-      {date:'03/04/2026', type:'Despesa', desc:'Transporte - Taxi', income:0, expense:5000, balance:101000},
+      {date:'03/04/2026', type:'Despesa', desc:'transportee - Taxi', income:0, expense:5000, balance:101000},
       {date:'02/04/2026', type:'Compra', desc:'Compra fornecedor Abah - costume', income:0, expense:45000, balance:106000},
       {date:'01/04/2026', type:'Entrada Manual', desc:'Capital initial', income:151000, expense:0, balance:151000}
     ]
@@ -4533,13 +4533,13 @@ function mockData(fn) {
     count: 5,
     average: 6300,
     max: 12000,
-    maxCategory: 'Loyer',
+    maxCategory: 'renda',
     todayTotal: 5000,
     byCategory: [
-      { category: 'Loyer', total: 12000 },
-      { category: 'Transport', total: 9500 },
+      { category: 'renda', total: 12000 },
+      { category: 'transporte', total: 9500 },
       { category: 'Electricite', total: 6000 },
-      { category: 'Autre', total: 4000 }
+      { category: 'Outro', total: 4000 }
     ],
     byDay: [
       { date: '13/04/2026', total: 4000 },
@@ -4550,10 +4550,10 @@ function mockData(fn) {
     ]
   };
   if (fn === 'getHistoriqueDespesas') return [
-    { date: '17/04/2026', category: 'Transport', description: 'Taxi fornecedor', amount: 5000 },
-    { date: '16/04/2026', category: 'Loyer', description: 'Part du local', amount: 12000 },
+    { date: '17/04/2026', category: 'transporte', description: 'Taxi fornecedor', amount: 5000 },
+    { date: '16/04/2026', category: 'renda', description: 'Part du local', amount: 12000 },
     { date: '15/04/2026', category: 'Electricite', description: 'Recharge compteur', amount: 6000 },
-    { date: '14/04/2026', category: 'Autre', description: 'Eau', amount: 4000 }
+    { date: '14/04/2026', category: 'Outro', description: 'Eau', amount: 4000 }
   ];
   if (fn === 'confirmerPagamentoConsignations') return { success:true, recibo:'CONS-TEST-001' };
   if (fn === 'retornarConsignacoes') return { success:true, count:2 };
@@ -14617,7 +14617,7 @@ function activarEdicao() {
 
 // ===== DEPENSES =====
 function getStoredDespesaCategorias() {
-  var defaults = ['Loyer', 'Electricite', 'Transport', 'Salaire', 'Autre'];
+  var defaults = ['renda', 'Electricite', 'transporte', 'salário', 'Outro'];
   try {
     var raw = localStorage.getItem('depenseCategorias');
     if (!raw) return defaults.slice();
@@ -14651,9 +14651,9 @@ function renderDespesaCategorias(selectedValue) {
     return '<option value="' + item.replace(/"/g, '&quot;') + '">' + item + '</option>';
   }
   if (select) {
-    var current = selectedValue || select.value || categories[0] || 'Autre';
+    var current = selectedValue || select.value || categories[0] || 'Outro';
     select.innerHTML = categories.map(optionHtml).join('');
-    select.value = categories.indexOf(current) >= 0 ? current : (categories[0] || 'Autre');
+    select.value = categories.indexOf(current) >= 0 ? current : (categories[0] || 'Outro');
   }
   var filterSelect = document.getElementById('dep-filter-category');
   if (filterSelect) {
@@ -14936,7 +14936,7 @@ async function saveExpenseToSupabase(data) {
   var result = await insertSingleWithAzulAudit("expenses", {
       organization_id: organizationId,
       expense_date: data.date || new Date().toISOString().split("T")[0],
-      category: data.tipo || data.category || "Autre",
+      category: data.tipo || data.category || "Outro",
       description: data.desc || "",
       amount: Number(data.montant) || 0
     });
@@ -14988,7 +14988,7 @@ async function getDespesaDashboardFromSupabase(filters) {
 
   rows.forEach(function(row) {
     var amount = Number(row.amount) || 0;
-    var category = row.category || "Autre";
+    var category = row.category || "Outro";
     var date = row.expense_date || "";
 
     if (amount > max) {
@@ -15384,7 +15384,7 @@ async function saveRhPayment() {
       var expenseResult = await insertSingleWithAzulAudit("expenses", {
         organization_id: getAzulOrganizationId(),
         expense_date: paymentDate,
-        category: paymentType === "advance" ? "Adiantamento salarial" : "Salaire",
+        category: paymentType === "advance" ? "Adiantamento salarial" : "salário",
         description: "RH - " + getRhPaymentTypeLabel(paymentType) + " - " + name + (note ? " - " + note : ""),
         amount: amount
       });
@@ -18895,8 +18895,8 @@ var expenseImportRunning = false;
 function downloadExpenseCsvTemplate() {
   var csv =
     "date,category,description,amount\n" +
-    "2026-05-20,Transport,Taxi livraison,5000\n" +
-    "2026-05-20,Loyer,Loyer loja,150000\n" +
+    "2026-05-20,transporte,Taxi livraison,5000\n" +
+    "2026-05-20,renda,renda loja,150000\n" +
     "2026-05-20,Electricite,Facture energie,35000\n";
 
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -18916,7 +18916,7 @@ function mapExpenseImportRow(row, index) {
   return {
     line: index + 2,
     date: normalizeImportDate(row.date),
-    category: String(row.category || "Autre").trim() || "Autre",
+    category: String(row.category || "Outro").trim() || "Outro",
     description: String(row.description || "").trim(),
     amount: parseImportNumber(row.amount),
     valid: true,
