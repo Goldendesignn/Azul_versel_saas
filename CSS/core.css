@@ -2308,6 +2308,7 @@ button.az-icon-button,
     font-size: 14px;
     color: var(--text);
     background: transparent;
+    justify-content: left;
   }
 
   .tab.active {
