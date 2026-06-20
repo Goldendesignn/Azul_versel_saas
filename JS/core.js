@@ -217,6 +217,7 @@ var azulNotificationsOpen = false;
 var azulNotificationsTimer = null;
 var azulPwaNotificationsReady = false;
 var azulNotificationsRealtimeChannel = null;
+var azulPwaAutoPermissionAsked = false;
 
 function canReceiveAzulNotifications() {
   var role = getAzulCurrentRole();
@@ -233,6 +234,26 @@ function getAzulVapidPublicKey() {
 
 function hasAzulVapidPublicKey() {
   return getAzulVapidPublicKey().length > 20;
+}
+
+function getAzulPwaAutoPromptKey() {
+  var organizationId = localStorage.getItem("azul_organization_id") || "global";
+  return "azul_pwa_auto_prompt_" + organizationId;
+}
+
+function shouldAutoAskAzulPwaPermission() {
+  if (!canReceiveAzulNotifications()) return false;
+  if (!supportsAzulPwaNotifications()) return false;
+  if (!hasAzulVapidPublicKey()) return false;
+  if (Notification.permission !== "default") return false;
+  if (azulPwaAutoPermissionAsked) return false;
+  if (sessionStorage.getItem(getAzulPwaAutoPromptKey()) === "1") return false;
+  return localStorage.getItem(getAzulPwaAutoPromptKey()) !== "1";
+}
+
+function isMissingPushSubscriptionConstraint(error) {
+  var message = String(error && (error.message || error.details || error.hint || "") || "").toLowerCase();
+  return message.indexOf("unique") >= 0 || message.indexOf("constraint") >= 0 || message.indexOf("on conflict") >= 0;
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -338,6 +359,37 @@ async function requestAzulPwaNotificationPermission() {
   }
 }
 
+async function autoEnableAzulPwaNotifications() {
+  if (!canReceiveAzulNotifications() || !supportsAzulPwaNotifications()) return;
+
+  if (Notification.permission === "granted") {
+    azulPwaNotificationsReady = true;
+    await registerAzulPushSubscription(false);
+    return;
+  }
+
+  if (!shouldAutoAskAzulPwaPermission()) return;
+
+  azulPwaAutoPermissionAsked = true;
+  sessionStorage.setItem(getAzulPwaAutoPromptKey(), "1");
+
+  try {
+    var permission = await Notification.requestPermission();
+    syncAzulPwaNotificationButton();
+
+    if (permission === "granted") {
+      localStorage.setItem(getAzulPwaAutoPromptKey(), "1");
+      azulPwaNotificationsReady = true;
+      await registerAzulPushSubscription(false);
+      toast("Notificacoes ativadas automaticamente.", "success");
+    } else if (permission === "denied") {
+      localStorage.setItem(getAzulPwaAutoPromptKey(), "1");
+    }
+  } catch (e) {
+    console.warn("Ativacao automatica de Push indisponivel:", e);
+  }
+}
+
 async function registerAzulPushSubscription(showFeedback) {
   if (!supportsAzulPwaNotifications()) return null;
   if (Notification.permission !== "granted") return null;
@@ -419,9 +471,14 @@ async function saveAzulPushSubscription(subscription) {
 
   var result = await supabaseClient
     .from("push_subscriptions")
-    .upsert(row, { onConflict: "endpoint" });
+    .upsert(row, { onConflict: "organization_id,endpoint" });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    if (isMissingPushSubscriptionConstraint(result.error)) {
+      console.warn("Execute a migracao fix_push_subscriptions_per_org para ativar Push por organizacao.", result.error);
+    }
+    throw result.error;
+  }
 }
 
 async function showAzulPwaNotification(row, force) {
@@ -952,7 +1009,7 @@ function startAzulNotifications() {
   }
 
   azulPwaNotificationsReady = supportsAzulPwaNotifications() && Notification.permission === "granted";
-  if (azulPwaNotificationsReady) registerAzulPushSubscription(false);
+  autoEnableAzulPwaNotifications();
   loadAzulNotifications(true);
   checkOnlineOrderReminders(true);
   checkLogisticsReminders(true);
