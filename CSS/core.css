@@ -4079,19 +4079,37 @@ button.az-icon-button,
   cursor: pointer;
   font-family: inherit;
   font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
 }
-.r-print,
-.r-pdf {
+.r-actions button:hover {
+  transform: translateY(-1px);
+}
+.r-actions button:active {
+  transform: translateY(0);
+}
+.r-print {
   background: var(--blue);
   color: var(--accentText, #fff);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--blue) 28%, transparent);
+}
+.r-pdf {
+  background: #f0a33a;
+  color: #111;
+  box-shadow: 0 10px 20px rgba(240, 163, 58, .22);
 }
 .r-share {
   background: #25d366;
-  color: #fff;
+  color: #082515;
+  box-shadow: 0 10px 20px rgba(37, 211, 102, .22);
 }
 .r-close {
-  background: #eee9df;
-  color: #1a1a1a;
+  background: #ef5350;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(239, 83, 80, .18);
 }
 
 .achat-lines-wrap {
@@ -11018,6 +11036,31 @@ html[data-theme="dark"] .r-table,
 html[data-theme="dark"] .r-table * {
   background: #fff !important;
   color: #000 !important;
+}
+
+html[data-theme="dark"] #receiptBox .r-actions,
+html[data-theme="dark"] #receiptBox .r-actions * {
+  background: transparent !important;
+}
+
+html[data-theme="dark"] #receiptBox .r-actions .r-print {
+  background: var(--blue) !important;
+  color: var(--accentText, #fff) !important;
+}
+
+html[data-theme="dark"] #receiptBox .r-actions .r-pdf {
+  background: #f0a33a !important;
+  color: #111 !important;
+}
+
+html[data-theme="dark"] #receiptBox .r-actions .r-share {
+  background: #25d366 !important;
+  color: #082515 !important;
+}
+
+html[data-theme="dark"] #receiptBox .r-actions .r-close {
+  background: #ef5350 !important;
+  color: #fff !important;
 }
 
 /* Dark mode final dashboard pass: keep this near the end so older dashboard rules cannot repaint white panels. */
