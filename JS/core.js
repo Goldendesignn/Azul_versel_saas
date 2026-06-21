@@ -12408,8 +12408,12 @@ function printReceiptFromSettings() {
   }, 120);
 }
 
+var currentReceiptData = null;
+var receiptPdfLoadPromise = null;
+
 function showReceipt(d) {
   var cur = window._currency || 'Kz';
+  currentReceiptData = JSON.parse(JSON.stringify(d || {}));
 
   var rlogo = document.getElementById('r-logo');
   if (rlogo) rlogo.textContent = (config && config.name) || 'Azul Gestao';
@@ -12579,6 +12583,215 @@ function waitForReceiptPrintAssets(win, callback) {
     setTimeout(finish, 3500);
   } catch (e) {
     setTimeout(finish, 700);
+  }
+}
+
+function loadReceiptPdfLibrary() {
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if (receiptPdfLoadPromise) return receiptPdfLoadPromise;
+
+  receiptPdfLoadPromise = new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[data-azul-pdf-lib="jspdf"]');
+    if (existing) {
+      existing.addEventListener("load", function() {
+        window.jspdf && window.jspdf.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error("Biblioteca PDF indisponivel."));
+      });
+      existing.addEventListener("error", function() { reject(new Error("Nao foi possivel carregar a biblioteca PDF.")); });
+      return;
+    }
+
+    var script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+    script.async = true;
+    script.setAttribute("data-azul-pdf-lib", "jspdf");
+    script.onload = function() {
+      window.jspdf && window.jspdf.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error("Biblioteca PDF indisponivel."));
+    };
+    script.onerror = function() {
+      reject(new Error("Nao foi possivel carregar a biblioteca PDF. Verifique a internet."));
+    };
+    document.head.appendChild(script);
+  });
+
+  return receiptPdfLoadPromise;
+}
+
+function getCurrentReceiptData() {
+  if (currentReceiptData && currentReceiptData.items) return currentReceiptData;
+  return getSampleReceiptData();
+}
+
+function getReceiptPdfFilename(data) {
+  var no = String((data && data.recibo) || "recibo").replace(/[^\w-]+/g, "-").replace(/-+/g, "-");
+  return "recibo-" + no + ".pdf";
+}
+
+function buildReceiptShareText(data) {
+  var cfg = config || {};
+  var lines = [
+    "Recibo " + ((data && data.recibo) || ""),
+    "Loja: " + (cfg.name || "Azul Gestao"),
+    "Cliente: " + ((data && data.client) || "Anonimo"),
+    "Total: " + fmt((data && data.total) || 0)
+  ];
+
+  if (cfg.phone) lines.push("Telefone: " + cfg.phone);
+  if (cfg.receiptQrMode === "link" && cfg.receiptQrLink) lines.push("Link: " + ensureReceiptUrlProtocol(cfg.receiptQrLink));
+  return lines.filter(Boolean).join("\n");
+}
+
+function splitReceiptText(doc, text, maxWidth) {
+  return doc.splitTextToSize(String(text || ""), maxWidth);
+}
+
+async function loadReceiptImageDataUrl(url) {
+  if (!url) return "";
+  try {
+    var response = await fetch(url, { mode: "cors", cache: "no-store" });
+    if (!response.ok) return "";
+    var blob = await response.blob();
+    return await new Promise(function(resolve) {
+      var reader = new FileReader();
+      reader.onload = function() { resolve(String(reader.result || "")); };
+      reader.onerror = function() { resolve(""); };
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return "";
+  }
+}
+
+async function createReceiptPdfBlob() {
+  var jsPDF = await loadReceiptPdfLibrary();
+  var data = getCurrentReceiptData();
+  var cfg = config || {};
+  var items = Array.isArray(data.items) ? data.items : [];
+  var textSize = parseInt(cfg.receiptFontSize || "10", 10) || 10;
+  var pageHeight = Math.max(160, 95 + (items.length * 11));
+  var doc = new jsPDF({ unit: "mm", format: [80, pageHeight], orientation: "portrait" });
+  var y = 8;
+
+  function center(text, size, bold) {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(size);
+    doc.text(String(text || ""), 40, y, { align: "center" });
+    y += size * 0.42;
+  }
+
+  function line(left, right, size, bold) {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(size || textSize);
+    doc.text(String(left || ""), 5, y);
+    if (right !== undefined) doc.text(String(right || ""), 75, y, { align: "right" });
+    y += 5;
+  }
+
+  function divider() {
+    doc.setDrawColor(160);
+    doc.line(5, y, 75, y);
+    y += 4;
+  }
+
+  doc.setTextColor(0, 0, 0);
+  center(cfg.name || "Azul Gestao", Math.max(textSize + 6, 15), true);
+  if (cfg.slogan) center(cfg.slogan, Math.max(textSize - 1, 8), false);
+  if (cfg.address && cfg.showAddress !== false) center("Endereco: " + cfg.address, Math.max(textSize - 1, 8), false);
+  if (cfg.phone && cfg.showAddress !== false) center("Telefone: " + cfg.phone, Math.max(textSize - 1, 8), false);
+  if (cfg.nif && cfg.showAddress !== false) center("NIF: " + cfg.nif, Math.max(textSize - 1, 8), false);
+
+  divider();
+  if (cfg.showRecibo !== false) line("N Recibo:", data.recibo || "-", textSize, true);
+  if (cfg.showDate !== false) line("Data:", data.date || "-", textSize, false);
+  if (cfg.showClient !== false) line("Cliente:", data.client || "Anonimo", textSize, false);
+  if (cfg.showPayment !== false) line("Pagamento:", data.pagamento || data.pay || "-", textSize, false);
+  divider();
+
+  line("Produto", "Total", textSize, true);
+  items.forEach(function(item) {
+    var name = item.name || "Produto";
+    var qty = Number(item.qty) || 0;
+    var price = Number(item.price) || 0;
+    var itemLines = splitReceiptText(doc, name, 42);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(Math.max(textSize - 1, 8));
+    itemLines.slice(0, 2).forEach(function(part, index) {
+      doc.text(part, 5, y + (index * 4));
+    });
+    doc.text(fmt(price * qty), 75, y, { align: "right" });
+    y += Math.max(5, Math.min(itemLines.length, 2) * 4);
+    doc.setFontSize(Math.max(textSize - 2, 7));
+    doc.text(String(qty) + " x " + fmt(price), 5, y);
+    y += 5;
+  });
+
+  divider();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(Math.max(textSize + 3, 13));
+  doc.text("TOTAL", 5, y);
+  doc.text(fmt(data.total || 0), 75, y, { align: "right" });
+  y += 8;
+
+  var qrTarget = getReceiptQrTarget();
+  if (qrTarget) {
+    var qrDataUrl = await loadReceiptImageDataUrl(buildReceiptQrUrl(qrTarget, 220, 8));
+    if (qrDataUrl) {
+      doc.addImage(qrDataUrl, "PNG", 28, y, 24, 24);
+      y += 27;
+    }
+    center((cfg.receiptQrMode === "whatsapp" ? "WhatsApp" : "Link da loja") + ": " + qrTarget, Math.max(textSize - 2, 7), false);
+  }
+
+  if (cfg.footer) {
+    y += 2;
+    splitReceiptText(doc, cfg.footer, 68).slice(0, 3).forEach(function(part) {
+      center(part, Math.max(textSize - 1, 8), false);
+    });
+  }
+
+  return doc.output("blob");
+}
+
+async function downloadReceiptPdf() {
+  try {
+    var data = getCurrentReceiptData();
+    var blob = await createReceiptPdfBlob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = getReceiptPdfFilename(data);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
+    toast("PDF do recibo gerado.", "success");
+  } catch (e) {
+    console.error("Erro PDF recibo:", e);
+    toast("Erro ao gerar PDF: " + (e.message || e), "error");
+  }
+}
+
+async function shareReceiptPdf() {
+  try {
+    var data = getCurrentReceiptData();
+    var blob = await createReceiptPdfBlob();
+    var file = new File([blob], getReceiptPdfFilename(data), { type: "application/pdf" });
+    var shareData = {
+      title: "Recibo " + (data.recibo || ""),
+      text: buildReceiptShareText(data),
+      files: [file]
+    };
+
+    if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+
+    await downloadReceiptPdf();
+    var text = encodeURIComponent(buildReceiptShareText(data) + "\n\nPDF baixado. Anexe o ficheiro nesta conversa.");
+    window.open("https://wa.me/?text=" + text, "_blank");
+  } catch (e) {
+    console.error("Erro envio recibo:", e);
+    toast("Erro ao enviar PDF: " + (e.message || e), "error");
   }
 }
 
