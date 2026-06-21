@@ -922,6 +922,34 @@ body.azul-onboarding-open .page {
   font-weight: 700;
 }
 
+.onboarding-example {
+  margin: 10px 0 0 54px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--blue) 22%, var(--border));
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface));
+  color: var(--text);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.onboarding-example strong {
+  flex: 0 0 auto;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.onboarding-example span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .onboarding-actions {
   display: grid;
   grid-template-columns: repeat(3, auto);
@@ -970,13 +998,21 @@ body.azul-onboarding-open .page {
   }
 
   .onboarding-copy p,
-  .onboarding-list {
+  .onboarding-list,
+  .onboarding-example {
     margin-left: 0;
   }
 
   .onboarding-list {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-example {
+    display: grid;
+    gap: 4px;
+    padding: 9px 10px;
+    font-size: 12px;
   }
 
   .onboarding-actions {

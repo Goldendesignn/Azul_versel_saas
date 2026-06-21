@@ -1406,7 +1406,7 @@ function closeContextHelp() {
 }
 
 var azulOnboardingIndex = 0;
-var AZUL_ONBOARDING_SEEN_KEY = "azul_onboarding_seen_v2";
+var AZUL_ONBOARDING_SEEN_KEY = "azul_onboarding_seen_v3";
 var AZUL_ONBOARDING_STEPS = [
   {
     title: "Bem-vindo ao Azul",
@@ -1722,8 +1722,40 @@ var AZUL_ONBOARDING_STEPS = [
   }
 ];
 
+var AZUL_ONBOARDING_EXAMPLES = {
+  "Bem-vindo ao Azul": "Comeca pelo painel. Se algo estiver vermelho, e sinal de atencao: stock baixo, divida, despesa alta ou caixa negativo.",
+  "Configurar a loja e o recibo": "Exemplo: Nome da loja: Golden Pencil. Telefone: +244 976 196 665. Moeda: Kz. QR do recibo: WhatsApp ou link da loja.",
+  "Gerir utilizadores e roles": "Exemplo: caixa pode vender e imprimir recibo; gerente pode ver dashboard e stock; proprietario pode aprovar equipa e alterar definicoes.",
+  "Importar dados antigos": "Exemplo de ordem: importa compras de Maio, depois vendas de Maio, depois despesas. Assim stock, lucro e caixa ficam mais certos.",
+  "Seguir importacoes internacionais": "Exemplo: Pedido CHN-001, fornecedor Guangzhou Moda, tracking ABC123, frete 85 000 Kz, chegada prevista 15/07/2026.",
+  "Adicionar o primeiro produto": "Exemplo: Fornecedor Adidas, Produto Air Force One, Quantidade 10, Unidade un, Compra 10 000 Kz, Venda 15 000 Kz, Categoria Tenis.",
+  "Cadastrar codigo de barras": "Exemplo: se o produto tem etiqueta 7891234567890, coloca esse numero no campo Codigo para vender lendo o barcode.",
+  "Controlar o stock": "Exemplo: se chegaram 10 unidades no armazem e levas 3 para a loja, faz uma transferencia de 3 para a boutique.",
+  "Ver historico de transferencias": "Exemplo: se faltar produto na loja, procura no historico quem transferiu, quando e quantas unidades movimentou.",
+  "Organizar fornecedores": "Exemplo: Uniqlo, telefone +244 923 000 000, pais Angola/China, nota: paga por transferencia.",
+  "Fazer a primeira venda": "Exemplo: procura Air Force, adiciona 1, confirma Cash 15 000 Kz, imprime ou envia o recibo ao cliente.",
+  "Vender servicos": "Exemplo: Servico Instalacao, preco 5 000 Kz. Nao baixa stock, mas entra na receita e no recibo.",
+  "Usar scanner no POS": "Exemplo: clica no campo barcode, passa o produto no leitor. O Azul adiciona ao carrinho e mostra aviso de sucesso.",
+  "Acompanhar clientes": "Exemplo: se Joao compra a credito 20 000 Kz, a ficha dele mostra a divida ate registares o pagamento.",
+  "Registar a primeira despesa": "Exemplo: Tipo Renda, descricao Loja Junho, montante 150 000 Kz. Isso reduz o resultado e aparece na tesouraria.",
+  "Controlar a tesouraria": "Exemplo: no fim do dia filtra Hoje e compara entradas por Cash, Express, Cartao e saidas.",
+  "Ler a contabilidade": "Exemplo: usa Este mes para ver vendas, custo das vendas, lucro bruto, despesas e resultado liquido.",
+  "Gerir revendedores": "Exemplo: entrega 3 produtos a Neide Revendas. Enquanto nao pagar ou devolver, fica como consignacao aberta.",
+  "Criar a loja online": "Exemplo: ativa loja, escreve WhatsApp +244923000000, escolhe produtos, guarda e envia o link ao cliente.",
+  "Acompanhar encomendas online": "Exemplo: pedido para segunda-feira: define data prevista, prepara o produto e envia para Logistica quando for entregar.",
+  "Planear entregas": "Exemplo: Cliente Maria, endereco Talatona, total 25 000 Kz, entrega prevista hoje as 16h, estado Em rota.",
+  "Gerir recursos humanos": "Exemplo: funcionario Caixa 1, salario 80 000 Kz, regista pagamento quando receber.",
+  "Receber notificacoes": "Exemplo: quando um caixa faz venda, o proprietario recebe aviso: Utilizador A registou uma venda.",
+  "Corrigir erros com seguranca": "Exemplo: se uma venda foi registada errada, usa Corrigir venda. O Azul anula sem apagar o historico."
+};
+
 function getAzulOnboardingStep(index) {
   return AZUL_ONBOARDING_STEPS[index] || AZUL_ONBOARDING_STEPS[0];
+}
+
+function getAzulOnboardingExample(step) {
+  if (!step) return "";
+  return step.example || AZUL_ONBOARDING_EXAMPLES[step.title] || "";
 }
 
 function getAzulOnboardingStorageKey() {
@@ -1758,6 +1790,7 @@ function renderAzulOnboarding() {
   var stepText = document.getElementById("azulOnboardingStep");
   var intro = document.getElementById("azulOnboardingIntro");
   var list = document.getElementById("azulOnboardingList");
+  var example = document.getElementById("azulOnboardingExample");
   var prev = document.getElementById("azulOnboardingPrev");
   var next = document.getElementById("azulOnboardingNext");
 
@@ -1772,8 +1805,20 @@ function renderAzulOnboarding() {
     return "<li>" + escapeDespesaHtml(item) + "</li>";
   }).join("");
 
+  if (example) {
+    var exampleText = getAzulOnboardingExample(step);
+    example.style.display = exampleText ? "flex" : "none";
+    example.innerHTML = exampleText
+      ? "<strong>Exemplo pratico</strong><span>" + escapeDespesaHtml(exampleText) + "</span>"
+      : "";
+  }
+
   if (prev) prev.disabled = azulOnboardingIndex === 0;
-  if (next) next.textContent = azulOnboardingIndex === AZUL_ONBOARDING_STEPS.length - 1 ? "Terminar" : "Seguinte";
+  if (next) {
+    next.textContent = azulOnboardingIndex === AZUL_ONBOARDING_STEPS.length - 1
+      ? "Terminar"
+      : (azulOnboardingIndex === 0 ? "Comecar" : "Seguinte");
+  }
   setTimeout(syncAzulOnboardingSpace, 0);
 }
 
