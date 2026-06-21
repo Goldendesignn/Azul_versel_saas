@@ -2087,7 +2087,6 @@ function canRunAzulAction(action) {
   return azulRoleAllows("actions", action);
 }
 
-var AZUL_MENU_MODE_KEY = "azul_menu_mode";
 var AZUL_MENU_MODULES = {
   dashboard: { group: "Inicio", priority: 1, keywords: "inicio painel resumo hoje dashboard" },
   performance: { group: "Relatorios", priority: 3, keywords: "analise comercial performance relatorio lucro produto" },
@@ -2110,29 +2109,6 @@ var AZUL_MENU_MODULES = {
 
 var AZUL_MENU_GROUP_ORDER = ["Inicio", "Essenciais", "Vendas", "Stock", "Dinheiro", "Pessoas", "Relatorios", "Gestao avancada", "Sistema"];
 
-function getAzulMenuMode() {
-  var mode = "";
-  try { mode = localStorage.getItem(AZUL_MENU_MODE_KEY) || ""; } catch(e) {}
-  return mode === "full" ? "full" : "simple";
-}
-
-function setAzulMenuMode(mode) {
-  mode = mode === "full" ? "full" : "simple";
-  try { localStorage.setItem(AZUL_MENU_MODE_KEY, mode); } catch(e) {}
-  renderMenuModeSettings();
-  enhanceAzulNavigation();
-  toast(mode === "full" ? "Menu completo ativo." : "Menu simples ativo.", "success");
-}
-
-function renderMenuModeSettings() {
-  var mode = getAzulMenuMode();
-  ["simple", "full"].forEach(function(item) {
-    var btn = document.getElementById("menu-mode-" + item);
-    if (!btn) return;
-    btn.classList.toggle("active", mode === item);
-  });
-}
-
 function getAzulMenuMeta(page) {
   return AZUL_MENU_MODULES[page] || { group: "Sistema", priority: 3, keywords: page || "" };
 }
@@ -2145,13 +2121,12 @@ function getAzulVisibleTabs() {
 }
 
 function removeAzulNavigationDecorations(nav) {
-  Array.prototype.forEach.call(nav.querySelectorAll(".nav-search-box, .nav-mode-strip, .nav-group-label, .nav-empty-state"), function(el) {
+  Array.prototype.forEach.call(nav.querySelectorAll(".nav-search-box, .nav-group-label, .nav-empty-state"), function(el) {
     el.remove();
   });
 }
 
 function sortAzulNavigationTabs(nav) {
-  var mode = getAzulMenuMode();
   var tabs = Array.prototype.slice.call(nav.querySelectorAll(".tab[onclick]"));
   tabs.sort(function(a, b) {
     var pa = a.dataset.page || extractGoToPage(a.getAttribute("onclick"));
@@ -2162,7 +2137,7 @@ function sortAzulNavigationTabs(nav) {
     var gb = AZUL_MENU_GROUP_ORDER.indexOf(mb.group);
     if (ga < 0) ga = 999;
     if (gb < 0) gb = 999;
-    if (mode === "simple" && ma.priority !== mb.priority) return ma.priority - mb.priority;
+    if (ma.priority !== mb.priority) return ma.priority - mb.priority;
     if (ga !== gb) return ga - gb;
     return tabs.indexOf(a) - tabs.indexOf(b);
   });
@@ -2218,11 +2193,6 @@ function enhanceAzulNavigation() {
   search.innerHTML = '<input type="search" id="azulMenuSearch" placeholder="Pesquisar modulo..." autocomplete="off" oninput="applyAzulMenuSearch()">';
   nav.insertBefore(search, nav.firstChild);
 
-  var mode = document.createElement("div");
-  mode.className = "nav-mode-strip";
-  mode.innerHTML = '<span>' + (getAzulMenuMode() === "full" ? "Menu completo" : "Menu simples") + '</span><button type="button" onclick="setAzulMenuMode(getAzulMenuMode() === \'full\' ? \'simple\' : \'full\')">' + (getAzulMenuMode() === "full" ? "Simplificar" : "Ver tudo") + '</button>';
-  nav.insertBefore(mode, search.nextSibling);
-
   var currentGroup = "";
   Array.prototype.slice.call(nav.querySelectorAll(".tab[onclick]")).forEach(function(tab) {
     var page = tab.dataset.page || extractGoToPage(tab.getAttribute("onclick"));
@@ -2249,7 +2219,6 @@ function enhanceAzulNavigation() {
 
   applyAzulMenuSearch();
   applyQuickStartPermissions();
-  renderMenuModeSettings();
   renderQuickStartIcons();
 }
 
