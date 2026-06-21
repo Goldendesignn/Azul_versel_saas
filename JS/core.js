@@ -2544,6 +2544,7 @@ function mapSupabaseProduct(row) {
     mainSupplier: row.supplier || "",
     photo: row.photo || "",
     code: row.code || "",
+    unit: normalizeMeasureUnit(row.unit || row.measure_unit || "unidade"),
     variation: row.variation || variations.join(" | "),
     variations: variations,
     hiddenFromPos: !!row.hidden_from_pos,
@@ -2552,12 +2553,112 @@ function mapSupabaseProduct(row) {
   };
 }
 
+var MEASURE_UNIT_OPTIONS = [
+  { value: "unidade", label: "Unidade", short: "un" },
+  { value: "metro", label: "Metro", short: "m" },
+  { value: "litro", label: "Litro", short: "L" },
+  { value: "kg", label: "Quilograma", short: "kg" },
+  { value: "grama", label: "Grama", short: "g" },
+  { value: "caixa", label: "Caixa", short: "cx" },
+  { value: "pacote", label: "Pacote", short: "pct" },
+  { value: "par", label: "Par", short: "par" },
+  { value: "rolo", label: "Rolo", short: "rolo" }
+];
+
+function normalizeMeasureUnit(value) {
+  var raw = String(value || "").trim().toLowerCase();
+  var aliases = {
+    "": "unidade",
+    "un": "unidade",
+    "uni": "unidade",
+    "unid": "unidade",
+    "unidade": "unidade",
+    "unidades": "unidade",
+    "m": "metro",
+    "mt": "metro",
+    "metro": "metro",
+    "metros": "metro",
+    "l": "litro",
+    "lt": "litro",
+    "litro": "litro",
+    "litros": "litro",
+    "quilo": "kg",
+    "kilo": "kg",
+    "kg": "kg",
+    "g": "grama",
+    "gr": "grama",
+    "grama": "grama",
+    "gramas": "grama",
+    "cx": "caixa",
+    "caixa": "caixa",
+    "caixas": "caixa",
+    "pct": "pacote",
+    "pacote": "pacote",
+    "pacotes": "pacote",
+    "par": "par",
+    "pares": "par",
+    "rolo": "rolo",
+    "rolos": "rolo"
+  };
+
+  var normalized = aliases[raw] || raw;
+  return MEASURE_UNIT_OPTIONS.some(function(option) { return option.value === normalized; })
+    ? normalized
+    : "unidade";
+}
+
+function getMeasureUnitOption(value) {
+  var unit = normalizeMeasureUnit(value);
+  return MEASURE_UNIT_OPTIONS.find(function(option) {
+    return option.value === unit;
+  }) || MEASURE_UNIT_OPTIONS[0];
+}
+
+function getMeasureUnitLabel(value) {
+  return getMeasureUnitOption(value).label;
+}
+
+function getMeasureUnitShort(value) {
+  return getMeasureUnitOption(value).short;
+}
+
+function formatMeasureQuantity(quantity, unit) {
+  var n = Number(quantity) || 0;
+  var text = Number.isInteger(n)
+    ? String(n)
+    : new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 3 }).format(n);
+  return text + " " + getMeasureUnitShort(unit);
+}
+
+function renderMeasureUnitOptions(selected) {
+  var current = normalizeMeasureUnit(selected);
+  return MEASURE_UNIT_OPTIONS.map(function(option) {
+    return '<option value="' + option.value + '" ' + (option.value === current ? "selected" : "") + '>' + option.label + '</option>';
+  }).join("");
+}
+
+function createCompraLineDefault() {
+  return {
+    date: new Date().toISOString().split('T')[0],
+    prod: '',
+    code: '',
+    category: '',
+    variation: '',
+    variations: [],
+    photo: '',
+    targetMargin: '',
+    qty: 0,
+    price: 0,
+    unit: "unidade"
+  };
+}
+
 
 async function getProductsFromSupabase() {
   var organizationId = getAzulOrganizationId();
   if (!organizationId) return [];
 
-  var selectColumns = "id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,variation,variations,photo,hidden_from_pos";
+  var selectColumns = "id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,variation,variations,photo,hidden_from_pos,unit";
   var result = await supabaseClient
     .from("products")
     .select(selectColumns)
@@ -2947,6 +3048,7 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
       product_id: productRow ? productRow.id : null,
       product_name: item.name,
       quantity: qtySold,
+      unit: normalizeMeasureUnit(item.unit || (productRow && productRow.unit) || "unidade"),
       unit_price: unitPrice,
       total: unitPrice * qtySold,
       purchase_price: purchasePrice,
@@ -3770,6 +3872,7 @@ async function upsertProductFromPurchase(item, supplier) {
   var category = String(item.category || item.categorie || "").trim();
   var code = String(item.code || "").trim();
   var photo = String(item.photo || "").trim();
+  var unit = normalizeMeasureUnit(item.unit || item.measureUnit || item.measure_unit || "unidade");
   var variations = parseVariationList(item.variations || item.variation || "");
   var variation = variations.join(" | ");
 
@@ -3787,6 +3890,7 @@ async function upsertProductFromPurchase(item, supplier) {
   } else {
     existingQuery = existingQuery
       .eq("name", productName)
+      .eq("unit", unit)
       .eq("variation", variation)
       .eq("purchase_price", purchasePrice)
       .eq("sale_price", salePrice);
@@ -3816,6 +3920,7 @@ async function upsertProductFromPurchase(item, supplier) {
         category: category || existingProduct.category || "",
         code: code || existingProduct.code || "",
         photo: photo || existingProduct.photo || "",
+        unit: unit || normalizeMeasureUnit(existingProduct.unit),
         variation: variation || existingProduct.variation || "",
         variations: variations.length ? variations : existingProduct.variations || [],
         purchase_price: purchasePrice || Number(existingProduct.purchase_price) || 0,
@@ -3843,6 +3948,7 @@ async function upsertProductFromPurchase(item, supplier) {
       supplier: supplier || "",
       code: code,
       photo: photo,
+      unit: unit,
       variation: variation,
       variations: variations,
       purchase_price: purchasePrice,
@@ -3914,6 +4020,7 @@ async function savePurchaseToSupabase(data) {
     purchase_price: Number(savedProduct.purchase_price) || 0,
     sale_price: Number(savedProduct.sale_price) || 0,
     quantity: Number(items[i].qty || items[i].quantity) || 0,
+    unit: normalizeMeasureUnit(items[i].unit || savedProduct.unit || "unidade"),
     supplier: supplier
   });
 
@@ -4273,9 +4380,9 @@ function renderMobileInventory(rows) {
         '<div class="mobile-card-amount">' + fmt(valeur) + '</div>' +
       '</div>' +
       '<div class="mobile-stock-grid">' +
-        '<div class="mobile-stock-box"><div class="mobile-stock-label">Loja</div><div class="mobile-stock-value">' + stockBoutique + '</div></div>' +
-        '<div class="mobile-stock-box"><div class="mobile-stock-label">Magasin</div><div class="mobile-stock-value">' + stockage + '</div></div>' +
-        '<div class="mobile-stock-box"><div class="mobile-stock-label">Total</div><div class="mobile-stock-value">' + total + '</div></div>' +
+        '<div class="mobile-stock-box"><div class="mobile-stock-label">Loja</div><div class="mobile-stock-value">' + formatMeasureQuantity(stockBoutique, product.unit) + '</div></div>' +
+        '<div class="mobile-stock-box"><div class="mobile-stock-label">Magasin</div><div class="mobile-stock-value">' + formatMeasureQuantity(stockage, product.unit) + '</div></div>' +
+        '<div class="mobile-stock-box"><div class="mobile-stock-label">Total</div><div class="mobile-stock-value">' + formatMeasureQuantity(total, product.unit) + '</div></div>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -7243,6 +7350,7 @@ function applyfornNamePreset(index, value) {
   achatLines[index].photo = achatLines[index].photo || product.photo || '';
   achatLines[index].targetMargin = achatLines[index].targetMargin || product.targetMargin || '';
   achatLines[index].price = achatLines[index].price || product.purchasePrice || product.price || 0;
+  achatLines[index].unit = normalizeMeasureUnit(achatLines[index].unit || product.unit || "unidade");
   var forn = document.getElementById('a-forn');
   if (forn && !forn.value && product.mainSupplier) forn.value = product.mainSupplier;
   renderCompraLines();
@@ -7259,6 +7367,7 @@ function applyCompraProductPreset(index, value) {
   achatLines[index].photo = achatLines[index].photo || product.photo || '';
   achatLines[index].targetMargin = achatLines[index].targetMargin || product.targetMargin || '';
   achatLines[index].price = achatLines[index].price || product.purchasePrice || product.price || 0;
+  achatLines[index].unit = normalizeMeasureUnit(achatLines[index].unit || product.unit || "unidade");
   var forn = document.getElementById('a-forn');
   if (forn && !forn.value && product.mainSupplier) forn.value = product.mainSupplier;
   renderCompraLines();
@@ -10344,7 +10453,7 @@ function renderProds(list) {
         + '</div>'
       : "<span style='font-size: 12px; color: var(--muted); margin-top: 3px; margin-left: 8px;'>sans variable</span>") +
       '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
-        (out ? ' Esgotado' : 'Stock : ' + p.stockBoutique + ' un') +
+        (out ? ' Esgotado' : 'Stock : ' + formatMeasureQuantity(p.stockBoutique, p.unit)) +
       '</div>';
   div.onclick = function() {
   addToCart(p.id, p.stockBoutique);
@@ -10484,6 +10593,7 @@ function addToCart(productIdOrName, stock, options) {
     price: salePrice,
     regularPrice: salePrice,
     qty: 1,
+    unit: normalizeMeasureUnit(product.unit || "unidade"),
     stock: stock,
     availableVariations: parseVariationList(product.variation || product.variations),
     selectedVariations: []
@@ -10573,7 +10683,7 @@ function renderCart() {
         '<div class="cart-item-main">' +
           '<div class="qty-ctrl">' +
             '<button class="qbtn" style="background:none;width:18px;height:18px;" onclick="chgQty(' + i + ',-1)">-</button>' +
-            '<input class="qnum cart-qty-input" type="number" min="1" step="1" inputmode="numeric" value="' + (item.qty || 1) + '" onclick="event.stopPropagation();" onchange="setCartQty(' + i + ', this.value)" onkeydown="if(event.keyCode===13){this.blur();}">' +
+            '<input class="qnum cart-qty-input" type="number" min="0.01" step="0.01" inputmode="decimal" value="' + (item.qty || 1) + '" onclick="event.stopPropagation();" onchange="setCartQty(' + i + ', this.value)" onkeydown="if(event.keyCode===13){this.blur();}">' +
             '<button class="qbtn" style="background:none;width:18px;height:18px;" onclick="chgQty(' + i + ',1)">+</button>' +
           '</div>' +
           '<input type="number" class="ci-price-input" placeholder="' + getText('sale_price_placeholder') + '" value="' + (item.price||'') + '" min="0" onchange="updatePrice(' + i + ', this.value)" oninput="updatePrice(' + i + ', this.value)">' +
@@ -10611,7 +10721,7 @@ function setCartQty(i, value) {
   if (!cart[i]) return;
 
   var raw = String(value == null ? "" : value).trim().replace(",", ".");
-  var qty = Math.floor(Number(raw));
+  var qty = Number(raw);
 
   if (!raw || !isFinite(qty)) {
     renderCart();
@@ -10755,7 +10865,7 @@ function renderRevProducts(list) {
       '</div>' +
       '<div class="reseller-product-side">' +
         '<b>' + fmt(product.price || product.salePrice || 0) + '</b>' +
-        '<small>' + (out ? "Esgotado" : stock + " un") + '</small>' +
+        '<small>' + (out ? "Esgotado" : formatMeasureQuantity(stock, product.unit)) + '</small>' +
       '</div>';
 
     grid.appendChild(card);
@@ -10798,6 +10908,7 @@ function addToRevCart(productIdOrName, stock) {
     purchasePrice: Number(product.purchasePrice) || 0,
     price: Number(product.price || product.salePrice) || 0,
     qty: 1,
+    unit: normalizeMeasureUnit(product.unit || "unidade"),
     stock: available,
     availableVariations: parseVariationList(product.variation || product.variations),
     selectedVariations: []
@@ -12133,7 +12244,7 @@ function renderMobileCartPage() {
         var imgHtml = img
           ? '<img class="mobile-cart-img" src="' + escapeDespesaHtml(img) + '" alt="">'
           : '<div class="mobile-cart-img mobile-cart-img-empty"></div>';
-        var subText = isServiceCartItem(item) ? "Servico sem stock" : "Stock loja: " + (item.stock || 0) + " un";
+        var subText = isServiceCartItem(item) ? "Servico sem stock" : "Stock loja: " + formatMeasureQuantity(item.stock || 0, item.unit);
         
         return '<div class="mobile-cart-item">' +
           '<div class="mobile-cart-item-main">' +
@@ -12149,7 +12260,7 @@ function renderMobileCartPage() {
             '<button class="mobile-cart-delete" onclick="removeItem(' + index + '); renderMobileCartPage(); event.stopPropagation();">x</button>' +
             '<div class="mobile-cart-qty">' +
               '<button onclick="chgQty(' + index + ', -1); renderMobileCartPage(); event.stopPropagation();">-</button>' +
-              '<input class="mobile-cart-qty-input" type="number" min="1" step="1" inputmode="numeric" value="' + (item.qty || 1) + '" onclick="event.stopPropagation();" onchange="setCartQty(' + index + ', this.value); renderMobileCartPage();" onkeydown="if(event.keyCode===13){this.blur();}">' +
+              '<input class="mobile-cart-qty-input" type="number" min="0.01" step="0.01" inputmode="decimal" value="' + (item.qty || 1) + '" onclick="event.stopPropagation();" onchange="setCartQty(' + index + ', this.value); renderMobileCartPage();" onkeydown="if(event.keyCode===13){this.blur();}">' +
               '<button onclick="chgQty(' + index + ', 1); renderMobileCartPage(); event.stopPropagation();">+</button>' +
             '</div>' +
           '</div>' +
@@ -12538,8 +12649,9 @@ async function getCompraHistoriqueFromSupabase() {
   items.forEach(function(item) {
     var purchase = purchaseById[item.purchase_id] || {};
     var qty = Number(item.quantity) || 0;
-    var unit = Number(item.purchase_price) || 0;
-    var lineTotal = qty * unit;
+    var unitPrice = Number(item.purchase_price) || 0;
+    var measureUnit = normalizeMeasureUnit(item.unit || "unidade");
+    var lineTotal = qty * unitPrice;
 
     var row = {
       date: String(purchase.created_at || "").slice(0, 10),
@@ -12548,7 +12660,8 @@ async function getCompraHistoriqueFromSupabase() {
       code: item.code || "",
       variation: item.variation || "",
       qty: qty,
-      unit: unit,
+      unit: unitPrice,
+      measureUnit: measureUnit,
       total: lineTotal,
       paid: Number(purchase.paid_amount) || 0,
       debt: Number(purchase.remaining_amount) || 0,
@@ -12622,7 +12735,7 @@ async function loadCompraHistorique() {
           '<td>' + escapeDespesaHtml(row.product) + '</td>' +
           '<td>' + escapeDespesaHtml(row.code || "-") + '</td>' +
           '<td>' + escapeDespesaHtml(row.variation || "-") + '</td>' +
-          '<td>' + row.qty + '</td>' +
+          '<td>' + formatMeasureQuantity(row.qty, row.measureUnit) + '</td>' +
           '<td>' + fmt(row.unit) + '</td>' +
           '<td>' + fmt(row.total) + '</td>' +
           '<td>' + fmt(row.paid) + '</td>' +
@@ -12644,7 +12757,7 @@ async function loadCompraHistorique() {
           '</div>' +
           '<div class="achat-history-card-meta">' +
             '<span>' + escapeDespesaHtml(row.date) + '</span>' +
-            '<span>Qtd: ' + row.qty + '</span>' +
+            '<span>Qtd: ' + formatMeasureQuantity(row.qty, row.measureUnit) + '</span>' +
             '<span>P. Compra: ' + fmt(row.unit) + '</span>' +
           '</div>' +
           '<div class="achat-history-card-meta">' +
@@ -12716,13 +12829,13 @@ function switchClientTab(tab, btn) {
 }
 
 function initCompraLines() {
-  achatLines = [{ date: new Date().toISOString().split('T')[0], prod: '', code: '', category: '', variation: '', variations: [], photo: '', targetMargin: '', qty: 0, price: 0 }];
+  achatLines = [createCompraLineDefault()];
   paiementLines = [];
   renderCompraLines();
 }
 
 function addCompraLine() {
-  achatLines.push({ date: new Date().toISOString().split('T')[0], prod: '', code: '', category: '', variation: '', variations: [], photo: '', targetMargin: '', qty: 0, price: 0 });
+  achatLines.push(createCompraLineDefault());
   renderCompraLines();
   setTimeout(function() {
     var inputs = document.querySelectorAll('.al-prod');
@@ -12753,6 +12866,7 @@ function renderCompraLines() {
   tbody.innerHTML = '';
 
   achatLines.forEach(function(line, i) {
+    line.unit = normalizeMeasureUnit(line.unit || "unidade");
     line.variations = line.variations && line.variations.length ? line.variations : parseVariationList(line.variation);
     var total = (line.qty || 0) * (line.price || 0);
     var variationChips = !line.variations.length ? '' : '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + line.variations.map(function(label, chipIndex) {
@@ -12809,7 +12923,8 @@ function renderCompraLines() {
         '<input type="number" class="form-input achat-cell-input price" value="' + (line.price || '') + '" placeholder="P. compra" min="0" step="0.01" oninput="achatLines[' + i + '].price=parseFloat(this.value)||0;renderCompraTotals();">' +
         '<div class="achat-price-row">'+
           //Quantidade
-          '<input type="number" class="form-input achat-cell-input qty" value="' + (line.qty || '') + '" placeholder="Qtd" min="1" oninput="achatLines[' + i + '].qty=parseFloat(this.value)||0;renderCompraTotals();">' +
+          '<input type="number" class="form-input achat-cell-input qty" value="' + (line.qty || '') + '" placeholder="Qtd" min="0.01" step="0.01" inputmode="decimal" oninput="achatLines[' + i + '].qty=parseFloat(String(this.value).replace(\',\',\'.\'))||0;renderCompraTotals();">' +
+          '<select class="form-input achat-cell-input" title="Unidade de medida" onchange="achatLines[' + i + '].unit=this.value;renderCompraTotals();">' + renderMeasureUnitOptions(line.unit) + '</select>' +
           //prix de vente
           '<input type="number" class="form-input achat-cell-input" value="' + (line.targetMargin || '') + '" placeholder="Preco venda" min="0" step="0.01" oninput="achatLines[' + i + '].targetMargin=this.value">' +
         '</div>' +
@@ -14878,9 +14993,9 @@ renderMobileInventory(products);
       '<td>' + escapeDespesaHtml(product.mainSupplier || '') + '</td>' +
       '<td>' + entries + '</td>' +
       '<td>' + exits + '</td>' +
-      '<td>' + stockBoutique + '</td>' +
-      '<td>' + stockage + '</td>' +
-      '<td>' + stocktotal + '</td>' +
+      '<td>' + formatMeasureQuantity(stockBoutique, product.unit) + '</td>' +
+      '<td>' + formatMeasureQuantity(stockage, product.unit) + '</td>' +
+      '<td>' + formatMeasureQuantity(stocktotal, product.unit) + '</td>' +
       '<td>' + fmt(purchasePrice) + '</td>' +
       '<td style="font-weight:600;color:var(--red);">' + fmt(valeur) + '</td>' +
     '</tr>';
@@ -17164,9 +17279,9 @@ var purchaseImportRunning = false;
 
 function downloadPurchaseCsvTemplate() {
   var csv =
-    "date;supplier;designation;quantity;unit_price;total_amount;category;code;variation;photo;sale_price;payment_status;paid_amount\n" +
-    "2026-05-19;Fornecedor Test;Tshirt Gucci;10;15000;150000;Roupa;TSH-001;M | Preto;;27000;paid;\n" +
-    "2026-05-19;Fornecedor Test;Blazer Classico;5;27000;135000;Roupa;BLA-001;L | Branco;;45000;credit;50000\n";
+    "date;supplier;designation;quantity;unit;unit_price;total_amount;category;code;variation;photo;sale_price;payment_status;paid_amount\n" +
+    "2026-05-19;Fornecedor Test;Tshirt Gucci;10;unidade;15000;150000;Roupa;TSH-001;M | Preto;;27000;paid;\n" +
+    "2026-05-19;Fornecedor Test;Tecido algodao;12.5;metro;2700;33750;Tecidos;TEC-001;Azul;;4500;credit;10000\n";
 
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   var url = URL.createObjectURL(blob);
@@ -17322,6 +17437,7 @@ function mapPurchaseImportRow(row, index) {
     supplier: String(row.supplier || "").trim(),
     designation: String(row.designation || "").trim(),
     quantity: qty,
+    unit: normalizeMeasureUnit(row.unit || row.unidade || row.measure_unit || "unidade"),
     unitPrice: unitPrice,
     totalAmount: totalAmount || qty * unitPrice,
     category: String(row.category || "").trim(),
@@ -17384,7 +17500,7 @@ function renderPurchaseImportPreview() {
 
   if (!purchaseImportRows.length) {
     summary.textContent = "Nenhum ficheiro selecionado.";
-    body.innerHTML = '<tr><td colspan="10" class="empty">Le preview apparait ici</td></tr>';
+    body.innerHTML = '<tr><td colspan="11" class="empty">A pre-visualizacao aparece aqui</td></tr>';
     return;
   }
 
@@ -17406,6 +17522,7 @@ function renderPurchaseImportPreview() {
       '<td>' + escapeDespesaHtml(row.supplier) + '</td>' +
       '<td>' + escapeDespesaHtml(row.designation || row.error) + '</td>' +
       '<td>' + escapeDespesaHtml(row.quantity) + '</td>' +
+      '<td>' + escapeDespesaHtml(getMeasureUnitShort(row.unit)) + '</td>' +
       '<td>' + escapeDespesaHtml(row.unitPrice) + '</td>' +
       '<td>' + escapeDespesaHtml(row.salePrice) + '</td>' +
       '<td>' + escapeDespesaHtml(row.category) + '</td>' +
@@ -17716,6 +17833,7 @@ function getPurchaseImportProductKey(data) {
     "product",
     normalizeImportText(data.designation || data.name),
     normalizeImportText(data.variation),
+    normalizeMeasureUnit(data.unit || "unidade"),
     Number(data.unitPrice || data.purchasePrice || 0) || 0,
     Number(data.salePrice || 0) || 0
   ].join("||");
@@ -17733,6 +17851,7 @@ async function fetchImportProducts(productNames, productCodes) {
         code: product.code || "",
         designation: product.name || "",
         variation: product.variation || "",
+        unit: product.unit || "unidade",
         unitPrice: Number(product.purchase_price) || 0,
         salePrice: Number(product.sale_price) || 0
       });
@@ -17993,6 +18112,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
         variations: parseVariationList(row.variation),
         purchasePrice: row.unitPrice,
         salePrice: row.salePrice,
+        unit: row.unit,
         quantity: 0
       };
     }
@@ -18020,6 +18140,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
         category: group.category || existing.category || "",
         code: group.code || existing.code || "",
         photo: group.photo || existing.photo || "",
+        unit: group.unit || existing.unit || "unidade",
         variation: group.variation || existing.variation || "",
         variations: group.variations.length ? group.variations : existing.variations || [],
         purchase_price: group.purchasePrice || Number(existing.purchase_price) || 0,
@@ -18036,6 +18157,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
         category: group.category || "",
         code: group.code || "",
         photo: group.photo || "",
+        unit: group.unit || "unidade",
         variation: group.variation || "",
         variations: group.variations || [],
         purchase_price: group.purchasePrice || 0,
@@ -18067,7 +18189,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
     var insertResult = await supabaseClient
       .from("products")
       .insert(insertChunk)
-      .select("id,name,code,variation,purchase_price,sale_price");
+      .select("id,name,code,variation,unit,purchase_price,sale_price");
 
     if (insertResult.error) throw insertResult.error;
 
@@ -18076,6 +18198,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
         code: product.code || "",
         designation: product.name || "",
         variation: product.variation || "",
+        unit: product.unit || "unidade",
         unitPrice: Number(product.purchase_price) || 0,
         salePrice: Number(product.sale_price) || 0
       });
@@ -18171,6 +18294,7 @@ async function savePurchaseImportBatchToSupabase(rows) {
         purchase_price: row.unitPrice || 0,
         sale_price: row.salePrice || 0,
         quantity: row.quantity || 0,
+        unit: row.unit || "unidade",
         supplier: row.supplier
       });
     });
