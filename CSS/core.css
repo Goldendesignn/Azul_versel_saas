@@ -4064,12 +4064,18 @@ button.az-icon-button,
   grid-template-columns: repeat(2, minmax(110px, 1fr));
   gap: 8px;
 }
+.achat-variation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 8px;
+  min-width: 340px;
+}
 .achat-variation-box {
   position: relative;
-  width: 220px;
+  width: 100%;
 }
 .achat-variation-box input {
-  width: 220px;
+  width: 100%;
   padding-right: 42px;
 }
 .achat-add-var-btn {
@@ -5645,6 +5651,7 @@ html[data-theme="dark"] .sales-analytics-card {
   .achat-photo-cell,
   .achat-date-product-cell,
   .achat-price-stack,
+  .achat-variation-grid,
   .achat-variation-box,
   .achat-variation-box input,
   .achat-file-btn {
@@ -5673,6 +5680,7 @@ html[data-theme="dark"] .sales-analytics-card {
   }
 
   .achat-price-row,
+  .achat-variation-grid,
   .achat-mini-grid {
     grid-template-columns: 1fr 1fr;
   }

@@ -12892,29 +12892,27 @@ function renderCompraLines() {
           '<input type="date" class="form-input achat-cell-input" value="' + line.date + '" onchange="achatLines[' + i + '].date=this.value">' +
           //Nom du produit
           '<input type="text" class="form-input achat-cell-input prod al-prod" value="' + (line.prod || '') + '" placeholder="Produto..." list="prodList" oninput="achatLines[' + i + '].prod=this.value" onchange="applyCompraProductPreset(' + i + ', this.value)">' +
-          '<div class="achat-mini-grid">' +
-            //code du produit
-            renderCompraCodeScannerInput(i, line) +
-            //categorie
-            '<input type="text" class="form-input achat-cell-input" value="' + (line.category || '') + '" placeholder="Categoria" oninput="achatLines[' + i + '].category=this.value">' +
-          '</div>' +
         '</div>' +
       '</td>' +
       '<td>' +
         '<div class="achat-variation-stack">'+
-          '<div class="achat-variation-box">'+
-            //variation
-            '<input type="text" class="form-input achat-cell-input" id="al-var-new-' + i + '" placeholder="Nova variacao">' +
-            //bouton ajouter variable
-            '<button type="button" onclick="addCompraVariation(' + i + ')" class="achat-add-var-btn">+</button>' +
+          '<div class="achat-variation-grid">' +
+            '<div class="achat-field-stack">' +
+              '<div class="achat-variation-box">'+
+                //variation
+                '<input type="text" class="form-input achat-cell-input" id="al-var-new-' + i + '" placeholder="Nova variacao">' +
+                //bouton ajouter variable
+                '<button type="button" onclick="addCompraVariation(' + i + ')" class="achat-add-var-btn">+</button>' +
+              '</div>' +
+              renderCompraCodeScannerInput(i, line) +
+            '</div>' +
+            '<div class="achat-field-stack">' +
+              '<select class="form-input achat-cell-input" title="Unidade de medida" onchange="achatLines[' + i + '].unit=this.value;renderCompraTotals();">' + renderMeasureUnitOptions(line.unit) + '</select>' +
+              '<input type="text" class="form-input achat-cell-input" value="' + (line.category || '') + '" placeholder="Categoria" oninput="achatLines[' + i + '].category=this.value">' +
+            '</div>' +
           '</div>' +
           // variacao antiga caso o produto ja esteja registado
           variationChips +
-          //selection image
-          '<div class="achat-mini-grid">' +
-            renderCompraCodeScannerInput(i, line) +
-            '<input type="text" class="form-input achat-cell-input" value="' + (line.category || '') + '" placeholder="Categoria" oninput="achatLines[' + i + '].category=this.value">' +
-          '</div>' +
         '</div>' +
       '</td>' +
       '<td>' +
@@ -12924,7 +12922,6 @@ function renderCompraLines() {
         '<div class="achat-price-row">'+
           //Quantidade
           '<input type="number" class="form-input achat-cell-input qty" value="' + (line.qty || '') + '" placeholder="Qtd" min="0.01" step="0.01" inputmode="decimal" oninput="achatLines[' + i + '].qty=parseFloat(String(this.value).replace(\',\',\'.\'))||0;renderCompraTotals();">' +
-          '<select class="form-input achat-cell-input" title="Unidade de medida" onchange="achatLines[' + i + '].unit=this.value;renderCompraTotals();">' + renderMeasureUnitOptions(line.unit) + '</select>' +
           //prix de vente
           '<input type="number" class="form-input achat-cell-input" value="' + (line.targetMargin || '') + '" placeholder="Preco venda" min="0" step="0.01" oninput="achatLines[' + i + '].targetMargin=this.value">' +
         '</div>' +
