@@ -230,6 +230,40 @@
     <button class="tab" data-page="settings" onclick="goTo('settings', this)">Definicoes</button>
   </div>
 
+  <script>
+  (function paintInitialNavIcons() {
+    var paths = {
+      dashboard: '<path d="M3 13h7V3H3z"></path><path d="M14 21h7V11h-7z"></path><path d="M14 8h7V3h-7z"></path><path d="M3 21h7v-5H3z"></path>',
+      performance: '<path d="M3 13h7V3H3z"></path><path d="M14 21h7V11h-7z"></path><path d="M14 8h7V3h-7z"></path><path d="M3 21h7v-5H3z"></path>',
+      venda: '<circle cx="9" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle><path d="M2 3h3l3 12h10l3-8H6"></path>',
+      achat: '<path d="M6 2l1.5 4h9L18 2"></path><path d="M3 6h18l-2 15H5z"></path><path d="M9 11h6"></path>',
+      importacoes: '<path d="M3 7h11v10H3z"></path><path d="M14 10h3l4 4v3h-7z"></path><circle cx="7" cy="17" r="2"></circle><circle cx="18" cy="17" r="2"></circle><path d="M7 7V4h9v4"></path><path d="M10 11h3"></path>',
+      transfert: '<path d="M7 7h11l-3-3"></path><path d="M17 17H6l3 3"></path><path d="M5 12h14"></path>',
+      clientes: '<path d="M16 21v-2a4 4 0 0 0-8 0v2"></path><circle cx="12" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>',
+      depenses: '<path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>',
+      rh: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+      forn: '<path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9h1"></path><path d="M9 13h1"></path><path d="M9 17h1"></path>',
+      tresorerie: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
+      comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
+      corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
+      revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
+      online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
+      logistica: '<path d="M10 17H6V6h11v11h-3"></path><path d="M17 9h3l2 4v4h-2"></path><circle cx="7" cy="17" r="2"></circle><circle cx="18" cy="17" r="2"></circle><path d="M7 17h9"></path><path d="M13 10h-3"></path>',
+      settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1.82V22a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.82-.33H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1.82V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.21.64.49.86.83.22.34.56.54.96.54H22a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51.63z"></path>'
+    };
+
+    Array.prototype.forEach.call(document.querySelectorAll(".nav .tab[data-page]"), function(tab) {
+      if (tab.querySelector(".az-icon")) return;
+      var page = tab.dataset.page || "";
+      var iconPath = paths[page];
+      if (!iconPath) return;
+      var label = tab.textContent.trim();
+      tab.classList.add("az-icon-button");
+      tab.innerHTML = '<svg class="az-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + iconPath + '</svg><span class="az-label">' + label + '</span>';
+    });
+  })();
+  </script>
+
   <!-- CONTENT -->
   <div class="content">
 
