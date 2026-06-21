@@ -4533,13 +4533,13 @@ function mockData(fn) {
     count: 5,
     average: 6300,
     max: 12000,
-    maxCategory: 'renda',
+    maxCategory: 'Renda',
     todayTotal: 5000,
     byCategory: [
-      { category: 'renda', total: 12000 },
-      { category: 'transporte', total: 9500 },
-      { category: 'Electricidade', total: 6000 },
-      { category: 'Outro', total: 4000 }
+      { category: 'Renda', total: 12000 },
+      { category: 'Transporte', total: 9500 },
+      { category: 'Energia', total: 6000 },
+      { category: 'Outros', total: 4000 }
     ],
     byDay: [
       { date: '13/04/2026', total: 4000 },
@@ -4550,10 +4550,10 @@ function mockData(fn) {
     ]
   };
   if (fn === 'getHistoriqueDespesas') return [
-    { date: '17/04/2026', category: 'transporte', description: 'Taxi fornecedor', amount: 5000 },
-    { date: '16/04/2026', category: 'renda', description: 'Part du local', amount: 12000 },
-    { date: '15/04/2026', category: 'Electricidade', description: 'Recharge compteur', amount: 6000 },
-    { date: '14/04/2026', category: 'Outro', description: 'Eau', amount: 4000 }
+    { date: '17/04/2026', category: 'Transporte', description: 'Taxi fornecedor', amount: 5000 },
+    { date: '16/04/2026', category: 'Renda', description: 'Renda da loja', amount: 12000 },
+    { date: '15/04/2026', category: 'Energia', description: 'Recarga do contador', amount: 6000 },
+    { date: '14/04/2026', category: 'Outros', description: 'Agua', amount: 4000 }
   ];
   if (fn === 'confirmerPagamentoConsignations') return { success:true, recibo:'CONS-TEST-001' };
   if (fn === 'retornarConsignacoes') return { success:true, count:2 };
@@ -14616,16 +14616,31 @@ function activarEdicao() {
 }
 
 // ===== DEPENSES =====
+var DESPESA_DEFAULT_CATEGORIAS = ['Renda', 'Energia', 'Transporte', 'Salario', 'Outros'];
+var DESPESA_CATEGORY_MIGRATION = {
+  loyer: 'Renda',
+  electricite: 'Energia',
+  transport: 'Transporte',
+  salaire: 'Salario',
+  autre: 'Outros'
+};
+
+function normalizeDespesaCategoriaLabel(value) {
+  var label = String(value || '').trim();
+  var key = label.toLowerCase();
+  return DESPESA_CATEGORY_MIGRATION[key] || label;
+}
+
 function getStoredDespesaCategorias() {
-  var defaults = ['renda', 'Electricidade', 'transporte', 'salário', 'Outro'];
+  var defaults = DESPESA_DEFAULT_CATEGORIAS.slice();
   try {
     var raw = localStorage.getItem('depenseCategorias');
     if (!raw) return defaults.slice();
     var parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || !parsed.length) return defaults.slice();
     var seen = {};
-    return parsed.map(function(item) {
-      return String(item || '').trim();
+    var normalized = parsed.map(function(item) {
+      return normalizeDespesaCategoriaLabel(item);
     }).filter(function(item) {
       if (!item) return false;
       var key = item.toLowerCase();
@@ -14633,6 +14648,15 @@ function getStoredDespesaCategorias() {
       seen[key] = true;
       return true;
     });
+    defaults.forEach(function(item) {
+      var key = item.toLowerCase();
+      if (!seen[key]) {
+        seen[key] = true;
+        normalized.push(item);
+      }
+    });
+    saveStoredDespesaCategorias(normalized);
+    return normalized;
   } catch (e) {
     return defaults.slice();
   }
@@ -14651,14 +14675,14 @@ function renderDespesaCategorias(selectedValue) {
     return '<option value="' + item.replace(/"/g, '&quot;') + '">' + item + '</option>';
   }
   if (select) {
-    var current = selectedValue || select.value || categories[0] || 'Outro';
+    var current = normalizeDespesaCategoriaLabel(selectedValue || select.value || categories[0] || 'Outros');
     select.innerHTML = categories.map(optionHtml).join('');
-    select.value = categories.indexOf(current) >= 0 ? current : (categories[0] || 'Outro');
+    select.value = categories.indexOf(current) >= 0 ? current : (categories[0] || 'Outros');
   }
   var filterSelect = document.getElementById('dep-filter-category');
   if (filterSelect) {
-    var filterValue = filterSelect.value || '';
-    filterSelect.innerHTML = '<option value="">Toutes</option>' + categories.map(optionHtml).join('');
+    var filterValue = normalizeDespesaCategoriaLabel(filterSelect.value || '');
+    filterSelect.innerHTML = '<option value="">Todas</option>' + categories.map(optionHtml).join('');
     filterSelect.value = categories.indexOf(filterValue) >= 0 ? filterValue : '';
   }
 }
@@ -14668,9 +14692,10 @@ function addDespesaCategory() {
   if (!input) return;
   var value = (input.value || '').trim();
   if (!value) {
-    toast('Entre une categorie.', 'error');
+    toast('Escreve uma categoria.', 'error');
     return;
   }
+  value = normalizeDespesaCategoriaLabel(value);
   var categories = getStoredDespesaCategorias();
   var exists = categories.some(function(item) { return item.toLowerCase() === value.toLowerCase(); });
   if (!exists) {
@@ -14679,7 +14704,7 @@ function addDespesaCategory() {
   }
   renderDespesaCategorias(value);
   input.value = '';
-  toast('Categoria ajoutee !', 'success');
+  toast('Categoria adicionada!', 'success');
 }
 
 function escapeDespesaHtml(value) {
@@ -14936,7 +14961,7 @@ async function saveExpenseToSupabase(data) {
   var result = await insertSingleWithAzulAudit("expenses", {
       organization_id: organizationId,
       expense_date: data.date || new Date().toISOString().split("T")[0],
-      category: data.tipo || data.category || "Outro",
+      category: normalizeDespesaCategoriaLabel(data.tipo || data.category || "Outros"),
       description: data.desc || "",
       amount: Number(data.montant) || 0
     });
@@ -14988,7 +15013,7 @@ async function getDespesaDashboardFromSupabase(filters) {
 
   rows.forEach(function(row) {
     var amount = Number(row.amount) || 0;
-    var category = row.category || "Outro";
+    var category = normalizeDespesaCategoriaLabel(row.category || "Outros");
     var date = row.expense_date || "";
 
     if (amount > max) {
@@ -15384,7 +15409,7 @@ async function saveRhPayment() {
       var expenseResult = await insertSingleWithAzulAudit("expenses", {
         organization_id: getAzulOrganizationId(),
         expense_date: paymentDate,
-        category: paymentType === "advance" ? "Adiantamento salarial" : "salário",
+        category: paymentType === "advance" ? "Adiantamento salarial" : "Salario",
         description: "RH - " + getRhPaymentTypeLabel(paymentType) + " - " + name + (note ? " - " + note : ""),
         amount: amount
       });
@@ -18895,9 +18920,9 @@ var expenseImportRunning = false;
 function downloadExpenseCsvTemplate() {
   var csv =
     "date,category,description,amount\n" +
-    "2026-05-20,transporte,Taxi livraison,5000\n" +
-    "2026-05-20,renda,renda loja,150000\n" +
-    "2026-05-20,Electricidade,Facture energie,35000\n";
+    "2026-05-20,Transporte,Taxi para entrega,5000\n" +
+    "2026-05-20,Renda,Renda da loja,150000\n" +
+    "2026-05-20,Energia,Recarga de energia,35000\n";
 
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   var url = URL.createObjectURL(blob);
@@ -18916,7 +18941,7 @@ function mapExpenseImportRow(row, index) {
   return {
     line: index + 2,
     date: normalizeImportDate(row.date),
-    category: String(row.category || "Outro").trim() || "Outro",
+    category: normalizeDespesaCategoriaLabel(String(row.category || "Outros").trim() || "Outros"),
     description: String(row.description || "").trim(),
     amount: parseImportNumber(row.amount),
     valid: true,
