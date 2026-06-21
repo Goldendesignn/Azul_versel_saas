@@ -2087,6 +2087,178 @@ function canRunAzulAction(action) {
   return azulRoleAllows("actions", action);
 }
 
+var AZUL_MENU_MODE_KEY = "azul_menu_mode";
+var AZUL_MENU_MODULES = {
+  dashboard: { group: "Inicio", priority: 1, keywords: "inicio painel resumo hoje dashboard" },
+  performance: { group: "Relatorios", priority: 3, keywords: "analise comercial performance relatorio lucro produto" },
+  venda: { group: "Essenciais", priority: 1, keywords: "vender venda pos recibo pagamento caixa" },
+  achat: { group: "Essenciais", priority: 1, keywords: "comprar compra produto entrada stock reposicao" },
+  importacoes: { group: "Stock", priority: 2, keywords: "importacao importar csv encomenda china mercadoria" },
+  transfert: { group: "Essenciais", priority: 1, keywords: "stock estoque inventario armazem loja transferencia" },
+  clientes: { group: "Pessoas", priority: 2, keywords: "cliente divida pagamento ficha receber" },
+  depenses: { group: "Essenciais", priority: 1, keywords: "despesa gasto saida dinheiro custo" },
+  rh: { group: "Pessoas", priority: 3, keywords: "rh recursos humanos funcionario salario presenca" },
+  forn: { group: "Pessoas", priority: 2, keywords: "fornecedor fornecedor pagamento divida compra" },
+  tresorerie: { group: "Dinheiro", priority: 2, keywords: "tesouraria caixa dinheiro entrada saida saldo" },
+  comptabilite: { group: "Relatorios", priority: 3, keywords: "contabilidade fiscal balanco resultado diario" },
+  corrections: { group: "Gestao avancada", priority: 3, keywords: "corrigir correcao anular erro venda compra pagamento" },
+  revendeurs: { group: "Vendas", priority: 3, keywords: "revendedor consignacao retorno pagamento" },
+  online: { group: "Vendas", priority: 2, keywords: "venda online whatsapp loja catalogo pedido" },
+  logistica: { group: "Vendas", priority: 3, keywords: "logistica entrega motoboy encomenda cliente" },
+  settings: { group: "Sistema", priority: 2, keywords: "definicoes configuracao recibo tema equipa permissao" }
+};
+
+var AZUL_MENU_GROUP_ORDER = ["Inicio", "Essenciais", "Vendas", "Stock", "Dinheiro", "Pessoas", "Relatorios", "Gestao avancada", "Sistema"];
+
+function getAzulMenuMode() {
+  var mode = "";
+  try { mode = localStorage.getItem(AZUL_MENU_MODE_KEY) || ""; } catch(e) {}
+  return mode === "full" ? "full" : "simple";
+}
+
+function setAzulMenuMode(mode) {
+  mode = mode === "full" ? "full" : "simple";
+  try { localStorage.setItem(AZUL_MENU_MODE_KEY, mode); } catch(e) {}
+  renderMenuModeSettings();
+  enhanceAzulNavigation();
+  toast(mode === "full" ? "Menu completo ativo." : "Menu simples ativo.", "success");
+}
+
+function renderMenuModeSettings() {
+  var mode = getAzulMenuMode();
+  ["simple", "full"].forEach(function(item) {
+    var btn = document.getElementById("menu-mode-" + item);
+    if (!btn) return;
+    btn.classList.toggle("active", mode === item);
+  });
+}
+
+function getAzulMenuMeta(page) {
+  return AZUL_MENU_MODULES[page] || { group: "Sistema", priority: 3, keywords: page || "" };
+}
+
+function getAzulVisibleTabs() {
+  return Array.prototype.filter.call(document.querySelectorAll(".nav .tab[onclick]"), function(tab) {
+    var page = tab.dataset.page || extractGoToPage(tab.getAttribute("onclick"));
+    return page && tab.style.display !== "none" && canAccessAzulPage(page);
+  });
+}
+
+function removeAzulNavigationDecorations(nav) {
+  Array.prototype.forEach.call(nav.querySelectorAll(".nav-search-box, .nav-mode-strip, .nav-group-label, .nav-empty-state"), function(el) {
+    el.remove();
+  });
+}
+
+function sortAzulNavigationTabs(nav) {
+  var mode = getAzulMenuMode();
+  var tabs = Array.prototype.slice.call(nav.querySelectorAll(".tab[onclick]"));
+  tabs.sort(function(a, b) {
+    var pa = a.dataset.page || extractGoToPage(a.getAttribute("onclick"));
+    var pb = b.dataset.page || extractGoToPage(b.getAttribute("onclick"));
+    var ma = getAzulMenuMeta(pa);
+    var mb = getAzulMenuMeta(pb);
+    var ga = AZUL_MENU_GROUP_ORDER.indexOf(ma.group);
+    var gb = AZUL_MENU_GROUP_ORDER.indexOf(mb.group);
+    if (ga < 0) ga = 999;
+    if (gb < 0) gb = 999;
+    if (mode === "simple" && ma.priority !== mb.priority) return ma.priority - mb.priority;
+    if (ga !== gb) return ga - gb;
+    return tabs.indexOf(a) - tabs.indexOf(b);
+  });
+  tabs.forEach(function(tab) { nav.appendChild(tab); });
+}
+
+function applyAzulMenuSearch() {
+  var nav = document.querySelector(".nav");
+  var input = document.getElementById("azulMenuSearch");
+  if (!nav || !input) return;
+
+  var query = normalizeAzulIconText(input.value || "");
+  var visibleCount = 0;
+
+  Array.prototype.forEach.call(nav.querySelectorAll(".tab[onclick]"), function(tab) {
+    var page = tab.dataset.page || extractGoToPage(tab.getAttribute("onclick"));
+    var meta = getAzulMenuMeta(page);
+    var haystack = normalizeAzulIconText((tab.textContent || "") + " " + meta.group + " " + meta.keywords);
+    var allowed = canAccessAzulPage(page);
+    var found = !query || haystack.indexOf(query) >= 0;
+    tab.classList.toggle("nav-filtered-out", !allowed || !found);
+    if (allowed && found) visibleCount++;
+  });
+
+  Array.prototype.forEach.call(nav.querySelectorAll(".nav-group-label"), function(label) {
+    var group = label.dataset.group || "";
+    var hasVisible = Array.prototype.some.call(nav.querySelectorAll('.tab[data-nav-group="' + group + '"]'), function(tab) {
+      return !tab.classList.contains("nav-filtered-out") && tab.style.display !== "none";
+    });
+    label.classList.toggle("nav-filtered-out", !hasVisible);
+  });
+
+  var empty = document.getElementById("azulMenuEmpty");
+  if (empty) empty.style.display = visibleCount ? "none" : "block";
+}
+
+function applyQuickStartPermissions() {
+  Array.prototype.forEach.call(document.querySelectorAll("[data-page-link]"), function(el) {
+    var page = el.dataset.pageLink || "";
+    el.style.display = canAccessAzulPage(page) ? "" : "none";
+  });
+}
+
+function enhanceAzulNavigation() {
+  var nav = document.querySelector(".nav");
+  if (!nav) return;
+
+  removeAzulNavigationDecorations(nav);
+  sortAzulNavigationTabs(nav);
+
+  var search = document.createElement("div");
+  search.className = "nav-search-box";
+  search.innerHTML = '<input type="search" id="azulMenuSearch" placeholder="Pesquisar modulo..." autocomplete="off" oninput="applyAzulMenuSearch()">';
+  nav.insertBefore(search, nav.firstChild);
+
+  var mode = document.createElement("div");
+  mode.className = "nav-mode-strip";
+  mode.innerHTML = '<span>' + (getAzulMenuMode() === "full" ? "Menu completo" : "Menu simples") + '</span><button type="button" onclick="setAzulMenuMode(getAzulMenuMode() === \'full\' ? \'simple\' : \'full\')">' + (getAzulMenuMode() === "full" ? "Simplificar" : "Ver tudo") + '</button>';
+  nav.insertBefore(mode, search.nextSibling);
+
+  var currentGroup = "";
+  Array.prototype.slice.call(nav.querySelectorAll(".tab[onclick]")).forEach(function(tab) {
+    var page = tab.dataset.page || extractGoToPage(tab.getAttribute("onclick"));
+    var meta = getAzulMenuMeta(page);
+    tab.dataset.navGroup = meta.group;
+    tab.dataset.navPriority = String(meta.priority || 3);
+
+    if (meta.group !== currentGroup) {
+      currentGroup = meta.group;
+      var label = document.createElement("div");
+      label.className = "nav-group-label";
+      label.dataset.group = currentGroup;
+      label.textContent = currentGroup;
+      nav.insertBefore(label, tab);
+    }
+  });
+
+  var empty = document.createElement("div");
+  empty.id = "azulMenuEmpty";
+  empty.className = "nav-empty-state";
+  empty.textContent = "Nenhum modulo encontrado.";
+  empty.style.display = "none";
+  nav.appendChild(empty);
+
+  applyAzulMenuSearch();
+  applyQuickStartPermissions();
+  renderMenuModeSettings();
+  renderQuickStartIcons();
+}
+
+function renderQuickStartIcons() {
+  Array.prototype.forEach.call(document.querySelectorAll(".quick-start-icon[data-icon]"), function(el) {
+    el.innerHTML = azulIcon(el.dataset.icon || "dashboard");
+  });
+}
+
 function requireAzulAction(action, label) {
   if (canRunAzulAction(action)) return true;
 
@@ -4168,6 +4340,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   startAzulNotifications();
   initContextHelp();
   applyAzulIcons();
+  enhanceAzulNavigation();
   startAzulOnboardingOnce();
   initPaymentLines();
   initCompraLines();
@@ -4243,6 +4416,7 @@ function goTo(page, btn) {
   Array.prototype.forEach.call(document.querySelectorAll('.page'), function(p) { p.classList.remove('active'); });
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(b) { b.classList.remove('active'); });
   target.classList.add('active');
+  if (!btn) btn = document.querySelector('.tab[data-page="' + page + '"]');
   if (btn && btn.classList) btn.classList.add('active');
   try {
     if (typeof syncPageTitles === 'function') syncPageTitles();
@@ -4296,6 +4470,7 @@ function goTo(page, btn) {
     }
     syncContextHelpButton();
     applyAzulIcons();
+    enhanceAzulNavigation();
   } catch (e) {
     toast('Erro no separador: ' + (e && e.message ? e.message : e), 'error');
   }
@@ -14453,6 +14628,7 @@ function applyPortugueseText() {
     if (clientEmpty && clientEmpty.textContent.indexOf('cliente') >= 0) clientEmpty.textContent = getText('loading');
     syncPageTitles();
     applyAzulIcons();
+    enhanceAzulNavigation();
   } catch (e) {
     console.error('applyPortugueseText failed', e);
   } finally {

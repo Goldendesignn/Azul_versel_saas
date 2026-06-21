@@ -236,6 +236,38 @@
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
 
+      <section class="quick-start-panel" id="quickStartPanel">
+        <div class="quick-start-head">
+          <div>
+            <span>Comecar rapido</span>
+            <h2>O que quer fazer agora?</h2>
+          </div>
+          <button type="button" class="quick-start-settings" onclick="goTo('settings', null)">Ver menu completo</button>
+        </div>
+        <div class="quick-start-grid">
+          <button type="button" onclick="goTo('venda', null)" data-page-link="venda">
+            <span class="quick-start-icon" data-icon="venda"></span>
+            <strong>Vender</strong>
+            <small>Registar uma venda e imprimir recibo</small>
+          </button>
+          <button type="button" onclick="goTo('achat', null)" data-page-link="achat">
+            <span class="quick-start-icon" data-icon="achat"></span>
+            <strong>Comprar</strong>
+            <small>Adicionar produtos ou repor stock</small>
+          </button>
+          <button type="button" onclick="goTo('transfert', null)" data-page-link="transfert">
+            <span class="quick-start-icon" data-icon="transfert"></span>
+            <strong>Stock</strong>
+            <small>Ver quantidades e transferencias</small>
+          </button>
+          <button type="button" onclick="goTo('depenses', null)" data-page-link="depenses">
+            <span class="quick-start-icon" data-icon="depenses"></span>
+            <strong>Despesa</strong>
+            <small>Registar uma saida de dinheiro</small>
+          </button>
+        </div>
+      </section>
+
       <!-- FILTROS -->
       <div class="dash-filters">
         <div class="filter-group">
@@ -2065,6 +2097,19 @@
           <button type="button" class="onboarding-settings-btn" onclick="restartAzulOnboarding()">
             Rever tutorial
           </button>
+        </div>
+
+        <div class="card menu-settings-card" style="grid-column:1/-1;">
+          <div>
+            <div class="card-title">Menu do ERP</div>
+            <div class="menu-settings-subtitle">
+              O modo simples destaca as tarefas mais usadas. O modo completo mantem tudo visivel para utilizadores experientes.
+            </div>
+          </div>
+          <div class="menu-mode-control" id="menuModeControl">
+            <button type="button" id="menu-mode-simple" onclick="setAzulMenuMode('simple')">Modo simples</button>
+            <button type="button" id="menu-mode-full" onclick="setAzulMenuMode('full')">Modo completo</button>
+          </div>
         </div>
 
         <div class="card" style="grid-column:1/-1;">
