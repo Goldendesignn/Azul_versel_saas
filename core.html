@@ -2586,6 +2586,7 @@
        <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
         <button class="mode-btn active" id="client-tab-fiche" onclick="switchClientTab('fiche',this)">Ficha do cliente</button>
         <button class="mode-btn" id="client-tab-pagamento" onclick="switchClientTab('pagamento',this)"> Registar pagamento</button>
+        <button class="mode-btn" id="client-tab-fidelidade" onclick="switchClientTab('fidelidade',this)">Fidelidade</button>
       </div>
       <!-- FICHE CLIENTES -->
       <div id="client-panel-fiche">
@@ -2625,6 +2626,68 @@
             <button class="form-submit" id="pg-cl-btn" onclick="savePagamentoClient()"> Registar Pagamento</button>
           </div>
         </div>
+      </div>
+      <!-- FIDELIDADE CLIENTES -->
+      <div id="client-panel-fidelidade" style="display:none">
+        <div class="loyalty-page-head">
+          <div>
+            <div class="section-title">Fidelidade</div>
+            <p>Configure pontos, consulte clientes fieis e imprima cartoes com QR code.</p>
+          </div>
+          <button class="filter-btn" onclick="loadLoyaltyPanel()">Atualizar</button>
+        </div>
+
+        <div class="loyalty-layout">
+          <section class="loyalty-card loyalty-settings-panel">
+            <div class="card-title">Configuracao dos pontos</div>
+            <label class="loyalty-toggle">
+              <input type="checkbox" id="loyalty-active">
+              <span>Programa de fidelidade ativo</span>
+            </label>
+            <div class="loyalty-form-grid">
+              <div class="form-group">
+                <label class="form-label">Quantos Kz valem 1 ponto?</label>
+                <input type="number" class="form-input" id="loyalty-kz-per-point" min="1" step="1" placeholder="Ex: 1000">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Pontos para desconto</label>
+                <input type="number" class="form-input" id="loyalty-redeem-points" min="1" step="1" placeholder="Ex: 10">
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Valor do desconto</label>
+                <input type="number" class="form-input" id="loyalty-redeem-value" min="0" step="1" placeholder="Ex: 1000">
+              </div>
+            </div>
+            <button class="form-submit loyalty-save-btn" id="loyalty-save-btn" onclick="saveLoyaltySettings()">Guardar fidelidade</button>
+            <p class="loyalty-hint">Exemplo: se definir 1000 Kz = 1 ponto, uma venda de 15 000 Kz gera 15 pontos.</p>
+          </section>
+
+          <section class="loyalty-card">
+            <div class="card-title">Resumo</div>
+            <div class="loyalty-kpis">
+              <div><span>Clientes</span><strong id="loyalty-kpi-clients">0</strong></div>
+              <div><span>Pontos ativos</span><strong id="loyalty-kpi-points">0</strong></div>
+              <div><span>Pontos ganhos</span><strong id="loyalty-kpi-earned">0</strong></div>
+              <div><span>Pontos usados</span><strong id="loyalty-kpi-used">0</strong></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="loyalty-card">
+          <div class="card-title">Ficha de fidelidade</div>
+          <div class="client-search-row">
+            <input type="text" class="filter-input" id="loyalty-client-search" list="list-client" placeholder="Nome do cliente...">
+            <button class="filter-btn" onclick="loadLoyaltyClientCard()">Pesquisar</button>
+          </div>
+          <div id="loyalty-client-result"><div class="empty">Pesquisa um cliente para ver pontos, QR code e historico.</div></div>
+        </section>
+
+        <section class="loyalty-card">
+          <div class="card-title">Top clientes fidelidade</div>
+          <div id="loyalty-top-list" class="loyalty-top-list">
+            <div class="empty">Ainda sem clientes fidelidade.</div>
+          </div>
+        </section>
       </div>
     </div>
     <!-- RH -->

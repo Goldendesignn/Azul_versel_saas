@@ -1,4 +1,4 @@
-const AZUL_CACHE = "azul-pwa-v142";
+const AZUL_CACHE = "azul-pwa-v143";
 
 const AZUL_STATIC_ASSETS = [
   "/",
@@ -6,6 +6,7 @@ const AZUL_STATIC_ASSETS = [
   "/core.html",
   "/loja.html",
   "/produto.html",
+  "/fidelidade.html",
   "/scanner.html",
   "/admin.html",
   "/manifest.webmanifest",
@@ -13,6 +14,7 @@ const AZUL_STATIC_ASSETS = [
   "/CSS/core.css",
   "/CSS/loja.css",
   "/CSS/produto.css",
+  "/CSS/fidelidade.css",
   "/CSS/scanner.css",
   "/CSS/admin.css",
   "/JS/pwa.js",
@@ -22,6 +24,7 @@ const AZUL_STATIC_ASSETS = [
   "/JS/core.js",
   "/JS/loja.js",
   "/JS/produto.js",
+  "/JS/fidelidade.js",
   "/JS/scanner.js",
   "/JS/admin.js",
   "/JS/offline.js",

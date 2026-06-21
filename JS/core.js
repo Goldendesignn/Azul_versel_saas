@@ -3328,6 +3328,12 @@ await createAccountingEntry(
   "Venda " + sale.receipt_no,
   saleLines
 );
+  try {
+    await awardLoyaltyPointsForSale(sale, data, total);
+  } catch (e) {
+    console.warn("Erro fidelidade venda:", e);
+  }
+
   return {
     sale: sale,
     receiptNo: receiptNo,
@@ -13218,16 +13224,22 @@ function switchVendaTab(tab, btn) {
 }
 //MOI-MEME
 function switchClientTab(tab, btn) {
-  ['fiche','pagamento'].forEach(function(t) {
-    document.getElementById('client-panel-'+t).style.display = 'none';
-    document.getElementById('client-tab-'+t).classList.remove('active');
+  ['fiche','pagamento','fidelidade'].forEach(function(t) {
+    var panel = document.getElementById('client-panel-'+t);
+    var tabBtn = document.getElementById('client-tab-'+t);
+    if (panel) panel.style.display = 'none';
+    if (tabBtn) tabBtn.classList.remove('active');
   });
-  document.getElementById('client-panel-'+tab).style.display = 'block';
-  btn.classList.add('active');
+  var activePanel = document.getElementById('client-panel-'+tab);
+  if (activePanel) activePanel.style.display = 'block';
+  if (btn) btn.classList.add('active');
   if (tab === 'fiche') loadProducts();
   if (tab === 'pagamento') {
     loadProducts();
   };
+  if (tab === 'fidelidade') {
+    loadLoyaltyPanel();
+  }
 }
 
 function initCompraLines() {
@@ -17113,6 +17125,326 @@ async function saveFornecedor() {
 
 // ===== FICHE CLIENT =====
 var clientDetailRequestSeq = 0;
+var loyaltyPanelLoaded = false;
+var loyaltyLastSettings = null;
+
+function normalizeClientNameForLoyalty(name) {
+  return String(name || "").trim();
+}
+
+function isAnonymousClientName(name) {
+  var value = normalizeClientNameForLoyalty(name).toLowerCase();
+  return !value || value === "anonimo" || value === "anónimo";
+}
+
+function getLoyaltyPublicUrl(token) {
+  var base = window.location.origin + window.location.pathname.replace(/core\.html.*$/i, "");
+  return base + "fidelidade.html?t=" + encodeURIComponent(token || "");
+}
+
+function renderLoyaltySettings(settings) {
+  settings = settings || {};
+  var active = document.getElementById("loyalty-active");
+  var kz = document.getElementById("loyalty-kz-per-point");
+  var pts = document.getElementById("loyalty-redeem-points");
+  var val = document.getElementById("loyalty-redeem-value");
+
+  if (active) active.checked = !!settings.active;
+  if (kz) kz.value = Number(settings.kz_per_point || 1000);
+  if (pts) pts.value = Number(settings.redeem_points || 10);
+  if (val) val.value = Number(settings.redeem_value || 1000);
+}
+
+async function getLoyaltySettingsFromSupabase() {
+  var organizationId = getAzulOrganizationId();
+
+  var result = await supabaseClient
+    .from("loyalty_settings")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (result.error) throw result.error;
+
+  return result.data || {
+    organization_id: organizationId,
+    active: false,
+    kz_per_point: 1000,
+    redeem_points: 10,
+    redeem_value: 1000
+  };
+}
+
+async function saveLoyaltySettings() {
+  var btn = document.getElementById("loyalty-save-btn");
+  var organizationId = getAzulOrganizationId();
+
+  var row = {
+    organization_id: organizationId,
+    active: !!((document.getElementById("loyalty-active") || {}).checked),
+    kz_per_point: Math.max(1, Number((document.getElementById("loyalty-kz-per-point") || {}).value) || 1000),
+    redeem_points: Math.max(1, Number((document.getElementById("loyalty-redeem-points") || {}).value) || 10),
+    redeem_value: Math.max(0, Number((document.getElementById("loyalty-redeem-value") || {}).value) || 0),
+    updated_at: new Date().toISOString()
+  };
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A guardar...";
+  }
+
+  try {
+    var audit = await getAzulAuditFields();
+    row = addAzulAuditFields(row, audit);
+
+    var result = await supabaseClient
+      .from("loyalty_settings")
+      .upsert(row, { onConflict: "organization_id" })
+      .select()
+      .single();
+
+    if (result.error) throw result.error;
+
+    loyaltyLastSettings = result.data;
+    renderLoyaltySettings(result.data);
+    toast("Fidelidade guardada com sucesso.", "success");
+    await loadLoyaltySummary();
+  } catch (e) {
+    console.error("Erro fidelidade:", e);
+    toast("Erro fidelidade: " + (e.message || e), "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Guardar fidelidade";
+    }
+  }
+}
+
+async function loadLoyaltyPanel() {
+  try {
+    await renderClientDatalist();
+    loyaltyLastSettings = await getLoyaltySettingsFromSupabase();
+    renderLoyaltySettings(loyaltyLastSettings);
+    await loadLoyaltySummary();
+    loyaltyPanelLoaded = true;
+  } catch (e) {
+    console.error("Erro painel fidelidade:", e);
+    var list = document.getElementById("loyalty-top-list");
+    if (list) list.innerHTML = '<div class="empty">Cria as tabelas de fidelidade no Supabase para activar este modulo.</div>';
+  }
+}
+
+async function loadLoyaltySummary() {
+  var organizationId = getAzulOrganizationId();
+
+  var clientsResult = await supabaseClient
+    .from("loyalty_clients")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("points_balance", { ascending: false })
+    .limit(10);
+
+  if (clientsResult.error) throw clientsResult.error;
+
+  var clients = clientsResult.data || [];
+  var activePoints = clients.reduce(function(sum, row) { return sum + (Number(row.points_balance) || 0); }, 0);
+  var earned = clients.reduce(function(sum, row) { return sum + (Number(row.total_points_earned) || 0); }, 0);
+  var used = clients.reduce(function(sum, row) { return sum + (Number(row.total_points_used) || 0); }, 0);
+
+  var set = function(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = new Intl.NumberFormat(getLocale()).format(Number(value) || 0);
+  };
+
+  set("loyalty-kpi-clients", clients.length);
+  set("loyalty-kpi-points", activePoints);
+  set("loyalty-kpi-earned", earned);
+  set("loyalty-kpi-used", used);
+  renderLoyaltyTopList(clients);
+}
+
+function renderLoyaltyTopList(rows) {
+  var box = document.getElementById("loyalty-top-list");
+  if (!box) return;
+
+  if (!rows || !rows.length) {
+    box.innerHTML = '<div class="empty">Ainda sem clientes fidelidade.</div>';
+    return;
+  }
+
+  box.innerHTML = rows.map(function(row, index) {
+    return '<button type="button" class="loyalty-top-item" onclick="loadLoyaltyClientCard(\'' + encodeURIComponent(row.client_name || "") + '\')">' +
+      '<span class="loyalty-rank">' + (index + 1) + '</span>' +
+      '<div><strong>' + escapeDespesaHtml(row.client_name || "-") + '</strong><small>' + fmt(Number(row.total_spent) || 0) + ' em compras</small></div>' +
+      '<b>' + new Intl.NumberFormat(getLocale()).format(Number(row.points_balance) || 0) + ' pts</b>' +
+    '</button>';
+  }).join("");
+}
+
+async function getOrCreateLoyaltyClient(clientName) {
+  var organizationId = getAzulOrganizationId();
+  clientName = normalizeClientNameForLoyalty(clientName);
+  if (isAnonymousClientName(clientName)) return null;
+
+  var result = await supabaseClient
+    .from("loyalty_clients")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("client_name", clientName)
+    .maybeSingle();
+
+  if (result.error) throw result.error;
+  if (result.data) return result.data;
+
+  var insert = await insertSingleWithAzulAudit("loyalty_clients", {
+    organization_id: organizationId,
+    client_name: clientName
+  });
+
+  if (insert.error) throw insert.error;
+  return insert.data;
+}
+
+async function awardLoyaltyPointsForSale(sale, data, total) {
+  var settings = loyaltyLastSettings || await getLoyaltySettingsFromSupabase();
+  if (!settings || !settings.active) return;
+
+  var clientName = normalizeClientNameForLoyalty((data && data.clientName) || (sale && sale.client_name));
+  if (isAnonymousClientName(clientName)) return;
+
+  var kzPerPoint = Math.max(1, Number(settings.kz_per_point) || 1000);
+  var points = Math.floor((Number(total) || 0) / kzPerPoint);
+  if (points <= 0) return;
+
+  var client = await getOrCreateLoyaltyClient(clientName);
+  if (!client) return;
+
+  var nextBalance = (Number(client.points_balance) || 0) + points;
+  var nextEarned = (Number(client.total_points_earned) || 0) + points;
+  var nextSpent = (Number(client.total_spent) || 0) + (Number(total) || 0);
+
+  var update = await supabaseClient
+    .from("loyalty_clients")
+    .update({
+      points_balance: nextBalance,
+      total_points_earned: nextEarned,
+      total_spent: nextSpent,
+      last_sale_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", client.id);
+
+  if (update.error) throw update.error;
+
+  var tx = await insertSingleWithAzulAudit("loyalty_transactions", {
+    organization_id: getAzulOrganizationId(),
+    loyalty_client_id: client.id,
+    sale_id: sale && sale.id ? sale.id : null,
+    client_name: clientName,
+    type: "earn",
+    points: points,
+    amount: Number(total) || 0,
+    note: "Venda " + ((sale && sale.receipt_no) || "")
+  });
+
+  if (tx.error) throw tx.error;
+}
+
+async function loadLoyaltyClientCard(encodedName) {
+  var input = document.getElementById("loyalty-client-search");
+  var clientName = encodedName ? decodeURIComponent(encodedName) : normalizeClientNameForLoyalty(input ? input.value : "");
+  var resultBox = document.getElementById("loyalty-client-result");
+  var organizationId = getAzulOrganizationId();
+
+  if (input && clientName) input.value = clientName;
+  if (!clientName) {
+    if (resultBox) resultBox.innerHTML = '<div class="empty">Escreve o nome do cliente.</div>';
+    return;
+  }
+
+  try {
+    var client = await getOrCreateLoyaltyClient(clientName);
+
+    var txResult = await supabaseClient
+      .from("loyalty_transactions")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .eq("loyalty_client_id", client.id)
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    if (txResult.error) throw txResult.error;
+    renderLoyaltyClientCard(client, txResult.data || []);
+    await loadLoyaltySummary();
+  } catch (e) {
+    console.error("Erro ficha fidelidade:", e);
+    if (resultBox) resultBox.innerHTML = '<div class="empty">Erro fidelidade: ' + escapeDespesaHtml(e.message || e) + '</div>';
+  }
+}
+
+function renderLoyaltyClientCard(client, transactions) {
+  var box = document.getElementById("loyalty-client-result");
+  if (!box || !client) return;
+
+  var link = getLoyaltyPublicUrl(client.token);
+  var qr = buildReceiptQrUrl(link, 220, 8);
+  var points = new Intl.NumberFormat(getLocale()).format(Number(client.points_balance) || 0);
+  var spent = fmt(Number(client.total_spent) || 0);
+
+  box.innerHTML =
+    '<div class="loyalty-client-card">' +
+      '<div class="loyalty-card-main">' +
+        '<div class="loyalty-card-badge">Azul Fidelidade</div>' +
+        '<h3>' + escapeDespesaHtml(client.client_name || "-") + '</h3>' +
+        '<div class="loyalty-points-big">' + points + '<span>pontos</span></div>' +
+        '<p>Total comprado: <strong>' + spent + '</strong></p>' +
+        '<div class="loyalty-card-actions">' +
+          '<button type="button" onclick="printLoyaltyCard(\'' + client.id + '\')">Imprimir ficha</button>' +
+          '<button type="button" onclick="copyLoyaltyLink(\'' + encodeURIComponent(link) + '\')">Copiar link</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="loyalty-qr-box">' +
+        '<img src="' + qr + '" alt="QR fidelidade">' +
+        '<small>Cliente escaneia para ver os pontos.</small>' +
+      '</div>' +
+    '</div>' +
+    '<div class="loyalty-history">' +
+      '<div class="card-title">Movimentos recentes</div>' +
+      ((transactions || []).length ? transactions.map(function(row) {
+        return '<div class="loyalty-history-row">' +
+          '<span>' + escapeDespesaHtml(row.type === "earn" ? "Pontos ganhos" : row.type) + '<small>' + escapeDespesaHtml((row.created_at || "").slice(0, 10)) + '</small></span>' +
+          '<b>' + new Intl.NumberFormat(getLocale()).format(Number(row.points) || 0) + ' pts</b>' +
+        '</div>';
+      }).join("") : '<div class="empty">Ainda sem movimentos.</div>') +
+    '</div>';
+}
+
+function copyLoyaltyLink(encodedLink) {
+  var link = decodeURIComponent(encodedLink || "");
+  if (!link) return;
+  navigator.clipboard.writeText(link).then(function() {
+    toast("Link de fidelidade copiado.", "success");
+  }).catch(function() {
+    prompt("Copie o link de fidelidade:", link);
+  });
+}
+
+function printLoyaltyCard(clientId) {
+  var card = document.querySelector(".loyalty-client-card");
+  if (!card) {
+    toast("Pesquisa primeiro um cliente.", "error");
+    return;
+  }
+
+  var win = window.open("", "_blank", "width=420,height=650");
+  if (!win) {
+    toast("Permite popups para imprimir.", "error");
+    return;
+  }
+
+  win.document.write('<!doctype html><html><head><title>Ficha de fidelidade</title><style>body{font-family:Arial,sans-serif;margin:0;padding:18px;background:#f5f5f5}.loyalty-client-card{background:#fff;border:1px solid #ddd;border-radius:18px;padding:18px;text-align:center}.loyalty-card-badge{text-transform:uppercase;font-size:11px;font-weight:800;color:#0f4aa2}.loyalty-points-big{font-size:42px;font-weight:900;color:#0f4aa2}.loyalty-points-big span{display:block;font-size:13px;color:#555}.loyalty-card-actions{display:none}.loyalty-qr-box img{width:160px;height:160px}small,p{color:#555}</style></head><body>' + card.outerHTML + '<script>window.onload=function(){window.print();}</script></body></html>');
+  win.document.close();
+}
 
 async function getClientNamesFromSupabase() {
   var organizationId = getAzulOrganizationId();
