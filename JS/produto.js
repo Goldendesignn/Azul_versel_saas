@@ -26,6 +26,20 @@ function normalizeProductPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
 
+function getProductStockStatus(product) {
+  var stock = Number(product && product.stock_shop) || 0;
+  if (productStore && productStore.show_stock && stock <= 0) {
+    return { className: "is-out", label: "Esgotado", text: "Produto sem stock" };
+  }
+  if (productStore && productStore.show_stock && stock > 0 && stock <= 3) {
+    return { className: "is-low", label: "Poucas unidades", text: stock + " disponivel" };
+  }
+  if (productStore && productStore.show_stock) {
+    return { className: "is-available", label: "Disponivel", text: stock + " disponiveis" };
+  }
+  return { className: "is-available", label: "Disponivel", text: "Por encomenda" };
+}
+
 function normalizeProductColor(value) {
   var color = String(value || "").trim();
   return /^#[0-9a-f]{6}$/i.test(color) ? color : "#0b3d91";
@@ -199,20 +213,21 @@ function renderSimilarProducts() {
         var id = productEscape(item.id);
         var name = productEscape(item.name || "Produto");
         var category = productEscape(item.category || "Produto");
-        var stock = Number(item.stock_shop) || 0;
-        var isOut = productStore.show_stock && stock <= 0;
+        var stockStatus = getProductStockStatus(item);
+        var isOut = stockStatus.className === "is-out";
         var variation = productEscape(item.variation || "");
-        var stockText = productStore.show_stock
-          ? (stock > 0 ? "Disponivel: " + stock : "Esgotado")
-          : "Disponivel";
-        var meta = category + (variation ? " | " + variation : "") + " | " + productEscape(stockText);
+        var meta = category + (variation ? " | " + variation : "");
         var image = renderSimilarProductMedia(item, name);
 
         return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '" tabindex="0" role="link" onclick="openSimilarProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openSimilarProduct(\'' + id + '\')}">' +
-          image +
+          '<div class="shop-product-media-wrap">' +
+            image +
+            '<span class="shop-stock-badge ' + stockStatus.className + '">' + productEscape(stockStatus.label) + '</span>' +
+          '</div>' +
           '<div class="shop-product-info">' +
             '<strong title="' + name + '">' + name + '</strong>' +
             '<small title="' + meta + '">' + meta + '</small>' +
+            '<span class="shop-product-stock-text">' + productEscape(stockStatus.text) + '</span>' +
             '<div class="shop-product-price">' + productMoney(item.sale_price) + '</div>' +
           '</div>' +
           '<div class="shop-product-actions">' +
@@ -234,6 +249,7 @@ function renderProductDetail() {
   var price = Number(productItem.sale_price) || 0;
   var stock = Number(productItem.stock_shop) || 0;
   var isOut = productStore.show_stock && stock <= 0;
+  var stockStatus = getProductStockStatus(productItem);
   var variations = normalizeProductVariations(productItem);
   var mediaRows = getProductMediaRows(productItem);
   if (productSelectedMediaIndex >= mediaRows.length) productSelectedMediaIndex = 0;
@@ -267,13 +283,17 @@ function renderProductDetail() {
         '<h1 class="product-title">' + name + '</h1>' +
         '<div class="product-price">' + productMoney(price) + '</div>' +
         '<p class="product-description">' + description + '</p>' +
+        '<div class="product-trust-strip">' +
+          '<span><b>W</b> Pedido directo no WhatsApp</span>' +
+          '<span><b>&#10003;</b> Confirmacao rapida da loja</span>' +
+        '</div>' +
         '<div class="product-meta-line">' +
           (productItem.code ? '<span>Codigo: ' + productEscape(productItem.code) + '</span>' : '') +
-          (productStore.show_stock ? '<span>' + (stock > 0 ? stock + ' unidade(s) disponiveis' : 'Produto esgotado') + '</span>' : '<span>Disponivel por encomenda</span>') +
+          '<span class="' + stockStatus.className + '">' + productEscape(stockStatus.label) + ': ' + productEscape(stockStatus.text) + '</span>' +
         '</div>' +
         '<div class="product-order-panel">' +
           (variations.length
-            ? '<fieldset class="product-fieldset"><legend>Escolher tamanho ou variacao</legend><div class="product-variation-list">' + variationButtons + '</div></fieldset>'
+            ? '<fieldset class="product-fieldset"><legend>Escolher tamanho ou variacao</legend><p class="product-field-hint">Toca numa opcao antes de pedir. Assim a loja recebe o pedido sem confusao.</p><div class="product-variation-list">' + variationButtons + '</div></fieldset>'
             : '') +
           '<fieldset class="product-fieldset">' +
             '<legend>Quantidade</legend>' +

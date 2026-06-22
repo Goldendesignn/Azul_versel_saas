@@ -26,6 +26,13 @@ function shopEscape(value) {
     .replace(/'/g, "&#039;");
 }
 
+function normalizeShopSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function normalizeShopPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
@@ -299,7 +306,7 @@ function getShopCustomerData() {
 }
 
 function productSearchText(product) {
-  return [
+  return normalizeShopSearchText([
     product.name,
     product.base_name,
     product.category,
@@ -311,7 +318,21 @@ function productSearchText(product) {
   ].map(function(value) {
     if (value && typeof value === "object") return JSON.stringify(value).toLowerCase();
     return String(value || "").toLowerCase();
-  }).join(" ");
+  }).join(" "));
+}
+
+function getShopStockStatus(product) {
+  var stock = Number(product && product.stock_shop) || 0;
+  if (shopStore && shopStore.show_stock && stock <= 0) {
+    return { className: "is-out", label: "Esgotado", text: "Produto sem stock" };
+  }
+  if (shopStore && shopStore.show_stock && stock > 0 && stock <= 3) {
+    return { className: "is-low", label: "Poucas unidades", text: stock + " disponivel" };
+  }
+  if (shopStore && shopStore.show_stock) {
+    return { className: "is-available", label: "Disponivel", text: stock + " disponiveis" };
+  }
+  return { className: "is-available", label: "Disponivel", text: "Por encomenda" };
 }
 
 function getShopProductMainMedia(product) {
@@ -487,7 +508,7 @@ function renderShopProducts() {
   var container = document.getElementById("shopProducts");
   if (!container) return;
 
-  var q = String((document.getElementById("shopSearch") || {}).value || "").trim().toLowerCase();
+  var q = normalizeShopSearchText(String((document.getElementById("shopSearch") || {}).value || "").trim());
   var list = shopProducts.filter(function(product) {
     var category = normalizeShopCategory(product.category || "Sem categoria");
     var matchesCategory = !shopActiveCategory || category === shopActiveCategory;
@@ -505,24 +526,25 @@ function renderShopProducts() {
     var name = shopEscape(product.name || "");
     var category = shopEscape(product.category || "Produto");
     var price = Number(product.sale_price) || 0;
-    var stock = Number(product.stock_shop) || 0;
-    var isOut = shopStore.show_stock && stock <= 0;
     var variation = shopEscape(product.variation || "");
-    var stockText = shopStore.show_stock
-      ? (stock > 0 ? "Disponivel: " + stock : "Esgotado")
-      : "Disponivel";
+    var status = getShopStockStatus(product);
+    var isOut = status.className === "is-out";
     var image = renderShopProductMedia(product, name);
-    var meta = category + (variation ? " | " + variation : "") + " | " + shopEscape(stockText);
+    var meta = category + (variation ? " | " + variation : "");
 
     return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '" role="link" tabindex="0" onclick="openShopProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openShopProduct(\'' + id + '\')}">' +
-      image +
+      '<div class="shop-product-media-wrap">' +
+        image +
+        '<span class="shop-stock-badge ' + status.className + '">' + shopEscape(status.label) + '</span>' +
+      '</div>' +
       '<div class="shop-product-info">' +
         '<strong title="' + name + '">' + name + '</strong>' +
         '<small title="' + meta + '">' + meta + '</small>' +
+        '<span class="shop-product-stock-text">' + shopEscape(status.text) + '</span>' +
         '<div class="shop-product-price">' + shopMoney(price) + '</div>' +
       '</div>' +
       '<div class="shop-product-actions">' +
-        '<button type="button" class="shop-view-btn" tabindex="-1">' + (isOut ? 'Ver produto esgotado' : 'Ver produto') + ' <span aria-hidden="true">&rarr;</span></button>' +
+        '<button type="button" class="shop-view-btn" tabindex="-1">' + (isOut ? 'Ver detalhes' : 'Ver produto') + ' <span aria-hidden="true">&rarr;</span></button>' +
       '</div>' +
     '</article>';
   }).join("");

@@ -146,6 +146,58 @@ html.shop-style-pending .shop-shell {
   font-weight: 900;
 }
 
+.shop-trust-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.shop-trust-strip div {
+  min-width: 0;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 3px 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  padding: 13px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.045);
+}
+
+.shop-trust-strip span {
+  grid-row: 1 / span 2;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--blue) 12%, var(--surface2));
+  color: var(--blue);
+  font-weight: 900;
+}
+
+.shop-trust-strip strong,
+.shop-trust-strip small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-trust-strip strong {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.shop-trust-strip small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .shop-hero.is-fallback {
   min-height: 170px;
 }
@@ -420,7 +472,7 @@ html.shop-style-pending .shop-shell {
 .shop-products {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
   gap: 18px;
   align-items: stretch;
 }
@@ -437,6 +489,12 @@ html.shop-style-pending .shop-shell {
   box-shadow: 0 10px 24px rgba(0,0,0,.06);
   transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
   cursor: pointer;
+}
+
+.shop-product-media-wrap {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface2);
 }
 
 .shop-product-card:hover {
@@ -457,7 +515,7 @@ html.shop-style-pending .shop-shell {
 .shop-product-image {
   flex: 0 0 auto;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   display: grid;
   place-items: center;
   background: var(--surface2);
@@ -474,12 +532,37 @@ html.shop-style-pending .shop-shell {
   object-fit: cover;
 }
 
+.shop-stock-badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  max-width: calc(100% - 20px);
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: rgba(255,255,255,.92);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(0,0,0,.12);
+}
+
+.shop-stock-badge.is-low {
+  color: #b96a00;
+}
+
+.shop-stock-badge.is-out {
+  color: var(--red);
+}
+
 .shop-product-info {
   flex: 1 1 auto;
   display: grid;
-  grid-template-rows: 39px 18px auto;
+  grid-template-rows: 42px 18px 20px auto;
   align-content: start;
-  gap: 7px;
+  gap: 6px;
   padding: 14px;
 }
 
@@ -492,7 +575,7 @@ html.shop-style-pending .shop-shell {
 
 .shop-product-info strong {
   display: -webkit-box;
-  height: 39px;
+  height: 42px;
   overflow: hidden;
   font-size: 16px;
   line-height: 1.2;
@@ -506,6 +589,17 @@ html.shop-style-pending .shop-shell {
   color: var(--muted);
   font-size: 12px;
   line-height: 18px;
+  white-space: nowrap;
+}
+
+.shop-product-stock-text {
+  min-width: 0;
+  height: 20px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 20px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -794,6 +888,23 @@ html.shop-style-pending .shop-shell {
     font-size: clamp(30px, 10vw, 46px);
   }
 
+  .shop-trust-strip {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .shop-trust-strip div {
+    min-height: 62px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .shop-trust-strip span {
+    width: 34px;
+    height: 34px;
+  }
+
   .shop-hero-arrow {
     display: none;
   }
@@ -838,14 +949,14 @@ html.shop-style-pending .shop-shell {
   }
 
   .shop-product-info {
-    grid-template-rows: 34px 17px auto;
+    grid-template-rows: 36px 17px 18px auto;
     padding: 10px;
   }
 
   .shop-product-info strong {
     font-size: 13px;
-    height: 34px;
-    min-height: 34px;
+    height: 36px;
+    min-height: 36px;
   }
 
   .shop-product-info small {
@@ -855,6 +966,20 @@ html.shop-style-pending .shop-shell {
 
   .shop-product-price {
     font-size: 14px;
+  }
+
+  .shop-product-stock-text {
+    height: 18px;
+    font-size: 11px;
+    line-height: 18px;
+  }
+
+  .shop-stock-badge {
+    left: 7px;
+    top: 7px;
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 10px;
   }
 
   .shop-product-actions {
