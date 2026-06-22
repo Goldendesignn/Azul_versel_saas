@@ -8786,6 +8786,15 @@ function isOnlineStoreTableMissing(error) {
       msg.indexOf("relation") >= 0);
 }
 
+function getOnlineStoreSetupErrorMessage(error) {
+  if (!isOnlineStoreTableMissing(error)) return "";
+  var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  if (msg.indexOf("online_product_details") >= 0 || msg.indexOf("online_product_media") >= 0) {
+    return "Falta aplicar a migracao da personalizacao dos produtos online: 20260622110000_online_product_details_media.sql.";
+  }
+  return "Falta aplicar as migracoes da Venda Online no Supabase.";
+}
+
 function refreshOnlineStoreModule() {
   loadOnlineStoreSettings(true);
   if (onlineCurrentTab === "orders") loadOnlineOrders();
@@ -9277,7 +9286,7 @@ async function saveOnlineProductEditor() {
     toast("Produto online guardado.", "success");
   } catch (e) {
     console.error("Erro produto online:", e);
-    toast("Erro ao guardar produto online: " + (e.message || e), "error");
+    toast(getOnlineStoreSetupErrorMessage(e) || ("Erro ao guardar produto online: " + (e.message || e)), "error");
   } finally {
     if (btn) {
       btn.disabled = false;
