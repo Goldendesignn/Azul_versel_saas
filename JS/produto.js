@@ -154,12 +154,15 @@ function getProductMediaRows(item) {
   return rows;
 }
 
-function renderProductMediaElement(media, name, lazy) {
+function renderProductMediaElement(media, name, lazy, compact) {
   if (!media || !media.url) {
     return productEscape(String(productItem && productItem.name || "A").charAt(0).toUpperCase());
   }
   var url = productEscape(media.url);
   if (media.type === "video") {
+    if (compact) {
+      return '<video src="' + url + '" muted playsinline preload="metadata"></video><span class="product-video-badge">Video</span>';
+    }
     return '<video src="' + url + '" controls playsinline preload="metadata"></video>';
   }
   return '<img src="' + url + '" alt="' + productEscape(name || "Produto") + '"' + (lazy ? ' loading="lazy"' : '') + '>';
@@ -244,7 +247,7 @@ function renderProductDetail() {
   var thumbs = mediaRows.length > 1
     ? '<div class="product-media-thumbs">' + mediaRows.map(function(media, index) {
         return '<button type="button" class="product-media-thumb' + (index === productSelectedMediaIndex ? ' is-active' : '') + '" onclick="selectProductMedia(' + index + ')" aria-label="Ver media ' + (index + 1) + '">' +
-          renderProductMediaElement(media, productItem.name || "Produto", true) +
+          renderProductMediaElement(media, productItem.name || "Produto", true, true) +
         '</button>';
       }).join("") + '</div>'
     : "";

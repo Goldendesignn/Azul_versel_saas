@@ -169,6 +169,7 @@ textarea {
 }
 
 .product-media-thumb {
+  position: relative;
   aspect-ratio: 1 / 1;
   overflow: hidden;
   border: 2px solid var(--border);
@@ -190,6 +191,19 @@ textarea {
 .product-media-thumb.is-active {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent);
+}
+
+.product-video-badge {
+  position: absolute;
+  left: 7px;
+  bottom: 7px;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: rgba(0, 0, 0, .72);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .product-info-panel {
