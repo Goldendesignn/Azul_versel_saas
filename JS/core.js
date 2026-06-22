@@ -9152,6 +9152,9 @@ async function uploadOnlineProductMediaFile(file, mediaType) {
     });
   if (uploadResult.error) {
     var message = uploadResult.error.message || String(uploadResult.error);
+    if (/failed to fetch|networkerror|load failed/i.test(message)) {
+      throw new Error("Nao foi possivel contactar o armazenamento. Aplica a migracao do bucket online-store-assets e tenta de novo. Se for video, confirma que tem menos de 80 MB.");
+    }
     if (/mime type/i.test(message)) {
       throw new Error("O armazenamento ainda nao aceita este tipo de ficheiro. Aplica a migracao que autoriza videos na loja online.");
     }
