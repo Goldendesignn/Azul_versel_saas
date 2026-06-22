@@ -466,7 +466,8 @@ html.shop-style-pending .shop-shell {
   font-weight: 900;
 }
 
-.shop-product-image img {
+.shop-product-image img,
+.shop-product-image video {
   width: 100%;
   height: 100%;
   display: block;

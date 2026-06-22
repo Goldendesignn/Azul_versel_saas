@@ -3,6 +3,7 @@ var productItem = null;
 var productStoreProducts = [];
 var productQuantity = 1;
 var productSelectedVariation = "";
+var productSelectedMediaIndex = 0;
 
 function productParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
@@ -131,6 +132,56 @@ function getSimilarProducts() {
   return sameCategory.concat(otherProducts).slice(0, 4);
 }
 
+function getProductMediaRows(item) {
+  var rows = Array.isArray(item && item.online_media) ? item.online_media : [];
+  rows = rows.map(function(row, index) {
+    return {
+      url: String(row.url || row.media_url || "").trim(),
+      type: row.type === "video" || row.media_type === "video" ? "video" : "image",
+      is_main: !!row.is_main,
+      sort_order: Number(row.sort_order || index) || 0
+    };
+  }).filter(function(row) {
+    return !!row.url;
+  }).sort(function(a, b) {
+    if (a.is_main !== b.is_main) return a.is_main ? -1 : 1;
+    return a.sort_order - b.sort_order;
+  });
+
+  if (!rows.length && item && item.photo) {
+    rows.push({ url: String(item.photo || ""), type: "image", is_main: true, sort_order: 0 });
+  }
+  return rows;
+}
+
+function renderProductMediaElement(media, name, lazy) {
+  if (!media || !media.url) {
+    return productEscape(String(productItem && productItem.name || "A").charAt(0).toUpperCase());
+  }
+  var url = productEscape(media.url);
+  if (media.type === "video") {
+    return '<video src="' + url + '" controls playsinline preload="metadata"></video>';
+  }
+  return '<img src="' + url + '" alt="' + productEscape(name || "Produto") + '"' + (lazy ? ' loading="lazy"' : '') + '>';
+}
+
+function renderSimilarProductMedia(item, name) {
+  var media = getProductMediaRows(item)[0] || null;
+  if (media && media.type === "video") {
+    return '<div class="shop-product-image"><video src="' + productEscape(media.url) + '" muted playsinline loop preload="metadata"></video></div>';
+  }
+  if (media && media.url) {
+    return '<div class="shop-product-image"><img src="' + productEscape(media.url) + '" alt="' + name + '" loading="lazy"></div>';
+  }
+  return '<div class="shop-product-image">' + productEscape(String(item.name || "A").charAt(0).toUpperCase()) + '</div>';
+}
+
+function selectProductMedia(index) {
+  var rows = getProductMediaRows(productItem);
+  productSelectedMediaIndex = Math.max(0, Math.min(Number(index) || 0, rows.length - 1));
+  renderProductDetail();
+}
+
 function renderSimilarProducts() {
   var rows = getSimilarProducts();
   if (!rows.length) return "";
@@ -145,7 +196,6 @@ function renderSimilarProducts() {
         var id = productEscape(item.id);
         var name = productEscape(item.name || "Produto");
         var category = productEscape(item.category || "Produto");
-        var photo = String(item.photo || "").trim();
         var stock = Number(item.stock_shop) || 0;
         var isOut = productStore.show_stock && stock <= 0;
         var variation = productEscape(item.variation || "");
@@ -153,9 +203,7 @@ function renderSimilarProducts() {
           ? (stock > 0 ? "Disponivel: " + stock : "Esgotado")
           : "Disponivel";
         var meta = category + (variation ? " | " + variation : "") + " | " + productEscape(stockText);
-        var image = photo
-          ? '<div class="shop-product-image"><img src="' + productEscape(photo) + '" alt="' + name + '" loading="lazy"></div>'
-          : '<div class="shop-product-image">' + productEscape(String(item.name || "A").charAt(0).toUpperCase()) + '</div>';
+        var image = renderSimilarProductMedia(item, name);
 
         return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '" tabindex="0" role="link" onclick="openSimilarProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openSimilarProduct(\'' + id + '\')}">' +
           image +
@@ -180,19 +228,26 @@ function renderProductDetail() {
   var name = productEscape(productItem.name || "Produto");
   var category = productEscape(productItem.category || "Produto");
   var description = productEscape(productItem.description || "Produto disponivel para encomenda. Escolhe a opcao desejada e envia o pedido pelo WhatsApp.");
-  var photo = String(productItem.photo || "").trim();
   var price = Number(productItem.sale_price) || 0;
   var stock = Number(productItem.stock_shop) || 0;
   var isOut = productStore.show_stock && stock <= 0;
   var variations = normalizeProductVariations(productItem);
+  var mediaRows = getProductMediaRows(productItem);
+  if (productSelectedMediaIndex >= mediaRows.length) productSelectedMediaIndex = 0;
+  var currentMedia = mediaRows[productSelectedMediaIndex] || null;
 
   if (!productSelectedVariation && variations.length === 1) {
     productSelectedVariation = variations[0];
   }
 
-  var image = photo
-    ? '<img src="' + productEscape(photo) + '" alt="' + name + '">'
-    : productEscape(String(productItem.name || "A").charAt(0).toUpperCase());
+  var image = renderProductMediaElement(currentMedia, productItem.name || "Produto", false);
+  var thumbs = mediaRows.length > 1
+    ? '<div class="product-media-thumbs">' + mediaRows.map(function(media, index) {
+        return '<button type="button" class="product-media-thumb' + (index === productSelectedMediaIndex ? ' is-active' : '') + '" onclick="selectProductMedia(' + index + ')" aria-label="Ver media ' + (index + 1) + '">' +
+          renderProductMediaElement(media, productItem.name || "Produto", true) +
+        '</button>';
+      }).join("") + '</div>'
+    : "";
   var variationButtons = variations.map(function(label) {
     var active = label === productSelectedVariation;
     return '<button type="button" class="product-variation-button' + (active ? ' is-active' : '') + '" onclick="selectProductVariation(\'' + encodeURIComponent(label) + '\', this)" aria-pressed="' + (active ? 'true' : 'false') + '">' + productEscape(label) + '</button>';
@@ -202,6 +257,7 @@ function renderProductDetail() {
     '<div class="product-layout">' +
       '<div class="product-media">' +
         '<div class="product-main-image">' + image + '</div>' +
+        thumbs +
       '</div>' +
       '<div class="product-info-panel">' +
         '<span class="product-category">' + category + '</span>' +
@@ -411,6 +467,7 @@ async function loadProductPage() {
     }) || null;
     if (!productItem) throw new Error("Produto indisponivel nesta loja.");
 
+    productSelectedMediaIndex = 0;
     applyProductBranding(productStore);
     renderProductDetail();
   } catch (e) {

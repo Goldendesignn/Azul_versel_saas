@@ -301,7 +301,9 @@ function getShopCustomerData() {
 function productSearchText(product) {
   return [
     product.name,
+    product.base_name,
     product.category,
+    product.base_category,
     product.code,
     product.description,
     product.variation,
@@ -310,6 +312,27 @@ function productSearchText(product) {
     if (value && typeof value === "object") return JSON.stringify(value).toLowerCase();
     return String(value || "").toLowerCase();
   }).join(" ");
+}
+
+function getShopProductMainMedia(product) {
+  var rows = Array.isArray(product && product.online_media) ? product.online_media : [];
+  return rows.find(function(item) {
+    return item && item.is_main && item.type === "image";
+  }) || rows.find(function(item) {
+    return item && item.type === "image";
+  }) || rows[0] || null;
+}
+
+function renderShopProductMedia(product, name) {
+  var media = getShopProductMainMedia(product);
+  var url = media && media.url ? String(media.url).trim() : String(product.photo || "").trim();
+  if (media && media.type === "video" && url) {
+    return '<div class="shop-product-image"><video src="' + shopEscape(url) + '" muted playsinline loop preload="metadata"></video></div>';
+  }
+  if (url) {
+    return '<div class="shop-product-image"><img src="' + shopEscape(url) + '" alt="' + name + '"></div>';
+  }
+  return '<div class="shop-product-image">' + shopEscape(String(product.name || "A").charAt(0).toUpperCase()) + '</div>';
 }
 
 function normalizeShopCategory(value) {
@@ -484,15 +507,11 @@ function renderShopProducts() {
     var price = Number(product.sale_price) || 0;
     var stock = Number(product.stock_shop) || 0;
     var isOut = shopStore.show_stock && stock <= 0;
-    var photo = String(product.photo || "").trim();
-    var firstLetter = shopEscape(String(product.name || "A").charAt(0).toUpperCase());
     var variation = shopEscape(product.variation || "");
     var stockText = shopStore.show_stock
       ? (stock > 0 ? "Disponivel: " + stock : "Esgotado")
       : "Disponivel";
-    var image = photo
-      ? '<div class="shop-product-image"><img src="' + shopEscape(photo) + '" alt="' + name + '"></div>'
-      : '<div class="shop-product-image">' + firstLetter + '</div>';
+    var image = renderShopProductMedia(product, name);
     var meta = category + (variation ? " | " + variation : "") + " | " + shopEscape(stockText);
 
     return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '" role="link" tabindex="0" onclick="openShopProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openShopProduct(\'' + id + '\')}">' +

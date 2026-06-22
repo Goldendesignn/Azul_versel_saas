@@ -1710,7 +1710,7 @@
           <div class="online-products-head">
             <div>
               <div class="card-title">Produtos da vitrine</div>
-              <p>Seleciona os produtos e escreve a descricao que aparecera na ficha de cada produto.</p>
+              <p>Seleciona os produtos e usa Modificar para adicionar descricao, imagens ou videos da ficha publica.</p>
             </div>
             <div class="online-products-actions">
               <input type="text" class="form-input" id="online-product-search" placeholder="Pesquisar produto..." oninput="renderOnlineProductList()">
@@ -1754,6 +1754,70 @@
             <div class="empty">A carregar encomendas...</div>
           </div>
         </section>
+      </div>
+    </div>
+
+    <div class="overlay" id="onlineProductEditorOverlay">
+      <div class="online-product-editor">
+        <div class="online-product-editor-head">
+          <div>
+            <div class="eyebrow">Produto online</div>
+            <h3 id="online-editor-title">Modificar produto</h3>
+            <p>Personaliza como este produto aparece na loja publica.</p>
+          </div>
+          <button type="button" class="online-editor-close" onclick="closeOnlineProductEditor()">x</button>
+        </div>
+
+        <div class="online-editor-grid">
+          <div class="form-group">
+            <label class="form-label">Nome publico</label>
+            <input type="text" class="form-input" id="online-editor-name" placeholder="Deixa vazio para usar o nome do stock">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Preco online</label>
+            <input type="number" class="form-input" id="online-editor-price" min="0" placeholder="Deixa vazio para usar o preco de venda">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoria online</label>
+            <input type="text" class="form-input" id="online-editor-category" placeholder="Ex: Sneakers, Vestidos, Promocao">
+          </div>
+          <label class="online-store-toggle compact online-editor-toggle">
+            <input type="checkbox" id="online-editor-featured">
+            <span>
+              <strong>Produto em destaque</strong>
+              <small>Ajuda a priorizar o produto na vitrine.</small>
+            </span>
+          </label>
+          <div class="form-group online-editor-wide">
+            <label class="form-label">Descricao</label>
+            <textarea class="form-input" id="online-editor-description" rows="5" maxlength="1200" placeholder="Ex: Material, tamanho, acabamento, cuidados e condicoes de entrega."></textarea>
+          </div>
+        </div>
+
+        <div class="online-media-section">
+          <div class="online-media-head">
+            <div>
+              <div class="card-title">Imagens e videos</div>
+              <p>A primeira imagem marcada como principal aparece nas cards da loja.</p>
+            </div>
+            <div class="online-media-actions">
+              <label class="filter-btn" for="online-editor-media-files">Carregar ficheiros</label>
+              <input id="online-editor-media-files" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime" multiple hidden onchange="addOnlineProductMediaFiles(this)">
+            </div>
+          </div>
+          <div class="online-url-row">
+            <input type="text" class="form-input" id="online-editor-media-url" placeholder="Ou cola uma URL de imagem/video">
+            <button type="button" class="filter-btn" onclick="addOnlineProductMediaUrl()">Adicionar URL</button>
+          </div>
+          <div id="online-editor-media-list" class="online-media-list">
+            <div class="empty">Nenhum media adicionado.</div>
+          </div>
+        </div>
+
+        <div class="online-editor-actions">
+          <button type="button" class="filter-btn ghost" onclick="closeOnlineProductEditor()">Cancelar</button>
+          <button type="button" class="form-submit" id="online-editor-save" onclick="saveOnlineProductEditor()">Guardar produto</button>
+        </div>
       </div>
     </div>
 
