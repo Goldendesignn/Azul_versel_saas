@@ -9150,7 +9150,13 @@ async function uploadOnlineProductMediaFile(file, mediaType) {
       contentType: file.type || (mediaType === "video" ? "video/mp4" : "image/jpeg"),
       upsert: false
     });
-  if (uploadResult.error) throw uploadResult.error;
+  if (uploadResult.error) {
+    var message = uploadResult.error.message || String(uploadResult.error);
+    if (/mime type/i.test(message)) {
+      throw new Error("O armazenamento ainda nao aceita este tipo de ficheiro. Aplica a migracao que autoriza videos na loja online.");
+    }
+    throw uploadResult.error;
+  }
 
   var publicResult = supabaseClient.storage
     .from("online-store-assets")
@@ -9167,13 +9173,14 @@ async function addOnlineProductMediaFiles(input) {
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
       var isImage = /^image\/(png|jpe?g|webp)$/i.test(file.type || "");
-      var isVideo = /^video\/(mp4|webm|quicktime)$/i.test(file.type || "");
+      var isVideo = /^video\/(mp4|webm|quicktime|x-m4v)$/i.test(file.type || "");
       if (!isImage && !isVideo) {
         toast("Ficheiro ignorado: usa imagem PNG/JPG/WebP ou video MP4/WebM/MOV.", "error");
         continue;
       }
-      if (file.size > 8 * 1024 * 1024) {
-        toast("Ficheiro muito pesado. Usa ficheiros com menos de 8 MB.", "error");
+      var maxSize = isVideo ? 80 * 1024 * 1024 : 8 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast(isVideo ? "Video muito pesado. Usa videos com menos de 80 MB." : "Imagem muito pesada. Usa imagens com menos de 8 MB.", "error");
         continue;
       }
       var mediaUrl = await uploadOnlineProductMediaFile(file, isVideo ? "video" : "image");
