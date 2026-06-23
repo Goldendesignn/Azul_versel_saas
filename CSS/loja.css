@@ -665,7 +665,7 @@ html.shop-style-pending .shop-shell {
 
 .shop-product-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin-top: auto;
   padding: 0 14px 14px;
@@ -701,9 +701,10 @@ html.shop-style-pending .shop-shell {
 }
 
 .shop-view-btn {
-  background: var(--blue);
-  color: #fff;
-  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--border));
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface));
+  color: var(--blue);
+  justify-content: space-between;
 }
 
 .shop-view-btn span {
@@ -1053,6 +1054,7 @@ html.shop-style-pending .shop-shell {
   .shop-content-grid {
     display: block;
     margin-top: 12px;
+    padding-bottom: 92px;
   }
 
   .shop-products {
@@ -1096,6 +1098,14 @@ html.shop-style-pending .shop-shell {
 
   .shop-product-actions {
     padding: 0 10px 10px;
+  }
+
+  .shop-add-card-btn,
+  .shop-view-btn {
+    min-height: 38px;
+    border-radius: 11px;
+    padding: 0 10px;
+    font-size: 13px;
   }
 
   .shop-qty {

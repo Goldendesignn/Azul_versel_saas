@@ -573,7 +573,7 @@ function renderShopProducts() {
       '</div>' +
       '<div class="shop-product-actions">' +
         '<button type="button" class="shop-add-card-btn" onclick="event.stopPropagation(); addShopProduct(\'' + id + '\')" ' + (isOut ? 'disabled' : '') + '>' + (isOut ? 'Esgotado' : 'Adicionar') + '</button>' +
-        '<button type="button" class="shop-view-btn" onclick="event.stopPropagation(); openShopProduct(\'' + id + '\')" aria-label="Ver detalhes de ' + name + '"><span aria-hidden="true">&rarr;</span></button>' +
+        '<button type="button" class="shop-view-btn" onclick="event.stopPropagation(); openShopProduct(\'' + id + '\')" aria-label="Ver detalhes de ' + name + '">Ver produto <span aria-hidden="true">&rarr;</span></button>' +
       '</div>' +
     '</article>';
   }).join("");
