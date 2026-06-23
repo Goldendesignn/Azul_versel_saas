@@ -659,9 +659,6 @@ html.shop-style-pending .shop-shell {
   box-shadow: 0 10px 22px rgba(0,0,0,.18);
 }
 
-.shop-promo-badge + .shop-stock-badge {
-  top: 42px;
-}
 
 .shop-product-actions {
   display: block;
