@@ -249,7 +249,10 @@ html.shop-style-pending .shop-shell {
 }
 
 .shop-content-grid {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+  align-items: start;
+  gap: 16px;
   margin-top: 16px;
 }
 
@@ -661,26 +664,46 @@ html.shop-style-pending .shop-shell {
 
 
 .shop-product-actions {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 8px;
   margin-top: auto;
   padding: 0 14px 14px;
 }
 
+.shop-add-card-btn,
 .shop-view-btn {
   width: 100%;
   min-height: 42px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 10px;
   border: 0;
   border-radius: 12px;
   padding: 0 14px;
-  background: var(--blue);
-  color: #fff;
   font: inherit;
   font-weight: 900;
-  pointer-events: none;
+  cursor: pointer;
+}
+
+.shop-add-card-btn {
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--green) 18%, transparent);
+}
+
+.shop-add-card-btn:disabled {
+  background: var(--surface2);
+  color: var(--muted);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.shop-view-btn {
+  background: var(--blue);
+  color: #fff;
+  padding: 0;
 }
 
 .shop-view-btn span {
@@ -736,7 +759,7 @@ html.shop-style-pending .shop-shell {
   width: 100%;
   position: sticky;
   top: 82px;
-  max-height: calc(100vh - 75x);
+  max-height: calc(100vh - 86px);
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
@@ -857,8 +880,8 @@ html.shop-style-pending .shop-shell {
 .shop-cart-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 8px 10px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -880,10 +903,40 @@ html.shop-style-pending .shop-shell {
   color: var(--muted);
 }
 
-.shop-cart-item span {
+.shop-cart-item-total {
   color: var(--blue);
   font-weight: 900;
   white-space: nowrap;
+}
+
+.shop-cart-item-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 34px 38px 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.shop-cart-item-actions button {
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--blue);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.shop-cart-item-actions strong {
+  text-align: center;
+  font-weight: 900;
+}
+
+.shop-cart-item-actions .shop-cart-remove {
+  justify-self: end;
+  padding: 0 10px;
+  color: var(--red);
 }
 
 .shop-whatsapp-btn {
@@ -906,6 +959,16 @@ html.shop-style-pending .shop-shell {
   color: var(--muted);
   text-align: center;
   padding: 24px;
+}
+
+.shop-cart.has-new-item .shop-mobile-cart-summary,
+.shop-cart.has-new-item {
+  animation: shopCartPulse .72s ease;
+}
+
+@keyframes shopCartPulse {
+  0%, 100% { box-shadow: 0 14px 32px rgba(0,0,0,.08); }
+  35% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 24%, transparent), 0 18px 42px rgba(0,0,0,.12); }
 }
 
 @media (max-width: 720px) {

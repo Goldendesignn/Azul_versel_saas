@@ -128,6 +128,40 @@
           <div class="shop-empty">A carregar loja...</div>
         </section>
       </div>
+
+      <aside class="shop-cart" id="shopCart" aria-label="Carrinho de compras">
+        <button type="button" class="shop-mobile-cart-summary" id="shopCartToggle" aria-label="Abrir ou fechar carrinho">
+          <span>Ver carrinho</span>
+          <strong><span id="shopMobileCartCount">0 produtos</span> | <span id="shopMobileCartTotal">0 Kz</span></strong>
+          <span class="shop-cart-arrow" aria-hidden="true">^</span>
+        </button>
+
+        <div class="shop-cart-panel">
+          <div class="shop-cart-head">
+            <div>
+              <span>Pedido</span>
+              <strong><span id="shopCartCount">0</span> produto(s) | <span id="shopCartTotal">0 Kz</span></strong>
+            </div>
+            <button type="button" onclick="clearShopCart()">Limpar</button>
+          </div>
+
+          <div class="shop-cart-list" id="shopCartList">
+            <div class="shop-empty">Nenhum produto no carrinho.</div>
+          </div>
+
+          <div class="shop-customer-form">
+            <div class="shop-customer-title">Dados para entrega</div>
+            <input type="text" id="shopCustomerName" placeholder="O seu nome" autocomplete="name">
+            <input type="tel" id="shopCustomerPhone" placeholder="WhatsApp: ex. 244923000000" autocomplete="tel">
+            <textarea id="shopCustomerAddress" placeholder="Endereco de entrega" rows="3" autocomplete="street-address"></textarea>
+            <div class="shop-form-error" id="shopFormError"></div>
+          </div>
+
+          <button type="button" class="shop-whatsapp-btn" id="shopWhatsappBtn" onclick="sendShopCartToWhatsApp()" disabled>
+            Enviar pedido no WhatsApp
+          </button>
+        </div>
+      </aside>
     </div>
   </main>
 
