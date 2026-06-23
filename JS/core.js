@@ -8779,6 +8779,9 @@ function isOnlineStoreTableMissing(error) {
     msg.indexOf("online_product_media") >= 0 ||
     msg.indexOf("online_orders") >= 0 ||
     msg.indexOf("online_order_items") >= 0 ||
+    msg.indexOf("promo_active") >= 0 ||
+    msg.indexOf("promo_price") >= 0 ||
+    msg.indexOf("promo_label") >= 0 ||
     msg.indexOf("create_online_order") >= 0) &&
     (msg.indexOf("could not find") >= 0 ||
       msg.indexOf("schema cache") >= 0 ||
@@ -8789,6 +8792,9 @@ function isOnlineStoreTableMissing(error) {
 function getOnlineStoreSetupErrorMessage(error) {
   if (!isOnlineStoreTableMissing(error)) return "";
   var msg = String(error && error.message ? error.message : error || "").toLowerCase();
+  if (msg.indexOf("promo_active") >= 0 || msg.indexOf("promo_price") >= 0 || msg.indexOf("promo_label") >= 0) {
+    return "Falta aplicar a migracao das promocoes da loja online: 20260622234902_online_product_promotions.sql.";
+  }
   if (msg.indexOf("online_product_details") >= 0 || msg.indexOf("online_product_media") >= 0) {
     return "Falta aplicar a migracao da personalizacao dos produtos online: 20260622110000_online_product_details_media.sql.";
   }
@@ -8935,16 +8941,50 @@ function getOnlineProductDisplay(product) {
     return item.media_type === "image";
   }) || media[0] || null;
 
+  var basePrice = Number(product.salePrice || product.price || 0);
+  var regularPrice = Number(details.online_price || basePrice || 0);
+  var promoPrice = Number(details.promo_price || 0);
+  var promoActive = isOnlineProductPromoActive(details, regularPrice);
+
   return {
     name: String(details.public_name || product.name || "").trim(),
     category: String(details.online_category || product.category || "Sem categoria").trim(),
-    price: Number(details.online_price || product.salePrice || product.price || 0),
+    price: promoActive ? promoPrice : regularPrice,
+    regularPrice: regularPrice,
+    promoActive: promoActive,
+    promoPrice: promoPrice,
+    promoLabel: String(details.promo_label || "").trim(),
+    promoStartsAt: details.promo_starts_at || "",
+    promoEndsAt: details.promo_ends_at || "",
     description: String(details.description || product.description || "").trim(),
     featured: !!details.featured,
     mediaCount: media.length,
     media: mainMedia,
     photo: mainMedia && mainMedia.media_url ? mainMedia.media_url : String(product.photo || "").trim()
   };
+}
+
+function isOnlineProductPromoActive(details, regularPrice) {
+  details = details || {};
+  var promoPrice = Number(details.promo_price || 0);
+  if (!details.promo_active || promoPrice <= 0) return false;
+  if (regularPrice > 0 && promoPrice >= regularPrice) return false;
+  var today = new Date().toISOString().slice(0, 10);
+  if (details.promo_starts_at && String(details.promo_starts_at).slice(0, 10) > today) return false;
+  if (details.promo_ends_at && String(details.promo_ends_at).slice(0, 10) < today) return false;
+  return true;
+}
+
+function renderOnlineProductAdminPrice(display) {
+  display = display || {};
+  if (display.promoActive) {
+    return '<div class="online-product-price-row">' +
+      '<span class="online-product-old-price">' + fmt(display.regularPrice) + '</span>' +
+      '<span>' + fmt(display.price) + '</span>' +
+      '<em class="online-product-promo-badge">Promo</em>' +
+    '</div>';
+  }
+  return '<span>' + fmt(display.price) + '</span>';
 }
 
 function normalizeOnlineMediaRows(rows) {
@@ -9028,6 +9068,11 @@ function openOnlineProductEditor(productId) {
   var category = document.getElementById("online-editor-category");
   var description = document.getElementById("online-editor-description");
   var featured = document.getElementById("online-editor-featured");
+  var promoActive = document.getElementById("online-editor-promo-active");
+  var promoPrice = document.getElementById("online-editor-promo-price");
+  var promoLabel = document.getElementById("online-editor-promo-label");
+  var promoStart = document.getElementById("online-editor-promo-start");
+  var promoEnd = document.getElementById("online-editor-promo-end");
   var mediaUrl = document.getElementById("online-editor-media-url");
   var file = document.getElementById("online-editor-media-files");
 
@@ -9037,6 +9082,11 @@ function openOnlineProductEditor(productId) {
   if (category) category.value = details.online_category || "";
   if (description) description.value = display.description || "";
   if (featured) featured.checked = !!details.featured;
+  if (promoActive) promoActive.checked = !!details.promo_active;
+  if (promoPrice) promoPrice.value = details.promo_price != null ? details.promo_price : "";
+  if (promoLabel) promoLabel.value = details.promo_label || "";
+  if (promoStart) promoStart.value = details.promo_starts_at ? String(details.promo_starts_at).slice(0, 10) : "";
+  if (promoEnd) promoEnd.value = details.promo_ends_at ? String(details.promo_ends_at).slice(0, 10) : "";
   if (mediaUrl) mediaUrl.value = "";
   if (file) file.value = "";
 
@@ -9229,6 +9279,26 @@ async function saveOnlineProductEditor() {
     var category = String((document.getElementById("online-editor-category") || {}).value || "").trim();
     var description = String((document.getElementById("online-editor-description") || {}).value || "").trim();
     var featured = !!((document.getElementById("online-editor-featured") || {}).checked);
+    var promoActive = !!((document.getElementById("online-editor-promo-active") || {}).checked);
+    var promoPriceValue = String((document.getElementById("online-editor-promo-price") || {}).value || "").trim();
+    var promoLabel = String((document.getElementById("online-editor-promo-label") || {}).value || "").trim();
+    var promoStart = String((document.getElementById("online-editor-promo-start") || {}).value || "").trim();
+    var promoEnd = String((document.getElementById("online-editor-promo-end") || {}).value || "").trim();
+    var normalPrice = Number(priceValue || (getOnlineProductBase(productId) || {}).salePrice || (getOnlineProductBase(productId) || {}).price || 0);
+    var promoPrice = promoPriceValue ? Number(promoPriceValue) : 0;
+
+    if (promoActive && (!promoPrice || promoPrice <= 0)) {
+      toast("Informe o preco promocional.", "error");
+      return;
+    }
+    if (promoActive && normalPrice > 0 && promoPrice >= normalPrice) {
+      toast("O preco promocional deve ser menor que o preco normal.", "error");
+      return;
+    }
+    if (promoStart && promoEnd && promoStart > promoEnd) {
+      toast("A data final da promocao deve ser depois da data inicial.", "error");
+      return;
+    }
 
     var payload = {
       organization_id: organizationId,
@@ -9238,6 +9308,11 @@ async function saveOnlineProductEditor() {
       online_category: category || null,
       description: description || null,
       featured: featured,
+      promo_active: promoActive,
+      promo_price: promoActive ? promoPrice : null,
+      promo_label: promoLabel || null,
+      promo_starts_at: promoStart || null,
+      promo_ends_at: promoEnd || null,
       active: true,
       user_name: getAzulCurrentUserName()
     };
@@ -9329,7 +9404,7 @@ function renderOnlineProductList() {
       '</label>' +
       '<div class="online-product-info">' +
         '<strong title="' + safeName + '">' + safeName + '</strong>' +
-        '<span>' + fmt(display.price) + '</span>' +
+        renderOnlineProductAdminPrice(display) +
         '<small>' + escapeDespesaHtml(display.category) + ' | Loja: ' + (Number(product.stockBoutique) || 0) + ' | Media: ' + display.mediaCount + '</small>' +
       '</div>' +
       '<div class="online-product-tools">' +

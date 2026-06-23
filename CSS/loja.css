@@ -611,6 +611,58 @@ html.shop-style-pending .shop-shell {
   line-height: 1.2;
 }
 
+.shop-product-price-row {
+  align-self: end;
+  min-width: 0;
+  display: grid;
+  align-content: end;
+  gap: 2px;
+}
+
+.shop-product-old-price {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-decoration: line-through;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-product-save {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-promo-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: var(--green);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(0,0,0,.18);
+}
+
+.shop-promo-badge + .shop-stock-badge {
+  top: 42px;
+}
+
 .shop-product-actions {
   display: block;
   margin-top: auto;

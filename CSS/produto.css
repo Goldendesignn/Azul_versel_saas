@@ -236,6 +236,39 @@ textarea {
   font-weight: 900;
 }
 
+.product-price-box {
+  margin-top: 16px;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.product-price-box .product-price {
+  margin-top: 0;
+}
+
+.product-old-price {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: line-through;
+}
+
+.product-promo-label,
+.product-promo-save {
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: color-mix(in srgb, var(--green) 12%, var(--surface2));
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.product-promo-save {
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface2));
+  color: var(--blue);
+}
+
 .product-description {
   margin: 18px 0 0;
   color: var(--muted);
@@ -674,6 +707,56 @@ textarea {
   font-size: 18px;
   font-weight: 900;
   line-height: 1.2;
+}
+
+.similar-products-grid .shop-product-price-row {
+  align-self: end;
+  min-width: 0;
+  display: grid;
+  align-content: end;
+  gap: 2px;
+}
+
+.similar-products-grid .shop-product-old-price {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-decoration: line-through;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.similar-products-grid .shop-product-save {
+  overflow: hidden;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.similar-products-grid .shop-promo-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: var(--green);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(0,0,0,.18);
+}
+
+.similar-products-grid .shop-promo-badge + .shop-stock-badge {
+  top: 42px;
 }
 
 .similar-products-grid .shop-product-actions {

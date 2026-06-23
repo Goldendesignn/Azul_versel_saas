@@ -17,6 +17,31 @@ function shopMoney(value) {
   return value.toLocaleString("pt-AO", { maximumFractionDigits: 0 }) + " Kz";
 }
 
+function getShopRegularPrice(product) {
+  product = product || {};
+  return Number(product.original_sale_price || product.regular_price || product.base_sale_price || product.sale_price || 0);
+}
+
+function isShopProductPromo(product) {
+  var price = Number(product && product.sale_price) || 0;
+  var regular = getShopRegularPrice(product);
+  return !!(product && product.promo_active && price > 0 && regular > price);
+}
+
+function renderShopProductPrice(product) {
+  var price = Number(product && product.sale_price) || 0;
+  if (!isShopProductPromo(product)) {
+    return '<div class="shop-product-price">' + shopMoney(price) + '</div>';
+  }
+  var regular = getShopRegularPrice(product);
+  var save = regular - price;
+  return '<div class="shop-product-price-row">' +
+    '<span class="shop-product-old-price">' + shopMoney(regular) + '</span>' +
+    '<div class="shop-product-price">' + shopMoney(price) + '</div>' +
+    '<span class="shop-product-save">' + (product.promo_label ? shopEscape(product.promo_label) : 'Poupa ' + shopMoney(save)) + '</span>' +
+  '</div>';
+}
+
 function shopEscape(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -313,6 +338,7 @@ function productSearchText(product) {
     product.base_category,
     product.code,
     product.description,
+    product.promo_label,
     product.variation,
     Array.isArray(product.variations) ? product.variations.join(" ") : product.variations
   ].map(function(value) {
@@ -535,13 +561,14 @@ function renderShopProducts() {
     return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '" role="link" tabindex="0" onclick="openShopProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openShopProduct(\'' + id + '\')}">' +
       '<div class="shop-product-media-wrap">' +
         image +
+        (isShopProductPromo(product) ? '<span class="shop-promo-badge">Promo</span>' : '') +
         '<span class="shop-stock-badge ' + status.className + '">' + shopEscape(status.label) + '</span>' +
       '</div>' +
       '<div class="shop-product-info">' +
         '<strong title="' + name + '">' + name + '</strong>' +
         '<small title="' + meta + '">' + meta + '</small>' +
         '<span class="shop-product-stock-text">' + shopEscape(status.text) + '</span>' +
-        '<div class="shop-product-price">' + shopMoney(price) + '</div>' +
+        renderShopProductPrice(product) +
       '</div>' +
       '<div class="shop-product-actions">' +
         '<button type="button" class="shop-view-btn" tabindex="-1">' + (isOut ? 'Ver detalhes' : 'Ver produto') + ' <span aria-hidden="true">&rarr;</span></button>' +

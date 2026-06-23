@@ -22,6 +22,45 @@ function productMoney(value) {
   return (Number(value) || 0).toLocaleString("pt-AO", { maximumFractionDigits: 0 }) + " Kz";
 }
 
+function getProductRegularPrice(product) {
+  product = product || {};
+  return Number(product.original_sale_price || product.regular_price || product.base_sale_price || product.sale_price || 0);
+}
+
+function isProductPromo(product) {
+  var price = Number(product && product.sale_price) || 0;
+  var regular = getProductRegularPrice(product);
+  return !!(product && product.promo_active && price > 0 && regular > price);
+}
+
+function renderProductPriceBlock(product) {
+  var price = Number(product && product.sale_price) || 0;
+  if (!isProductPromo(product)) {
+    return '<div class="product-price">' + productMoney(price) + '</div>';
+  }
+  var regular = getProductRegularPrice(product);
+  var label = String(product.promo_label || "").trim();
+  return '<div class="product-price-box">' +
+    '<span class="product-promo-label">' + productEscape(label || "Promocao activa") + '</span>' +
+    '<span class="product-old-price">' + productMoney(regular) + '</span>' +
+    '<div class="product-price">' + productMoney(price) + '</div>' +
+    '<span class="product-promo-save">Poupa ' + productMoney(regular - price) + '</span>' +
+  '</div>';
+}
+
+function renderProductCardPrice(product) {
+  var price = Number(product && product.sale_price) || 0;
+  if (!isProductPromo(product)) {
+    return '<div class="shop-product-price">' + productMoney(price) + '</div>';
+  }
+  var regular = getProductRegularPrice(product);
+  return '<div class="shop-product-price-row">' +
+    '<span class="shop-product-old-price">' + productMoney(regular) + '</span>' +
+    '<div class="shop-product-price">' + productMoney(price) + '</div>' +
+    '<span class="shop-product-save">' + productEscape(product.promo_label || ('Poupa ' + productMoney(regular - price))) + '</span>' +
+  '</div>';
+}
+
 function normalizeProductPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
@@ -222,13 +261,14 @@ function renderSimilarProducts() {
         return '<article class="shop-product-card' + (isOut ? ' is-out' : '') + '" tabindex="0" role="link" onclick="openSimilarProduct(\'' + id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openSimilarProduct(\'' + id + '\')}">' +
           '<div class="shop-product-media-wrap">' +
             image +
+            (isProductPromo(item) ? '<span class="shop-promo-badge">Promo</span>' : '') +
             '<span class="shop-stock-badge ' + stockStatus.className + '">' + productEscape(stockStatus.label) + '</span>' +
           '</div>' +
           '<div class="shop-product-info">' +
             '<strong title="' + name + '">' + name + '</strong>' +
             '<small title="' + meta + '">' + meta + '</small>' +
             '<span class="shop-product-stock-text">' + productEscape(stockStatus.text) + '</span>' +
-            '<div class="shop-product-price">' + productMoney(item.sale_price) + '</div>' +
+            renderProductCardPrice(item) +
           '</div>' +
           '<div class="shop-product-actions">' +
             '<button type="button" class="shop-view-btn" tabindex="-1">' + (isOut ? 'Ver produto esgotado' : 'Ver produto') + ' <span aria-hidden="true">&rarr;</span></button>' +
@@ -281,7 +321,7 @@ function renderProductDetail() {
       '<div class="product-info-panel">' +
         '<span class="product-category">' + category + '</span>' +
         '<h1 class="product-title">' + name + '</h1>' +
-        '<div class="product-price">' + productMoney(price) + '</div>' +
+        renderProductPriceBlock(productItem) +
         '<p class="product-description">' + description + '</p>' +
         '<div class="product-trust-strip">' +
           '<span><b>W</b> Pedido directo no WhatsApp</span>' +
@@ -392,6 +432,11 @@ function buildProductWhatsAppMessage(customer) {
   ];
   if (productSelectedVariation) lines.push("Tamanho/variacao: " + productSelectedVariation);
   if (productItem.code) lines.push("Codigo: " + productItem.code);
+  if (isProductPromo(productItem)) {
+    lines.push("Preco normal: " + productMoney(getProductRegularPrice(productItem)));
+    lines.push("Promocao: " + productMoney(Number(productItem.sale_price) || 0));
+    if (productItem.promo_label) lines.push("Campanha: " + productItem.promo_label);
+  }
   lines.push("Total: " + productMoney(productQuantity * (Number(productItem.sale_price) || 0)));
   lines.push("");
   lines.push("Dados do cliente:");

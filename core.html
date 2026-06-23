@@ -1788,6 +1788,33 @@
               <small>Ajuda a priorizar o produto na vitrine.</small>
             </span>
           </label>
+          <div class="online-editor-promo-box online-editor-wide">
+            <label class="online-store-toggle compact online-editor-toggle online-editor-promo-toggle">
+              <input type="checkbox" id="online-editor-promo-active">
+              <span>
+                <strong>Ativar promocao</strong>
+                <small>Mostra badge Promo, preco riscado e preco promocional na loja.</small>
+              </span>
+            </label>
+            <div class="online-editor-promo-grid">
+              <div class="form-group">
+                <label class="form-label">Preco promocional</label>
+                <input type="number" class="form-input" id="online-editor-promo-price" min="0" placeholder="Ex: 9500">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Texto da promocao</label>
+                <input type="text" class="form-input" id="online-editor-promo-label" maxlength="80" placeholder="Ex: Semana do cliente">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Inicio</label>
+                <input type="date" class="form-input" id="online-editor-promo-start">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fim</label>
+                <input type="date" class="form-input" id="online-editor-promo-end">
+              </div>
+            </div>
+          </div>
           <div class="form-group online-editor-wide">
             <label class="form-label">Descricao</label>
             <textarea class="form-input" id="online-editor-description" rows="5" maxlength="1200" placeholder="Ex: Material, tamanho, acabamento, cuidados e condicoes de entrega."></textarea>
