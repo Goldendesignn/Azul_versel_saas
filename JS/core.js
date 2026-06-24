@@ -11096,14 +11096,13 @@ function renderProds(list) {
       '<div class="prod-name" title="' + safeName + '">' + safeName + '</div>' +
       '<div class="prod-price" title="' + fmt(p.salePrice || p.price || 0) + '">' + fmt(p.salePrice || p.price || 0) + '</div>' +
       (meta && meta.some(function(item) { return item && item.trim() !== ''; })
-      ? '<div class="prod-variation">' 
+      ? '<div class="prod-variation" title="' + escapeDespesaHtml(meta.filter(function(item) { return item && item.trim() !== ''; }).join(' | ')) + '">'
         + meta
             .filter(function(item) { return item && item.trim() !== ''; })
-            .map(function(item) {
-              return "<span style='border:0.5px solid var(--muted);border-radius:5px;padding:5px;margin-right:10px;'>" + escapeDespesaHtml(item) + "</span>";
-            }).join('')
+            .map(function(item) { return escapeDespesaHtml(item); })
+            .join(' | ')
         + '</div>'
-      : "<span style='font-size: 12px; color: var(--muted); margin-top: 3px; margin-left: 8px;'>sans variable</span>") +
+      : '<div class="prod-variation prod-variation-empty">sem variacao</div>') +
       '<div class="prod-stock ' + (out ? 'out' : low ? 'low' : '') + '">' +
         (out ? ' Esgotado' : 'Stock : ' + formatMeasureQuantity(p.stockBoutique, p.unit)) +
       '</div>';
