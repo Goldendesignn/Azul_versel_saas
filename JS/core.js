@@ -15257,7 +15257,8 @@ function backupTableHasOrganizationFilter(tableName) {
 }
 
 async function exportAzulBackup() {
-  if (!window.supabaseClient) {
+  var backupSupabaseClient = typeof supabaseClient !== "undefined" ? supabaseClient : window.supabaseClient;
+  if (!backupSupabaseClient) {
     toast("Supabase nao esta pronto.", "error");
     return;
   }
@@ -15292,7 +15293,7 @@ async function exportAzulBackup() {
   for (var i = 0; i < tables.length; i++) {
     var table = tables[i];
     try {
-      var query = supabaseClient.from(table).select("*").limit(50000);
+      var query = backupSupabaseClient.from(table).select("*").limit(50000);
       if (backupTableHasOrganizationFilter(table)) {
         query = query.eq("organization_id", organizationId);
       }
