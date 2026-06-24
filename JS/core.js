@@ -2149,7 +2149,7 @@ var AZUL_MENU_MODULES = {
   revendeurs: { group: "Vendas", priority: 3, keywords: "revendedor consignacao retorno pagamento" },
   online: { group: "Vendas", priority: 2, keywords: "venda online whatsapp loja catalogo pedido" },
   logistica: { group: "Vendas", priority: 3, keywords: "logistica entrega motoboy encomenda cliente" },
-  settings: { group: "Sistema", priority: 2, keywords: "definicoes configuracao recibo tema equipa permissao" }
+  settings: { group: "Sistema", priority: 99, keywords: "definicoes configuracao recibo tema equipa permissao" }
 };
 
 var AZUL_MENU_GROUP_ORDER = ["Inicio", "Essenciais", "Vendas", "Stock", "Dinheiro", "Pessoas", "Relatorios", "Gestao avancada", "Sistema"];
@@ -2182,8 +2182,8 @@ function sortAzulNavigationTabs(nav) {
     var gb = AZUL_MENU_GROUP_ORDER.indexOf(mb.group);
     if (ga < 0) ga = 999;
     if (gb < 0) gb = 999;
-    if (ma.priority !== mb.priority) return ma.priority - mb.priority;
     if (ga !== gb) return ga - gb;
+    if (ma.priority !== mb.priority) return ma.priority - mb.priority;
     return tabs.indexOf(a) - tabs.indexOf(b);
   });
   tabs.forEach(function(tab) { nav.appendChild(tab); });
