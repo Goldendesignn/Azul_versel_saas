@@ -2657,6 +2657,12 @@ async function verifyCurrentLicense() {
         return allowOfflineLicenseAccess(result.error);
       }
 
+      if (isAzulPermissionError(result.error) && await hasCurrentSupabaseUser()) {
+        console.warn("Validacao da licenca bloqueada por permissao Supabase:", result.error);
+        showSecurityAccessBlockedScreen(result.error);
+        return false;
+      }
+
       alert(getCoreLicenseErrorMessage(result.error));
       clearAzulSession();
       window.location.replace("index.html");
@@ -2701,6 +2707,12 @@ async function verifyCurrentLicense() {
   } catch (e) {
     if (isAzulNetworkError(e)) {
       return allowOfflineLicenseAccess(e);
+    }
+
+    if (isAzulPermissionError(e) && await hasCurrentSupabaseUser()) {
+      console.warn("Validacao da licenca bloqueada por permissao Supabase:", e);
+      showSecurityAccessBlockedScreen(e);
+      return false;
     }
 
     alert(getCoreLicenseErrorMessage(e));
@@ -15145,6 +15157,167 @@ function saveConfig() {
     localStorage.setItem('azul_theme', config.theme);
     localStorage.setItem('pos_config', JSON.stringify(config));
   } catch(e) {}
+}
+
+function setBackupExportStatus(message, isError) {
+  var el = document.getElementById("export-backup-status");
+  if (!el) return;
+  el.textContent = message || "";
+  el.style.color = isError ? "var(--red)" : "var(--muted)";
+}
+
+function downloadJsonFile(filename, data) {
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function() {
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
+function getAzulBackupTables() {
+  return [
+    "profiles",
+    "products",
+    "services",
+    "sales",
+    "sale_items",
+    "purchases",
+    "purchase_items",
+    "expenses",
+    "clients",
+    "client_debts",
+    "client_payments",
+    "suppliers",
+    "supplier_payments",
+    "treasury_entries",
+    "accounting_entries",
+    "accounting_lines",
+    "resellers",
+    "reseller_consignments",
+    "reseller_consignment_items",
+    "stock_transfers",
+    "stock_transfer_items",
+    "import_orders",
+    "import_order_items",
+    "corrections_log",
+    "action_audit_log",
+    "notifications",
+    "push_subscriptions",
+    "online_store_settings",
+    "online_product_details",
+    "online_orders",
+    "online_order_items",
+    "deliveries",
+    "quotes",
+    "quote_items",
+    "loyalty_settings",
+    "loyalty_accounts",
+    "loyalty_transactions"
+  ];
+}
+
+function backupTableHasOrganizationFilter(tableName) {
+  return [
+    "products",
+    "services",
+    "sales",
+    "purchases",
+    "expenses",
+    "clients",
+    "client_debts",
+    "client_payments",
+    "suppliers",
+    "supplier_payments",
+    "treasury_entries",
+    "accounting_entries",
+    "resellers",
+    "reseller_consignments",
+    "stock_transfers",
+    "import_orders",
+    "corrections_log",
+    "action_audit_log",
+    "notifications",
+    "push_subscriptions",
+    "online_store_settings",
+    "online_product_details",
+    "online_orders",
+    "deliveries",
+    "quotes",
+    "loyalty_settings",
+    "loyalty_accounts",
+    "loyalty_transactions",
+    "profiles"
+  ].indexOf(tableName) >= 0;
+}
+
+async function exportAzulBackup() {
+  if (!window.supabaseClient) {
+    toast("Supabase nao esta pronto.", "error");
+    return;
+  }
+
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) {
+    toast("Sessao da loja invalida. Entra novamente.", "error");
+    return;
+  }
+
+  var btn = document.getElementById("export-backup-btn");
+  var oldText = btn ? btn.textContent : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A preparar backup...";
+    btn.style.opacity = "0.65";
+  }
+  setBackupExportStatus("A recolher dados da loja...", false);
+
+  var backup = {
+    app: "Azul Gestao",
+    version: "v2",
+    exported_at: new Date().toISOString(),
+    organization_id: organizationId,
+    organization_name: localStorage.getItem("azul_organization_name") || config.name || "",
+    exported_by: typeof getAzulCurrentUserName === "function" ? getAzulCurrentUserName() : "",
+    data: {},
+    errors: {}
+  };
+
+  var tables = getAzulBackupTables();
+  for (var i = 0; i < tables.length; i++) {
+    var table = tables[i];
+    try {
+      var query = supabaseClient.from(table).select("*").limit(50000);
+      if (backupTableHasOrganizationFilter(table)) {
+        query = query.eq("organization_id", organizationId);
+      }
+      var result = await query;
+      if (result.error) throw result.error;
+      backup.data[table] = result.data || [];
+    } catch (e) {
+      backup.data[table] = [];
+      backup.errors[table] = e && e.message ? e.message : String(e || "Erro desconhecido");
+    }
+  }
+
+  var date = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  var safeOrg = String(backup.organization_name || "loja").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "loja";
+  downloadJsonFile("azul-backup-" + safeOrg + "-" + date + ".json", backup);
+
+  var errorCount = Object.keys(backup.errors || {}).length;
+  setBackupExportStatus(errorCount ? "Backup baixado com avisos em " + errorCount + " tabela(s)." : "Backup baixado com sucesso.", !!errorCount);
+  toast(errorCount ? "Backup baixado com alguns avisos." : "Backup baixado com sucesso.", errorCount ? "warning" : "success");
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = oldText || "Baixar backup";
+    btn.style.opacity = "1";
+  }
 }
 
 function normalizeHexColor(value, fallback) {

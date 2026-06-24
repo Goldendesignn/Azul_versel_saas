@@ -9,6 +9,25 @@ function getAzulSupabaseOrganizationHeader() {
   }
 }
 
+function createAzulSupabaseFetch() {
+  var nativeFetch = window.fetch.bind(window);
+
+  return function(input, init) {
+    init = init || {};
+    var headers = new Headers(init.headers || {});
+    var organizationId = getAzulSupabaseOrganizationHeader();
+
+    if (organizationId) {
+      headers.set("x-organization-id", organizationId);
+    } else {
+      headers.delete("x-organization-id");
+    }
+
+    init.headers = headers;
+    return nativeFetch(input, init);
+  };
+}
+
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
@@ -18,6 +37,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   global: {
     headers: {
       "x-organization-id": getAzulSupabaseOrganizationHeader()
-    }
+    },
+    fetch: createAzulSupabaseFetch()
   }
 });
