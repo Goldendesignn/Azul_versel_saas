@@ -13946,7 +13946,7 @@ function renderPagamentoLines() {
           'onchange="paiementLines['+i+'].montant=parseFloat(this.value)||0;renderPagamentoLines();">' +
       '</td>' +
       '<td style="padding:5px 8px;text-align:right;font-size:12px;font-weight:600;color:'+(reste>=0&&!over?'var(--green)':'var(--red)')+';">' +
-        (over ? ' Depasse!' : new Intl.NumberFormat('pt-PT').format(Math.max(0,reste))+' '+cur) +
+        (over ? ' Excede!' : new Intl.NumberFormat('pt-PT').format(Math.max(0,reste))+' '+cur) +
       '</td>' +
       '<td style="padding:5px 8px;text-align:center;">' +
         '<button onclick="removePagamentoLine('+i+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;opacity:0.6;">x</button>' +
