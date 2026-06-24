@@ -13584,7 +13584,7 @@ async function loadCompraHistorique() {
     document.getElementById("achatHistPaid").textContent = fmt(summary.paid || 0);
     document.getElementById("achatHistDebt").textContent = fmt(summary.debt || 0);
     document.getElementById("achatHistQty").textContent = new Intl.NumberFormat(getLocale()).format(summary.qty || 0);
-    document.getElementById("achatHistCount").textContent = (summary.count || 0) + " achats";
+    document.getElementById("achatHistCount").textContent = (summary.count || 0) + " compras";
 
     if (!rows.length) {
       if (body) body.innerHTML = '<tr><td colspan="10" class="empty">Nenhuma compra encontrada</td></tr>';
@@ -19677,7 +19677,7 @@ async function importPurchaseCsvRows() {
   var log = document.getElementById("purchase-import-log");
 
   if (purchaseImportRunning) {
-    toast("Importation deja en cours...", "error");
+    toast("Importação já está em curso...", "error");
     return;
   }
 
@@ -19691,11 +19691,11 @@ async function importPurchaseCsvRows() {
   });
 
   if (invalidRows.length) {
-    toast("Corrigido as linhas invalidas antes da importacao.", "error");
+    toast("Corrige as linhas inválidas antes da importação.", "error");
 
     if (log) {
       log.innerHTML = invalidRows.map(function(row) {
-        return "Ligne " + row.line + ": " + row.error;
+        return "Linha " + row.line + ": " + row.error;
       }).join("<br>");
     }
 
@@ -19707,18 +19707,18 @@ async function importPurchaseCsvRows() {
   var importBtn = document.querySelector(".import-submit-btn");
   if (importBtn) {
     importBtn.disabled = true;
-    importBtn.textContent = "Importation...";
+    importBtn.textContent = "A importar...";
     importBtn.style.opacity = "0.65";
   }
 
   try {
     if (log) {
-      log.innerHTML = "Importation rapide en cours...";
+      log.innerHTML = "Importação rápida em curso...";
     }
 
     var result = await savePurchaseImportBatchToSupabase(purchaseImportRows);
 
-    toast("Import termine: " + result.items + " lignes importees, " + (result.skipped || 0) + " duplicados ignorados.", "success");
+    toast("Importação concluída: " + result.items + " linhas importadas, " + (result.skipped || 0) + " duplicados ignorados.", "success");
     
     purchaseImportRows = [];
     renderPurchaseImportPreview();
@@ -19730,10 +19730,10 @@ async function importPurchaseCsvRows() {
 
     if (log) {
       log.innerHTML =
-        "Import termine avec succes: " +
-        result.items + " lignes, " +
-        result.products + " produits, " +
-        result.purchases + " achats. Doublons ignores: " + (result.skipped || 0) + ".";
+        "Importação concluída com sucesso: " +
+        result.items + " linhas, " +
+        result.products + " produtos, " +
+        result.purchases + " compras. Duplicados ignorados: " + (result.skipped || 0) + ".";
     }
   } catch (e) {
     console.error("Erro importacao compras:", e);
@@ -19748,7 +19748,7 @@ async function importPurchaseCsvRows() {
     var importBtnEnd = document.querySelector(".import-submit-btn");
     if (importBtnEnd) {
       importBtnEnd.disabled = false;
-      importBtnEnd.textContent = "Importer achats";
+      importBtnEnd.textContent = "Importar compras";
       importBtnEnd.style.opacity = "1";
     }
   }
@@ -19898,7 +19898,7 @@ function renderSaleImportPreview() {
 
   if (!saleImportRows.length) {
     summary.textContent = "Nenhum ficheiro selecionado.";
-    body.innerHTML = '<tr><td colspan="12" class="empty">Le preview des ventes apparait ici</td></tr>';
+    body.innerHTML = '<tr><td colspan="12" class="empty">A pré-visualização das vendas aparece aqui</td></tr>';
     return;
   }
 
@@ -20320,7 +20320,7 @@ async function importSaleCsvRows() {
   var log = document.getElementById("sale-import-log");
 
   if (saleImportRunning) {
-    toast("Importation ventes deja en cours...", "error");
+    toast("Importação de vendas já está em curso...", "error");
     return;
   }
 
@@ -20334,11 +20334,11 @@ async function importSaleCsvRows() {
   });
 
   if (invalidRows.length) {
-    toast("Corrigido as vendas invalidas antes da importacao.", "error");
+    toast("Corrige as vendas inválidas antes da importação.", "error");
 
     if (log) {
       log.innerHTML = invalidRows.map(function(row) {
-        return "Ligne " + row.line + ": " + row.error;
+        return "Linha " + row.line + ": " + row.error;
       }).join("<br>");
     }
 
@@ -20350,16 +20350,16 @@ async function importSaleCsvRows() {
   var btn = document.querySelector('button[onclick="importSaleCsvRows()"]');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = "Importation...";
+    btn.textContent = "A importar...";
     btn.style.opacity = "0.65";
   }
 
   try {
-    if (log) log.innerHTML = "Importation ventes en cours...";
+    if (log) log.innerHTML = "Importação de vendas em curso...";
 
     var result = await saveSaleImportBatchToSupabase(saleImportRows);
 
-    toast("Import ventes termine: " + result.sales + " ventes, " + (result.skipped || 0) + " duplicados ignorados.", "success");
+    toast("Importação de vendas concluída: " + result.sales + " vendas, " + (result.skipped || 0) + " duplicados ignorados.", "success");
 
     saleImportRows = [];
     renderSaleImportPreview();
@@ -20370,7 +20370,7 @@ async function importSaleCsvRows() {
     products = [];
 
     if (log) {
-      log.innerHTML = "Import ventes termine: " + result.sales + " ventes, " + result.items + " lignes. Doublons ignores: " + (result.skipped || 0) + ".";
+      log.innerHTML = "Importação de vendas concluída: " + result.sales + " vendas, " + result.items + " linhas. Duplicados ignorados: " + (result.skipped || 0) + ".";
     }
   } catch (e) {
     console.error("Erro importacao vendas:", e);
@@ -20384,7 +20384,7 @@ async function importSaleCsvRows() {
 
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "Importer ventes";
+      btn.textContent = "Importar vendas";
       btn.style.opacity = "1";
     }
   }
@@ -20722,11 +20722,11 @@ async function importExpenseCsvRows() {
   });
 
   if (invalidRows.length) {
-    toast("Corrigido as despesas invalidas antes da importacao.", "error");
+    toast("Corrige as despesas inválidas antes da importação.", "error");
 
     if (log) {
       log.innerHTML = invalidRows.map(function(row) {
-        return "Ligne " + row.line + ": " + row.error;
+        return "Linha " + row.line + ": " + row.error;
       }).join("<br>");
     }
 
@@ -20738,7 +20738,7 @@ async function importExpenseCsvRows() {
   var btn = document.querySelector('button[onclick="importExpenseCsvRows()"]');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = "Importation...";
+    btn.textContent = "A importar...";
     btn.style.opacity = "0.65";
   }
 

@@ -481,12 +481,12 @@
   <div class="purchase-dashboard-head">
     <div>
       <div class="eyebrow">Compras</div>
-      <h2>Vue achats</h2>
-      <p>Seguimento das compras, fornecedores e creditos.</p>
+      <h2>Visão de compras</h2>
+      <p>Acompanhamento das compras, fornecedores e créditos.</p>
     </div>
     <div class="purchase-actions">
-      <button class="filter-btn" onclick="goTo('achat', null)">Nouvel achat</button>
-      <button class="filter-btn" onclick="goTo('forn', null)">Fornecedors</button>
+      <button class="filter-btn" onclick="goTo('achat', null)">Nova compra</button>
+      <button class="filter-btn" onclick="goTo('forn', null)">Fornecedores</button>
     </div>
   </div>
 
@@ -494,13 +494,13 @@
     <div class="purchase-kpi">
       <span>Compras hoje</span>
       <strong id="dash-purchase-today">0 Kz</strong>
-      <small id="dash-purchase-today-count">0 achats</small>
+      <small id="dash-purchase-today-count">0 compras</small>
     </div>
 
     <div class="purchase-kpi">
       <span>Compras do mes</span>
       <strong id="dash-purchase-month">0 Kz</strong>
-      <small id="dash-purchase-month-count">0 achats</small>
+      <small id="dash-purchase-month-count">0 compras</small>
     </div>
 
     <div class="purchase-kpi red">
@@ -524,7 +524,7 @@
     </div>
 
     <div class="purchase-latest-card">
-      <div class="card-title">Derniers achats</div>
+      <div class="card-title">Últimas compras</div>
 <div id="dash-latest-purchases" class="dashboard-preview-list">
   <div class="empty">A carregar...</div>
 </div>
@@ -550,19 +550,19 @@
     </div>
 
     <div class="smart-stock-kpi red">
-      <span>Produits finis</span>
+      <span>Produtos esgotados</span>
       <strong id="smart-stock-out">0</strong>
       <small>stock total a 0</small>
     </div>
 
     <div class="smart-stock-kpi orange">
-      <span>Stock faible</span>
+      <span>Stock baixo</span>
       <strong id="smart-stock-low">0</strong>
-      <small>sous le minimum</small>
+      <small>abaixo do mínimo</small>
     </div>
 
     <div class="smart-stock-kpi">
-      <span>Produits dormants</span>
+      <span>Produtos parados</span>
       <strong id="smart-stock-dormant">0</strong>
       <small>sem vendas no periodo</small>
     </div>
@@ -570,7 +570,7 @@
 
   <div class="smart-stock-body">
     <div class="smart-stock-list-card">
-      <div class="card-title">Alertas prioritaires</div>
+      <div class="card-title">Alertas prioritários</div>
       <div id="smart-stock-alerts" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
@@ -578,7 +578,7 @@
     </div>
 
     <div class="smart-stock-list-card">
-      <div class="card-title">Produits dormants</div>
+      <div class="card-title">Produtos parados</div>
       <div id="smart-stock-dormants" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
@@ -1095,8 +1095,8 @@
     <!-- NOVA VENDA -->
     <div class="page" id="page-venda">
        <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
-        <button class="mode-btn active" id="vente-tab-novo" onclick="switchVendaTab('novo',this)"> Novo venda</button>
-        <button class="mode-btn" id="vente-tab-historico" onclick="switchVendaTab('historico',this)"> Historico</button>
+        <button class="mode-btn active" id="vente-tab-novo" onclick="switchVendaTab('novo',this)">Nova venda</button>
+        <button class="mode-btn" id="vente-tab-historico" onclick="switchVendaTab('historico',this)">Histórico</button>
       </div>
       <div id="vente-panel-novo">
         <div class="pos-wrap">
@@ -1369,17 +1369,17 @@
   <div class="achat-history-head">
     <div>
       <div class="eyebrow">Compras</div>
-      <h2>Historico de compras</h2>
-      <p>Pesquisa por produto, fornecedor, codigo ou variacao.</p>
+      <h2>Histórico de compras</h2>
+      <p>Pesquisa por produto, fornecedor, código ou variação.</p>
     </div>
     <button class="filter-btn" onclick="loadCompraHistorique()">Atualizar</button>
   </div>
 
   <div class="achat-history-kpis">
     <div class="kpi">
-      <div class="kpi-label">Total achats</div>
+      <div class="kpi-label">Total de compras</div>
       <div class="kpi-val" id="achatHistTotal">0 Kz</div>
-      <div class="kpi-sub" id="achatHistCount">0 achats</div>
+      <div class="kpi-sub" id="achatHistCount">0 compras</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Total pago</div>
@@ -1387,7 +1387,7 @@
       <div class="kpi-sub">Pagamentos fornecedores</div>
     </div>
     <div class="kpi red">
-      <div class="kpi-label">Dette</div>
+      <div class="kpi-label">Dívida</div>
       <div class="kpi-val" id="achatHistDebt">0 Kz</div>
       <div class="kpi-sub">Resta pagar</div>
     </div>
@@ -2398,7 +2398,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div>
               <div style="font-size:13px;font-weight:500;">Modo de Edicao Directa</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Desbloqueia as feuilles por 1 minuto para corrigir ou eliminar linhas. Bloqueia automaticamente depois.</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Desbloqueia as folhas por 1 minuto para corrigir ou eliminar linhas. Bloqueia automaticamente depois.</div>
             </div>
           </div>
           <button id="editModeBtn" onclick="activarEdicao()" style="width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;">
@@ -2412,7 +2412,7 @@
             Importa compras com um ficheiro CSV modelo. Os produtos entram no stock e os fornecedores sao criados automaticamente.
           </div>
           <button class="form-submit" type="button" onclick="goTo('import', null)" style="width:100%;">
-            Ouvrir l'importation
+            Abrir importação
           </button>
         </div>
         <div class="card" style="grid-column:1/-1;">
@@ -2440,11 +2440,11 @@
   <div class="import-shell">
     <div class="import-hero">
       <div>
-        <div class="import-eyebrow">Importation</div>
-        <h2>Importer les achats</h2>
+        <div class="import-eyebrow">Importação</div>
+        <h2>Importar dados</h2>
         <p>Baixa o modelo CSV, preenche os produtos e importa o ficheiro. Os fornecedores e o stock serao atualizados automaticamente.</p>
       </div>
-      <button type="button" class="import-ghost-btn" onclick="goTo('settings', null)">Voltar as definicoes</button>
+      <button type="button" class="import-ghost-btn" onclick="goTo('settings', null)">Voltar às definições</button>
     </div>
    <div class="import-tabs">
     <button type="button" class="import-tab active" id="import-tab-purchases" onclick="switchDataImportTab('purchases')">
@@ -2463,7 +2463,7 @@
           <div class="import-panel">
             <div class="import-panel-head">
               <div>
-                <h3>Modele CSV</h3>
+                <h3>Modelo CSV</h3>
                 <p>Usa sempre este ficheiro para evitar erros de colunas.</p>
               </div>
             </div>
@@ -2480,7 +2480,7 @@
           <div class="import-panel">
             <div class="import-panel-head">
               <div>
-                <h3>Fichier a importer</h3>
+                <h3>Ficheiro a importar</h3>
                 <p>Escolhe o CSV preenchido e verifica a pre-visualizacao antes da importacao.</p>
               </div>
             </div>
@@ -2499,11 +2499,11 @@
         <div class="import-preview-card">
           <div class="import-preview-head">
             <div>
-              <div class="import-eyebrow">Apercu</div>
-              <h3>Produits detectes</h3>
+              <div class="import-eyebrow">Pré-visualização</div>
+              <h3>Produtos detetados</h3>
             </div>
             <button type="button" class="import-submit-btn" onclick="importPurchaseCsvRows()">
-              Importer achats
+              Importar compras
             </button>
           </div>
     
@@ -2513,11 +2513,11 @@
                 <tr>
                   <th>Date</th>
                   <th>Fornecedor</th>
-                  <th>Designation</th>
+                  <th>Designação</th>
                   <th>Qtd</th>
                   <th>Unidade</th>
-                  <th>P. achat</th>
-                  <th>P. vente</th>
+                  <th>P. compra</th>
+                  <th>P. venda</th>
                   <th>Categoria</th>
                   <th>Code</th>
                   <th>Variation</th> 
@@ -2539,7 +2539,7 @@
         <div class="import-panel">
           <div class="import-panel-head">
             <div>
-              <h3>Modele CSV ventes</h3>
+              <h3>Modelo CSV de vendas</h3>
               <p>Usa este ficheiro para importar vendas antigas.</p>
             </div>
           </div>
@@ -2556,7 +2556,7 @@
         <div class="import-panel">
           <div class="import-panel-head">
             <div>
-              <h3>Fichier ventes</h3>
+              <h3>Ficheiro de vendas</h3>
               <p>Se o numero do recibo estiver vazio, sera gerado automaticamente.</p>
             </div>
           </div>
@@ -2575,11 +2575,11 @@
       <div class="import-preview-card" style="margin-top:16px;">
         <div class="import-preview-head">
           <div>
-            <div class="import-eyebrow">Apercu ventes</div>
-            <h3>Vendas detectadas</h3>
+            <div class="import-eyebrow">Pré-visualização de vendas</div>
+            <h3>Vendas detetadas</h3>
           </div>
           <button type="button" class="import-submit-btn" onclick="importSaleCsvRows()">
-            Importer ventes
+            Importar vendas
           </button>
         </div>
       
@@ -2588,21 +2588,21 @@
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Designation</th>
+                <th>Designação</th>
                 <th>Qtd</th>
-                <th>P. vente</th>
+                <th>P. venda</th>
                 <th>Cash</th>
                 <th>Express</th>
                 <th>Cartao</th>
                 <th>Credito</th>
                 <th>Total</th>
-                <th>Origine</th>
-                <th>Client</th>
-                <th>Recu</th>
+                <th>Origem</th>
+                <th>Cliente</th>
+                <th>Recibo</th>
               </tr>
             </thead>
             <tbody id="sale-import-preview">
-              <tr><td colspan="12" class="empty">Le preview des ventes apparait ici</td></tr>
+              <tr><td colspan="12" class="empty">A pré-visualização das vendas aparece aqui</td></tr>
             </tbody>
           </table>
         </div>
