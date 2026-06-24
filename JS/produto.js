@@ -109,7 +109,7 @@ function productCartUrl() {
 }
 
 function goToProductCart() {
-  window.location.href = productCartUrl();
+  openProductCartPopup();
 }
 
 function getProductCartStorageKey() {
@@ -522,6 +522,126 @@ function getProductPageCartQty() {
   }, 0);
 }
 
+function productCartItemKey(item) {
+  return String(item.product_id || "") + "::" + String(item.variation || "");
+}
+
+function ensureProductCartPopup() {
+  var popup = document.getElementById("productCartPopup");
+  if (popup) return popup;
+
+  popup = document.createElement("aside");
+  popup.id = "productCartPopup";
+  popup.className = "product-cart-popup";
+  popup.setAttribute("aria-live", "polite");
+  document.body.appendChild(popup);
+  return popup;
+}
+
+function openProductCartPopup() {
+  loadProductPageCartFromStorage();
+  renderProductCartPopup();
+  var popup = ensureProductCartPopup();
+  popup.hidden = false;
+  popup.classList.remove("is-closing");
+  requestAnimationFrame(function() {
+    popup.classList.add("is-open");
+  });
+}
+
+function closeProductCartPopup() {
+  var popup = document.getElementById("productCartPopup");
+  if (!popup) return;
+  popup.classList.remove("is-open");
+  popup.classList.add("is-closing");
+  setTimeout(function() {
+    popup.hidden = true;
+    popup.classList.remove("is-closing");
+  }, 220);
+}
+
+function goToProductCheckout() {
+  closeProductCartPopup();
+  var form = document.querySelector(".product-customer-form");
+  if (form) {
+    form.scrollIntoView({ behavior: "smooth", block: "center" });
+    var firstInput = document.getElementById("productCustomerName");
+    if (firstInput) setTimeout(function() { firstInput.focus(); }, 280);
+  }
+}
+
+function changeProductCartItemQty(key, delta) {
+  key = decodeURIComponent(String(key || ""));
+  var item = productPageCart.find(function(row) {
+    return productCartItemKey(row) === key;
+  });
+  if (!item) return;
+  item.quantity = Math.max(0, (Number(item.quantity) || 0) + delta);
+  if (item.quantity <= 0) {
+    productPageCart = productPageCart.filter(function(row) {
+      return productCartItemKey(row) !== key;
+    });
+  }
+  saveProductPageCartToStorage();
+  renderProductCartSummary();
+  renderProductCartPopup();
+}
+
+function removeProductCartItem(key) {
+  key = decodeURIComponent(String(key || ""));
+  productPageCart = productPageCart.filter(function(row) {
+    return productCartItemKey(row) !== key;
+  });
+  saveProductPageCartToStorage();
+  renderProductCartSummary();
+  renderProductCartPopup();
+}
+
+function renderProductCartPopup() {
+  var popup = ensureProductCartPopup();
+  var qty = getProductPageCartQty();
+
+  if (!qty) {
+    popup.innerHTML =
+      '<div class="product-cart-popup-head">' +
+        '<div><span>Carrinho</span><strong>Sem produtos</strong></div>' +
+        '<button type="button" class="product-cart-popup-close" onclick="closeProductCartPopup()" aria-label="Fechar">x</button>' +
+      '</div>' +
+      '<div class="product-cart-popup-empty">Adiciona um produto para continuar a compra.</div>';
+    return;
+  }
+
+  var rows = productPageCart.map(function(item) {
+    var key = productEscape(encodeURIComponent(productCartItemKey(item)));
+    var meta = [item.code, item.variation].filter(Boolean).join(" | ");
+    return '<div class="product-cart-popup-item">' +
+      '<div class="product-cart-popup-main">' +
+        '<strong title="' + productEscape(item.name) + '">' + productEscape(item.name) + '</strong>' +
+        '<small>' + (meta ? productEscape(meta) + ' | ' : '') + productMoney(item.price) + '</small>' +
+      '</div>' +
+      '<div class="product-cart-popup-actions">' +
+        '<button type="button" onclick="changeProductCartItemQty(\'' + key + '\', -1)" aria-label="Diminuir">-</button>' +
+        '<b>' + (Number(item.quantity) || 0) + '</b>' +
+        '<button type="button" onclick="changeProductCartItemQty(\'' + key + '\', 1)" aria-label="Aumentar">+</button>' +
+      '</div>' +
+      '<strong class="product-cart-popup-total">' + productMoney((Number(item.price) || 0) * (Number(item.quantity) || 0)) + '</strong>' +
+      '<button type="button" class="product-cart-popup-remove" onclick="removeProductCartItem(\'' + key + '\')" aria-label="Remover">x</button>' +
+    '</div>';
+  }).join("");
+
+  popup.innerHTML =
+    '<div class="product-cart-popup-head">' +
+      '<div><span>Carrinho</span><strong>' + qty + (qty === 1 ? ' produto' : ' produtos') + '</strong></div>' +
+      '<button type="button" class="product-cart-popup-close" onclick="closeProductCartPopup()" aria-label="Fechar">x</button>' +
+    '</div>' +
+    '<div class="product-cart-popup-list">' + rows + '</div>' +
+    '<div class="product-cart-popup-footer">' +
+      '<span>Total</span>' +
+      '<strong>' + productMoney(getProductPageCartTotalOnly()) + '</strong>' +
+    '</div>' +
+    '<button type="button" class="product-cart-popup-checkout" onclick="goToProductCheckout()">Continuar pedido</button>';
+}
+
 function renderProductFloatingCartBubble(justAdded) {
   var bubble = document.getElementById("productFloatingCart");
   if (!bubble) {
@@ -529,7 +649,7 @@ function renderProductFloatingCartBubble(justAdded) {
     bubble.type = "button";
     bubble.id = "productFloatingCart";
     bubble.className = "product-floating-cart";
-    bubble.onclick = goToProductCart;
+    bubble.onclick = openProductCartPopup;
     document.body.appendChild(bubble);
   }
 
@@ -548,6 +668,7 @@ function renderProductFloatingCartBubble(justAdded) {
       '<small>' + qty + (qty === 1 ? ' produto' : ' produtos') + ' | ' + productMoney(getProductPageCartTotalOnly()) + '</small>' +
     '</span>';
   bubble.classList.toggle("just-added", !!justAdded);
+  renderProductCartPopup();
   if (justAdded) {
     setTimeout(function() {
       bubble.classList.remove("just-added");
@@ -570,7 +691,7 @@ function renderProductCartSummary(justAdded) {
   }, 0);
   box.innerHTML =
     '<strong>' + qty + (qty === 1 ? ' produto no carrinho' : ' produtos no carrinho') + '</strong>' +
-    '<button type="button" class="product-cart-summary-link" onclick="goToProductCart()">Ver carrinho: ' + productMoney(getProductPageCartTotalOnly()) + '</button>';
+    '<button type="button" class="product-cart-summary-link" onclick="openProductCartPopup()">Ver carrinho: ' + productMoney(getProductPageCartTotalOnly()) + '</button>';
   box.classList.add("has-item");
   box.classList.toggle("just-added", !!justAdded);
   if (justAdded) {
