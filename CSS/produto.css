@@ -488,6 +488,21 @@ textarea {
   color: var(--text);
 }
 
+.product-cart-summary-link {
+  width: max-content;
+  max-width: 100%;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .product-cart-summary.has-item {
   border-style: solid;
   border-color: color-mix(in srgb, var(--green) 34%, var(--border));
@@ -501,6 +516,74 @@ textarea {
 @keyframes productCartAdded {
   0%, 100% { transform: translateY(0); }
   35% { transform: translateY(-2px); box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 16%, transparent); }
+}
+
+.product-floating-cart {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 80;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 18px 8px 8px;
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .18);
+  cursor: pointer;
+}
+
+.product-floating-cart[hidden] {
+  display: none;
+}
+
+.product-floating-cart-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.product-floating-cart-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.product-floating-cart-text b,
+.product-floating-cart-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-floating-cart-text b {
+  font-size: 14px;
+}
+
+.product-floating-cart-text small {
+  color: rgba(255, 255, 255, .82);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.product-floating-cart.just-added {
+  animation: productCartBubblePop .75s ease;
+}
+
+@keyframes productCartBubblePop {
+  0%, 100% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-4px) scale(1.03); }
 }
 
 .product-customer-form {
@@ -910,6 +993,20 @@ textarea {
     position: sticky;
     bottom: max(10px, env(safe-area-inset-bottom));
     z-index: 10;
+  }
+
+  .product-floating-cart {
+    left: 14px;
+    right: 14px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    border-radius: 18px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 8px 14px 8px 8px;
+  }
+
+  .product-floating-cart-icon {
+    width: 40px;
+    height: 40px;
   }
 
   .similar-products-section {

@@ -12,6 +12,53 @@ function shopParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
 }
 
+function getShopCartStorageKey() {
+  var org = shopParam("org");
+  var slug = shopParam("loja");
+  return "azul_online_cart_" + (org ? "org_" + org : "slug_" + String(slug || "").toLowerCase());
+}
+
+function normalizeShopCartRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(function(row) {
+    return {
+      id: row.id || row.product_id || "",
+      name: row.name || "",
+      code: row.code || "",
+      variation: row.variation || "",
+      price: Number(row.price) || 0,
+      qty: Number(row.qty || row.quantity) || 0
+    };
+  }).filter(function(row) {
+    return row.id && row.qty > 0;
+  });
+}
+
+function loadShopCartFromStorage() {
+  try {
+    shopCart = normalizeShopCartRows(JSON.parse(localStorage.getItem(getShopCartStorageKey()) || "[]"));
+  } catch (e) {
+    shopCart = [];
+  }
+}
+
+function saveShopCartToStorage() {
+  try {
+    localStorage.setItem(getShopCartStorageKey(), JSON.stringify(shopCart.map(function(item) {
+      return {
+        id: item.id,
+        product_id: item.id,
+        name: item.name,
+        code: item.code,
+        variation: item.variation,
+        price: Number(item.price) || 0,
+        qty: Number(item.qty) || 0,
+        quantity: Number(item.qty) || 0
+      };
+    })));
+  } catch (e) {}
+}
+
 function shopMoney(value) {
   value = Number(value) || 0;
   return value.toLocaleString("pt-AO", { maximumFractionDigits: 0 }) + " Kz";
@@ -506,10 +553,14 @@ async function loadShop() {
 
     shopStore = data.store || {};
     shopProducts = Array.isArray(data.products) ? data.products : [];
+    loadShopCartFromStorage();
     applyShopStore();
     renderShopCategories();
     renderShopProducts();
     renderShopCart();
+    if (shopParam("cart") === "open") {
+      setTimeout(openShopCart, 80);
+    }
   } catch (e) {
     console.error("Erro loja:", e);
     document.documentElement.classList.remove("shop-style-pending");
@@ -706,6 +757,8 @@ function renderShopCart() {
   var qty = shopCart.reduce(function(sum, item) {
     return sum + (Number(item.qty) || 0);
   }, 0);
+
+  saveShopCartToStorage();
 
   if (count) count.textContent = String(qty);
   if (mobileCount) mobileCount.textContent = qty + (qty === 1 ? " produto" : " produtos");
