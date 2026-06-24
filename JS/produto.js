@@ -4,6 +4,7 @@ var productStoreProducts = [];
 var productQuantity = 1;
 var productSelectedVariation = "";
 var productSelectedMediaIndex = 0;
+var productPageCart = [];
 
 function productParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
@@ -344,6 +345,11 @@ function renderProductDetail() {
             '</div>' +
           '</fieldset>' +
           '<div class="product-order-summary"><span>Total do pedido</span><strong id="productOrderTotal">' + productMoney(price) + '</strong></div>' +
+          '<button type="button" class="product-cart-add-button" id="productCartAddButton" onclick="addProductToPageCart()"' + (isOut ? ' disabled' : '') + '>' +
+            '<span aria-hidden="true">+</span>' +
+            '<strong>' + (isOut ? 'Produto esgotado' : 'Adicionar ao carrinho') + '</strong>' +
+          '</button>' +
+          '<div class="product-cart-summary" id="productCartSummary" aria-live="polite"></div>' +
           '<div class="product-form-title">Dados para entrega</div>' +
           '<div class="product-customer-form">' +
             '<input type="text" id="productCustomerName" placeholder="O seu nome" autocomplete="name">' +
@@ -359,6 +365,7 @@ function renderProductDetail() {
       '</div>' +
     '</div>' +
     renderSimilarProducts();
+  renderProductCartSummary();
 }
 
 function selectProductVariation(encodedLabel, button) {
@@ -383,6 +390,89 @@ function changeProductQuantity(delta) {
   var total = document.getElementById("productOrderTotal");
   if (qty) qty.textContent = String(productQuantity);
   if (total) total.textContent = productMoney(productQuantity * (Number(productItem.sale_price) || 0));
+}
+
+function getCurrentProductCartItem() {
+  return {
+    product_id: productItem.id,
+    name: productItem.name || "Produto",
+    code: productItem.code || "",
+    variation: productSelectedVariation || "",
+    quantity: productQuantity,
+    price: Number(productItem.sale_price) || 0
+  };
+}
+
+function validateProductChoiceForCart() {
+  if (!productItem) return false;
+  var variations = normalizeProductVariations(productItem);
+  if (variations.length && !productSelectedVariation) {
+    setProductFormError("Escolha primeiro o tamanho ou a variacao.");
+    var firstVariation = document.querySelector(".product-variation-button");
+    if (firstVariation) firstVariation.focus();
+    return false;
+  }
+  return true;
+}
+
+function addProductToPageCart() {
+  if (!validateProductChoiceForCart()) return;
+
+  var item = getCurrentProductCartItem();
+  var existing = productPageCart.find(function(cartItem) {
+    return String(cartItem.product_id) === String(item.product_id)
+      && String(cartItem.variation || "") === String(item.variation || "");
+  });
+
+  if (existing) {
+    existing.quantity += item.quantity;
+  } else {
+    productPageCart.push(item);
+  }
+
+  productQuantity = 1;
+  var qty = document.getElementById("productQuantity");
+  var total = document.getElementById("productOrderTotal");
+  if (qty) qty.textContent = "1";
+  if (total) total.textContent = productMoney(Number(productItem.sale_price) || 0);
+  setProductFormError("");
+  renderProductCartSummary(true);
+}
+
+function getProductCartLines() {
+  if (productPageCart.length) return productPageCart.slice();
+  if (!productItem) return [];
+  return [getCurrentProductCartItem()];
+}
+
+function getProductCartTotal() {
+  return getProductCartLines().reduce(function(sum, item) {
+    return sum + ((Number(item.price) || 0) * (Number(item.quantity) || 0));
+  }, 0);
+}
+
+function renderProductCartSummary(justAdded) {
+  var box = document.getElementById("productCartSummary");
+  if (!box) return;
+  if (!productPageCart.length) {
+    box.innerHTML = '<span>O carrinho esta vazio. Adiciona o produto ou pede directamente pelo WhatsApp.</span>';
+    box.classList.remove("has-item", "just-added");
+    return;
+  }
+
+  var qty = productPageCart.reduce(function(sum, item) {
+    return sum + (Number(item.quantity) || 0);
+  }, 0);
+  box.innerHTML =
+    '<strong>' + qty + (qty === 1 ? ' produto no carrinho' : ' produtos no carrinho') + '</strong>' +
+    '<span>Total: ' + productMoney(getProductCartTotal()) + '</span>';
+  box.classList.add("has-item");
+  box.classList.toggle("just-added", !!justAdded);
+  if (justAdded) {
+    setTimeout(function() {
+      box.classList.remove("just-added");
+    }, 800);
+  }
 }
 
 function setProductFormError(message, targetId) {
@@ -427,17 +517,15 @@ function buildProductWhatsAppMessage(customer) {
   var lines = [
     productStore.welcome_message || "Ola, quero comprar este produto:",
     "",
-    "Produto: " + (productItem.name || "Produto"),
-    "Quantidade: " + productQuantity
+    "Produtos:"
   ];
-  if (productSelectedVariation) lines.push("Tamanho/variacao: " + productSelectedVariation);
-  if (productItem.code) lines.push("Codigo: " + productItem.code);
-  if (isProductPromo(productItem)) {
-    lines.push("Preco normal: " + productMoney(getProductRegularPrice(productItem)));
-    lines.push("Promocao: " + productMoney(Number(productItem.sale_price) || 0));
-    if (productItem.promo_label) lines.push("Campanha: " + productItem.promo_label);
-  }
-  lines.push("Total: " + productMoney(productQuantity * (Number(productItem.sale_price) || 0)));
+
+  getProductCartLines().forEach(function(item) {
+    var meta = [item.code, item.variation].filter(Boolean).join(" | ");
+    lines.push("- " + item.name + (meta ? " (" + meta + ")" : "") + " | Qtd: " + item.quantity + " | Total: " + productMoney(item.quantity * item.price));
+  });
+
+  lines.push("Total: " + productMoney(getProductCartTotal()));
   lines.push("");
   lines.push("Dados do cliente:");
   lines.push("Nome: " + customer.name);
@@ -453,11 +541,13 @@ async function createProductOrder(customer, message) {
     p_customer_name: customer.name,
     p_customer_phone: customer.phone,
     p_customer_address: customer.address,
-    p_items: [{
-      product_id: productItem.id,
-      quantity: productQuantity,
-      variation: productSelectedVariation
-    }],
+    p_items: getProductCartLines().map(function(item) {
+      return {
+        product_id: item.product_id,
+        quantity: item.quantity,
+        variation: item.variation || ""
+      };
+    }),
     p_whatsapp_message: message
   });
 
@@ -469,13 +559,7 @@ async function createProductOrder(customer, message) {
 
 async function sendProductToWhatsApp() {
   if (!productItem || !productStore) return;
-  var variations = normalizeProductVariations(productItem);
-  if (variations.length && !productSelectedVariation) {
-    setProductFormError("Escolha primeiro o tamanho ou a variacao.");
-    var firstVariation = document.querySelector(".product-variation-button");
-    if (firstVariation) firstVariation.focus();
-    return;
-  }
+  if (!productPageCart.length && !validateProductChoiceForCart()) return;
 
   var customer = getProductCustomer();
   if (!customer) return;
