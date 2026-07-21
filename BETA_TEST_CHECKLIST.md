@@ -1,7 +1,7 @@
 # Checklist de test beta - Azul Gestao
 
 Objectif: tester l'ERP dans un ordre logique, car plusieurs modules dependent les uns des autres.  
-Quand une section est terminee, coche les cases. Quand tu trouves un probleme, note-le dans le rapport en bas du document.
+Quand une section est terminee, coche les cases. Quand tu trouves un probleme, note-le dans le rapport en bas du document. 
 
 ## Regles du test
 
