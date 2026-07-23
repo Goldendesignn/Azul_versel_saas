@@ -15,12 +15,18 @@ function createAzulSupabaseFetch() {
   return function(input, init) {
     init = init || {};
     var headers = new Headers(init.headers || {});
-    var organizationId = getAzulSupabaseOrganizationHeader();
+    
+    // Vérifier si la requête cible l'authentification Supabase pour ne pas la perturber
+    var url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+    var isAuthRoute = url && url.includes('/auth/v1/');
 
-    if (organizationId) {
-      headers.set("x-organization-id", organizationId);
-    } else {
-      headers.delete("x-organization-id");
+    if (!isAuthRoute) {
+      var organizationId = getAzulSupabaseOrganizationHeader();
+      if (organizationId) {
+        headers.set("x-organization-id", organizationId);
+      } else {
+        headers.delete("x-organization-id");
+      }
     }
 
     init.headers = headers;
@@ -32,12 +38,10 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: window.localStorage
   },
   global: {
-    headers: {
-      "x-organization-id": getAzulSupabaseOrganizationHeader()
-    },
     fetch: createAzulSupabaseFetch()
   }
 });
