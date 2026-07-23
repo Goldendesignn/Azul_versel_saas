@@ -14,6 +14,21 @@
 <link rel="apple-touch-icon" href="Assets/icon-192.png">
 <base target="_top">
 <script>
+// Surveillance en temps réel de l'état de la session Supabase
+supabaseClient.auth.onAuthStateChange(function(event, session) {
+  console.log("Événement Auth Supabase :", event);
+
+  if (event === "SIGNED_OUT" || !session) {
+    console.warn("La session a été perdue ou l'utilisateur a été déconnecté.");
+    
+    // Nettoyer le stockage local de l'ERP
+    localStorage.removeItem("azul_organization_id");
+    localStorage.removeItem("azul_user_name");
+    
+    // Rediriger proprement vers le login au lieu d'afficher des erreurs de permission
+    window.location.href = "index.html";
+  }
+});
 // S'assure que le client Supabase restaure la session au démarrage de core.html
 async function verifyActiveSession() {
   const { data: { session }, error } = await supabaseClient.auth.getSession();
