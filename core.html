@@ -14,6 +14,19 @@
 <link rel="apple-touch-icon" href="Assets/icon-192.png">
 <base target="_top">
 <script>
+// S'assure que le client Supabase restaure la session au démarrage de core.html
+async function verifyActiveSession() {
+  const { data: { session }, error } = await supabaseClient.auth.getSession();
+  
+  if (!session) {
+    console.warn("Session Supabase introuvable ou expirée. Redirection vers le login...");
+    localStorage.clear();
+    window.location.href = "index.html"; // ou votre page de login
+    return false;
+  }
+  return true;
+}
+  
 (function applyAzulThemeBeforePaint() {
   function normalizeHexColor(value, fallback) {
     var color = String(value || "").trim();
