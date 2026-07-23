@@ -16,7 +16,7 @@ function createAzulSupabaseFetch() {
     init = init || {};
     var headers = new Headers(init.headers || {});
     
-    // Vérifier si la requête cible l'authentification Supabase pour ne pas la perturber
+    // Empêche l'interception sur les routes d'authentification pour sécuriser le token
     var url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
     var isAuthRoute = url && url.includes('/auth/v1/');
 
