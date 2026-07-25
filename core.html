@@ -15,6 +15,8 @@
 <base target="_top">
 <script>
 // Attendre que le client Supabase soit disponible
+<script>
+// Attendre que le client Supabase soit disponible
 function initAuthWatchdog() {
   if (typeof supabaseClient === 'undefined') {
     setTimeout(initAuthWatchdog, 50);
@@ -24,6 +26,9 @@ function initAuthWatchdog() {
   // Surveillance en temps réel de l'état de la session Supabase
   supabaseClient.auth.onAuthStateChange(function(event, session) {
     console.log("Événement Auth Supabase :", event);
+    
+    // 👇 AJOUTE CETTE LIGNE ICI POUR TROUVER LE COUPABLE DANS LA CONSOLE 👇
+    console.trace("D'où vient cet événement d'auth ?");
 
     if (event === "SIGNED_OUT" || !session) {
       console.warn("La session a été perdue ou l'utilisateur a été déconnecté.");
@@ -45,6 +50,8 @@ function initAuthWatchdog() {
 
 // Lancer au chargement
 document.addEventListener("DOMContentLoaded", initAuthWatchdog);
+
+// ... (le reste de ton code pour le thème reste inchangé en bas)
   
 (function applyAzulThemeBeforePaint() {
   function normalizeHexColor(value, fallback) {
