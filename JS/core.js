@@ -7124,6 +7124,7 @@ function printDashboardTicket() {
   var printedLabel = 'Impresso em';
   var noDataLabel = 'Sem dados';
   var depCountLabel = 'Registos despesas';
+  var recetteLabel = 'Receitas totais';
 
   var logoImage = (config && config.receiptLogo) ? '<img src="' + escapeDashboardTicketText(config.receiptLogo) + '" style="display:block;max-width:100%;height:auto;margin:0 auto 8px auto;object-fit:contain;width:' + escapeDashboardTicketText((config.receiptLogoSize || '16') + 'mm') + ';">' : '';
   var shopName = escapeDashboardTicketText((config && config.name) || 'Azul Gestao');
@@ -7172,6 +7173,7 @@ function printDashboardTicket() {
       '<div class="line"><span>' + salesCountLabel + '</span><span>' + escapeDashboardTicketText(d.vendasHojeCount || 0) + '</span></div>' +
       '<div class="line"><span>' + profitLabel + '</span><span>' + escapeDashboardTicketText(fmt(d.lucroMes || 0)) + '</span></div>' +
       '<div class="line"><span>' + expenseLabel + '</span><span>' + escapeDashboardTicketText(fmt(d.totalDespesas || 0)) + '</span></div>' +
+     '<div class="line"><span>' + recetteLabel + '</span><span>' + escapeDashboardTicketText(fmt(d.vendasHoje - d.totalDes || 0)) + '</span></div>' +
       '<div class="line"><span>' + depCountLabel + '</span><span>' + escapeDashboardTicketText(d.depensesCount || 0) + '</span></div>' +
       '<div class="line"><span>' + alertsLabel + '</span><span>' + escapeDashboardTicketText(d.alertas || 0) + '</span></div>' +
     '</div>' +
