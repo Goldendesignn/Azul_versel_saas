@@ -23181,20 +23181,25 @@ refreshFornecedorDatalists = function() {
   renderSupplierDatalists();
 };
 
-function deconnection (){
-    // 1. Récupérer le bouton dans le HTML
+// Fonction pour gérer la déconnexion Supabase
+function initLogout() {
     const logoutBtn = document.getElementById('logoutBtn');
-    
-    // 2. Écouter le clic sur le bouton
-    logoutBtn.addEventListener('click', async () => {
-        // 3. Demander à Supabase de détruire la session
-        const { error } = await supabase.auth.signOut();
-    
-        if (error) {
-            console.error('Erreur lors de la déconnexion :', error.message);
-        } else {
-            // 4. Si tout est OK, rediriger l'utilisateur vers la page de connexion
-            window.location.href = '/index.html';
-        }
-    });
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            // Demander à Supabase de détruire la session
+            const { error } = await supabase.auth.signOut();
+
+            if (error) {
+                console.error('Erreur lors de la déconnexion :', error.message);
+            } else {
+                // Redirection vers la page d'accueil ou de connexion
+                window.location.href = '/index.html';
+            }
+        });
+    }
 }
+
+// Lancer la fonction automatiquement dès que la page est chargée
+document.addEventListener('DOMContentLoaded', initLogout);
+
