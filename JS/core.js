@@ -23188,7 +23188,7 @@ function initLogout() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             // Demander à Supabase de détruire la session
-            const { error } = await supabase.auth.signOut();
+            const { error } = await supabaseClient.auth.signOut();
 
             if (error) {
                 console.error('Erreur lors de la déconnexion :', error.message);
