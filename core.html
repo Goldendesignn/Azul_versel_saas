@@ -123,6 +123,7 @@
     if (themeMeta) themeMeta.setAttribute("content", accent);
   } catch (e) {}
 })();
+  
   // 1. Récupérer le bouton dans le HTML
 const logoutBtn = document.getElementById('logoutBtn');
 
@@ -135,7 +136,7 @@ logoutBtn.addEventListener('click', async () => {
         console.error('Erreur lors de la déconnexion :', error.message);
     } else {
         // 4. Si tout est OK, rediriger l'utilisateur vers la page de connexion
-        window.location.href = '/login.html';
+        window.location.href = '/index.html';
     }
 });
 
