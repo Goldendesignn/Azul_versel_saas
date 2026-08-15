@@ -23180,3 +23180,21 @@ renderFornPayDatalist = function() {
 refreshFornecedorDatalists = function() {
   renderSupplierDatalists();
 };
+
+function deconnection (){
+    // 1. Récupérer le bouton dans le HTML
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    // 2. Écouter le clic sur le bouton
+    logoutBtn.addEventListener('click', async () => {
+        // 3. Demander à Supabase de détruire la session
+        const { error } = await supabase.auth.signOut();
+    
+        if (error) {
+            console.error('Erreur lors de la déconnexion :', error.message);
+        } else {
+            // 4. Si tout est OK, rediriger l'utilisateur vers la page de connexion
+            window.location.href = '/index.html';
+        }
+    });
+}
