@@ -9529,7 +9529,9 @@ async function saveOnlineStoreSettings() {
     font_family: getOnlineFontFamily((document.getElementById("online-font-family") || {}).value),
     logo_url: String((document.getElementById("online-logo-url") || {}).value || "").trim(),
     show_stock: !!((document.getElementById("online-show-stock") || {}).checked),
-    product_ids: productIds
+    product_ids: productIds,
+    // Ajout de la valeur du Pixel Facebook nettoyée (sans espaces superflus)
+    facebook_pixel_id: String((document.getElementById("pixel_facebook") || {}).value || "").trim()
   };
 
   try {
