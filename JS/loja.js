@@ -162,6 +162,7 @@ function saveShopThemeCache(store) {
       theme_color: normalizeShopColor(store.theme_color),
       font_family: getShopFontFamily(store.font_family),
       logo_url: String(store.logo_url || "").trim(),
+      facebook_pixel_id: String(store.facebook_pixel_id || "").trim(),
       cached_at: Date.now()
     }));
   } catch (e) {}
@@ -291,6 +292,12 @@ function applyShopBranding(store, saveCache) {
   var themeColor = normalizeShopColor(store.theme_color);
   var fontFamily = getShopFontFamily(store.font_family);
   var logoUrl = String(store.logo_url || "").trim() || "Assets/icon-192.png";
+  var facebookPixelId = String(store.facebook_pixel_id || "").trim();
+
+  // Active le Pixel Meta dynamiquement s'il est configuré
+  if (facebookPixelId && typeof window.initMetaPixel === 'function') {
+    window.initMetaPixel(facebookPixelId);
+  }
 
   document.title = name;
   document.documentElement.style.setProperty("--blue", themeColor);
@@ -318,7 +325,9 @@ function applyShopBranding(store, saveCache) {
 
 function applyCachedShopBranding() {
   var cached = readShopThemeCache();
-  if (cached && cached.theme_color) applyShopBranding(cached, false);
+  if (cached && cached.theme_color) {
+    applyShopBranding(cached, false);
+  }
 }
 
 function getShopInputValue(id) {
@@ -874,6 +883,16 @@ async function sendShopCartToWhatsApp() {
     var message = buildWhatsAppMessage(customer);
     var order = await createShopOrder(customer, message);
     var finalMessage = injectShopOrderNumber(message, order);
+
+    // Déclenchement du Pixel Meta (InitiateCheckout) lors de la commande WhatsApp
+    if (typeof fbq === 'function') {
+      fbq('track', 'InitiateCheckout', {
+        content_name: 'Pedido WhatsApp Azul Gestão',
+        currency: 'AOA',
+        value: getShopCartTotal()
+      });
+    }
+
     var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(finalMessage);
     window.open(url, "_blank", "noopener,noreferrer");
   } catch (e) {
@@ -955,7 +974,7 @@ document.addEventListener("DOMContentLoaded", function() {
     hero.addEventListener("touchstart", function(event) {
       shopHeroTouchStartX = event.touches && event.touches[0] ? event.touches[0].clientX : 0;
     }, { passive: true });
-    hero.addEventListener("touchend", function(event) {
+    hero.addEventListener("touched", function(event) {
       var endX = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientX : 0;
       var distance = endX - shopHeroTouchStartX;
       if (Math.abs(distance) > 45) {
