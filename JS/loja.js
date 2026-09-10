@@ -292,13 +292,27 @@ function applyShopBranding(store, saveCache) {
   var themeColor = normalizeShopColor(store.theme_color);
   var fontFamily = getShopFontFamily(store.font_family);
   var logoUrl = String(store.logo_url || "").trim() || "Assets/icon-192.png";
+
+  // Récupération directe de l'ID depuis l'objet store renvoyé par Supabase
   var facebookPixelId = String(store.facebook_pixel_id || "").trim();
 
-  console.log("Données de la boutique reçues :", store);
-  console.log("ID du pixel trouvé :", store.facebook_pixel_id);
-  // Active le Pixel Meta dynamiquement s'il est configuré
-  if (facebookPixelId && typeof window.initMetaPixel === 'function') {
-    window.initMetaPixel(facebookPixelId);
+  if (facebookPixelId) {
+  console.log("Activation directe du Pixel avec l'ID :", facebookPixelId);
+  
+  // Injection dynamique du script Meta Pixel
+  if (!window.fbq) {
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+  }
+  
+  fbq('init', facebookPixelId);
+  fbq('track', 'PageView');
   }
 
   document.title = name;
