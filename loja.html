@@ -59,6 +59,38 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="Assets/icon-192.png" type="image/png">
   <link rel="stylesheet" href="CSS/loja.css">
+  <!-- Meta Pixel Code -->
+<script>
+  // Variable globale pour stocker le pixel récupéré
+  window.metaPixelId = "{{{facebook_pixel_id}}}"; 
+
+  // Si le template n'a pas remplacé le placeholder (cas d'un site 100% JS client)
+  if (window.metaPixelId.includes("{{{")) {
+    window.metaPixelId = "";
+  }
+
+  function initMetaPixel(pixelId) {
+    if (!pixelId || window.fbq) return;
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    
+    fbq('init', pixelId.trim()); 
+    fbq('track', 'PageView');
+  }
+
+  // Si l'ID est déjà injecté par le serveur, on l'initialise tout de suite
+  if (window.metaPixelId && window.metaPixelId.trim() !== "") {
+    initMetaPixel(window.metaPixelId);
+  }
+</script>
+<noscript></noscript>
+<!-- End Meta Pixel Code -->
 </head>
 <body>
   <main class="shop-shell">
