@@ -9541,7 +9541,7 @@ async function saveOnlineStoreSettings() {
     // Ajout de la valeur du Pixel Facebook nettoyée (sans espaces superflus)
     facebook_pixel_id: String((document.getElementById("pixel_facebook") || {}).value || "").trim()
   };
-
+  console.log(document.getElementById("pixel_facebook").value);
   try {
     var result = await supabaseClient
       .from("online_store_settings")
