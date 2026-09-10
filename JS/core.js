@@ -9476,10 +9476,18 @@ async function loadOnlineStoreSettings(forceRefresh) {
       font_family: "Arial, Helvetica, sans-serif",
       logo_url: config.logo || "",
       show_stock: true,
-      product_ids: []
+      product_ids: [],
+      facebook_pixel_id: "" // Valeur par défaut si vide
     };
 
     applyOnlineStoreForm(onlineStoreSettings);
+    
+    // Remplissage explicite de l'input du Pixel Facebook
+    var pixelInput = document.getElementById("pixel_facebook");
+    if (pixelInput) {
+      pixelInput.value = onlineStoreSettings.facebook_pixel_id || "";
+    }
+
     renderOnlineProductList();
     setOnlineStoreStatus(onlineStoreSettings.active ? "Loja online ativa." : "Loja online desativada.", false);
     if (onlineCurrentTab === "orders") loadOnlineOrders();
