@@ -294,6 +294,8 @@ function applyShopBranding(store, saveCache) {
   var logoUrl = String(store.logo_url || "").trim() || "Assets/icon-192.png";
   var facebookPixelId = String(store.facebook_pixel_id || "").trim();
 
+  console.log("Données de la boutique reçues :", store);
+  console.log("ID du pixel trouvé :", store.facebook_pixel_id);
   // Active le Pixel Meta dynamiquement s'il est configuré
   if (facebookPixelId && typeof window.initMetaPixel === 'function') {
     window.initMetaPixel(facebookPixelId);
