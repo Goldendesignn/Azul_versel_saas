@@ -78,6 +78,9 @@
     fbq('init', window.metaPixelId); 
     fbq('track', 'PageView');
   };
+  console.log("Meta Pixel ID global :", window.metaPixelId);
+  console.log("Objet fbq initialisé :", typeof window.fbq);
+  console.log(document.querySelector('script[src*="fbevents.js"]'));
 </script>
 <noscript></noscript>
 <!-- End Meta Pixel Code -->
