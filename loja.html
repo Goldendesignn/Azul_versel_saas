@@ -61,14 +61,12 @@
   <link rel="stylesheet" href="CSS/loja.css">
   <!-- Meta Pixel Code -->
 <script>
- <!-- Meta Pixel Code -->
-<script>
-  // Variable globale injectée ou récupérée
+ // Variable globale injectée ou récupérée
   window.metaPixelId = "{{{facebook_pixel_id}}}";
 
   // Si le template n'a pas remplacé le placeholder, on nettoie
   if (window.metaPixelId.includes("{{{")) {
-    window.facebookPixelId = "";
+    window.metaPixelId = "";
   }
 </script>
 <noscript></noscript>
