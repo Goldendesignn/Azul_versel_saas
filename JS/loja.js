@@ -14,7 +14,7 @@ function shopParam(name) {
 
 function getShopCartStorageKey() {
   var org = shopParam("org");
-  var slug = shopParam("loja");
+  var slug = Param("loja");
   return "azul_online_cart_" + (org ? "org_" + org : "slug_" + String(slug || "").toLowerCase());
 }
 
@@ -293,14 +293,11 @@ function applyShopBranding(store, saveCache) {
   var fontFamily = getShopFontFamily(store.font_family);
   var logoUrl = String(store.logo_url || "").trim() || "Assets/icon-192.png";
 
-  // Récupération directe de l'ID depuis l'objet store renvoyé par Supabase
-  var facebookPixelId = String(store.facebook_pixel_id || "").trim();
+ var facebookPixelId = String(store.facebook_pixel_id || "").trim();
 
-  if (facebookPixelId) {
-  console.log("Activation directe du Pixel avec l'ID :", facebookPixelId);
-  
-  // Injection dynamique du script Meta Pixel
+if (facebookPixelId) {
   if (!window.fbq) {
+    // Injection du script de base Meta Pixel
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -311,6 +308,7 @@ function applyShopBranding(store, saveCache) {
     'https://connect.facebook.net/en_US/fbevents.js');
   }
   
+  // Initialisation avec votre ID récupéré de Supabase
   fbq('init', facebookPixelId);
   fbq('track', 'PageView');
   }
