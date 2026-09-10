@@ -61,11 +61,10 @@
   <link rel="stylesheet" href="CSS/loja.css">
   <!-- Meta Pixel Code -->
 <script>
-  window.metaPixelId = "";
-
-  function initMetaPixel(pixelId) {
+  // Fonction globale d'initialisation dynamique
+  window.initMetaPixel = function(pixelId) {
     if (!pixelId || window.fbq) return;
-    window.metaPixelId = pixelId.trim();
+    window.metaPixelId = String(pixelId).trim();
     
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -78,7 +77,7 @@
     
     fbq('init', window.metaPixelId); 
     fbq('track', 'PageView');
-  }
+  };
 </script>
 <noscript></noscript>
 <!-- End Meta Pixel Code -->
