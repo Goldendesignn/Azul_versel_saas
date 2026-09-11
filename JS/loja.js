@@ -7,6 +7,9 @@ var shopHeroTimer = null;
 var shopHeroTouchStartX = 0;
 var shopCategories = [];
 var shopActiveCategory = "";
+var shopProductsPerPage = 24;
+var shopVisibleProductsCount = shopProductsPerPage;
+var shopLastProductsFilterKey = "";
 
 function shopParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
