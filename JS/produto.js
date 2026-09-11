@@ -816,7 +816,25 @@ async function sendProductToWhatsApp() {
     }
   }
 }
+function getProductShopDataCacheKey() {
+  var org = productParam("org");
+  var slug = productParam("loja");
+  var key = org ? "org:" + org : (slug ? "slug:" + slug.toLowerCase() : "");
+  return key ? "azul_shop_data_" + key : "";
+}
 
+function readProductShopDataCache() {
+  var key = getProductShopDataCacheKey();
+  if (!key) return null;
+  try {
+    var cached = JSON.parse(sessionStorage.getItem(key) || "null");
+    if (!cached || !cached.store || !Array.isArray(cached.products)) return null;
+    if (Date.now() - (cached.cached_at || 0) > 5 * 60 * 1000) return null; // cache de 5 min max
+    return cached;
+  } catch (e) {
+    return null;
+  }
+}
 async function loadProductPage() {
   var container = document.getElementById("productDetail");
   var productId = productParam("produto");
@@ -829,8 +847,26 @@ async function loadProductPage() {
     return;
   }
 
+  var cached = readProductShopDataCache();
+  if (cached) {
+    var cachedItem = cached.products.find(function(item) {
+      return String(item.id) === String(productId);
+    });
+    if (cachedItem) {
+      productStore = cached.store;
+      productStoreProducts = cached.products;
+      productItem = cachedItem;
+      productSelectedMediaIndex = 0;
+      loadProductPageCartFromStorage();
+      applyProductBranding(productStore);
+      renderProductDetail();
+      return;
+    }
+  }
+
   try {
     var result = await supabaseClient.rpc("get_online_store", {
+      // ... reste du code inchangé, sert de fallback si pas de cache
       p_org_id: org || null,
       p_slug: slug || null
     });
