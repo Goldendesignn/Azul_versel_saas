@@ -990,7 +990,7 @@ document.addEventListener("DOMContentLoaded", function() {
     hero.addEventListener("touchstart", function(event) {
       shopHeroTouchStartX = event.touches && event.touches[0] ? event.touches[0].clientX : 0;
     }, { passive: true });
-    hero.addEventListener("touched", function(event) {
+    hero.addEventListener("touchend", function(event) {
       var endX = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientX : 0;
       var distance = endX - shopHeroTouchStartX;
       if (Math.abs(distance) > 45) {
