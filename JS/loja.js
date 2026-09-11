@@ -152,7 +152,22 @@ function getShopThemeCacheKey() {
   var key = getShopIdentityKey();
   return key ? "azul_shop_theme_" + key : "";
 }
+function getShopDataCacheKey() {
+  var key = getShopIdentityKey();
+  return key ? "azul_shop_data_" + key : "";
+}
 
+function saveShopDataCache() {
+  var key = getShopDataCacheKey();
+  if (!key) return;
+  try {
+    sessionStorage.setItem(key, JSON.stringify({
+      store: shopStore,
+      products: shopProducts,
+      cached_at: Date.now()
+    }));
+  } catch (e) {}
+}
 function saveShopThemeCache(store) {
   var key = getShopThemeCacheKey();
   if (!key || !store) return;
@@ -579,6 +594,7 @@ async function loadShop() {
 
     shopStore = data.store || {};
     shopProducts = Array.isArray(data.products) ? data.products : [];
+    saveShopDataCache(); 
     loadShopCartFromStorage();
     applyShopStore();
     renderShopCategories();
