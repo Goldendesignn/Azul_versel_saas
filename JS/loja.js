@@ -295,9 +295,8 @@ function applyShopBranding(store, saveCache) {
 
  var facebookPixelId = String(store.facebook_pixel_id || "").trim();
 
-if (facebookPixelId) {
+if (facebookPixelId && window._fbPixelInitId !== facebookPixelId) {
   if (!window.fbq) {
-    // Injection du script de base Meta Pixel
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -307,11 +306,11 @@ if (facebookPixelId) {
     s.parentNode.insertBefore(t,s)}(window, document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
   }
-  
-  // Initialisation avec votre ID récupéré de Supabase
+
   fbq('init', facebookPixelId);
   fbq('track', 'PageView');
-  }
+  window._fbPixelInitId = facebookPixelId; // marque cet ID comme déjà initialisé
+}
 
   document.title = name;
   document.documentElement.style.setProperty("--blue", themeColor);
