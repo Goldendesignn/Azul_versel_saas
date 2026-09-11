@@ -14,7 +14,7 @@ function shopParam(name) {
 
 function getShopCartStorageKey() {
   var org = shopParam("org");
-  var slug = Param("loja");
+  var slug = shopParam("loja");
   return "azul_online_cart_" + (org ? "org_" + org : "slug_" + String(slug || "").toLowerCase());
 }
 
