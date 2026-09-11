@@ -901,9 +901,12 @@ async function sendShopCartToWhatsApp() {
     if (typeof fbq === 'function') {
       fbq('track', 'InitiateCheckout', {
         content_name: 'Pedido WhatsApp Azul Gestão',
+        content_type: 'product',
+        content_ids: shopCart.map(function(item) { return item.id || item.product_id; }),
+        num_items: shopCart.length,
         currency: 'AOA',
         value: getShopCartTotal()
-      });
+      }, { eventID: order.id ? String(order.id) : undefined });
     }
 
     var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(finalMessage);
