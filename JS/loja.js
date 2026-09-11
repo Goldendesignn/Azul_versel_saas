@@ -10,6 +10,7 @@ var shopActiveCategory = "";
 var shopProductsPerPage = 24;
 var shopVisibleProductsCount = shopProductsPerPage;
 var shopLastProductsFilterKey = "";
+var shopSearchDebounceTimer = null;
 
 function shopParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
@@ -446,12 +447,12 @@ function renderShopProductMedia(product, name) {
   var media = getShopProductMainMedia(product);
   var url = media && media.url ? String(media.url).trim() : String(product.photo || "").trim();
   if (media && media.type === "video" && url) {
-    return '<div class="shop-product-image"><video src="' + shopEscape(url) + '" muted playsinline loop preload="metadata"></video></div>';
+    return '<div class="shop-product-image" style="aspect-ratio:1/1"><video src="' + shopEscape(url) + '" muted playsinline loop preload="metadata"></video></div>';
   }
   if (url) {
-  return '<div class="shop-product-image"><img src="' + shopEscape(url) + '" alt="' + name + '" loading="lazy" decoding="async"></div>';
-}
-  return '<div class="shop-product-image">' + shopEscape(String(product.name || "A").charAt(0).toUpperCase()) + '</div>';
+    return '<div class="shop-product-image" style="aspect-ratio:1/1"><img src="' + shopEscape(url) + '" alt="' + name + '" loading="lazy" decoding="async"></div>';
+  }
+  return '<div class="shop-product-image" style="aspect-ratio:1/1">' + shopEscape(String(product.name || "A").charAt(0).toUpperCase()) + '</div>';
 }
 
 function normalizeShopCategory(value) {
@@ -961,6 +962,15 @@ function openShopCart() {
   toggleShopCart(true);
 }
 
+function bindShopSearchInput() {
+  var input = document.getElementById("shopSearch");
+  if (!input) return;
+  input.addEventListener("input", function() {
+    clearTimeout(shopSearchDebounceTimer);
+    shopSearchDebounceTimer = setTimeout(renderShopProducts, 200);
+  });
+}
+
 function bindShopCartToggle() {
   var button = document.getElementById("shopCartToggle");
   if (!button) return;
@@ -993,6 +1003,8 @@ window.addEventListener("storage", function(event) {
 document.addEventListener("DOMContentLoaded", function() {
   applyCachedShopBranding();
   bindShopCartToggle();
+  bindShopSearchInput();  
+  
   var hero = document.getElementById("shopHero");
   var prev = document.getElementById("shopHeroPrev");
   var next = document.getElementById("shopHeroNext");
