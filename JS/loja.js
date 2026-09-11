@@ -902,7 +902,7 @@ async function sendShopCartToWhatsApp() {
       fbq('track', 'InitiateCheckout', {
         content_name: 'Pedido WhatsApp Azul Gestão',
         content_type: 'product',
-        content_ids: shopCart.map(function(item) { return item.id || item.product_id; }),
+        content_ids: shopCart.map(function(item) { return item.id; })
         num_items: shopCart.length,
         currency: 'AOA',
         value: getShopCartTotal()
