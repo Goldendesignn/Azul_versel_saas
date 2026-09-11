@@ -446,8 +446,8 @@ function renderShopProductMedia(product, name) {
     return '<div class="shop-product-image"><video src="' + shopEscape(url) + '" muted playsinline loop preload="metadata"></video></div>';
   }
   if (url) {
-    return '<div class="shop-product-image"><img src="' + shopEscape(url) + '" alt="' + name + '"></div>';
-  }
+  return '<div class="shop-product-image"><img src="' + shopEscape(url) + '" alt="' + name + '" loading="lazy" decoding="async"></div>';
+}
   return '<div class="shop-product-image">' + shopEscape(String(product.name || "A").charAt(0).toUpperCase()) + '</div>';
 }
 
