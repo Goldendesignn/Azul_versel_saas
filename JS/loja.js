@@ -580,7 +580,9 @@ async function loadShop() {
   try {
     var result = await supabaseClient.rpc("get_online_store", {
       p_org_id: org || null,
-      p_slug: slug || null
+      p_slug: slug || null,
+      p_limit: 24, // Ces deux paramètres doivent être présents
+      p_offset: 0
     });
 
     if (result.error) throw result.error;
