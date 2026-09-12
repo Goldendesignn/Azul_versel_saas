@@ -847,6 +847,7 @@ async function loadProductPage() {
     return;
   }
 
+  // 1. Utilisation prioritaire du cache de session pour un affichage instantané
   var cached = readProductShopDataCache();
   if (cached) {
     var cachedItem = cached.products.find(function(item) {
@@ -864,11 +865,13 @@ async function loadProductPage() {
     }
   }
 
+  // 2. Fallback avec les paramètres de pagination pour éviter de surcharger la requête
   try {
     var result = await supabaseClient.rpc("get_online_store", {
-      // ... reste du code inchangé, sert de fallback si pas de cache
       p_org_id: org || null,
-      p_slug: slug || null
+      p_slug: slug || null,
+      p_limit: 100, // On s'assure d'inclure les paramètres requis par la fonction SQL
+      p_offset: 0
     });
     if (result.error) throw result.error;
     var data = result.data || {};
