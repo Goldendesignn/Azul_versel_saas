@@ -983,7 +983,7 @@ function bindShopSearchInput() {
   if (!input) return;
   input.addEventListener("input", function() {
     clearTimeout(shopSearchDebounceTimer);
-    shopSearchDebounceTimer = setTimeout(renderShopProducts, 200);
+    shopSearchDebounceTimer = setTimeout(renderShopProducts, 400);
   });
 }
 
