@@ -847,7 +847,7 @@ async function loadProductPage() {
     return;
   }
 
-  // 1. Utilisation prioritaire du cache de session pour un affichage instantané
+  // 1. Utilisation prioritaire du cache de session (affichage instantané)
   var cached = readProductShopDataCache();
   if (cached) {
     var cachedItem = cached.products.find(function(item) {
@@ -865,23 +865,22 @@ async function loadProductPage() {
     }
   }
 
-  // 2. Fallback avec les paramètres de pagination pour éviter de surcharger la requête
+  // 2. Si pas de cache (ex: lien direct partagé), appel direct et ultra-rapide du produit unique
   try {
-    var result = await supabaseClient.rpc("get_online_store", {
+    var result = await supabaseClient.rpc("get_online_product_detail", {
       p_org_id: org || null,
       p_slug: slug || null,
-      p_limit: 100, // On s'assure d'inclure les paramètres requis par la fonction SQL
-      p_offset: 0
+      p_product_id: productId
     });
+    
     if (result.error) throw result.error;
     var data = result.data || {};
     if (!data.ok) throw new Error(data.message || "Loja indisponivel.");
 
     productStore = data.store || {};
-    productStoreProducts = Array.isArray(data.products) ? data.products : [];
-    productItem = productStoreProducts.find(function(item) {
-      return String(item.id) === String(productId);
-    }) || null;
+    productItem = data.product || null;
+    productStoreProducts = productItem ? [productItem] : [];
+    
     if (!productItem) throw new Error("Produto indisponivel nesta loja.");
 
     productSelectedMediaIndex = 0;
