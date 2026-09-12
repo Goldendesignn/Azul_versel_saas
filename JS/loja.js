@@ -161,7 +161,7 @@ function saveShopDataCache() {
   var key = getShopDataCacheKey();
   if (!key) return;
   try {
-    sessionStorage.setItem(key, JSON.stringify({
+    localStorage.setItem(key, JSON.stringify({
       store: shopStore,
       products: shopProducts,
       cached_at: Date.now()
@@ -577,11 +577,36 @@ async function loadShop() {
     return;
   }
 
+  // 1. AFFICHAGE INSTANTANÉ DEPUIS LE CACHE LOCAL
+  var cacheKey = getShopDataCacheKey();
+  var hasCache = false;
+  try {
+    var cacheStr = localStorage.getItem(cacheKey); // Lecture ultra-rapide
+    if (cacheStr) {
+      var cached = JSON.parse(cacheStr);
+      if (cached && cached.products && cached.products.length > 0) {
+        shopStore = cached.store || {};
+        shopProducts = cached.products;
+        hasCache = true;
+        
+        loadShopCartFromStorage();
+        applyShopStore();
+        renderShopCategories();
+        renderShopProducts();
+        renderShopCart();
+        
+        // Enlève l'écran de chargement immédiatement
+        document.documentElement.classList.remove("shop-style-pending");
+      }
+    }
+  } catch (e) {}
+
+  // 2. MISE À JOUR SILENCIEUSE EN ARRIÈRE-PLAN
   try {
     var result = await supabaseClient.rpc("get_online_store", {
       p_org_id: org || null,
       p_slug: slug || null,
-      p_limit: 24, // Ces deux paramètres doivent être présents
+      p_limit: 5000, // On télécharge tout le catalogue pour que les catégories fonctionnent
       p_offset: 0
     });
 
@@ -589,26 +614,42 @@ async function loadShop() {
 
     var data = result.data || {};
     if (!data.ok) {
-      document.documentElement.classList.remove("shop-style-pending");
-      if (container) container.innerHTML = '<div class="shop-empty">Loja indisponivel.</div>';
+      if (!hasCache) {
+        document.documentElement.classList.remove("shop-style-pending");
+        if (container) container.innerHTML = '<div class="shop-empty">Loja indisponivel.</div>';
+      }
       return;
     }
 
+    // Mise à jour des données réelles
     shopStore = data.store || {};
     shopProducts = Array.isArray(data.products) ? data.products : [];
     saveShopDataCache(); 
     loadShopCartFromStorage();
-    applyShopStore();
-    renderShopCategories();
-    renderShopProducts();
-    renderShopCart();
-    if (shopParam("cart") === "open") {
-      setTimeout(openShopCart, 80);
+
+    if (!hasCache) {
+      // S'il n'y avait pas de cache (première visite absolue), on affiche maintenant
+      applyShopStore();
+      renderShopCategories();
+      renderShopProducts();
+      renderShopCart();
+      document.documentElement.classList.remove("shop-style-pending");
+      
+      if (shopParam("cart") === "open") {
+        setTimeout(openShopCart, 80);
+      }
+    } else {
+      // Si le cache était déjà affiché, on rafraîchit discrètement l'interface
+      // pour intégrer les nouveaux produits ou les changements de stock
+      renderShopCategories();
+      renderShopProducts();
     }
   } catch (e) {
     console.error("Erro loja:", e);
-    document.documentElement.classList.remove("shop-style-pending");
-    if (container) container.innerHTML = '<div class="shop-empty">Erro ao carregar loja.</div>';
+    if (!hasCache) {
+      document.documentElement.classList.remove("shop-style-pending");
+      if (container) container.innerHTML = '<div class="shop-empty">Erro ao carregar loja.</div>';
+    }
   }
 }
 
