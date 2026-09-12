@@ -7,7 +7,7 @@ var shopHeroTimer = null;
 var shopHeroTouchStartX = 0;
 var shopCategories = [];
 var shopActiveCategory = "";
-var shopProductsPerPage = 24;
+var shopProductsPerPage = 12;
 var shopVisibleProductsCount = shopProductsPerPage;
 var shopLastProductsFilterKey = "";
 var shopSearchDebounceTimer = null;
@@ -681,7 +681,7 @@ function renderShopProducts() {
       '</div>' +
     '</article>';
   }).join("") + (remaining > 0 ?
-    '<button type="button" class="shop-load-more-btn" onclick="loadMoreShopProducts()">Carregar mais (' + remaining + ')</button>' :
+    '<button type="button" class="shop-load-more-btn" onclick="loadMoreShopProducts()">Carregar mais produtos (' + remaining + ')</button>' :
     '');
 }
 
@@ -689,7 +689,25 @@ function loadMoreShopProducts() {
   shopVisibleProductsCount += shopProductsPerPage;
   renderShopProducts();
 }
+function initShopInfiniteScroll() {
+  window.addEventListener("scroll", function() {
+    // Si l'utilisateur arrive à 300px du bas de la page, on charge automatiquement la suite
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
+      var q = normalizeShopSearchText(String((document.getElementById("shopSearch") || {}).value || "").trim());
+      var list = shopProducts.filter(function(product) {
+        var category = normalizeShopCategory(product.category || "Sem categoria");
+        var matchesCategory = !shopActiveCategory || category === shopActiveCategory;
+        var matchesSearch = !q || productSearchText(product).indexOf(q) >= 0;
+        return matchesCategory && matchesSearch;
+      });
 
+      if (shopVisibleProductsCount < list.length) {
+        shopVisibleProductsCount += shopProductsPerPage;
+        renderShopProducts();
+      }
+    }
+  }, { passive: true });
+}
 function getTempQty(id) {
   var el = document.getElementById("shop-qty-" + id);
   return Math.max(1, Number(el ? el.textContent : 1) || 1);
@@ -1022,6 +1040,7 @@ document.addEventListener("DOMContentLoaded", function() {
   applyCachedShopBranding();
   bindShopCartToggle();
   bindShopSearchInput();  
+  initShopInfiniteScroll();
   
   var hero = document.getElementById("shopHero");
   var prev = document.getElementById("shopHeroPrev");
