@@ -227,20 +227,44 @@ function openSimilarProduct(productId) {
   window.location.href = productPageUrl(productId);
 }
 
+var productSimilarOffset = 0;
+var productSimilarLimit = 10;
+var hasMoreSimilarProducts = true;
+
+async function loadInitialSimilarProducts() {
+  var org = productParam("org");
+  var slug = productParam("loja");
+  if (!productItem) return;
+
+  try {
+    var result = await supabaseClient.rpc("get_online_similar_products", {
+      p_org_id: org || null,
+      p_slug: slug || null,
+      p_current_product_id: String(productItem.id),
+      p_category: productItem.category || "",
+      p_limit: productSimilarLimit,
+      p_offset: productSimilarOffset
+    });
+
+    if (!result.error && Array.isArray(result.data)) {
+      productStoreProducts = result.data;
+      productSimilarOffset += result.data.length;
+      if (result.data.length < productSimilarLimit) {
+        hasMoreSimilarProducts = false;
+      }
+      // Re-rend la section des similaires une fois les données chargées
+      var container = document.getElementById("similarProductsContainer");
+      if (container) {
+        container.innerHTML = renderSimilarProductsContent();
+      }
+    }
+  } catch (e) {
+    console.error("Erro ao carregar produtos similares:", e);
+  }
+}
+
 function getSimilarProducts() {
-  if (!productItem) return [];
-  var currentId = String(productItem.id || "");
-  var category = String(productItem.category || "").trim().toLowerCase();
-  var available = productStoreProducts.filter(function(item) {
-    return String(item.id || "") !== currentId;
-  });
-  var sameCategory = available.filter(function(item) {
-    return category && String(item.category || "").trim().toLowerCase() === category;
-  });
-  var otherProducts = available.filter(function(item) {
-    return sameCategory.indexOf(item) < 0;
-  });
-  return sameCategory.concat(otherProducts).slice(0, 4);
+  return productStoreProducts;
 }
 
 function getProductMediaRows(item) {
