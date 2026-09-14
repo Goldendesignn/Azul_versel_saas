@@ -1076,7 +1076,11 @@ window.addEventListener("storage", function(event) {
     }
   } catch (e) {}
 });
-
+document.addEventListener("DOMContentLoaded", function() {
+  setTimeout(function() {
+    document.documentElement.classList.remove("shop-style-pending");
+  }, 500);
+});
 document.addEventListener("DOMContentLoaded", function() {
   applyCachedShopBranding();
   bindShopCartToggle();
