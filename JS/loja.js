@@ -664,8 +664,6 @@ function openShopProduct(id) {
   window.location.href = url.toString();
 }
 
-var shopLastFilteredTotal = 0; // à ajouter avec les autres "var shop..." en haut du fichier (ligne ~13)
-
 function renderShopProducts(append, previousVisibleCount) {
   var container = document.getElementById("shopProducts");
   if (!container) return;
