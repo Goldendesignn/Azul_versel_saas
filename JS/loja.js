@@ -341,13 +341,7 @@ if (facebookPixelId && window._fbPixelInitId !== facebookPixelId) {
 
   var themeMeta = document.querySelector('meta[name="theme-color"]');
   if (themeMeta) themeMeta.setAttribute("content", themeColor);
-  if (cached.hero_slides && cached.hero_slides[0] && cached.hero_slides[0].image_url) {
-  var heroPreload = document.createElement("link");
-  heroPreload.rel = "preload";
-  heroPreload.as = "image";
-  heroPreload.href = cached.hero_slides[0].image_url;
-  document.head.appendChild(heroPreload);
-}
+ 
 
   var shopName = document.getElementById("shopName");
 
