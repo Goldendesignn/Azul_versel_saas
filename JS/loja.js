@@ -566,6 +566,26 @@ function getShopCartQty(id) {
   return item ? Number(item.qty) || 0 : 0;
 }
 
+function readShopDataCache() {
+  var key = getShopDataCacheKey();
+  if (!key) return null;
+  try {
+    var cached = JSON.parse(sessionStorage.getItem(key) || "null");
+    if (!cached || !cached.store || !Array.isArray(cached.products)) return null;
+    if (Date.now() - (cached.cached_at || 0) > 120000) return null; // 2 min, ajuste si besoin
+    return cached;
+  } catch (e) {
+    return null;
+  }
+}
+
+function prepareShopProducts(products) {
+  products.forEach(function(product) {
+    product._searchText = productSearchText(product);
+  });
+  return products;
+}
+
 async function loadShop() {
   var org = shopParam("org");
   var slug = shopParam("loja");
@@ -577,36 +597,23 @@ async function loadShop() {
     return;
   }
 
-  // 1. AFFICHAGE INSTANTANÉ DEPUIS LE CACHE LOCAL
-  var cacheKey = getShopDataCacheKey();
-  var hasCache = false;
-  try {
-    var cacheStr = localStorage.getItem(cacheKey); // Lecture ultra-rapide
-    if (cacheStr) {
-      var cached = JSON.parse(cacheStr);
-      if (cached && cached.products && cached.products.length > 0) {
-        shopStore = cached.store || {};
-        shopProducts = cached.products;
-        hasCache = true;
-        
-        loadShopCartFromStorage();
-        applyShopStore();
-        renderShopCategories();
-        renderShopProducts();
-        renderShopCart();
-        
-        // Enlève l'écran de chargement immédiatement
-        document.documentElement.classList.remove("shop-style-pending");
-      }
-    }
-  } catch (e) {}
+  // Affiche immédiatement une copie récente pendant que le réseau tourne en arrière-plan
+  var cachedData = readShopDataCache();
+  if (cachedData) {
+    shopStore = cachedData.store;
+    shopProducts = prepareShopProducts(cachedData.products);
+    loadShopCartFromStorage();
+    applyShopStore();
+    renderShopCategories();
+    renderShopProducts();
+    renderShopCart();
+  }
 
-  // 2. MISE À JOUR SILENCIEUSE EN ARRIÈRE-PLAN
   try {
     var result = await supabaseClient.rpc("get_online_store", {
       p_org_id: org || null,
       p_slug: slug || null,
-      p_limit: 5000, // On télécharge tout le catalogue pour que les catégories fonctionnent
+      p_limit: 24,
       p_offset: 0
     });
 
@@ -614,42 +621,26 @@ async function loadShop() {
 
     var data = result.data || {};
     if (!data.ok) {
-      if (!hasCache) {
-        document.documentElement.classList.remove("shop-style-pending");
-        if (container) container.innerHTML = '<div class="shop-empty">Loja indisponivel.</div>';
-      }
+      document.documentElement.classList.remove("shop-style-pending");
+      if (!cachedData && container) container.innerHTML = '<div class="shop-empty">Loja indisponivel.</div>';
       return;
     }
 
-    // Mise à jour des données réelles
     shopStore = data.store || {};
-    shopProducts = Array.isArray(data.products) ? data.products : [];
-    saveShopDataCache(); 
+    shopProducts = prepareShopProducts(Array.isArray(data.products) ? data.products : []);
+    saveShopDataCache();
     loadShopCartFromStorage();
-
-    if (!hasCache) {
-      // S'il n'y avait pas de cache (première visite absolue), on affiche maintenant
-      applyShopStore();
-      renderShopCategories();
-      renderShopProducts();
-      renderShopCart();
-      document.documentElement.classList.remove("shop-style-pending");
-      
-      if (shopParam("cart") === "open") {
-        setTimeout(openShopCart, 80);
-      }
-    } else {
-      // Si le cache était déjà affiché, on rafraîchit discrètement l'interface
-      // pour intégrer les nouveaux produits ou les changements de stock
-      renderShopCategories();
-      renderShopProducts();
+    applyShopStore();
+    renderShopCategories();
+    renderShopProducts();
+    renderShopCart();
+    if (shopParam("cart") === "open") {
+      setTimeout(openShopCart, 80);
     }
   } catch (e) {
     console.error("Erro loja:", e);
-    if (!hasCache) {
-      document.documentElement.classList.remove("shop-style-pending");
-      if (container) container.innerHTML = '<div class="shop-empty">Erro ao carregar loja.</div>';
-    }
+    document.documentElement.classList.remove("shop-style-pending");
+    if (!cachedData && container) container.innerHTML = '<div class="shop-empty">Erro ao carregar loja.</div>';
   }
 }
 
@@ -675,7 +666,7 @@ function renderShopProducts() {
   var list = shopProducts.filter(function(product) {
     var category = normalizeShopCategory(product.category || "Sem categoria");
     var matchesCategory = !shopActiveCategory || category === shopActiveCategory;
-    var matchesSearch = !q || productSearchText(product).indexOf(q) >= 0;
+    var matchesSearch = !q || (product._searchText || productSearchText(product)).indexOf(q) >= 0;
     return matchesCategory && matchesSearch;
   });
 
