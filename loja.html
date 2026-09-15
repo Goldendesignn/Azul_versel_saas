@@ -68,18 +68,6 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="Assets/icon-192.png" type="image/png">
   <link rel="stylesheet" href="CSS/loja.css">
-  <!-- Meta Pixel Code -->
-<script>
- // Variable globale injectée ou récupérée
-  window.metaPixelId = "{{{facebook_pixel_id}}}";
-
-  // Si le template n'a pas remplacé le placeholder, on nettoie
-  if (window.metaPixelId.includes("{{{")) {
-    window.metaPixelId = "";
-  }
-</script>
-<noscript></noscript>
-<!-- End Meta Pixel Code -->
 </head>
 <body>
   <main class="shop-shell">
@@ -186,9 +174,9 @@
     </div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="JS/supabase.js"></script>
-  <script src="JS/loja.js"></script>
-  <script src="JS/pwa.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" defer></script>
+<script src="JS/supabase.js" defer></script>
+<script src="JS/loja.js" defer></script>
+<script src="JS/pwa.js" defer></script>
 </body>
 </html>
