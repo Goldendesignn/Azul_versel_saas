@@ -3895,7 +3895,7 @@ async function getDashboardDataFromSupabase(filters) {
   var totalLucro = items.reduce(function(sum, item) {
     return sum + (Number(item.profit) || 0);
   }, 0);
-
+console.log(item);
   var topMap = {};
   items.forEach(function(item) {
     var name = item.product_name || "Produto";
