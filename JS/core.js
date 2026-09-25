@@ -7125,6 +7125,7 @@ function printDashboardTicket() {
   var noDataLabel = 'Sem dados';
   var depCountLabel = 'Registos despesas';
   var recetteLabel = 'Receitas totais';
+  var creditoLabel = 'credito a receber';
 
   var logoImage = (config && config.receiptLogo) ? '<img src="' + escapeDashboardTicketText(config.receiptLogo) + '" style="display:block;max-width:100%;height:auto;margin:0 auto 8px auto;object-fit:contain;width:' + escapeDashboardTicketText((config.receiptLogoSize || '16') + 'mm') + ';">' : '';
   var shopName = escapeDashboardTicketText((config && config.name) || 'Azul Gestao');
@@ -7139,6 +7140,8 @@ function printDashboardTicket() {
   } else {
     topRows = '<tr><td colspan="2" style="text-align:center;">' + noDataLabel + '</td></tr>';
   }
+
+  console.log(d);
 
   var html = '<!doctype html><html><head><meta charset="utf-8"><title>' + title + '</title>' +
     '<style>' +
@@ -7170,9 +7173,10 @@ function printDashboardTicket() {
     '<div class="line"><span>' + printedLabel + '</span><span>' + escapeDashboardTicketText(new Date().toLocaleString()) + '</span></div>' +
     '<div class="section">' +
       '<div class="line"><span>' + salesLabel + '</span><span>' + escapeDashboardTicketText(fmt(d.vendasHoje - credito || 0)) + '</span></div>' +
+      '<div class="line"><span>' + creditoLabel + '</span><span>' + escapeDashboardTicketText(fmt(credito || 0)) + '</span></div>' +
       '<div class="line"><span>' + profitLabel + '</span><span>' + escapeDashboardTicketText(fmt(d.lucroMes || 0)) + '</span></div>' +
       '<div class="line"><span>' + expenseLabel + '</span><span>' + escapeDashboardTicketText(fmt(d.totalDespesas || 0)) + '</span></div>' +
-     '<div class="line" style="font-weight: 900;"><span>' + recetteLabel + '</span><span>' + escapeDashboardTicketText(fmt(d.vendasHoje - d.totalDespesas || 0)) + '</span></div>' +
+     '<div class="line" style="font-weight: 900;"><span>' + recetteLabel + '</span><span>' + escapeDashboardTicketText(fmt(d.vendasHoje - credito - d.totalDespesas || 0)) + '</span></div>' +
      '<div class="line"><span>' + salesCountLabel + '</span><span>' + escapeDashboardTicketText(d.vendasHojeCount || 0) + '</span></div>' +
       '<div class="line"><span>' + depCountLabel + '</span><span>' + escapeDashboardTicketText(d.depensesCount || 0) + '</span></div>' +
       '<div class="line"><span>' + alertsLabel + '</span><span>' + escapeDashboardTicketText(d.alertas || 0) + '</span></div>' +
@@ -7181,8 +7185,7 @@ function printDashboardTicket() {
       '<div class="line"><span>Cash</span><span>' + escapeDashboardTicketText(fmt(cash)) + '</span></div>' +
       '<div class="line"><span>Express</span><span>' + escapeDashboardTicketText(fmt(express)) + '</span></div>' +
       '<div class="line"><span>Cartao</span><span>' + escapeDashboardTicketText(fmt(cartao)) + '</span></div>' +
-      '<div class="line"><span>Credito</span><span>' + escapeDashboardTicketText(fmt(credito)) + '</span></div>' +
-      '<div class="line"><span>Total</span><span>' + escapeDashboardTicketText(fmt(totalPagamentos)) + '</span></div>' +
+      '<div class="line"><span>Total</span><span>' + escapeDashboardTicketText(fmt(totalPagamentos - credito)) + '</span></div>' +
     '</div>' +
     '<div class="section"><h4>' + topLabel + '</h4><table><tbody>' + topRows + '</tbody></table></div>' +
     '<div class="footer">' + shopName + '</div>' +
