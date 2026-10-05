@@ -2166,7 +2166,7 @@ function getAzulVisibleTabs() {
 }
 
 function removeAzulNavigationDecorations(nav) {
-  Array.prototype.forEach.call(nav.querySelectorAll(".nav-search-box, .nav-group-label, .nav-empty-state"), function(el) {
+  Array.prototype.forEach.call(nav.querySelectorAll(".nav-search-box, .nav-group-label, .nav-empty-state, .nav-logout-btn"), function(el) {
     el.remove();
   });
 }
@@ -2261,6 +2261,13 @@ function enhanceAzulNavigation() {
   empty.textContent = "Nenhum modulo encontrado.";
   empty.style.display = "none";
   nav.appendChild(empty);
+
+  var logout = document.createElement("button");
+  logout.type = "button";
+  logout.className = "nav-logout-btn";
+  logout.setAttribute("onclick", "logoutCurrentUser(this)");
+  logout.innerHTML = '<span class="az-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M21 19V5a2 2 0 0 0-2-2h-5"></path><path d="M14 21h5a2 2 0 0 0 2-2"></path></svg></span><span>Terminar sessao</span>';
+  nav.appendChild(logout);
 
   applyAzulMenuSearch();
   applyQuickStartPermissions();
@@ -2455,19 +2462,27 @@ function getDeviceName() {
 }
 
 function getDeviceAccessMessage(message, activeDevices, deviceLimit) {
+  if (message === "AUTH_REQUIRED") {
+    return "Sessao expirada. Entra novamente.";
+  }
+
+  if (message === "USER_NOT_ACTIVE") {
+    return "Sessao em validacao. Pede ao proprietario para aprovar este utilizador.";
+  }
+
   if (message === "DEVICE_LIMIT_REACHED") {
-    return "Limite d'appareils atteinte: " + activeDevices + "/" + deviceLimit + ". Contacte l'administrateur.";
+    return "Limite de aparelhos atingida: " + activeDevices + "/" + deviceLimit + ". Contacta o administrador.";
   }
 
   if (message === "LICENCA_INATIVA") {
-    return "Licence desactivee. Contacte l'administrateur.";
+    return "Licenca desativada. Contacta o administrador.";
   }
 
   if (message === "LICENCA_EXPIRADA") {
-    return "Licence expiree. Renouvelle ton abonnement.";
+    return "Licenca expirada. Renova a tua assinatura.";
   }
 
-  return "Acces refuse.";
+  return "Acesso recusado.";
 }
 
 function showDeviceLimitScreen(activeDevices, deviceLimit) {
@@ -2531,23 +2546,93 @@ function isAzulPermissionError(error) {
     msg.indexOf("violates row-level security") >= 0;
 }
 
-async function hasCurrentSupabaseUser() {
-  try {
-    var sessionResult = await supabaseClient.auth.getSession();
-    if (sessionResult && sessionResult.data && sessionResult.data.session && sessionResult.data.session.user) {
-      return true;
+function sleepAzul(ms) {
+  return new Promise(function(resolve) {
+    setTimeout(resolve, ms);
+  });
+}
+
+var azulLastConfirmedSessionAt = 0;
+
+async function getStableSupabaseSession(options) {
+  options = options || {};
+  var attempts = options.attempts || 6;
+  var delayMs = options.delayMs || 350;
+  var allowRefresh = options.allowRefresh !== false;
+  var lastError = null;
+
+  for (var i = 0; i < attempts; i++) {
+    try {
+      var sessionResult = await supabaseClient.auth.getSession();
+      var session = sessionResult && sessionResult.data ? sessionResult.data.session : null;
+
+      if (session && session.user && session.access_token) {
+        azulLastConfirmedSessionAt = Date.now();
+        return session;
+      }
+
+      if (allowRefresh && i === Math.floor(attempts / 2)) {
+        try {
+          var refreshResult = await supabaseClient.auth.refreshSession();
+          var refreshed = refreshResult && refreshResult.data ? refreshResult.data.session : null;
+          if (refreshed && refreshed.user && refreshed.access_token) {
+            azulLastConfirmedSessionAt = Date.now();
+            return refreshed;
+          }
+        } catch (refreshError) {
+          lastError = refreshError;
+        }
+      }
+    } catch (e) {
+      lastError = e;
     }
-  } catch (e) {
-    console.warn("Sessao local nao confirmada:", e);
+
+    await sleepAzul(delayMs);
   }
+
+  if (lastError) {
+    console.warn("Sessao Supabase nao estabilizou:", lastError);
+  }
+
+  return null;
+}
+
+async function hasCurrentSupabaseUser() {
+  var session = await getStableSupabaseSession({
+    attempts: 4,
+    delayMs: 250
+  });
+
+  if (session && session.user) return true;
 
   try {
     var userResult = await supabaseClient.auth.getUser();
-    return !!(userResult && userResult.data && userResult.data.user);
-  } catch (e2) {
-    console.warn("Utilizador Supabase nao confirmado:", e2);
-    return false;
+    if (userResult && userResult.data && userResult.data.user) {
+      azulLastConfirmedSessionAt = Date.now();
+      return true;
+    }
+  } catch (e) {
+    console.warn("Utilizador Supabase nao confirmado:", e);
   }
+
+  return false;
+}
+
+async function handleAzulProtectedDataError(error, contextLabel) {
+  if (!isAzulPermissionError(error)) return false;
+
+  var hasUser = await hasCurrentSupabaseUser();
+  var label = contextLabel || "Acesso";
+
+  if (!hasUser) {
+    toast("Sessao ainda nao foi restaurada. Atualiza a pagina ou entra novamente se continuar.", "error");
+    return true;
+  }
+
+  console.warn(label + " bloqueado por RLS/Supabase:", error);
+  showSecurityAccessBlockedScreen(error);
+  toast(label + ": permissao bloqueada. Confirma se este utilizador esta activo na equipa.", "error");
+  return true;
 }
 
 function allowOfflineLicenseAccess(reason) {
@@ -2577,6 +2662,17 @@ function allowOfflineLicenseAccess(reason) {
 
 async function verifyDeviceAccess(organizationId) {
   try {
+    var session = await getStableSupabaseSession({
+      attempts: 8,
+      delayMs: 350
+    });
+
+    if (!session || !session.user) {
+      window.azulAccessBlocked = true;
+      alert("A sessao ainda nao foi restaurada. Aguarda alguns segundos e atualiza a pagina. Se continuar, entra novamente.");
+      return false;
+    }
+
     var result = await supabaseClient.rpc("register_device_access", {
       p_organization_id: organizationId,
       p_device_id: getOrCreateDeviceId(),
@@ -2586,6 +2682,12 @@ async function verifyDeviceAccess(organizationId) {
     if (result.error) {
       if (isAzulNetworkError(result.error)) {
         return allowOfflineLicenseAccess(result.error);
+      }
+
+      if (isAzulPermissionError(result.error)) {
+        window.azulAccessBlocked = true;
+        alert("A sessao esta aberta, mas o servidor ainda nao autorizou este aparelho. Atualiza a pagina; se continuar, o administrador deve aplicar a migracao de permissoes.");
+        return false;
       }
 
       alert("Erro ao verificar aparelho: " + result.error.message);
@@ -2614,6 +2716,12 @@ async function verifyDeviceAccess(organizationId) {
   } catch (e) {
     if (isAzulNetworkError(e)) {
       return allowOfflineLicenseAccess(e);
+    }
+
+    if (isAzulPermissionError(e)) {
+      window.azulAccessBlocked = true;
+      alert("A sessao esta aberta, mas a permissao do aparelho foi bloqueada. Aplica a migracao de permissoes no Supabase.");
+      return false;
     }
 
     alert("Erro ao verificar aparelho: " + (e.message || e));
@@ -4330,6 +4438,13 @@ function ensureSpreadsheetBinding(done) {
     .getSpreadsheetBinding();
 }
 document.addEventListener('DOMContentLoaded', async function() {
+  if (localStorage.getItem("azul_organization_id")) {
+    await getStableSupabaseSession({
+      attempts: 10,
+      delayMs: 300
+    });
+  }
+
   var licenseOk = await verifyCurrentLicense();
   if (!licenseOk) return;
   var userOk = await verifyCurrentUserAccess();
@@ -7243,6 +7358,7 @@ dashboardLoadingTimer = setTimeout(function() {
 
   } catch (e) {
     console.error("Erro dashboard:", e);
+    if (await handleAzulProtectedDataError(e, "Dashboard")) return;
     toast("Erro dashboard: " + (e.message || e), "error");
 
   } finally {
@@ -11421,8 +11537,22 @@ function updatePrice(i, val) {
   var totalEl = document.getElementById('ci-total-' + i);
   if (totalEl) totalEl.textContent = price > 0 ? fmt(price * cart[i].qty) : '-';
   var total = cart.reduce(function(s,item) { return s + (item.price||0) * item.qty; }, 0);
-  document.getElementById('cartTotal').textContent = fmt(total);
+  var cartTotalEl = document.getElementById('cartTotal');
+  if (cartTotalEl) cartTotalEl.textContent = fmt(total);
   updatePaymentStatus();
+}
+
+function syncMobileCartTotals(index) {
+  var lineTotal = document.getElementById("mobile-cart-line-total-" + index);
+  if (lineTotal && cart[index]) {
+    lineTotal.textContent = "Total " + fmt((Number(cart[index].price) || 0) * (Number(cart[index].qty) || 0));
+  }
+
+  var total = getCartTotalMobile();
+  var productsTotal = document.getElementById("mobile-cart-products-total");
+  var finalTotal = document.getElementById("mobile-cart-final-total");
+  if (productsTotal) productsTotal.textContent = fmt(total);
+  if (finalTotal) finalTotal.textContent = fmt(total);
 }
 function generateConsignmentNo() {
   var now = new Date();
@@ -12918,8 +13048,11 @@ function renderMobileCartPage() {
             '<div>' +
               '<div class="mobile-cart-name">' + escapeDespesaHtml(getItemDisplayName(item)) + '</div>' +
               '<div class="mobile-cart-sub">' + escapeDespesaHtml(subText) + '</div>' +
-              '<div class="mobile-cart-price">' + fmt(item.price || 0) + '</div>' +
-              '<div class="mobile-cart-sub">Total ' + fmt((item.price || 0) * (item.qty || 0)) + '</div>' +
+              '<label class="mobile-cart-price-edit" onclick="event.stopPropagation();">' +
+                '<span>Preco</span>' +
+                '<input type="number" min="0" step="0.01" inputmode="decimal" value="' + (item.price || "") + '" oninput="updatePrice(' + index + ', this.value); renderMobileCartBar(); syncMobileCartTotals(' + index + ');" onchange="updatePrice(' + index + ', this.value); renderMobileCartPage();" onkeydown="if(event.keyCode===13){this.blur();}">' +
+              '</label>' +
+              '<div class="mobile-cart-sub mobile-cart-line-total" id="mobile-cart-line-total-' + index + '">Total ' + fmt((item.price || 0) * (item.qty || 0)) + '</div>' +
             '</div>' +
           '</div>' +
           '<div class="mobile-cart-actions">' +
@@ -12963,8 +13096,8 @@ function renderMobileCartPage() {
         '<button class="mobile-add-pay" onclick="addMobilePaymentLine()">+ Adicionar meio de pagamento</button>' +
       '</div>' +
       '<div class="mobile-total-card">' +
-        '<div class="mobile-total-row"><span>Produtos (' + getCartCountMobile() + ')</span><b>' + fmt(total) + '</b></div>' +
-        '<div class="mobile-total-row"><strong>Total</strong><strong style="color:#32bfb3">' + fmt(total) + '</strong></div>' +
+        '<div class="mobile-total-row"><span>Produtos (' + getCartCountMobile() + ')</span><b id="mobile-cart-products-total">' + fmt(total) + '</b></div>' +
+        '<div class="mobile-total-row"><strong>Total</strong><strong id="mobile-cart-final-total" style="color:#32bfb3">' + fmt(total) + '</strong></div>' +
       '</div>' +
       '<button class="mobile-checkout-btn" onclick="confirmarVenda(); setTimeout(function(){ renderMobileCartPage(); renderMobileCartBar(); if(!cart.length) closeMobileCart(); }, 700);">Finalizar Compra</button>' +
     '</div>';
@@ -21391,6 +21524,10 @@ async function loadCorrections() {
     }).join("");
   } catch (e) {
     console.error("Erro correcoes:", e);
+    if (await handleAzulProtectedDataError(e, "Correcoes")) {
+      list.innerHTML = '<div class="empty">Sessao ou permissao invalida. Entra novamente ou pede ao proprietario para confirmar o teu acesso.</div>';
+      return;
+    }
     list.innerHTML = '<div class="empty">Erro: ' + correctionSafe(e.message || e) + '</div>';
   }
 }
@@ -22819,14 +22956,44 @@ async function logoutPendingApproval() {
   window.location.replace("index.html");
 }
 
+async function logoutCurrentUser(button) {
+  var ok = confirm("Terminar sessao neste aparelho?");
+  if (!ok) return;
+
+  var originalText = button ? button.textContent : "";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A sair...";
+  }
+
+  try {
+    if (supabaseClient && supabaseClient.auth) {
+      await supabaseClient.auth.signOut();
+    }
+  } catch (e) {
+    console.warn("Erro ao terminar sessao:", e);
+  } finally {
+    clearAzulSession();
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText || "Sair";
+    }
+    window.location.replace("index.html");
+  }
+}
+
 async function getCurrentCoreProfile() {
   var organizationId = localStorage.getItem("azul_organization_id");
   var user = null;
 
   try {
-    var sessionResult = await supabaseClient.auth.getSession();
-    if (sessionResult && sessionResult.data && sessionResult.data.session && sessionResult.data.session.user) {
-      user = sessionResult.data.session.user;
+    var session = await getStableSupabaseSession({
+      attempts: 8,
+      delayMs: 300
+    });
+
+    if (session && session.user) {
+      user = session.user;
     }
   } catch (sessionError) {
     console.warn("Sessao local indisponivel:", sessionError);
@@ -22844,12 +23011,33 @@ async function getCurrentCoreProfile() {
 
   if (!email || !organizationId) return null;
 
-  var result = await supabaseClient
-    .from("profiles")
-    .select("organization_id,name,email,phone,role,status")
-    .eq("organization_id", organizationId)
-    .ilike("email", email)
-    .maybeSingle();
+  var result = null;
+
+  try {
+    result = await supabaseClient.rpc("get_current_profile_for_core", {
+      p_organization_id: organizationId
+    }).maybeSingle();
+  } catch (profileRpcError) {
+    console.warn("RPC de perfil actual indisponivel:", profileRpcError);
+  }
+
+  if (
+    result &&
+    result.error &&
+    String(result.error.code || "") !== "PGRST202" &&
+    String(result.error.message || "").indexOf("get_current_profile_for_core") < 0
+  ) {
+    throw result.error;
+  }
+
+  if (!result || result.error || !result.data) {
+    result = await supabaseClient
+      .from("profiles")
+      .select("organization_id,name,email,phone,role,status")
+      .eq("organization_id", organizationId)
+      .ilike("email", email)
+      .maybeSingle();
+  }
 
   if (result.error || !result.data) {
     result = await supabaseClient.rpc("get_login_profile_for_org", {
@@ -22908,9 +23096,10 @@ async function verifyCurrentUserAccess() {
         return false;
       }
 
-      alert("Sessao expirada. Entra novamente.");
-      clearAzulSession();
-      window.location.replace("index.html");
+      showSecurityAccessBlockedScreen({
+        message: "A sessao ainda nao foi restaurada pelo navegador. Atualiza a pagina ou volta ao login se continuar."
+      });
+      toast("Sessao ainda nao foi restaurada. Nao apagamos os dados locais.", "error");
       return false;
     }
 
@@ -22952,6 +23141,7 @@ async function verifyCurrentUserAccess() {
 }
 
 window.logoutPendingApproval = logoutPendingApproval;
+window.logoutCurrentUser = logoutCurrentUser;
 
 async function touchCurrentTeamUser() {
   var organizationId = localStorage.getItem("azul_organization_id");
