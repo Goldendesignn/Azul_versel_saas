@@ -1,0 +1,10 @@
+{
+  "name": "azul-gestao-landing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Landing page comercial do Azul Gestao.",
+  "scripts": {
+    "start": "npx serve .",
+    "deploy": "vercel --prod"
+  }
+}

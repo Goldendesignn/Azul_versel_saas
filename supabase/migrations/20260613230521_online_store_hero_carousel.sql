@@ -32,38 +32,38 @@ drop policy if exists online_store_assets_insert_by_org on storage.objects;
 create policy online_store_assets_insert_by_org
 on storage.objects
 for insert
-to public
+to authenticated
 with check (
   bucket_id = 'online-store-assets'
-  and (storage.foldername(name))[1] =
-    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+  and (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  and public.is_org_member(((storage.foldername(name))[1])::uuid)
 );
 
 drop policy if exists online_store_assets_update_by_org on storage.objects;
 create policy online_store_assets_update_by_org
 on storage.objects
 for update
-to public
+to authenticated
 using (
   bucket_id = 'online-store-assets'
-  and (storage.foldername(name))[1] =
-    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+  and (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  and public.is_org_member(((storage.foldername(name))[1])::uuid)
 )
 with check (
   bucket_id = 'online-store-assets'
-  and (storage.foldername(name))[1] =
-    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+  and (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  and public.is_org_member(((storage.foldername(name))[1])::uuid)
 );
 
 drop policy if exists online_store_assets_delete_by_org on storage.objects;
 create policy online_store_assets_delete_by_org
 on storage.objects
 for delete
-to public
+to authenticated
 using (
   bucket_id = 'online-store-assets'
-  and (storage.foldername(name))[1] =
-    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
+  and (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  and public.is_org_member(((storage.foldername(name))[1])::uuid)
 );
 
 create or replace function public.get_online_store(

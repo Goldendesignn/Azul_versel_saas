@@ -14,6 +14,7 @@
 <link rel="apple-touch-icon" href="Assets/icon-192.png">
 <base target="_top">
 <script>
+  
 (function applyAzulThemeBeforePaint() {
   function normalizeHexColor(value, fallback) {
     var color = String(value || "").trim();
@@ -88,8 +89,9 @@
 
   try {
     var saved = JSON.parse(localStorage.getItem("pos_config") || "{}");
-    var theme = saved.theme || "light";
-    var bg = theme === "dark" ? "#0b0f14" : "#ffffff";
+    var theme = localStorage.getItem("azul_theme") || saved.theme || "light";
+    theme = theme === "dark" ? "dark" : "light";
+    var bg = theme === "dark" ? "#070b10" : "#ffffff";
     var accent = readableAccentColor(saved.color || "#0b3d91", bg);
     var accent2 = readableAccentColor(saved.color2 || "#071e4f", bg);
     var root = document.documentElement;
@@ -100,16 +102,18 @@
     root.style.setProperty("--accent-text", textOnColor(accent));
 
     if (theme === "dark") {
-      root.style.setProperty("--bg", "#0b0f14");
-      root.style.setProperty("--surface", "#151a21");
-      root.style.setProperty("--surface2", "#202733");
-      root.style.setProperty("--border", "#364152");
+      root.style.setProperty("--bg", "#070b10");
+      root.style.setProperty("--surface", "#111821");
+      root.style.setProperty("--surface2", "#1a2430");
+      root.style.setProperty("--soft", "#15202b");
+      root.style.setProperty("--border", "#334155");
       root.style.setProperty("--text", "#f8fafc");
-      root.style.setProperty("--muted", "#b6c0cc");
+      root.style.setProperty("--muted", "#cbd5e1");
     } else {
       root.style.setProperty("--bg", "#f5f5f0");
       root.style.setProperty("--surface", "#ffffff");
       root.style.setProperty("--surface2", "#f0ede6");
+      root.style.setProperty("--soft", "#f7f4ed");
       root.style.setProperty("--border", "#e0dbd0");
       root.style.setProperty("--text", "#1a1a1a");
       root.style.setProperty("--muted", "#9a9590");
@@ -158,6 +162,9 @@
         </div>
       </div>
       <div class="date-txt" id="dateTxt"></div>
+      <button type="button" class="logout-btn" onclick="logoutCurrentUser(this)" title="Terminar sessao">
+        Sair
+      </button>
     </div>
   </div>
 
@@ -196,6 +203,7 @@
         </div>
         <p id="azulOnboardingIntro"></p>
         <ul class="onboarding-list" id="azulOnboardingList"></ul>
+        <div class="onboarding-example" id="azulOnboardingExample"></div>
       </div>
       <div class="onboarding-actions">
         <button type="button" class="onboarding-secondary" onclick="prevAzulOnboardingStep()" id="azulOnboardingPrev">Anterior</button>
@@ -208,29 +216,95 @@
 
   <!-- NAV -->
   <div class="nav">
-    <button class="tab active" onclick="goTo('dashboard', this)"> Dashboard</button>
-    <button class="tab" onclick="goTo('performance', this)"> Analise Comercial</button>
-    <button class="tab" onclick="goTo('venda', this)"> Nova Venda</button>
-    <button class="tab" onclick="goTo('achat', this)"> Nova Compra</button>
-    <button class="tab" id="tab-transfert" onclick="goTo('transfert', this)"> Estoque</button>
-    <button class="tab" onclick="goTo('clientes', this)"> Clientes</button>
-    <button class="tab" onclick="goTo('depenses', this)"> Despesas</button>
-    <button class="tab" onclick="goTo('rh', this)"> Recursos Humanos</button>
-    <button class="tab" onclick="goTo('forn', this)"> Fornecedores</button>
-    <button class="tab" onclick="goTo('tresorerie', this)">Tesouraria</button>
-    <button class="tab" onclick="goTo('comptabilite', this)">Contabilidade</button>
-    <button class="tab" onclick="goTo('corrections', this)">Correcoes</button>
-    <button class="tab" onclick="goTo('revendeurs', this)">Revendedores</button>
-    <button class="tab" onclick="goTo('online', this)">Venda Online</button>
-    <button class="tab" onclick="goTo('logistica', this)">Logistica</button>
-    <button class="tab" onclick="goTo('settings', this)"> Definicoes</button>
+    <button class="tab active" data-page="dashboard" onclick="goTo('dashboard', this)">Dashboard</button>
+    <button class="tab" data-page="performance" onclick="goTo('performance', this)">Analise Comercial</button>
+    <button class="tab" data-page="venda" onclick="goTo('venda', this)">Nova Venda</button>
+    <button class="tab" data-page="achat" onclick="goTo('achat', this)">Nova Compra</button>
+    <button class="tab" data-page="importacoes" onclick="goTo('importacoes', this)">Importações</button>
+    <button class="tab" data-page="transfert" id="tab-transfert" onclick="goTo('transfert', this)">Estoque</button>
+    <button class="tab" data-page="clientes" onclick="goTo('clientes', this)">Clientes</button>
+    <button class="tab" data-page="depenses" onclick="goTo('depenses', this)">Despesas</button>
+    <button class="tab" data-page="rh" onclick="goTo('rh', this)">Recursos Humanos</button>
+    <button class="tab" data-page="forn" onclick="goTo('forn', this)">Fornecedores</button>
+    <button class="tab" data-page="tresorerie" onclick="goTo('tresorerie', this)">Tesouraria</button>
+    <button class="tab" data-page="comptabilite" onclick="goTo('comptabilite', this)">Contabilidade</button>
+    <button class="tab" data-page="corrections" onclick="goTo('corrections', this)">Correcoes</button>
+    <button class="tab" data-page="revendeurs" onclick="goTo('revendeurs', this)">Revendedores</button>
+    <button class="tab" data-page="online" onclick="goTo('online', this)">Venda Online</button>
+    <button class="tab" data-page="logistica" onclick="goTo('logistica', this)">Logistica</button>
+    <button class="tab" data-page="settings" onclick="goTo('settings', this)">Definicoes</button>
   </div>
+
+  <script>
+  (function paintInitialNavIcons() {
+    var paths = {
+      dashboard: '<path d="M3 13h7V3H3z"></path><path d="M14 21h7V11h-7z"></path><path d="M14 8h7V3h-7z"></path><path d="M3 21h7v-5H3z"></path>',
+      performance: '<path d="M3 13h7V3H3z"></path><path d="M14 21h7V11h-7z"></path><path d="M14 8h7V3h-7z"></path><path d="M3 21h7v-5H3z"></path>',
+      venda: '<circle cx="9" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle><path d="M2 3h3l3 12h10l3-8H6"></path>',
+      achat: '<path d="M6 2l1.5 4h9L18 2"></path><path d="M3 6h18l-2 15H5z"></path><path d="M9 11h6"></path>',
+      importacoes: '<path d="M3 7h11v10H3z"></path><path d="M14 10h3l4 4v3h-7z"></path><circle cx="7" cy="17" r="2"></circle><circle cx="18" cy="17" r="2"></circle><path d="M7 7V4h9v4"></path><path d="M10 11h3"></path>',
+      transfert: '<path d="M7 7h11l-3-3"></path><path d="M17 17H6l3 3"></path><path d="M5 12h14"></path>',
+      clientes: '<path d="M16 21v-2a4 4 0 0 0-8 0v2"></path><circle cx="12" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>',
+      depenses: '<path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>',
+      rh: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+      forn: '<path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9h1"></path><path d="M9 13h1"></path><path d="M9 17h1"></path>',
+      tresorerie: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
+      comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
+      corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
+      revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
+      online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
+      logistica: '<path d="M10 17H6V6h11v11h-3"></path><path d="M17 9h3l2 4v4h-2"></path><circle cx="7" cy="17" r="2"></circle><circle cx="18" cy="17" r="2"></circle><path d="M7 17h9"></path><path d="M13 10h-3"></path>',
+      settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1.82V22a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.82-.33H2a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1.82V2a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.21.64.49.86.83.22.34.56.54.96.54H22a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51.63z"></path>'
+    };
+
+    Array.prototype.forEach.call(document.querySelectorAll(".nav .tab[data-page]"), function(tab) {
+      if (tab.querySelector(".az-icon")) return;
+      var page = tab.dataset.page || "";
+      var iconPath = paths[page];
+      if (!iconPath) return;
+      var label = tab.textContent.trim();
+      tab.classList.add("az-icon-button");
+      tab.innerHTML = '<svg class="az-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + iconPath + '</svg><span class="az-label">' + label + '</span>';
+    });
+  })();
+  </script>
 
   <!-- CONTENT -->
   <div class="content">
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
+
+      <section class="quick-start-panel" id="quickStartPanel">
+        <div class="quick-start-head">
+          <div>
+            <span>Comecar rapido</span>
+            <h2>O que quer fazer agora?</h2>
+          </div>
+        </div>
+        <div class="quick-start-grid">
+          <button type="button" onclick="goTo('venda', null)" data-page-link="venda">
+            <span class="quick-start-icon" data-icon="venda"><svg class="az-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle><path d="M2 3h3l3 12h10l3-8H6"></path></svg></span>
+            <strong>Vender</strong>
+            <small>Registar uma venda e imprimir recibo</small>
+          </button>
+          <button type="button" onclick="goTo('achat', null)" data-page-link="achat">
+            <span class="quick-start-icon" data-icon="achat"><svg class="az-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 2l1.5 4h9L18 2"></path><path d="M3 6h18l-2 15H5z"></path><path d="M9 11h6"></path></svg></span>
+            <strong>Comprar</strong>
+            <small>Adicionar produtos ou repor stock</small>
+          </button>
+          <button type="button" onclick="goTo('transfert', null)" data-page-link="transfert">
+            <span class="quick-start-icon" data-icon="transfert"><svg class="az-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 7h11l-3-3"></path><path d="M17 17H6l3 3"></path><path d="M5 12h14"></path></svg></span>
+            <strong>Stock</strong>
+            <small>Ver quantidades e transferencias</small>
+          </button>
+          <button type="button" onclick="goTo('depenses', null)" data-page-link="depenses">
+            <span class="quick-start-icon" data-icon="depenses"><svg class="az-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path></svg></span>
+            <strong>Despesa</strong>
+            <small>Registar uma saida de dinheiro</small>
+          </button>
+        </div>
+      </section>
 
       <!-- FILTROS -->
       <div class="dash-filters">
@@ -411,12 +485,12 @@
   <div class="purchase-dashboard-head">
     <div>
       <div class="eyebrow">Compras</div>
-      <h2>Vue achats</h2>
-      <p>Seguimento das compras, fornecedores e creditos.</p>
+      <h2>Visão de compras</h2>
+      <p>Acompanhamento das compras, fornecedores e créditos.</p>
     </div>
     <div class="purchase-actions">
-      <button class="filter-btn" onclick="goTo('achat', null)">Nouvel achat</button>
-      <button class="filter-btn" onclick="goTo('forn', null)">Fornecedors</button>
+      <button class="filter-btn" onclick="goTo('achat', null)">Nova compra</button>
+      <button class="filter-btn" onclick="goTo('forn', null)">Fornecedores</button>
     </div>
   </div>
 
@@ -424,13 +498,13 @@
     <div class="purchase-kpi">
       <span>Compras hoje</span>
       <strong id="dash-purchase-today">0 Kz</strong>
-      <small id="dash-purchase-today-count">0 achats</small>
+      <small id="dash-purchase-today-count">0 compras</small>
     </div>
 
     <div class="purchase-kpi">
       <span>Compras do mes</span>
       <strong id="dash-purchase-month">0 Kz</strong>
-      <small id="dash-purchase-month-count">0 achats</small>
+      <small id="dash-purchase-month-count">0 compras</small>
     </div>
 
     <div class="purchase-kpi red">
@@ -454,7 +528,7 @@
     </div>
 
     <div class="purchase-latest-card">
-      <div class="card-title">Derniers achats</div>
+      <div class="card-title">Últimas compras</div>
 <div id="dash-latest-purchases" class="dashboard-preview-list">
   <div class="empty">A carregar...</div>
 </div>
@@ -480,19 +554,19 @@
     </div>
 
     <div class="smart-stock-kpi red">
-      <span>Produits finis</span>
+      <span>Produtos esgotados</span>
       <strong id="smart-stock-out">0</strong>
       <small>stock total a 0</small>
     </div>
 
     <div class="smart-stock-kpi orange">
-      <span>Stock faible</span>
+      <span>Stock baixo</span>
       <strong id="smart-stock-low">0</strong>
-      <small>sous le minimum</small>
+      <small>abaixo do mínimo</small>
     </div>
 
     <div class="smart-stock-kpi">
-      <span>Produits dormants</span>
+      <span>Produtos parados</span>
       <strong id="smart-stock-dormant">0</strong>
       <small>sem vendas no periodo</small>
     </div>
@@ -500,7 +574,7 @@
 
   <div class="smart-stock-body">
     <div class="smart-stock-list-card">
-      <div class="card-title">Alertas prioritaires</div>
+      <div class="card-title">Alertas prioritários</div>
       <div id="smart-stock-alerts" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
@@ -508,7 +582,7 @@
     </div>
 
     <div class="smart-stock-list-card">
-      <div class="card-title">Produits dormants</div>
+      <div class="card-title">Produtos parados</div>
       <div id="smart-stock-dormants" class="dashboard-preview-list">
         <div class="empty">A carregar...</div>
       </div>
@@ -1025,8 +1099,8 @@
     <!-- NOVA VENDA -->
     <div class="page" id="page-venda">
        <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
-        <button class="mode-btn active" id="vente-tab-novo" onclick="switchVendaTab('novo',this)"> Novo venda</button>
-        <button class="mode-btn" id="vente-tab-historico" onclick="switchVendaTab('historico',this)"> Historico</button>
+        <button class="mode-btn active" id="vente-tab-novo" onclick="switchVendaTab('novo',this)">Nova venda</button>
+        <button class="mode-btn" id="vente-tab-historico" onclick="switchVendaTab('historico',this)">Histórico</button>
       </div>
       <div id="vente-panel-novo">
         <div class="pos-wrap">
@@ -1255,7 +1329,7 @@
         </div>
 
         <!-- Seccao de pagamentos (visivel em credito) -->
-        <div id="a-credit-fields" style="display:none;max-width:600px;margin-bottom:16px;">
+        <div id="a-credit-fields" style="display:none;margin-bottom:16px;"> 
           <!-- Total du -->
           <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(224,92,92,0.06);border-radius:6px;margin-bottom:12px;font-size:12px;">
             <span style="color:var(--muted);">Total devido</span>
@@ -1299,17 +1373,17 @@
   <div class="achat-history-head">
     <div>
       <div class="eyebrow">Compras</div>
-      <h2>Historico de compras</h2>
-      <p>Pesquisa por produto, fornecedor, codigo ou variacao.</p>
+      <h2>Histórico de compras</h2>
+      <p>Pesquisa por produto, fornecedor, código ou variação.</p>
     </div>
     <button class="filter-btn" onclick="loadCompraHistorique()">Atualizar</button>
   </div>
 
   <div class="achat-history-kpis">
     <div class="kpi">
-      <div class="kpi-label">Total achats</div>
+      <div class="kpi-label">Total de compras</div>
       <div class="kpi-val" id="achatHistTotal">0 Kz</div>
-      <div class="kpi-sub" id="achatHistCount">0 achats</div>
+      <div class="kpi-sub" id="achatHistCount">0 compras</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Total pago</div>
@@ -1317,7 +1391,7 @@
       <div class="kpi-sub">Pagamentos fornecedores</div>
     </div>
     <div class="kpi red">
-      <div class="kpi-label">Dette</div>
+      <div class="kpi-label">Dívida</div>
       <div class="kpi-val" id="achatHistDebt">0 Kz</div>
       <div class="kpi-sub">Resta pagar</div>
     </div>
@@ -1345,7 +1419,7 @@
           <th>Produto</th>
           <th>Codigo</th>
           <th>Variacao</th>
-          <th>Qtd</th>
+          <th>Qtd / Unidade</th>
           <th>P. Compra</th>
           <th>Total</th>
           <th>Pago</th>
@@ -1610,6 +1684,12 @@
                   </div>
                 </div>
               </div>
+
+              <div class="form-group online-wide">
+                <label class="form-label">Facebook Ads Pixel</label>
+                <input type="text" class="form-input" id="pixel_facebook" placeholder="pixellllllllll">
+              </div>
+              
               <label class="online-store-toggle compact">
                 <input type="checkbox" id="online-show-stock" checked>
                 <span>
@@ -1640,7 +1720,7 @@
           <div class="online-products-head">
             <div>
               <div class="card-title">Produtos da vitrine</div>
-              <p>Seleciona os produtos e escreve a descricao que aparecera na ficha de cada produto.</p>
+              <p>Seleciona os produtos e usa Modificar para adicionar descricao, imagens ou videos da ficha publica.</p>
             </div>
             <div class="online-products-actions">
               <input type="text" class="form-input" id="online-product-search" placeholder="Pesquisar produto..." oninput="renderOnlineProductList()">
@@ -1682,6 +1762,253 @@
 
           <div class="online-orders-list" id="online-orders-list">
             <div class="empty">A carregar encomendas...</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="overlay" id="onlineProductEditorOverlay">
+      <div class="online-product-editor">
+        <div class="online-product-editor-head">
+          <div>
+            <div class="eyebrow">Produto online</div>
+            <h3 id="online-editor-title">Modificar produto</h3>
+            <p>Personaliza como este produto aparece na loja publica.</p>
+          </div>
+          <button type="button" class="online-editor-close" onclick="closeOnlineProductEditor()">x</button>
+        </div>
+
+        <div class="online-editor-grid">
+          <div class="form-group">
+            <label class="form-label">Nome publico</label>
+            <input type="text" class="form-input" id="online-editor-name" placeholder="Deixa vazio para usar o nome do stock">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Preco online</label>
+            <input type="number" class="form-input" id="online-editor-price" min="0" placeholder="Deixa vazio para usar o preco de venda">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoria online</label>
+            <input type="text" class="form-input" id="online-editor-category" placeholder="Ex: Sneakers, Vestidos, Promocao">
+          </div>
+          <label class="online-store-toggle compact online-editor-toggle">
+            <input type="checkbox" id="online-editor-featured">
+            <span>
+              <strong>Produto em destaque</strong>
+              <small>Ajuda a priorizar o produto na vitrine.</small>
+            </span>
+          </label>
+          <div class="online-editor-promo-box online-editor-wide">
+            <label class="online-store-toggle compact online-editor-toggle online-editor-promo-toggle">
+              <input type="checkbox" id="online-editor-promo-active">
+              <span>
+                <strong>Ativar promocao</strong>
+                <small>Mostra badge Promo, preco riscado e preco promocional na loja.</small>
+              </span>
+            </label>
+            <div class="online-editor-promo-grid">
+              <div class="form-group">
+                <label class="form-label">Preco promocional</label>
+                <input type="number" class="form-input" id="online-editor-promo-price" min="0" placeholder="Ex: 9500">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Texto da promocao</label>
+                <input type="text" class="form-input" id="online-editor-promo-label" maxlength="80" placeholder="Ex: Semana do cliente">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Inicio</label>
+                <input type="date" class="form-input" id="online-editor-promo-start">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fim</label>
+                <input type="date" class="form-input" id="online-editor-promo-end">
+              </div>
+            </div>
+          </div>
+          <div class="form-group online-editor-wide">
+            <label class="form-label">Descricao</label>
+            <textarea class="form-input" id="online-editor-description" rows="5" maxlength="1200" placeholder="Ex: Material, tamanho, acabamento, cuidados e condicoes de entrega."></textarea>
+          </div>
+        </div>
+
+        <div class="online-media-section">
+          <div class="online-media-head">
+            <div>
+              <div class="card-title">Imagens e videos</div>
+              <p>A primeira imagem marcada como principal aparece nas cards da loja.</p>
+            </div>
+            <div class="online-media-actions">
+              <label class="filter-btn" for="online-editor-media-files">Carregar ficheiros</label>
+              <input id="online-editor-media-files" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime" multiple hidden onchange="addOnlineProductMediaFiles(this)">
+            </div>
+          </div>
+          <div class="online-url-row">
+            <input type="text" class="form-input" id="online-editor-media-url" placeholder="Ou cola uma URL de imagem/video">
+            <button type="button" class="filter-btn" onclick="addOnlineProductMediaUrl()">Adicionar URL</button>
+          </div>
+          <div id="online-editor-media-list" class="online-media-list">
+            <div class="empty">Nenhum media adicionado.</div>
+          </div>
+        </div>
+
+        <div class="online-editor-actions">
+          <button type="button" class="filter-btn ghost" onclick="closeOnlineProductEditor()">Cancelar</button>
+          <button type="button" class="form-submit" id="online-editor-save" onclick="saveOnlineProductEditor()">Guardar produto</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-importacoes">
+      <div class="import-orders-shell">
+        <section class="import-orders-hero">
+          <div class="import-orders-hero-icon" aria-hidden="true">
+            <svg class="az-icon" viewBox="0 0 24 24" focusable="false">
+              <path d="M3 7h11v10H3z"></path>
+              <path d="M14 10h3l4 4v3h-7z"></path>
+              <circle cx="7" cy="17" r="2"></circle>
+              <circle cx="18" cy="17" r="2"></circle>
+              <path d="M7 7V4h9v4"></path>
+              <path d="M10 11h3"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="eyebrow">Importacoes</div>
+            <h2 class="section-title">Seguimento de importacoes</h2>
+            <p>Acompanha encomendas internacionais ate a chegada em Angola, confere faltas e danos antes de enviar para o stock.</p>
+          </div>
+          <button type="button" class="filter-btn" onclick="loadImportOrders(true)">Atualizar</button>
+        </section>
+
+        <div class="import-orders-tabs">
+          <button type="button" class="mode-btn active" id="import-tab-new" onclick="switchImportOrderTab('new', this)">Nova importacao</button>
+          <button type="button" class="mode-btn" id="import-tab-list" onclick="switchImportOrderTab('list', this)">Acompanhamento</button>
+          <button type="button" class="mode-btn" id="import-tab-check" onclick="switchImportOrderTab('check', this)">Conferencia</button>
+        </div>
+
+        <section class="import-orders-card import-orders-panel" id="import-panel-new">
+          <div class="card-title">Registar encomenda internacional</div>
+          <p class="logistics-muted">Regista a compra antes dela chegar. O stock so aumenta depois da conferencia e validacao.</p>
+
+          <div class="import-orders-form">
+            <div class="form-group">
+              <label class="form-label">Numero</label>
+              <input type="text" class="form-input" id="import-order-no" placeholder="Automatico se vazio">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fornecedor</label>
+              <input type="text" class="form-input" id="import-supplier" placeholder="Fornecedor / fabrica">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Pais de origem</label>
+              <input type="text" class="form-input" id="import-origin" placeholder="Ex: China">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Agente / despachante</label>
+              <input type="text" class="form-input" id="import-agent" placeholder="Opcional">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Transporteadora</label>
+              <input type="text" class="form-input" id="import-carrier" placeholder="Navio, aviao, camiao...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tracking</label>
+              <input type="text" class="form-input" id="import-tracking" placeholder="Codigo de rastreio">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data da encomenda</label>
+              <input type="date" class="form-input" id="import-order-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Previsao de chegada</label>
+              <input type="date" class="form-input" id="import-expected">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Frete</label>
+              <input type="number" class="form-input" id="import-shipping" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alfandega</label>
+              <input type="number" class="form-input" id="import-customs" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Outros custos</label>
+              <input type="number" class="form-input" id="import-other-cost" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group import-orders-wide">
+              <label class="form-label">Notas</label>
+              <input type="text" class="form-input" id="import-notes" placeholder="Ex: contentor, pagamento, observacoes">
+            </div>
+          </div>
+
+          <div class="import-orders-items-head">
+            <div>
+              <div class="card-title">Produtos encomendados</div>
+              <p>Preenche os produtos que estao a caminho. A quantidade recebida sera confirmada depois.</p>
+            </div>
+            <button type="button" class="filter-btn" onclick="addImportItemLine()">+ Produto</button>
+          </div>
+          <div class="import-orders-items" id="import-items-body"></div>
+
+          <div class="import-orders-total">
+            <span>Total previsto</span>
+            <strong id="import-order-total">0 Kz</strong>
+          </div>
+
+          <button type="button" class="form-submit import-orders-submit" id="import-order-save-btn" onclick="saveImportOrder()">Guardar importacao</button>
+          <div class="online-store-status" id="import-orders-status"></div>
+        </section>
+
+        <section class="import-orders-card import-orders-panel" id="import-panel-list" style="display:none;">
+          <div class="online-products-head">
+            <div>
+              <div class="card-title">Acompanhamento</div>
+              <p>Pesquisa por fornecedor, numero, tracking, Transporteadora ou pais.</p>
+            </div>
+            <div class="online-products-actions">
+              <input type="text" class="form-input" id="import-search" placeholder="Pesquisar importacao..." oninput="renderImportOrders()">
+              <select class="form-input" id="import-status-filter" onchange="renderImportOrders()">
+                <option value="">Todos</option>
+                <option value="ordered">Encomendada</option>
+                <option value="paid">Paga</option>
+                <option value="production">Em producao</option>
+                <option value="shipped">Enviada</option>
+                <option value="transit">Em transito</option>
+                <option value="arrived_angola">Chegou em Angola</option>
+                <option value="checking">Em conferencia</option>
+                <option value="completed">Validada</option>
+                <option value="cancelled">Cancelada</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="import-orders-kpis">
+            <div><span>Abertas</span><strong id="import-kpi-open">0</strong></div>
+            <div><span>Em transito</span><strong id="import-kpi-transit">0</strong></div>
+            <div><span>Chegaram</span><strong id="import-kpi-arrived">0</strong></div>
+            <div><span>Valor previsto</span><strong id="import-kpi-total">0 Kz</strong></div>
+          </div>
+
+          <div class="import-orders-list" id="import-orders-list">
+            <div class="empty">A carregar importacoes...</div>
+          </div>
+        </section>
+
+        <section class="import-orders-card import-orders-panel" id="import-panel-check" style="display:none;">
+          <div class="online-products-head">
+            <div>
+              <div class="card-title">Conferencia da mercadoria</div>
+              <p id="import-check-info">Seleciona uma importacao em Acompanhamento para conferir.</p>
+            </div>
+            <button type="button" class="filter-btn" onclick="switchImportOrderTab('list', document.getElementById('import-tab-list'))">Ver importacoes</button>
+          </div>
+
+          <div class="import-check-list" id="import-check-list">
+            <div class="empty">Nenhuma importacao selecionada.</div>
+          </div>
+
+          <div class="import-check-actions">
+            <button type="button" class="filter-btn" onclick="saveImportConference()">Guardar conferencia</button>
+            <button type="button" class="form-submit" onclick="validateImportToStock()">Validar e enviar ao stock</button>
           </div>
         </section>
       </div>
@@ -1984,8 +2311,29 @@
               <input type="text" class="form-input" id="cfg-phone" placeholder="Ex: +244 923 000 000">
             </div>
             <div class="form-group">
+              <label class="form-label">NIF</label>
+              <input type="text" class="form-input" id="cfg-nif" placeholder="Ex: 5000000000">
+            </div>
+            <div class="form-group">
               <label class="form-label">Mensagem de rodape do recibo</label>
               <input type="text" class="form-input" id="cfg-footer" placeholder="Ex: Obrigado pela sua preferencia!">
+            </div>
+            <div class="form-group">
+              <label class="form-label">QR code no recibo</label>
+              <select class="form-input" id="cfg-receipt-qr-mode" onchange="syncReceiptQrFieldsVisibility()">
+                <option value="none">Nao mostrar QR code</option>
+                <option value="link">Abrir site ou catalogo online</option>
+                <option value="whatsapp">Abrir WhatsApp automaticamente</option>
+              </select>
+            </div>
+            <div class="form-group" id="cfg-receipt-qr-link-wrap" style="display:none;">
+              <label class="form-label">Link do site/catalogo</label>
+              <input type="text" class="form-input" id="cfg-receipt-qr-link" placeholder="Ex: https://sualoja.com ou link da loja online">
+            </div>
+            <div class="form-group" id="cfg-receipt-qr-phone-wrap" style="display:none;">
+              <label class="form-label">Numero WhatsApp para o QR</label>
+              <input type="text" class="form-input" id="cfg-receipt-qr-phone" placeholder="Ex: +244 923 000 000">
+              <small style="display:block;margin-top:6px;color:var(--muted);font-size:12px;">Se ficar vazio, o sistema usa o telefone da loja.</small>
             </div>
             <div class="form-group">
               <label class="form-label">Fonte do Texto</label>
@@ -2048,6 +2396,10 @@
                 </label>
               </div>
             </div>
+            <div class="receipt-settings-actions">
+              <button type="button" class="receipt-preview-btn" onclick="previewReceiptFromSettings()">Previsualizar recibo</button>
+              <button type="button" class="receipt-print-btn" onclick="printReceiptFromSettings()">Imprimir teste</button>
+            </div>
           </div>
         </div>
 
@@ -2056,7 +2408,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div>
               <div style="font-size:13px;font-weight:500;">Modo de Edicao Directa</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Desbloqueia as feuilles por 1 minuto para corrigir ou eliminar linhas. Bloqueia automaticamente depois.</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Desbloqueia as folhas por 1 minuto para corrigir ou eliminar linhas. Bloqueia automaticamente depois.</div>
             </div>
           </div>
           <button id="editModeBtn" onclick="activarEdicao()" style="width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;">
@@ -2070,14 +2422,27 @@
             Importa compras com um ficheiro CSV modelo. Os produtos entram no stock e os fornecedores sao criados automaticamente.
           </div>
           <button class="form-submit" type="button" onclick="goTo('import', null)" style="width:100%;">
-            Ouvrir l'importation
+            Abrir importação
           </button>
+        </div>
+        <div class="card" style="grid-column:1/-1;">
+          <div class="card-title">Backup dos dados</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;">
+            Baixa uma copia de seguranca em JSON com os dados que esta loja consegue ver. Usa antes de grandes alteracoes ou manutencao.
+          </div>
+          <button class="form-submit" id="export-backup-btn" type="button" onclick="exportAzulBackup()" style="width:100%;">
+            Baixar backup
+          </button>
+          <div id="export-backup-status" style="font-size:12px;color:var(--muted);margin-top:8px;"></div>
         </div>
         <div class="card" style="grid-column:1/-1;">
           <button class="form-submit" onclick="saveAllSettings()" style="width:100%;">Guardar Configuracoes</button>
           <div style="margin-top:10px;text-align:center;">
             <button onclick="showSetup()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">Reiniciar configuracao</button>
           </div>
+        </div>
+        <div class="card" style="grid-column:1/-1;">
+           <button class="form-submit" id="logoutBtn" class="btn-logout" style="width:100%;background: red;">Terminar sessão</button>
         </div>
 
       </div>
@@ -2088,20 +2453,20 @@
   <div class="import-shell">
     <div class="import-hero">
       <div>
-        <div class="import-eyebrow">Importation</div>
-        <h2>Importer les achats</h2>
+        <div class="import-eyebrow">Importação</div>
+        <h2>Importar dados</h2>
         <p>Baixa o modelo CSV, preenche os produtos e importa o ficheiro. Os fornecedores e o stock serao atualizados automaticamente.</p>
       </div>
-      <button type="button" class="import-ghost-btn" onclick="goTo('settings', null)">Voltar as definicoes</button>
+      <button type="button" class="import-ghost-btn" onclick="goTo('settings', null)">Voltar às definições</button>
     </div>
    <div class="import-tabs">
-    <button type="button" class="import-tab active" id="import-tab-purchases" onclick="switchImportTab('purchases')">
+    <button type="button" class="import-tab active" id="import-tab-purchases" onclick="switchDataImportTab('purchases')">
       Compras
     </button>
-    <button type="button" class="import-tab" id="import-tab-sales" onclick="switchImportTab('sales')">
+    <button type="button" class="import-tab" id="import-tab-sales" onclick="switchDataImportTab('sales')">
       Vendas
     </button>
-    <button type="button" class="import-tab" id="import-tab-expenses" onclick="switchImportTab('expenses')">
+    <button type="button" class="import-tab" id="import-tab-expenses" onclick="switchDataImportTab('expenses')">
       Despesas
     </button>
   </div>
@@ -2111,7 +2476,7 @@
           <div class="import-panel">
             <div class="import-panel-head">
               <div>
-                <h3>Modele CSV</h3>
+                <h3>Modelo CSV</h3>
                 <p>Usa sempre este ficheiro para evitar erros de colunas.</p>
               </div>
             </div>
@@ -2121,14 +2486,14 @@
             </button>
     
             <div class="import-columns">
-              date, supplier, designation, quantity, unit_price, total_amount, category, code, variation, photo, sale_price, payment_status, paid_amount
+              date, supplier, designation, quantity, unit, unit_price, total_amount, category, code, variation, photo, sale_price, payment_status, paid_amount
             </div>
           </div>
     
           <div class="import-panel">
             <div class="import-panel-head">
               <div>
-                <h3>Fichier a importer</h3>
+                <h3>Ficheiro a importar</h3>
                 <p>Escolhe o CSV preenchido e verifica a pre-visualizacao antes da importacao.</p>
               </div>
             </div>
@@ -2147,11 +2512,11 @@
         <div class="import-preview-card">
           <div class="import-preview-head">
             <div>
-              <div class="import-eyebrow">Apercu</div>
-              <h3>Produits detectes</h3>
+              <div class="import-eyebrow">Pré-visualização</div>
+              <h3>Produtos detetados</h3>
             </div>
             <button type="button" class="import-submit-btn" onclick="importPurchaseCsvRows()">
-              Importer achats
+              Importar compras
             </button>
           </div>
     
@@ -2161,10 +2526,11 @@
                 <tr>
                   <th>Date</th>
                   <th>Fornecedor</th>
-                  <th>Designation</th>
+                  <th>Designação</th>
                   <th>Qtd</th>
-                  <th>P. achat</th>
-                  <th>P. vente</th>
+                  <th>Unidade</th>
+                  <th>P. compra</th>
+                  <th>P. venda</th>
                   <th>Categoria</th>
                   <th>Code</th>
                   <th>Variation</th> 
@@ -2172,7 +2538,7 @@
                 </tr>
               </thead>
               <tbody id="purchase-import-preview">
-                <tr><td colspan="10" class="empty">Le preview apparait ici</td></tr>
+                <tr><td colspan="11" class="empty">A pre-visualizacao aparece aqui</td></tr>
               </tbody>
             </table>
           </div>
@@ -2186,7 +2552,7 @@
         <div class="import-panel">
           <div class="import-panel-head">
             <div>
-              <h3>Modele CSV ventes</h3>
+              <h3>Modelo CSV de vendas</h3>
               <p>Usa este ficheiro para importar vendas antigas.</p>
             </div>
           </div>
@@ -2203,7 +2569,7 @@
         <div class="import-panel">
           <div class="import-panel-head">
             <div>
-              <h3>Fichier ventes</h3>
+              <h3>Ficheiro de vendas</h3>
               <p>Se o numero do recibo estiver vazio, sera gerado automaticamente.</p>
             </div>
           </div>
@@ -2222,11 +2588,11 @@
       <div class="import-preview-card" style="margin-top:16px;">
         <div class="import-preview-head">
           <div>
-            <div class="import-eyebrow">Apercu ventes</div>
-            <h3>Vendas detectadas</h3>
+            <div class="import-eyebrow">Pré-visualização de vendas</div>
+            <h3>Vendas detetadas</h3>
           </div>
           <button type="button" class="import-submit-btn" onclick="importSaleCsvRows()">
-            Importer ventes
+            Importar vendas
           </button>
         </div>
       
@@ -2235,21 +2601,21 @@
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Designation</th>
+                <th>Designação</th>
                 <th>Qtd</th>
-                <th>P. vente</th>
+                <th>P. venda</th>
                 <th>Cash</th>
                 <th>Express</th>
                 <th>Cartao</th>
                 <th>Credito</th>
                 <th>Total</th>
-                <th>Origine</th>
-                <th>Client</th>
-                <th>Recu</th>
+                <th>Origem</th>
+                <th>Cliente</th>
+                <th>Recibo</th>
               </tr>
             </thead>
             <tbody id="sale-import-preview">
-              <tr><td colspan="12" class="empty">Le preview des ventes apparait ici</td></tr>
+              <tr><td colspan="12" class="empty">A pré-visualização das vendas aparece aqui</td></tr>
             </tbody>
           </table>
         </div>
@@ -2334,6 +2700,7 @@
        <div style="display:flex;gap:10px;margin-bottom:20px;max-width:700px;">
         <button class="mode-btn active" id="client-tab-fiche" onclick="switchClientTab('fiche',this)">Ficha do cliente</button>
         <button class="mode-btn" id="client-tab-pagamento" onclick="switchClientTab('pagamento',this)"> Registar pagamento</button>
+        <button class="mode-btn" id="client-tab-fidelidade" onclick="switchClientTab('fidelidade',this)">Fidelidade</button>
       </div>
       <!-- FICHE CLIENTES -->
       <div id="client-panel-fiche">
@@ -2373,6 +2740,68 @@
             <button class="form-submit" id="pg-cl-btn" onclick="savePagamentoClient()"> Registar Pagamento</button>
           </div>
         </div>
+      </div>
+      <!-- FIDELIDADE CLIENTES -->
+      <div id="client-panel-fidelidade" style="display:none">
+        <div class="loyalty-page-head">
+          <div>
+            <div class="section-title">Fidelidade</div>
+            <p>Configure pontos, consulte clientes fieis e imprima cartoes com QR code.</p>
+          </div>
+          <button class="filter-btn" onclick="loadLoyaltyPanel()">Atualizar</button>
+        </div>
+
+        <div class="loyalty-layout">
+          <section class="loyalty-card loyalty-settings-panel">
+            <div class="card-title">Configuracao dos pontos</div>
+            <label class="loyalty-toggle">
+              <input type="checkbox" id="loyalty-active">
+              <span>Programa de fidelidade ativo</span>
+            </label>
+            <div class="loyalty-form-grid">
+              <div class="form-group">
+                <label class="form-label">Quantos Kz valem 1 ponto?</label>
+                <input type="number" class="form-input" id="loyalty-kz-per-point" min="1" step="1" placeholder="Ex: 1000">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Pontos para desconto</label>
+                <input type="number" class="form-input" id="loyalty-redeem-points" min="1" step="1" placeholder="Ex: 10">
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Valor do desconto</label>
+                <input type="number" class="form-input" id="loyalty-redeem-value" min="0" step="1" placeholder="Ex: 1000">
+              </div>
+            </div>
+            <button class="form-submit loyalty-save-btn" id="loyalty-save-btn" onclick="saveLoyaltySettings()">Guardar fidelidade</button>
+            <p class="loyalty-hint">Exemplo: se definir 1000 Kz = 1 ponto, uma venda de 15 000 Kz gera 15 pontos.</p>
+          </section>
+
+          <section class="loyalty-card">
+            <div class="card-title">Resumo</div>
+            <div class="loyalty-kpis">
+              <div><span>Clientes</span><strong id="loyalty-kpi-clients">0</strong></div>
+              <div><span>Pontos ativos</span><strong id="loyalty-kpi-points">0</strong></div>
+              <div><span>Pontos ganhos</span><strong id="loyalty-kpi-earned">0</strong></div>
+              <div><span>Pontos usados</span><strong id="loyalty-kpi-used">0</strong></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="loyalty-card">
+          <div class="card-title">Ficha de fidelidade</div>
+          <div class="client-search-row">
+            <input type="text" class="filter-input" id="loyalty-client-search" list="list-client" placeholder="Nome do cliente...">
+            <button class="filter-btn" onclick="loadLoyaltyClientCard()">Pesquisar</button>
+          </div>
+          <div id="loyalty-client-result"><div class="empty">Pesquisa um cliente para ver pontos, QR code e historico.</div></div>
+        </section>
+
+        <section class="loyalty-card">
+          <div class="card-title">Top clientes fidelidade</div>
+          <div id="loyalty-top-list" class="loyalty-top-list">
+            <div class="empty">Ainda sem clientes fidelidade.</div>
+          </div>
+        </section>
       </div>
     </div>
     <!-- RH -->
@@ -2578,11 +3007,11 @@
           <div class="form-group">
             <label class="form-label">Tipo</label>
             <select class="form-input" id="dep-tipo">
-              <option>Loyer</option>
-              <option>Electricite</option>
-              <option>Transport</option>
-              <option>Salaire</option>
-              <option>Autre</option>
+              <option>Renda</option>
+              <option>Energia</option>
+              <option>Transporte</option>
+              <option>Salario</option>
+              <option>Outros</option>
             </select>
             <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
               <input type="text" class="form-input" id="dep-new-category" placeholder="Nova categoria..." style="flex:1;">
@@ -2961,7 +3390,7 @@
         <div class="correction-hero">
           <div>
             <div class="eyebrow">Controlo</div>
-            <h2>Corrections</h2>
+            <h2>Correcoes</h2>
             <p>Anula uma venda, compra, despesa ou pagamento mantendo um registo limpo.</p>
           </div>
           <button class="filter-btn" onclick="loadCorrections()">Atualizar</button>
@@ -3181,8 +3610,9 @@
     <div class="r-logo" id="r-logo">Azul Gestão</div>
     <div class="r-slogan" id="r-slogan">O sistema de gestão que o seu negocio merece</div>
     <!-- Endereco e telefone - mostrados se estiverem preenchidos em Definicoes -->
-    <div class="r-meta" id="r-address-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
-    <div class="r-meta" id="r-phone-line" style="display:none;text-align:center;font-size:10px;color:#666;"></div>
+    <div class="r-meta" id="r-address-line" style="display:none;text-align:center;font-size:10px;color:#000;"></div>
+    <div class="r-meta" id="r-phone-line" style="display:none;text-align:center;font-size:10px;color:#000;"></div>
+    <div class="r-meta" id="r-nif-line" style="display:none;text-align:center;font-size:10px;color:#000;"></div>
     <hr class="r-divider">
     <!-- Infos vente - affichees selon les cases cochees dans Definicoes -->
     <div class="r-meta" id="r-num-line">N Recibo: <b id="r-num"></b></div>
@@ -3197,10 +3627,16 @@
     <hr class="r-divider">
     <div class="r-total" id="r-discount-line" style="display:none;font-size:13px;font-weight:700;"><span>DESCONTO</span><span id="r-discount"></span></div>
     <div class="r-total"><span>TOTAL</span><span id="r-total"></span></div>
+    <div class="r-qr" id="r-qr-wrap" style="display:none;">
+      <img id="r-qr-img" alt="QR code do recibo">
+      <div id="r-qr-label">Leia o QR code</div>
+    </div>
     <!-- Message de pied de page personnalisable -->
     <div class="r-thanks" id="r-thanks">Obrigado pela sua preferencia!</div>
     <div class="r-actions">
       <button class="r-print" onclick="printReceipt()">Imprimir</button>
+      <button class="r-pdf" onclick="downloadReceiptPdf()">Baixar PDF</button>
+      <button class="r-share" onclick="shareReceiptPdf()">Enviar</button>
       <button class="r-close" onclick="closeReceipt()">Fechar</button>
     </div>
   </div>

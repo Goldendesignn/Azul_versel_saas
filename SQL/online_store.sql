@@ -16,9 +16,6 @@ create table if not exists public.online_store_settings (
   updated_at timestamp with time zone not null default now()
 );
 
-alter table public.products
-  add column if not exists description text;
-
 alter table public.online_store_settings
   add column if not exists hero_title text;
 
@@ -34,70 +31,8 @@ alter table public.online_store_settings
 alter table public.online_store_settings
   add column if not exists logo_url text;
 
-insert into storage.buckets (
-  id,
-  name,
-  public,
-  file_size_limit,
-  allowed_mime_types
-)
-values (
-  'online-store-assets',
-  'online-store-assets',
-  true,
-  6291456,
-  array['image/png', 'image/jpeg', 'image/webp']
-)
-on conflict (id) do update
-set
-  public = excluded.public,
-  file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;
-
-drop policy if exists online_store_assets_public_read on storage.objects;
-create policy online_store_assets_public_read
-on storage.objects
-for select
-to public
-using (bucket_id = 'online-store-assets');
-
-drop policy if exists online_store_assets_insert_by_org on storage.objects;
-create policy online_store_assets_insert_by_org
-on storage.objects
-for insert
-to public
-with check (
-  bucket_id = 'online-store-assets'
-  and (storage.foldername(name))[1] =
-    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
-
-drop policy if exists online_store_assets_update_by_org on storage.objects;
-create policy online_store_assets_update_by_org
-on storage.objects
-for update
-to public
-using (
-  bucket_id = 'online-store-assets'
-  and (storage.foldername(name))[1] =
-    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-)
-with check (
-  bucket_id = 'online-store-assets'
-  and (storage.foldername(name))[1] =
-    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
-
-drop policy if exists online_store_assets_delete_by_org on storage.objects;
-create policy online_store_assets_delete_by_org
-on storage.objects
-for delete
-to public
-using (
-  bucket_id = 'online-store-assets'
-  and (storage.foldername(name))[1] =
-    ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
+alter table public.products
+  add column if not exists description text;
 
 create index if not exists idx_online_store_settings_slug
   on public.online_store_settings (slug)
@@ -105,19 +40,17 @@ create index if not exists idx_online_store_settings_slug
 
 alter table public.online_store_settings enable row level security;
 
-grant select, insert, update on public.online_store_settings to anon, authenticated;
+grant select on public.online_store_settings to anon, authenticated;
+grant insert, update on public.online_store_settings to authenticated;
 
 drop policy if exists online_store_settings_manage_by_org on public.online_store_settings;
+drop policy if exists online_store_settings_member_manage on public.online_store_settings;
 create policy online_store_settings_manage_by_org
 on public.online_store_settings
 for all
-to public
-using (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-)
-with check (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
+to authenticated
+using (public.is_org_member(organization_id))
+with check (public.is_org_member(organization_id));
 
 drop policy if exists online_store_settings_public_active on public.online_store_settings;
 create policy online_store_settings_public_active
@@ -212,7 +145,6 @@ begin
 end;
 $$;
 
-revoke all on function public.get_online_store(uuid, text) from public;
 grant execute on function public.get_online_store(uuid, text) to anon, authenticated;
 
 create table if not exists public.online_orders (
@@ -296,29 +228,27 @@ create index if not exists idx_online_order_items_order
 alter table public.online_orders enable row level security;
 alter table public.online_order_items enable row level security;
 
-grant select, update on public.online_orders to anon, authenticated;
-grant select on public.online_order_items to anon, authenticated;
+revoke all on public.online_orders from anon;
+revoke all on public.online_order_items from anon;
+grant select, update on public.online_orders to authenticated;
+grant select on public.online_order_items to authenticated;
 
 drop policy if exists online_orders_manage_by_org on public.online_orders;
+drop policy if exists online_orders_member_manage on public.online_orders;
 create policy online_orders_manage_by_org
 on public.online_orders
 for all
-to public
-using (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-)
-with check (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
+to authenticated
+using (public.is_org_member(organization_id))
+with check (public.is_org_member(organization_id));
 
 drop policy if exists online_order_items_select_by_org on public.online_order_items;
+drop policy if exists online_order_items_member_select on public.online_order_items;
 create policy online_order_items_select_by_org
 on public.online_order_items
 for select
-to public
-using (
-  organization_id::text = ((current_setting('request.headers'::text, true))::jsonb ->> 'x-organization-id'::text)
-);
+to authenticated
+using (public.is_org_member(organization_id));
 
 create or replace function public.touch_online_orders_updated_at()
 returns trigger
