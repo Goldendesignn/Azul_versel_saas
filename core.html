@@ -228,6 +228,7 @@
     <button class="tab" data-page="forn" onclick="goTo('forn', this)">Fornecedores</button>
     <button class="tab" data-page="tresorerie" onclick="goTo('tresorerie', this)">Tesouraria</button>
     <button class="tab" data-page="comptabilite" onclick="goTo('comptabilite', this)">Contabilidade</button>
+    <button class="tab" data-page="fiscalidade" onclick="goTo('fiscalidade', this)">Fiscalidade</button>
     <button class="tab" data-page="corrections" onclick="goTo('corrections', this)">Correcoes</button>
     <button class="tab" data-page="revendeurs" onclick="goTo('revendeurs', this)">Revendedores</button>
     <button class="tab" data-page="online" onclick="goTo('online', this)">Venda Online</button>
@@ -250,6 +251,7 @@
       forn: '<path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9h1"></path><path d="M9 13h1"></path><path d="M9 17h1"></path>',
       tresorerie: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
       comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
+      fiscalidade: '<path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path><path d="M19 3l2 2-2 2"></path>',
       corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
       revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
       online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
@@ -3382,6 +3384,69 @@
           </table>
         </div>
       </div>
+    </div>
+    <!-- FISCALIDADE -->
+    <div class="page" id="page-fiscalidade">
+      <section class="fiscal-hero">
+        <div>
+          <div class="eyebrow">Angola</div>
+          <h2>Fiscalidade</h2>
+          <p>Prepare IVA e controlo fiscal a partir das vendas, compras e despesas da empresa.</p>
+        </div>
+        <div class="fiscal-hero-actions">
+          <button class="filter-btn" type="button" onclick="loadFiscalidade()">Atualizar</button>
+          <span class="fiscal-status-pill" id="fiscal-health">A verificar</span>
+        </div>
+      </section>
+
+      <div class="fiscal-notice">Azul calcula uma estimativa com base nos movimentos registados. Confirme a declaracao, as facturas dedutiveis e os prazos no Portal do Contribuinte ou com o seu contabilista.</div>
+
+      <div class="fiscal-period-bar">
+        <div class="filter-group">
+          <label class="form-label" for="fiscal-month">Mes de referencia</label>
+          <input class="filter-input" id="fiscal-month" type="month">
+        </div>
+        <button class="filter-btn" type="button" onclick="loadFiscalidade()">Calcular periodo</button>
+      </div>
+
+      <div class="fiscal-kpi-grid">
+        <article class="fiscal-kpi"><span>Vendas do periodo</span><strong id="fiscal-sales">0 Kz</strong><small>Base usada para a estimativa</small></article>
+        <article class="fiscal-kpi"><span>IVA liquidado</span><strong id="fiscal-vat-output">0 Kz</strong><small>IVA estimado nas vendas</small></article>
+        <article class="fiscal-kpi"><span>IVA potencial a deduzir</span><strong id="fiscal-vat-input">0 Kz</strong><small>Compras e despesas com documento</small></article>
+        <article class="fiscal-kpi fiscal-kpi-primary"><span>Saldo estimado de IVA</span><strong id="fiscal-vat-balance">0 Kz</strong><small id="fiscal-vat-label">A calcular</small></article>
+      </div>
+
+      <div class="fiscal-grid">
+        <section class="card fiscal-profile-card">
+          <div class="card-title">Perfil fiscal da empresa</div>
+          <p class="fiscal-card-copy">Preencha uma vez. Estes dados ajudam a controlar a conformidade dos documentos.</p>
+          <div class="fiscal-form-grid">
+            <div class="form-group"><label class="form-label" for="fiscal-legal-name">Razao social</label><input class="form-input" id="fiscal-legal-name" placeholder="Nome legal da empresa"></div>
+            <div class="form-group"><label class="form-label" for="fiscal-nif">NIF</label><input class="form-input" id="fiscal-nif" inputmode="numeric" placeholder="Numero de identificacao fiscal"></div>
+            <div class="form-group"><label class="form-label" for="fiscal-regime">Regime fiscal</label><select class="form-input" id="fiscal-regime"><option value="geral">Regime geral</option><option value="simplificado">Regime simplificado</option><option value="outro">Outro / confirmar</option></select></div>
+            <div class="form-group"><label class="form-label" for="fiscal-vat-rate">Taxa IVA configurada (%)</label><input class="form-input" id="fiscal-vat-rate" type="number" min="0" max="100" step="0.01" value="14"></div>
+            <div class="form-group"><label class="form-label" for="fiscal-due-day">Dia lembrete mensal</label><input class="form-input" id="fiscal-due-day" type="number" min="1" max="31" placeholder="Ex.: 20"></div>
+            <label class="fiscal-checkbox"><input id="fiscal-price-includes-vat" type="checkbox" checked> Os precos registados ja incluem IVA</label>
+            <div class="form-group fiscal-form-wide"><label class="form-label" for="fiscal-address">Morada fiscal</label><input class="form-input" id="fiscal-address" placeholder="Morada usada nos documentos"></div>
+          </div>
+          <button type="button" class="form-submit fiscal-save-button" onclick="saveFiscalProfile()">Guardar perfil fiscal</button>
+        </section>
+
+        <section class="card fiscal-checklist-card">
+          <div class="card-title">Saude fiscal</div>
+          <p class="fiscal-card-copy">Os proximos passos mais importantes deste periodo.</p>
+          <div id="fiscal-checklist" class="fiscal-checklist"><div class="empty">A carregar...</div></div>
+          <div class="fiscal-period-actions">
+            <button type="button" class="filter-btn" onclick="saveFiscalPeriod('prepared')">Guardar preparacao</button>
+            <button type="button" class="filter-btn fiscal-declared-btn" onclick="saveFiscalPeriod('declared')">Marcar como declarada</button>
+          </div>
+        </section>
+      </div>
+
+      <section class="card fiscal-history-card">
+        <div class="card-title">Periodos fiscais preparados</div>
+        <div class="fiscal-history" id="fiscal-history"><div class="empty">Ainda sem periodos preparados.</div></div>
+      </section>
     </div>
     <!-- FORNECEDORES -->
     <!-- CORRECTIONS -->

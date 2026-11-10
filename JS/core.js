@@ -1192,6 +1192,20 @@ var AZUL_CONTEXT_HELP = {
     ],
     tip: "Antes de fechar o mes, confira vendas, despesas, compras e dividas."
   },
+  fiscalidade: {
+    title: "Fiscalidade",
+    subtitle: "Modulo de preparacao fiscal para a empresa em Angola.",
+    main: [
+      "Preencha primeiro a razao social, NIF, regime e taxa de IVA.",
+      "Escolha o mes para ver a estimativa baseada em vendas, compras e despesas.",
+      "Guarde a preparacao quando os documentos do periodo estiverem conferidos."
+    ],
+    care: [
+      "Azul nao envia declaracoes automaticamente a AGT.",
+      "Confirme sempre facturas dedutiveis, taxas e prazos com o contabilista ou Portal do Contribuinte."
+    ],
+    tip: "Feche cada mes fiscal antes de iniciar a declaracao para evitar esquecer documentos."
+  },
   corrections: {
     title: "Correcoes",
     subtitle: "Modulo para corrigir vendas, compras, despesas e pagamentos sem destruir o historico.",
@@ -1975,6 +1989,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:forn": { label: "Fornecedores", group: "Paginas" },
   "page:tresorerie": { label: "Tesouraria", group: "Paginas" },
   "page:comptabilite": { label: "Contabilidade", group: "Paginas" },
+  "page:fiscalidade": { label: "Fiscalidade", group: "Paginas" },
   "page:corrections": { label: "Correcoes", group: "Paginas" },
   "page:revendeurs": { label: "Revendedores", group: "Paginas" },
   "page:online": { label: "Venda Online", group: "Paginas" },
@@ -2003,6 +2018,8 @@ var AZUL_PERMISSION_CATALOG = {
   "import_order:receive": { label: "Validar mercadoria", group: "Importacoes" },
   "cash:view": { label: "Ver tesouraria", group: "Financeiro" },
   "accounting:view": { label: "Ver contabilidade", group: "Financeiro" },
+  "fiscal:view": { label: "Ver fiscalidade", group: "Financeiro" },
+  "fiscal:manage": { label: "Gerir perfil fiscal", group: "Financeiro" },
   "correction:create": { label: "Fazer correcoes", group: "Correcoes" },
   "import:create": { label: "Importar dados", group: "Importacao" },
   "hr:create": { label: "Gerir RH", group: "Recursos Humanos" },
@@ -2030,11 +2047,11 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   accountant: {
     name: "Contabilista",
-    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:corrections", "page:rh", "page:logistica", "page:importacoes", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "hr:create", "hr:view", "logistics:view", "import_order:view"]
+    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:corrections", "page:rh", "page:logistica", "page:importacoes", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "fiscal:view", "fiscal:manage", "hr:create", "hr:view", "logistics:view", "import_order:view"]
   },
   readonly: {
     name: "Leitura",
-    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:rh", "page:logistica", "page:importacoes", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "hr:view", "logistics:view", "import_order:view"]
+    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:rh", "page:logistica", "page:importacoes", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "fiscal:view", "hr:view", "logistics:view", "import_order:view"]
   },
   member: {
     name: "Utilizador",
@@ -2145,6 +2162,7 @@ var AZUL_MENU_MODULES = {
   forn: { group: "Pessoas", priority: 2, keywords: "fornecedor fornecedor pagamento divida compra" },
   tresorerie: { group: "Dinheiro", priority: 2, keywords: "tesouraria caixa dinheiro entrada saida saldo" },
   comptabilite: { group: "Relatorios", priority: 3, keywords: "contabilidade fiscal balanco resultado diario" },
+  fiscalidade: { group: "Dinheiro", priority: 2, keywords: "fiscal iva nif agt imposto declaracao factura" },
   corrections: { group: "Gestao avancada", priority: 3, keywords: "corrigir correcao anular erro venda compra pagamento" },
   revendeurs: { group: "Vendas", priority: 3, keywords: "revendedor consignacao retorno pagamento" },
   online: { group: "Vendas", priority: 2, keywords: "venda online whatsapp loja catalogo pedido" },
@@ -4587,6 +4605,7 @@ function goTo(page, btn) {
     if (page === 'clientes') renderClientDatalist();
     if (page === 'tresorerie') loadTesouraria();
     if (page === 'comptabilite') loadContabilidade();
+    if (page === 'fiscalidade') loadFiscalidade();
     if (page === 'corrections') loadCorrections();
     if (page === 'transfert') {
       applyStockModeUi();
@@ -17537,6 +17556,251 @@ function renderMobileAccountingJournal(rows) {
       '</div>' +
     '</div>';
   }).join('');
+}
+
+var azulFiscalSnapshot = null;
+
+function fiscalElement(id) {
+  return document.getElementById(id);
+}
+
+function fiscalSetText(id, value) {
+  var el = fiscalElement(id);
+  if (el) el.textContent = value;
+}
+
+function getFiscalSelectedMonth() {
+  var input = fiscalElement("fiscal-month");
+  var value = input && input.value;
+  if (/^\d{4}-\d{2}$/.test(value || "")) return value;
+
+  var today = new Date();
+  var fallback = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0");
+  if (input) input.value = fallback;
+  return fallback;
+}
+
+function getFiscalMonthBounds(month) {
+  var parts = String(month || "").split("-");
+  var year = Number(parts[0]);
+  var index = Number(parts[1]) - 1;
+  var lastDay = new Date(year, index + 1, 0).getDate();
+  return {
+    monthDate: month + "-01",
+    from: month + "-01",
+    to: month + "-" + String(lastDay).padStart(2, "0")
+  };
+}
+
+function getFiscalVatAmount(amount, rate, pricesIncludeVat) {
+  amount = Number(amount) || 0;
+  rate = Number(rate) || 0;
+  if (!rate) return 0;
+  return pricesIncludeVat ? amount * rate / (100 + rate) : amount * rate / 100;
+}
+
+function isFiscalSchemaUnavailable(error) {
+  var message = String((error && (error.message || error.details || error.code)) || "").toLowerCase();
+  return message.indexOf("fiscal_profiles") >= 0 || message.indexOf("fiscal_periods") >= 0 || message.indexOf("pgrst205") >= 0;
+}
+
+function readFiscalProfileFromForm() {
+  return {
+    legal_name: (fiscalElement("fiscal-legal-name") || {}).value || "",
+    nif: (fiscalElement("fiscal-nif") || {}).value || "",
+    fiscal_address: (fiscalElement("fiscal-address") || {}).value || "",
+    tax_regime: (fiscalElement("fiscal-regime") || {}).value || "geral",
+    vat_rate: Math.max(0, Math.min(100, Number((fiscalElement("fiscal-vat-rate") || {}).value) || 0)),
+    prices_include_vat: !!((fiscalElement("fiscal-price-includes-vat") || {}).checked),
+    iva_due_day: Number((fiscalElement("fiscal-due-day") || {}).value) || null
+  };
+}
+
+function fillFiscalProfile(profile) {
+  profile = profile || {};
+  var fields = {
+    "fiscal-legal-name": profile.legal_name || "",
+    "fiscal-nif": profile.nif || "",
+    "fiscal-address": profile.fiscal_address || "",
+    "fiscal-regime": profile.tax_regime || "geral",
+    "fiscal-vat-rate": profile.vat_rate != null ? profile.vat_rate : 14,
+    "fiscal-due-day": profile.iva_due_day || ""
+  };
+
+  Object.keys(fields).forEach(function(id) {
+    var el = fiscalElement(id);
+    if (el) el.value = fields[id];
+  });
+
+  var priceMode = fiscalElement("fiscal-price-includes-vat");
+  if (priceMode) priceMode.checked = profile.prices_include_vat !== false;
+}
+
+function renderFiscalChecklist(profile, metrics, period) {
+  var list = fiscalElement("fiscal-checklist");
+  if (!list) return;
+
+  var rows = [];
+  if (!profile.nif) rows.push({ kind: "warning", title: "Adicionar NIF", text: "Preencha o NIF antes de preparar documentos fiscais." });
+  if (!profile.legal_name) rows.push({ kind: "warning", title: "Completar razao social", text: "Use o nome legal que aparece nos documentos da empresa." });
+  if (!profile.iva_due_day) rows.push({ kind: "info", title: "Definir lembrete", text: "Escolha o dia do mes para Azul lembrar a verificacao fiscal." });
+  if (!metrics.sales) rows.push({ kind: "info", title: "Sem vendas no periodo", text: "Nao foram encontradas vendas neste mes." });
+  if (metrics.deductibleBase > 0) rows.push({ kind: "success", title: "Validar documentos de compra", text: "Confirme quais compras e despesas possuem factura valida para deducao." });
+  if (period && (period.status === "declared" || period.status === "paid")) rows.push({ kind: "success", title: "Periodo marcado como declarado", text: "Mantenha o comprovativo da declaracao guardado na empresa." });
+  if (!rows.length) rows.push({ kind: "success", title: "Periodo pronto para revisao", text: "Confira os documentos e guarde a preparacao antes de declarar." });
+
+  list.innerHTML = rows.map(function(row) {
+    return '<div class="fiscal-check fiscal-check-' + row.kind + '">' +
+      '<strong>' + escapeDespesaHtml(row.title) + '</strong>' +
+      '<span>' + escapeDespesaHtml(row.text) + '</span>' +
+    '</div>';
+  }).join("");
+}
+
+function renderFiscalHistory(rows) {
+  var container = fiscalElement("fiscal-history");
+  if (!container) return;
+  rows = rows || [];
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty">Ainda sem periodos preparados.</div>';
+    return;
+  }
+
+  var labels = { draft: "Rascunho", prepared: "Preparado", declared: "Declarado", paid: "Pago" };
+  container.innerHTML = rows.map(function(row) {
+    return '<div class="fiscal-history-row">' +
+      '<div><strong>' + escapeDespesaHtml(String(row.period_month || "").slice(0, 7)) + '</strong><small>' + escapeDespesaHtml(labels[row.status] || row.status || "Rascunho") + '</small></div>' +
+      '<div><span>Saldo IVA</span><b class="' + ((Number(row.vat_balance) || 0) > 0 ? "fiscal-amount-due" : "fiscal-amount-credit") + '">' + fmt(row.vat_balance || 0) + '</b></div>' +
+    '</div>';
+  }).join("");
+}
+
+async function getFiscalMetrics(organizationId, bounds, profile) {
+  var salesQuery = supabaseClient.from("sales").select("total,sale_date").eq("organization_id", organizationId).gte("sale_date", bounds.from).lte("sale_date", bounds.to);
+  var purchasesQuery = supabaseClient.from("purchases").select("total,created_at").eq("organization_id", organizationId).gte("created_at", bounds.from).lte("created_at", bounds.to + "T23:59:59");
+  var expensesQuery = supabaseClient.from("expenses").select("amount,expense_date").eq("organization_id", organizationId).gte("expense_date", bounds.from).lte("expense_date", bounds.to);
+  var results = await Promise.all([salesQuery, purchasesQuery, expensesQuery]);
+  var failed = results.find(function(result) { return result.error; });
+  if (failed) throw failed.error;
+
+  var sales = (results[0].data || []).reduce(function(sum, row) { return sum + (Number(row.total) || 0); }, 0);
+  var purchases = (results[1].data || []).reduce(function(sum, row) { return sum + (Number(row.total) || 0); }, 0);
+  var expenses = (results[2].data || []).reduce(function(sum, row) { return sum + (Number(row.amount) || 0); }, 0);
+  var deductibleBase = purchases + expenses;
+  var rate = Number(profile.vat_rate) || 0;
+  var includesVat = profile.prices_include_vat !== false;
+  var vatCollected = getFiscalVatAmount(sales, rate, includesVat);
+  var vatDeductible = getFiscalVatAmount(deductibleBase, rate, includesVat);
+
+  return {
+    sales: sales,
+    purchases: purchases,
+    expenses: expenses,
+    deductibleBase: deductibleBase,
+    vatCollected: vatCollected,
+    vatDeductible: vatDeductible,
+    vatBalance: vatCollected - vatDeductible
+  };
+}
+
+function renderFiscalMetrics(metrics) {
+  fiscalSetText("fiscal-sales", fmt(metrics.sales));
+  fiscalSetText("fiscal-vat-output", fmt(metrics.vatCollected));
+  fiscalSetText("fiscal-vat-input", fmt(metrics.vatDeductible));
+  fiscalSetText("fiscal-vat-balance", fmt(Math.abs(metrics.vatBalance)));
+  fiscalSetText("fiscal-vat-label", metrics.vatBalance > 0 ? "Estimativa a pagar" : metrics.vatBalance < 0 ? "Credito estimado" : "Sem saldo estimado");
+}
+
+async function loadFiscalidade() {
+  var month = getFiscalSelectedMonth();
+  var bounds = getFiscalMonthBounds(month);
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId || !supabaseClient) return;
+
+  fiscalSetText("fiscal-health", "A calcular");
+  try {
+    var profileResult = await supabaseClient.from("fiscal_profiles").select("*").eq("organization_id", organizationId).maybeSingle();
+    if (profileResult.error) throw profileResult.error;
+    var profile = profileResult.data || { vat_rate: 14, prices_include_vat: true, tax_regime: "geral" };
+    fillFiscalProfile(profile);
+
+    var metrics = await getFiscalMetrics(organizationId, bounds, profile);
+    var periodResult = await supabaseClient.from("fiscal_periods").select("*").eq("organization_id", organizationId).eq("period_month", bounds.monthDate).maybeSingle();
+    if (periodResult.error) throw periodResult.error;
+    var historyResult = await supabaseClient.from("fiscal_periods").select("period_month,status,vat_balance").eq("organization_id", organizationId).order("period_month", { ascending: false }).limit(6);
+    if (historyResult.error) throw historyResult.error;
+
+    azulFiscalSnapshot = { organizationId: organizationId, bounds: bounds, profile: profile, metrics: metrics, period: periodResult.data || null };
+    renderFiscalMetrics(metrics);
+    renderFiscalChecklist(profile, metrics, periodResult.data);
+    renderFiscalHistory(historyResult.data || []);
+    fiscalSetText("fiscal-health", profile.nif && profile.legal_name ? "Perfil completo" : "Perfil incompleto");
+  } catch (e) {
+    console.error("Erro fiscalidade:", e);
+    fiscalSetText("fiscal-health", "Configuracao pendente");
+    if (isFiscalSchemaUnavailable(e)) {
+      toast("Modulo fiscal pendente: execute a nova migracao no Supabase.", "error");
+      return;
+    }
+    toast("Erro fiscalidade: " + (e.message || e), "error");
+  }
+}
+
+async function saveFiscalProfile() {
+  if (!canRunAzulAction("fiscal:manage")) {
+    toast("Sem permissao para alterar o perfil fiscal.", "error");
+    return;
+  }
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) return;
+  var profile = readFiscalProfileFromForm();
+  if (profile.nif && !/^[0-9A-Za-z-]{6,20}$/.test(profile.nif.trim())) {
+    toast("Confirme o formato do NIF antes de guardar.", "error");
+    return;
+  }
+  try {
+    var result = await supabaseClient.from("fiscal_profiles").upsert(Object.assign({ organization_id: organizationId, updated_at: new Date().toISOString() }, profile), { onConflict: "organization_id" });
+    if (result.error) throw result.error;
+    toast("Perfil fiscal guardado.", "success");
+    await loadFiscalidade();
+  } catch (e) {
+    console.error("Erro ao guardar perfil fiscal:", e);
+    toast(isFiscalSchemaUnavailable(e) ? "Execute primeiro a migracao de fiscalidade no Supabase." : "Erro ao guardar perfil fiscal: " + (e.message || e), "error");
+  }
+}
+
+async function saveFiscalPeriod(status) {
+  if (!azulFiscalSnapshot) {
+    await loadFiscalidade();
+    return;
+  }
+  var snapshot = azulFiscalSnapshot;
+  try {
+    var userResult = await supabaseClient.auth.getUser();
+    var userId = userResult && userResult.data && userResult.data.user ? userResult.data.user.id : null;
+    var now = new Date().toISOString();
+    var record = {
+      organization_id: snapshot.organizationId,
+      period_month: snapshot.bounds.monthDate,
+      status: status,
+      taxable_sales: snapshot.metrics.sales,
+      deductible_purchases: snapshot.metrics.deductibleBase,
+      vat_collected: snapshot.metrics.vatCollected,
+      vat_deductible: snapshot.metrics.vatDeductible,
+      vat_balance: snapshot.metrics.vatBalance,
+      prepared_by: userId,
+      prepared_at: now,
+      updated_at: now
+    };
+    if (status === "declared") record.declared_at = now;
+    var result = await supabaseClient.from("fiscal_periods").upsert(record, { onConflict: "organization_id,period_month" });
+    if (result.error) throw result.error;
+    toast(status === "declared" ? "Periodo marcado como declarado. Guarde o comprovativo da AGT." : "Preparacao fiscal guardada.", "success");
+    await loadFiscalidade();
+  } catch (e) {
+    console.error("Erro ao guardar periodo fiscal:", e);
+    toast(isFiscalSchemaUnavailable(e) ? "Execute primeiro a migracao de fiscalidade no Supabase." : "Erro ao guardar periodo: " + (e.message || e), "error");
+  }
 }
 
 async function loadContabilidade() {
