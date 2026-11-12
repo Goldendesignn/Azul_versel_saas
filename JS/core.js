@@ -939,7 +939,7 @@ async function loadAzulNotifications(silent) {
 
     var result = await supabaseClient
       .from("notifications")
-      .select("*")
+      .select("id,organization_id,actor_user_id,target_roles,read_by,title,message,created_at,source_type")
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -1017,10 +1017,11 @@ function startAzulNotifications() {
 
   if (azulNotificationsTimer) clearInterval(azulNotificationsTimer);
   azulNotificationsTimer = setInterval(function() {
+    if (document.visibilityState !== "visible") return;
     loadAzulNotifications(true);
     checkOnlineOrderReminders(true);
     checkLogisticsReminders(true);
-  }, 120000);
+  }, 600000);
 }
 
 document.addEventListener("click", function(event) {
@@ -17676,16 +17677,17 @@ function renderFiscalHistory(rows) {
 }
 
 async function getFiscalMetrics(organizationId, bounds, profile) {
-  var salesQuery = supabaseClient.from("sales").select("total,sale_date").eq("organization_id", organizationId).gte("sale_date", bounds.from).lte("sale_date", bounds.to);
-  var purchasesQuery = supabaseClient.from("purchases").select("total,created_at").eq("organization_id", organizationId).gte("created_at", bounds.from).lte("created_at", bounds.to + "T23:59:59");
-  var expensesQuery = supabaseClient.from("expenses").select("amount,expense_date").eq("organization_id", organizationId).gte("expense_date", bounds.from).lte("expense_date", bounds.to);
-  var results = await Promise.all([salesQuery, purchasesQuery, expensesQuery]);
-  var failed = results.find(function(result) { return result.error; });
-  if (failed) throw failed.error;
+  var summaryResult = await supabaseClient.rpc("get_azul_period_summary", {
+    p_organization_id: organizationId,
+    p_from: bounds.from,
+    p_to: bounds.to
+  });
 
-  var sales = (results[0].data || []).reduce(function(sum, row) { return sum + (Number(row.total) || 0); }, 0);
-  var purchases = (results[1].data || []).reduce(function(sum, row) { return sum + (Number(row.total) || 0); }, 0);
-  var expenses = (results[2].data || []).reduce(function(sum, row) { return sum + (Number(row.amount) || 0); }, 0);
+  if (summaryResult.error) throw summaryResult.error;
+  var summary = (summaryResult.data || [])[0] || {};
+  var sales = Number(summary.sales_total) || 0;
+  var purchases = Number(summary.purchases_total) || 0;
+  var expenses = Number(summary.expenses_total) || 0;
   var deductibleBase = purchases + expenses;
   var rate = Number(profile.vat_rate) || 0;
   var includesVat = profile.prices_include_vat !== false;
