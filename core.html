@@ -229,6 +229,7 @@
     <button class="tab" data-page="tresorerie" onclick="goTo('tresorerie', this)">Tesouraria</button>
     <button class="tab" data-page="comptabilite" onclick="goTo('comptabilite', this)">Contabilidade</button>
     <button class="tab" data-page="fiscalidade" onclick="goTo('fiscalidade', this)">Fiscalidade</button>
+    <button class="tab" data-page="fiscal_documents" onclick="goTo('fiscal_documents', this)">Documentos fiscais</button>
     <button class="tab" data-page="corrections" onclick="goTo('corrections', this)">Correcoes</button>
     <button class="tab" data-page="revendeurs" onclick="goTo('revendeurs', this)">Revendedores</button>
     <button class="tab" data-page="online" onclick="goTo('online', this)">Venda Online</button>
@@ -252,6 +253,7 @@
       tresorerie: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
       comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
       fiscalidade: '<path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path><path d="M19 3l2 2-2 2"></path>',
+      fiscal_documents: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h6"></path>',
       corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
       revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
       online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
@@ -3467,6 +3469,39 @@
           </div>
         </div>
       </section>
+    </div>
+    <!-- DOCUMENTOS FISCAIS -->
+    <div class="page" id="page-fiscal_documents">
+      <section class="fiscal-hero">
+        <div>
+          <div class="eyebrow">Fiscal</div>
+          <h2>Documentos fiscais</h2>
+          <p>Consulte, imprima e corrija documentos sem alterar o historico da empresa.</p>
+        </div>
+        <div class="fiscal-hero-actions">
+          <button class="filter-btn" type="button" onclick="loadFiscalDocumentRegister()">Atualizar</button>
+          <span class="fiscal-status-pill" id="fiscal-document-count">A carregar</span>
+        </div>
+      </section>
+
+      <section class="card fiscal-document-filter-card">
+        <div class="fiscal-document-filters">
+          <div class="form-group"><label class="form-label" for="fiscal-document-search">Pesquisar</label><input class="form-input" id="fiscal-document-search" placeholder="Numero, cliente ou NIF" oninput="filterFiscalDocuments()"></div>
+          <div class="form-group"><label class="form-label" for="fiscal-document-type">Tipo</label><select class="form-input" id="fiscal-document-type" onchange="filterFiscalDocuments()"><option value="">Todos</option><option value="invoice">Factura</option><option value="invoice_receipt">Factura recibo</option><option value="credit_note">Nota de credito</option><option value="debit_note">Nota de debito</option></select></div>
+          <div class="form-group"><label class="form-label" for="fiscal-document-from">De</label><input class="form-input" id="fiscal-document-from" type="date" onchange="filterFiscalDocuments()"></div>
+          <div class="form-group"><label class="form-label" for="fiscal-document-to">Ate</label><input class="form-input" id="fiscal-document-to" type="date" onchange="filterFiscalDocuments()"></div>
+        </div>
+      </section>
+
+      <div class="fiscal-register-layout">
+        <section class="card fiscal-register-card">
+          <div class="card-title">Registo de documentos</div>
+          <div id="fiscal-document-register" class="fiscal-document-register"><div class="empty">A carregar documentos...</div></div>
+        </section>
+        <aside class="card fiscal-document-detail-card" id="fiscal-document-detail">
+          <div class="empty">Seleciona um documento para ver os detalhes.</div>
+        </aside>
+      </div>
     </div>
     <!-- FORNECEDORES -->
     <!-- CORRECTIONS -->

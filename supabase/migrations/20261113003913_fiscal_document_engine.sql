@@ -75,6 +75,29 @@ create policy fiscal_documents_member_select on public.fiscal_documents
 create policy fiscal_document_events_member_select on public.fiscal_document_events
   for select to authenticated using (public.is_org_member(organization_id));
 
+create or replace function public.can_manage_fiscal_documents(p_organization_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.organization_id = p_organization_id
+      and coalesce(nullif(p.status, ''), 'active') = 'active'
+      and lower(coalesce(nullif(p.role, ''), 'member')) in ('owner', 'manager', 'accountant')
+      and (
+        p.auth_user_id = auth.uid()
+        or lower(trim(coalesce(p.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+      )
+  );
+$$;
+
+revoke all on function public.can_manage_fiscal_documents(uuid) from public;
+grant execute on function public.can_manage_fiscal_documents(uuid) to authenticated;
+
 create or replace function public.azul_prevent_fiscal_history_change()
 returns trigger
 language plpgsql
@@ -119,7 +142,7 @@ begin
   if not found then
     raise exception 'Venda nao encontrada.';
   end if;
-  if not public.is_org_member(v_sale.organization_id) then
+  if not public.can_manage_fiscal_documents(v_sale.organization_id) then
     raise exception 'Sem permissao para emitir documento fiscal desta organizacao.';
   end if;
 
@@ -228,7 +251,7 @@ begin
     raise exception 'Documento fiscal de origem invalido.';
   end if;
 
-  if not public.is_org_member(v_original.organization_id) then
+  if not public.can_manage_fiscal_documents(v_original.organization_id) then
     raise exception 'Sem permissao para corrigir este documento fiscal.';
   end if;
 
@@ -288,3 +311,9 @@ $$;
 
 revoke all on function public.issue_fiscal_credit_note(uuid, text) from public;
 grant execute on function public.issue_fiscal_credit_note(uuid, text) to authenticated;
+
+insert into public.role_permissions (organization_id, role_code, permission)
+values
+  (null, 'accountant', 'page:fiscal_documents'),
+  (null, 'readonly', 'page:fiscal_documents')
+on conflict do nothing;

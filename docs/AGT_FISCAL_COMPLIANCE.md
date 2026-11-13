@@ -52,6 +52,8 @@ Les specifications detaillees du SMF ne sont pas disponibles publiquement sans a
 - Fonction transactionnelle serveur pour emettre une facture et reserver son numero. Les lignes, emetteur, client et totaux sont figees dans un instantane JSONB avec le document.
 - Politique RLS : ecriture uniquement via fonctions controlees ; lecture selon le role et l'organisation.
 - Fonction securisee de note de credit, rattachee a la facture d'origine avec motif obligatoire.
+- Module `Documentos fiscais` pour rechercher, consulter, imprimer et corriger les documents sans toucher aux donnees figees.
+- Les roles lecture consultent le registre ; seuls proprietaire, gerant et comptable peuvent emettre ou corriger au niveau de la base.
 - Migration des ventes existantes sans modifier leur historique.
 
 ### Lot 2 - Corrections reglementees

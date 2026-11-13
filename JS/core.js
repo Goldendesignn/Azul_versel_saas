@@ -1207,6 +1207,20 @@ var AZUL_CONTEXT_HELP = {
     ],
     tip: "Feche cada mes fiscal antes de iniciar a declaracao para evitar esquecer documentos."
   },
+  fiscal_documents: {
+    title: "Documentos fiscais",
+    subtitle: "Modulo para consultar, imprimir e corrigir documentos fiscais sem apagar o historico.",
+    main: [
+      "Pesquisa pelo numero, cliente, NIF ou periodo.",
+      "Seleciona um documento para consultar os valores que ficaram registados na emissao.",
+      "Usa nota de credito para corrigir uma factura ja emitida."
+    ],
+    care: [
+      "Uma factura emitida nao pode ser editada nem apagada.",
+      "Confirma o perfil fiscal antes de emitir o primeiro documento."
+    ],
+    tip: "Antes de enviar um documento ao cliente, confira o numero, o NIF e o total no painel de detalhes."
+  },
   corrections: {
     title: "Correcoes",
     subtitle: "Modulo para corrigir vendas, compras, despesas e pagamentos sem destruir o historico.",
@@ -1991,6 +2005,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:tresorerie": { label: "Tesouraria", group: "Paginas" },
   "page:comptabilite": { label: "Contabilidade", group: "Paginas" },
   "page:fiscalidade": { label: "Fiscalidade", group: "Paginas" },
+  "page:fiscal_documents": { label: "Documentos fiscais", group: "Paginas" },
   "page:corrections": { label: "Correcoes", group: "Paginas" },
   "page:revendeurs": { label: "Revendedores", group: "Paginas" },
   "page:online": { label: "Venda Online", group: "Paginas" },
@@ -2048,11 +2063,11 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   accountant: {
     name: "Contabilista",
-    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:corrections", "page:rh", "page:logistica", "page:importacoes", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "fiscal:view", "fiscal:manage", "hr:create", "hr:view", "logistics:view", "import_order:view"]
+    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:fiscal_documents", "page:corrections", "page:rh", "page:logistica", "page:importacoes", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "fiscal:view", "fiscal:manage", "hr:create", "hr:view", "logistics:view", "import_order:view"]
   },
   readonly: {
     name: "Leitura",
-    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:rh", "page:logistica", "page:importacoes", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "fiscal:view", "hr:view", "logistics:view", "import_order:view"]
+    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:fiscal_documents", "page:rh", "page:logistica", "page:importacoes", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "fiscal:view", "hr:view", "logistics:view", "import_order:view"]
   },
   member: {
     name: "Utilizador",
@@ -2164,6 +2179,7 @@ var AZUL_MENU_MODULES = {
   tresorerie: { group: "Dinheiro", priority: 2, keywords: "tesouraria caixa dinheiro entrada saida saldo" },
   comptabilite: { group: "Relatorios", priority: 3, keywords: "contabilidade fiscal balanco resultado diario" },
   fiscalidade: { group: "Dinheiro", priority: 2, keywords: "fiscal iva nif agt imposto declaracao factura" },
+  fiscal_documents: { group: "Dinheiro", priority: 2, keywords: "documento fiscal factura nota credito imprimir nif agt" },
   corrections: { group: "Gestao avancada", priority: 3, keywords: "corrigir correcao anular erro venda compra pagamento" },
   revendeurs: { group: "Vendas", priority: 3, keywords: "revendedor consignacao retorno pagamento" },
   online: { group: "Vendas", priority: 2, keywords: "venda online whatsapp loja catalogo pedido" },
@@ -2346,6 +2362,8 @@ var AZUL_ICON_PATHS = {
   forn: '<path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9h1"></path><path d="M9 13h1"></path><path d="M9 17h1"></path>',
   tresorerie: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
   comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
+  fiscalidade: '<path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path><path d="M19 3l2 2-2 2"></path>',
+  fiscal_documents: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h6"></path>',
   corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
   revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
   online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
@@ -2377,6 +2395,8 @@ var AZUL_PAGE_ICON_MAP = {
   forn: "forn",
   tresorerie: "tresorerie",
   comptabilite: "comptabilite",
+  fiscalidade: "fiscalidade",
+  fiscal_documents: "fiscal_documents",
   corrections: "corrections",
   revendeurs: "revendeurs",
   online: "online",
@@ -4607,6 +4627,7 @@ function goTo(page, btn) {
     if (page === 'tresorerie') loadTesouraria();
     if (page === 'comptabilite') loadContabilidade();
     if (page === 'fiscalidade') loadFiscalidade();
+    if (page === 'fiscal_documents') loadFiscalDocumentRegister();
     if (page === 'corrections') loadCorrections();
     if (page === 'transfert') {
       applyStockModeUi();
@@ -17782,6 +17803,171 @@ async function issueFiscalInvoice(saleId) {
     console.error("Erro ao emitir factura fiscal:", e);
     toast(isFiscalSchemaUnavailable(e) ? "Execute primeiro a nova migracao fiscal no Supabase." : "Nao foi possivel emitir a factura: " + (e.message || e), "error");
   }
+}
+
+var azulFiscalDocuments = [];
+var azulSelectedFiscalDocumentId = null;
+
+function fiscalDocumentTypeLabel(type) {
+  return { invoice: "Factura", invoice_receipt: "Factura recibo", credit_note: "Nota de credito", debit_note: "Nota de debito" }[type] || "Documento";
+}
+
+function filterFiscalDocuments() {
+  var search = String((fiscalElement("fiscal-document-search") || {}).value || "").trim().toLowerCase();
+  var type = String((fiscalElement("fiscal-document-type") || {}).value || "");
+  var from = String((fiscalElement("fiscal-document-from") || {}).value || "");
+  var to = String((fiscalElement("fiscal-document-to") || {}).value || "");
+  var filtered = azulFiscalDocuments.filter(function(row) {
+    var customer = row.customer_snapshot || {};
+    var issuer = row.issuer_snapshot || {};
+    var haystack = [row.document_number, customer.name, customer.nif, issuer.nif, row.reason].join(" ").toLowerCase();
+    var date = String(row.operation_date || "").slice(0, 10);
+    return (!search || haystack.indexOf(search) >= 0) &&
+      (!type || row.document_type === type) &&
+      (!from || date >= from) &&
+      (!to || date <= to);
+  });
+  renderFiscalDocumentRegister(filtered);
+}
+
+function renderFiscalDocumentRegister(rows) {
+  var container = fiscalElement("fiscal-document-register");
+  var count = fiscalElement("fiscal-document-count");
+  if (count) count.textContent = (rows || []).length + " documento(s)";
+  if (!container) return;
+  if (!rows || !rows.length) {
+    container.innerHTML = '<div class="empty">Nenhum documento encontrado com estes filtros.</div>';
+    return;
+  }
+
+  container.innerHTML = rows.map(function(row) {
+    var customer = row.customer_snapshot || {};
+    var active = String(row.id) === String(azulSelectedFiscalDocumentId) ? " active" : "";
+    return '<button class="fiscal-document-row' + active + '" type="button" onclick="selectFiscalDocument(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">' +
+      '<div><strong>' + escapeDespesaHtml(row.document_number || "Sem numero") + '</strong><small>' + escapeDespesaHtml(fiscalDocumentTypeLabel(row.document_type)) + ' - ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '</small></div>' +
+      '<div><strong>' + escapeDespesaHtml(customer.name || "Consumidor final") + '</strong><small>' + escapeDespesaHtml(customer.nif || "Sem NIF do cliente") + '</small></div>' +
+      '<div class="fiscal-document-total">' + fmt((row.totals_snapshot || {}).total || 0) + '</div>' +
+    '</button>';
+  }).join("");
+}
+
+function selectFiscalDocument(documentId) {
+  azulSelectedFiscalDocumentId = documentId;
+  filterFiscalDocuments();
+  renderFiscalDocumentDetail();
+}
+
+function renderFiscalDocumentDetail() {
+  var container = fiscalElement("fiscal-document-detail");
+  if (!container) return;
+  var row = azulFiscalDocuments.find(function(item) { return String(item.id) === String(azulSelectedFiscalDocumentId); });
+  if (!row) {
+    container.innerHTML = '<div class="empty">Seleciona um documento para ver os detalhes.</div>';
+    return;
+  }
+
+  var issuer = row.issuer_snapshot || {};
+  var customer = row.customer_snapshot || {};
+  var totals = row.totals_snapshot || {};
+  var lines = Array.isArray(row.lines_snapshot) ? row.lines_snapshot : [];
+  var source = row.source_snapshot || {};
+  var canCorrect = canRunAzulAction("fiscal:manage") && (row.document_type === "invoice" || row.document_type === "invoice_receipt");
+  var correctionButton = canCorrect ? '<button class="filter-btn" type="button" onclick="issueFiscalCreditNote(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">Nota de credito</button>' : "";
+  var sourceLabel = source.sale_receipt_no || source.original_document_number || "-";
+  var linesHtml = lines.length ? lines.map(function(line) {
+    return '<div class="fiscal-document-detail-line"><div><strong>' + escapeDespesaHtml(line.description || "Produto") + '</strong><small>' + Number(line.quantity || 0) + ' ' + escapeDespesaHtml(line.unit || "un") + ' x ' + fmt(line.unit_price || 0) + '</small></div><b>' + fmt(line.total || 0) + '</b></div>';
+  }).join("") : '<div class="empty">Sem linhas registadas.</div>';
+
+  container.innerHTML = '<div class="eyebrow">' + escapeDespesaHtml(fiscalDocumentTypeLabel(row.document_type)) + '</div>' +
+    '<h3>' + escapeDespesaHtml(row.document_number || "Sem numero") + '</h3>' +
+    '<dl>' +
+      '<div><dt>Data da operacao</dt><dd>' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '</dd></div>' +
+      '<div><dt>Emitente</dt><dd>' + escapeDespesaHtml(issuer.legal_name || "-") + '</dd></div>' +
+      '<div><dt>NIF emitente</dt><dd>' + escapeDespesaHtml(issuer.nif || "-") + '</dd></div>' +
+      '<div><dt>Cliente</dt><dd>' + escapeDespesaHtml(customer.name || "Consumidor final") + '</dd></div>' +
+      '<div><dt>Documento de origem</dt><dd>' + escapeDespesaHtml(sourceLabel) + '</dd></div>' +
+      '<div><dt>Total</dt><dd><strong>' + fmt(totals.total || 0) + '</strong></dd></div>' +
+    '</dl>' +
+    (row.reason ? '<div class="fiscal-check fiscal-check-warning"><strong>Motivo</strong><span>' + escapeDespesaHtml(row.reason) + '</span></div>' : "") +
+    '<div class="fiscal-document-detail-lines"><strong>Linhas do documento</strong>' + linesHtml + '</div>' +
+    '<div class="fiscal-document-detail-actions"><button class="filter-btn" type="button" onclick="printFiscalDocument(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">Imprimir</button>' + correctionButton + '</div>';
+}
+
+async function loadFiscalDocumentRegister() {
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId || !supabaseClient) return;
+  var container = fiscalElement("fiscal-document-register");
+  if (container) container.innerHTML = '<div class="empty">A carregar documentos...</div>';
+  try {
+    var result = await supabaseClient
+      .from("fiscal_documents")
+      .select("id,document_type,document_number,operation_date,issued_at,original_document_id,reason,issuer_snapshot,customer_snapshot,totals_snapshot,lines_snapshot,source_snapshot")
+      .eq("organization_id", organizationId)
+      .order("issued_at", { ascending: false })
+      .limit(200);
+    if (result.error) throw result.error;
+    azulFiscalDocuments = result.data || [];
+    if (azulSelectedFiscalDocumentId && !azulFiscalDocuments.some(function(row) { return String(row.id) === String(azulSelectedFiscalDocumentId); })) {
+      azulSelectedFiscalDocumentId = null;
+    }
+    filterFiscalDocuments();
+    renderFiscalDocumentDetail();
+  } catch (e) {
+    console.error("Erro ao carregar o registo fiscal:", e);
+    azulFiscalDocuments = [];
+    if (container) container.innerHTML = '<div class="empty">Nao foi possivel carregar os documentos.</div>';
+    fiscalSetText("fiscal-document-count", "Indisponivel");
+    if (!isFiscalSchemaUnavailable(e)) toast("Erro no registo fiscal: " + (e.message || e), "error");
+  }
+}
+
+async function issueFiscalCreditNote(documentId) {
+  if (!canRunAzulAction("fiscal:manage")) {
+    toast("Sem permissao para emitir uma nota de credito.", "error");
+    return;
+  }
+  var reason = prompt("Indique o motivo da nota de credito:");
+  if (reason == null) return;
+  reason = reason.trim();
+  if (!reason) {
+    toast("Indique o motivo da correcao.", "error");
+    return;
+  }
+  if (!confirm("Emitir nota de credito? A factura original continuara no historico.")) return;
+
+  try {
+    var result = await supabaseClient.rpc("issue_fiscal_credit_note", { p_original_document_id: documentId, p_reason: reason });
+    if (result.error) throw result.error;
+    var credit = (result.data || [])[0] || {};
+    toast("Nota de credito emitida: " + (credit.document_number || "documento fiscal"), "success");
+    azulSelectedFiscalDocumentId = credit.document_id || null;
+    await loadFiscalDocumentRegister();
+    await loadFiscalDocuments();
+  } catch (e) {
+    console.error("Erro ao emitir nota de credito:", e);
+    toast("Nao foi possivel emitir a nota de credito: " + (e.message || e), "error");
+  }
+}
+
+function printFiscalDocument(documentId) {
+  var row = azulFiscalDocuments.find(function(item) { return String(item.id) === String(documentId); });
+  if (!row) return;
+  var issuer = row.issuer_snapshot || {};
+  var customer = row.customer_snapshot || {};
+  var totals = row.totals_snapshot || {};
+  var lines = Array.isArray(row.lines_snapshot) ? row.lines_snapshot : [];
+  var popup = window.open("", "_blank", "width=760,height=900");
+  if (!popup) {
+    toast("Permita pop-ups para imprimir o documento.", "error");
+    return;
+  }
+  var lineRows = lines.map(function(line) {
+    return '<tr><td>' + escapeDespesaHtml(line.description || "Produto") + '</td><td>' + Number(line.quantity || 0) + ' ' + escapeDespesaHtml(line.unit || "un") + '</td><td>' + fmt(line.unit_price || 0) + '</td><td>' + fmt(line.total || 0) + '</td></tr>';
+  }).join("");
+  popup.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>' + escapeDespesaHtml(row.document_number || "Documento fiscal") + '</title><style>body{font-family:Arial,sans-serif;color:#111;margin:36px;max-width:700px}h1{margin:0 0 6px;font-size:24px}.muted{color:#555}table{border-collapse:collapse;width:100%;margin-top:24px}th,td{border-bottom:1px solid #ddd;padding:9px 4px;text-align:left}th:last-child,td:last-child{text-align:right}.total{font-size:20px;font-weight:700;text-align:right;margin-top:20px}.rule{border-top:1px solid #222;margin:20px 0}</style></head><body><h1>' + escapeDespesaHtml(issuer.legal_name || "Empresa") + '</h1><div class="muted">NIF: ' + escapeDespesaHtml(issuer.nif || "-") + '<br>Morada: ' + escapeDespesaHtml(issuer.address || "-") + '</div><div class="rule"></div><h2>' + escapeDespesaHtml(fiscalDocumentTypeLabel(row.document_type)) + ': ' + escapeDespesaHtml(row.document_number || "-") + '</h2><div>Data: ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '<br>Cliente: ' + escapeDespesaHtml(customer.name || "Consumidor final") + (customer.nif ? '<br>NIF cliente: ' + escapeDespesaHtml(customer.nif) : "") + '</div><table><thead><tr><th>Descricao</th><th>Quantidade</th><th>Preco unit.</th><th>Total</th></tr></thead><tbody>' + lineRows + '</tbody></table><div class="total">TOTAL: ' + fmt(totals.total || 0) + '</div></body></html>');
+  popup.document.close();
+  popup.focus();
+  setTimeout(function() { popup.print(); }, 250);
 }
 
 async function getFiscalMetrics(organizationId, bounds, profile) {
