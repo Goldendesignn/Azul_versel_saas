@@ -57,6 +57,8 @@ Les specifications detaillees du SMF ne sont pas disponibles publiquement sans a
 
 Les series FT, FR, RC, PP, NC et ND sont des conventions Azul provisoires. Leur libelle et leur format final seront ajustes selon la specification SMF/AGT recue lors de la validation.
 
+Chaque document emis apres la migration de format fige aussi la devise AOA, la base taxable, le taux et montant de TVA lorsque le document est fiscal, le statut de paiement et le lieu d'emission. Les anciens documents ne sont pas modifies retrospectivement afin de conserver une piste d'audit coherente.
+
 ## Plan de livraison technique
 
 ### Lot 1 - Noyau fiscal inviolable (implemente sur `develop`, a migrer)

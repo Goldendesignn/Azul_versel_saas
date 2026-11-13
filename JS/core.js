@@ -17875,6 +17875,7 @@ function renderFiscalDocumentDetail() {
   var issuer = row.issuer_snapshot || {};
   var customer = row.customer_snapshot || {};
   var totals = row.totals_snapshot || {};
+  var tax = row.tax_summary || {};
   var lines = Array.isArray(row.lines_snapshot) ? row.lines_snapshot : [];
   var source = row.source_snapshot || {};
   var canCorrect = canRunAzulAction("fiscal:manage") && (row.document_type === "invoice" || row.document_type === "invoice_receipt");
@@ -17895,6 +17896,8 @@ function renderFiscalDocumentDetail() {
       '<div><dt>Cliente</dt><dd>' + escapeDespesaHtml(customer.name || "Consumidor final") + '</dd></div>' +
       '<div><dt>Documento de origem</dt><dd>' + escapeDespesaHtml(sourceLabel) + '</dd></div>' +
       '<div><dt>Total</dt><dd><strong>' + fmt(totals.total || 0) + '</strong></dd></div>' +
+      (tax.status === "calculated" ? '<div><dt>IVA</dt><dd>' + fmt(tax.vat_amount || 0) + ' (' + Number(tax.vat_rate || 0) + '%)</dd></div>' : "") +
+      '<div><dt>Total</dt><dd><strong>' + fmt(totals.total || 0) + '</strong></dd></div>' +
     '</dl>' +
     (row.reason ? '<div class="fiscal-check fiscal-check-warning"><strong>Motivo</strong><span>' + escapeDespesaHtml(row.reason) + '</span></div>' : "") +
     '<div class="fiscal-document-detail-lines"><strong>Linhas do documento</strong>' + linesHtml + '</div>' +
@@ -17910,7 +17913,7 @@ async function loadFiscalDocumentRegister() {
   try {
     var result = await supabaseClient
       .from("fiscal_documents")
-      .select("id,document_type,document_number,operation_date,issued_at,original_document_id,reason,issuer_snapshot,customer_snapshot,totals_snapshot,lines_snapshot,source_snapshot,document_status,is_fiscal_document")
+      .select("id,document_type,document_number,operation_date,issued_at,original_document_id,reason,issuer_snapshot,customer_snapshot,totals_snapshot,lines_snapshot,source_snapshot,document_status,is_fiscal_document,currency_code,tax_summary,payment_snapshot,issue_place")
       .eq("organization_id", organizationId)
       .order("issued_at", { ascending: false })
       .limit(200);
@@ -18019,6 +18022,7 @@ function printFiscalDocument(documentId) {
   var issuer = row.issuer_snapshot || {};
   var customer = row.customer_snapshot || {};
   var totals = row.totals_snapshot || {};
+  var tax = row.tax_summary || {};
   var lines = Array.isArray(row.lines_snapshot) ? row.lines_snapshot : [];
   var popup = window.open("", "_blank", "width=760,height=900");
   if (!popup) {
@@ -18028,8 +18032,11 @@ function printFiscalDocument(documentId) {
   var lineRows = lines.map(function(line) {
     return '<tr><td>' + escapeDespesaHtml(line.description || "Produto") + '</td><td>' + Number(line.quantity || 0) + ' ' + escapeDespesaHtml(line.unit || "un") + '</td><td>' + fmt(line.unit_price || 0) + '</td><td>' + fmt(line.total || 0) + '</td></tr>';
   }).join("");
-  var commercialNotice = row.is_fiscal_document === false ? '<p><strong>NAO E DOCUMENTO FISCAL</strong></p>' : '';
-  popup.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>' + escapeDespesaHtml(row.document_number || "Documento fiscal") + '</title><style>body{font-family:Arial,sans-serif;color:#111;margin:36px;max-width:700px}h1{margin:0 0 6px;font-size:24px}.muted{color:#555}table{border-collapse:collapse;width:100%;margin-top:24px}th,td{border-bottom:1px solid #ddd;padding:9px 4px;text-align:left}th:last-child,td:last-child{text-align:right}.total{font-size:20px;font-weight:700;text-align:right;margin-top:20px}.rule{border-top:1px solid #222;margin:20px 0}</style></head><body><h1>' + escapeDespesaHtml(issuer.legal_name || "Empresa") + '</h1><div class="muted">NIF: ' + escapeDespesaHtml(issuer.nif || "-") + '<br>Morada: ' + escapeDespesaHtml(issuer.address || "-") + '</div><div class="rule"></div><h2>' + escapeDespesaHtml(fiscalDocumentTypeLabel(row.document_type)) + ': ' + escapeDespesaHtml(row.document_number || "-") + '</h2>' + commercialNotice + '<div>Data: ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '<br>Cliente: ' + escapeDespesaHtml(customer.name || "Consumidor final") + (customer.nif ? '<br>NIF cliente: ' + escapeDespesaHtml(customer.nif) : "") + '</div><table><thead><tr><th>Descricao</th><th>Quantidade</th><th>Preco unit.</th><th>Total</th></tr></thead><tbody>' + lineRows + '</tbody></table><div class="total">TOTAL: ' + fmt(totals.total || 0) + '</div></body></html>');
+  var notice = row.is_fiscal_document === false ? 'NAO E DOCUMENTO FISCAL' : (row.document_type === 'receipt' ? 'COMPROVATIVO DE PAGAMENTO' : 'DOCUMENTO FISCAL');
+  var taxRows = tax.status === 'calculated'
+    ? '<div class="summary"><span>Base tributavel</span><b>' + fmt(tax.taxable_amount || 0) + '</b><span>IVA (' + Number(tax.vat_rate || 0) + '%)</span><b>' + fmt(tax.vat_amount || 0) + '</b></div>'
+    : '';
+  popup.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>' + escapeDespesaHtml(row.document_number || "Documento fiscal") + '</title><style>body{font-family:Arial,sans-serif;color:#111;margin:36px;max-width:700px}h1{margin:0 0 6px;font-size:24px}.muted{color:#555}.notice{border:1px solid #111;display:inline-block;font-size:12px;font-weight:700;margin:12px 0;padding:5px 8px}.summary{display:grid;gap:6px;grid-template-columns:1fr auto;margin-top:18px}.summary span{color:#444}table{border-collapse:collapse;width:100%;margin-top:24px}th,td{border-bottom:1px solid #ddd;padding:9px 4px;text-align:left}th:last-child,td:last-child{text-align:right}.total{font-size:20px;font-weight:700;text-align:right;margin-top:20px}.rule{border-top:1px solid #222;margin:20px 0}</style></head><body><h1>' + escapeDespesaHtml(issuer.legal_name || "Empresa") + '</h1><div class="muted">NIF: ' + escapeDespesaHtml(issuer.nif || "-") + '<br>Morada: ' + escapeDespesaHtml(issuer.address || "-") + '</div><div class="rule"></div><h2>' + escapeDespesaHtml(fiscalDocumentTypeLabel(row.document_type)) + ': ' + escapeDespesaHtml(row.document_number || "-") + '</h2><div class="notice">' + notice + '</div><div>Data: ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '<br>Cliente: ' + escapeDespesaHtml(customer.name || "Consumidor final") + (customer.nif ? '<br>NIF cliente: ' + escapeDespesaHtml(customer.nif) : "") + '</div><table><thead><tr><th>Descricao</th><th>Quantidade</th><th>Preco unit.</th><th>Total</th></tr></thead><tbody>' + lineRows + '</tbody></table>' + taxRows + '<div class="total">TOTAL ' + escapeDespesaHtml(row.currency_code || 'AOA') + ': ' + fmt(totals.total || 0) + '</div></body></html>');
   popup.document.close();
   popup.focus();
   setTimeout(function() { popup.print(); }, 250);
