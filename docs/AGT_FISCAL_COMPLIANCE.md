@@ -80,7 +80,8 @@ Chaque document emis apres la migration de format fige aussi la devise AOA, la b
 ### Lot 3 - Archivage et controles
 
 - Preparation SAF-T de facturation par periode, avec historique des controles et erreurs exploitables dans le module `SAF-T`.
-- Chaine d'integrite SHA-256 sur les nouveaux documents fiscaux. Ce hash est un controle interne ; il ne remplace pas la signature privee requise par l'AGT.
+- Export XML technique de facturation et d'inventaire par une Edge Function protegee, telechargeable seulement apres controle et trace dans l'historique.
+- Signature RSA SHA-1/Base64 de la chaine documentaire par serie, realisee uniquement dans l'Edge Function avec une cle privee hors base et hors navigateur. La cle et sa version sont gardees dans les secrets Supabase.
 - Donnees maitre SAF-T sur les produits : type et code de taxe, avec controle des codes et unites manquants.
 - Rapport des numeros manquants, documents annules, corrections et ecritures sans NIF.
 - Sauvegarde/restauration testee et tracee.
@@ -94,7 +95,28 @@ Le module `SAF-T` actuellement livre ne cree pas encore de fichier XML officiel 
 3. Les identifiants, certificats ou environnement de test SMF/AGT.
 4. Les scenarios de recette et la validation ecrite de l'AGT.
 
-La future generation XML sera executee cote serveur, avec les secrets dans un coffre et jamais dans le navigateur ni dans la base applicative.
+La generation XML est executee cote serveur, avec les secrets dans l'Edge Function et jamais dans le navigateur ni dans la base applicative. Tant que le XSD et le numero de validation AGT ne sont pas renseignes, tout XML porte le statut technique et ne doit pas etre soumis.
+
+### Mise en service securisee de la signature
+
+1. Generer la paire RSA du fabricant dans un poste controle, puis conserver le fichier prive hors Git et hors des postes clients.
+2. Convertir la cle privee au format PKCS#8 Base64 pour le secret `AZUL_SAFT_RSA_PRIVATE_KEY_PKCS8_BASE64` de l'Edge Function.
+3. Configurer `AZUL_ALLOWED_ORIGINS`, `AZUL_SAFT_KEY_VERSION`, la version produit et, apres validation, `AZUL_SAFT_SOFTWARE_VALIDATION_NUMBER` dans les secrets Supabase.
+4. Deployer la fonction `saft-export`, executer les controles et verifier la signature avec la cle publique avant toute livraison AGT.
+5. Fournir la cle publique/certificat a l'AGT selon la procedure applicable, puis seulement ensuite retirer la mention technique de l'export.
+
+Exemple de creation locale de la paire (a executer uniquement sur un poste du fabricant protege) :
+
+```bash
+openssl genrsa -out azul-saft-private.pem 1024
+openssl pkcs8 -topk8 -nocrypt -in azul-saft-private.pem -out azul-saft-private-pkcs8.pem
+openssl base64 -A -in azul-saft-private-pkcs8.pem -out azul-saft-private-pkcs8.base64
+openssl rsa -in azul-saft-private.pem -pubout -out azul-saft-public.pem
+```
+
+Le contenu de `azul-saft-private-pkcs8.base64` est place une seule fois dans le secret Supabase. Les fichiers prives sont ensuite retires du poste de developpement et conserves dans le coffre-fort du fabricant ; seule la cle publique peut etre transmise a l'AGT.
+
+Le fichier [`.env.example`](../supabase/functions/.env.example) liste uniquement les noms des secrets : aucune cle privee ne doit etre envoyee dans GitHub, Vercel ou le navigateur.
 
 ### Lot 4 - Adaptateur SMF/AGT
 

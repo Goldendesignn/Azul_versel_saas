@@ -17868,10 +17868,11 @@ function renderFiscalDocumentRegister(rows) {
   container.innerHTML = rows.map(function(row) {
     var customer = row.customer_snapshot || {};
     var active = String(row.id) === String(azulSelectedFiscalDocumentId) ? " active" : "";
+    var signature = row.signature_status === "signed" ? "Assinado" : "Assinatura pendente";
     return '<button class="fiscal-document-row' + active + '" type="button" onclick="selectFiscalDocument(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">' +
       '<div><strong>' + escapeDespesaHtml(row.document_number || "Sem numero") + '</strong><small>' + escapeDespesaHtml(fiscalDocumentTypeLabel(row.document_type)) + ' - ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '</small></div>' +
       '<div><strong>' + escapeDespesaHtml(customer.name || "Consumidor final") + '</strong><small>' + escapeDespesaHtml(customer.nif || "Sem NIF do cliente") + '</small></div>' +
-      '<div class="fiscal-document-total">' + fmt((row.totals_snapshot || {}).total || 0) + '</div>' +
+      '<div class="fiscal-document-total"><strong>' + fmt((row.totals_snapshot || {}).total || 0) + '</strong><small>' + signature + '</small></div>' +
     '</button>';
   }).join("");
 }
@@ -17914,6 +17915,7 @@ function renderFiscalDocumentDetail() {
       '<div><dt>NIF emitente</dt><dd>' + escapeDespesaHtml(issuer.nif || "-") + '</dd></div>' +
       '<div><dt>Cliente</dt><dd>' + escapeDespesaHtml(customer.name || "Consumidor final") + '</dd></div>' +
       '<div><dt>Documento de origem</dt><dd>' + escapeDespesaHtml(sourceLabel) + '</dd></div>' +
+      '<div><dt>Assinatura SAF-T</dt><dd>' + (row.signature_status === "signed" ? 'Assinada - chave ' + escapeDespesaHtml(String(row.signature_key_version || "")) : 'Pendente de assinatura segura') + '</dd></div>' +
       '<div><dt>Total</dt><dd><strong>' + fmt(totals.total || 0) + '</strong></dd></div>' +
       (tax.status === "calculated" ? '<div><dt>IVA</dt><dd>' + fmt(tax.vat_amount || 0) + ' (' + Number(tax.vat_rate || 0) + '%)</dd></div>' : "") +
       '<div><dt>Total</dt><dd><strong>' + fmt(totals.total || 0) + '</strong></dd></div>' +
@@ -17932,7 +17934,7 @@ async function loadFiscalDocumentRegister() {
   try {
     var result = await supabaseClient
       .from("fiscal_documents")
-      .select("id,document_type,document_number,operation_date,issued_at,original_document_id,reason,issuer_snapshot,customer_snapshot,totals_snapshot,lines_snapshot,source_snapshot,document_status,is_fiscal_document,currency_code,tax_summary,payment_snapshot,issue_place")
+      .select("id,document_type,document_number,operation_date,issued_at,original_document_id,reason,issuer_snapshot,customer_snapshot,totals_snapshot,lines_snapshot,source_snapshot,document_status,is_fiscal_document,currency_code,tax_summary,payment_snapshot,issue_place,signature_status,signature_key_version")
       .eq("organization_id", organizationId)
       .order("issued_at", { ascending: false })
       .limit(200);
@@ -18183,6 +18185,75 @@ async function prepareSaftBillingExport() {
     if (button) {
       button.disabled = false;
       button.textContent = "Preparar controlo SAF-T";
+    }
+  }
+}
+
+async function downloadSaftXml() {
+  if (!canRunAzulAction("fiscal:manage")) {
+    toast("Sem permissao para gerar ficheiros SAF-T.", "error");
+    return;
+  }
+  if (!supabaseClient || !supabaseClient.functions) {
+    toast("Servico SAF-T indisponivel. Confirme a configuracao Supabase.", "error");
+    return;
+  }
+  var organizationId = getAzulOrganizationId();
+  var period = getSaftPeriodFromForm();
+  var exportType = String((fiscalElement("saft-export-type") || {}).value || "billing");
+  if (!organizationId || !period.from || !period.to || period.from > period.to) {
+    toast("Indique um periodo SAF-T valido.", "error");
+    return;
+  }
+  var button = fiscalElement("saft-download-button");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A gerar XML...";
+  }
+  fiscalSetText("saft-status", "A gerar XML");
+  try {
+    var result = await supabaseClient.functions.invoke("saft-export", {
+      body: {
+        organization_id: organizationId,
+        export_type: exportType,
+        period_from: period.from,
+        period_to: period.to
+      }
+    });
+    if (result.error) {
+      var response = result.error.context;
+      var detail = response && typeof response.json === "function" ? await response.json().catch(function() { return null; }) : null;
+      throw new Error((detail && detail.error) || result.error.message || "EXPORT_FAILED");
+    }
+    var blob = result.data instanceof Blob
+      ? result.data
+      : new Blob([typeof result.data === "string" ? result.data : JSON.stringify(result.data)], { type: "application/xml;charset=utf-8" });
+    var fileName = "SAFT-AO-" + exportType + "-" + period.from + "-" + period.to + ".xml";
+    var anchor = document.createElement("a");
+    anchor.href = URL.createObjectURL(blob);
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(anchor.href);
+    fiscalSetText("saft-status", "XML baixado");
+    toast("Ficheiro XML tecnico gerado. Valide-o antes de qualquer submissao AGT.", "success");
+    await loadSaftPage();
+  } catch (e) {
+    console.error("Erro ao gerar XML SAF-T:", e);
+    var message = e && e.message ? e.message : String(e || "");
+    fiscalSetText("saft-status", "Erro de exportacao");
+    if (message.indexOf("SAFT_SIGNING_NOT_CONFIGURED") >= 0) {
+      toast("A chave privada SAF-T ainda nao esta configurada no servidor seguro.", "error");
+    } else if (message.indexOf("PREFLIGHT_FAILED") >= 0) {
+      toast("Corrija primeiro os avisos do controlo SAF-T.", "error");
+    } else {
+      toast("Nao foi possivel gerar o XML SAF-T: " + message, "error");
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Baixar XML técnico";
     }
   }
 }

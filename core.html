@@ -3546,6 +3546,11 @@
           <div class="form-group"><label class="form-label" for="saft-to">Até</label><input class="form-input" type="date" id="saft-to"></div>
           <div class="saft-preflight-action"><button class="form-submit" type="button" id="saft-preflight-button" onclick="prepareSaftBillingExport()">Preparar controlo SAF-T</button></div>
         </div>
+        <div class="saft-download-grid">
+          <div class="form-group"><label class="form-label" for="saft-export-type">Ficheiro técnico</label><select class="form-input" id="saft-export-type"><option value="billing">SAF-T de faturação</option><option value="inventory">SAF-T de inventário</option></select></div>
+          <div class="saft-preflight-action"><button class="filter-btn" type="button" id="saft-download-button" onclick="downloadSaftXml()">Baixar XML técnico</button></div>
+        </div>
+        <p class="saft-export-note">O ficheiro fica identificado como técnico até à validação oficial do XSD, número de validação e submissão AGT.</p>
       </section>
 
       <section class="saft-results-grid">
