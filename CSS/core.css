@@ -798,6 +798,32 @@ html[data-theme="dark"] small {
   text-align: right;
 }
 
+.fiscal-document-head,
+.fiscal-document-columns {
+  display: flex;
+  gap: 18px;
+}
+
+.fiscal-document-head {
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.fiscal-document-columns > div {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.fiscal-document-columns h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.fiscal-document-action {
+  margin-top: 7px;
+}
+
 .fiscal-amount-due { color: var(--red); }
 .fiscal-amount-credit { color: var(--green); }
 
@@ -808,9 +834,12 @@ html[data-theme="dark"] small {
 
 @media (max-width: 560px) {
   .fiscal-hero,
-  .fiscal-period-bar { align-items: stretch; flex-direction: column; }
+  .fiscal-period-bar,
+  .fiscal-document-head,
+  .fiscal-document-columns { align-items: stretch; flex-direction: column; }
   .fiscal-period-bar .filter-btn,
-  .fiscal-save-button { width: 100%; }
+  .fiscal-save-button,
+  .fiscal-document-head .filter-btn { width: 100%; }
   .fiscal-kpi-grid,
   .fiscal-form-grid { grid-template-columns: 1fr; }
   .fiscal-form-wide { grid-column: auto; }

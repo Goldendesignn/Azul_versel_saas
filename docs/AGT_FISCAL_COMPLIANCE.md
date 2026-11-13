@@ -20,9 +20,9 @@ Les specifications detaillees du SMF ne sont pas disponibles publiquement sans a
 | --- | --- | --- | --- |
 | Raison sociale, NIF et adresse de l'emetteur | Partiel : profil fiscal existant | Rendre ces champs obligatoires pour tout document fiscal | P0 |
 | Identification du client et NIF | Partiel : client facultatif dans la vente | Regles explicites par type de document et seuil AGT | P0 |
-| Numero sequentiel et chronologique | Partiel : `receipt_no` existe | Series fiscales verrouillees par entreprise, exercice et type de document | P0 |
-| Impossibilite de modifier une facture emise | Non garanti | Verrou fiscal apres emission ; aucun `UPDATE` ni `DELETE` direct | P0 |
-| Annulation tracee | Partiel : module Corrections | Notes de credit/debit liees a la facture originale, raison, auteur et date | P0 |
+| Numero sequentiel et chronologique | Implemente dans le noyau fiscal | Format final a confirmer avec l'AGT | P0 |
+| Impossibilite de modifier une facture emise | Implemente dans le noyau fiscal | Tests de non-regression et validation AGT | P0 |
+| Annulation tracee | Note de credit liee implementee | Ajouter note de debit et parcours complet de correction | P0 |
 | Produits/services, quantites, prix final et impots | Partiel : lignes de vente et total | Instantane fiscal des lignes, taux, base, TVA et remises | P0 |
 | Date d'operation et date d'emission | Partiel | Enregistrer les deux dates, fuseau Angola et horodatage non modifiable | P0 |
 | Facture, facture-recibo, recibo, proforma, note de credit/debit | Partiel : recu et proforma | Modeles, numeros et effets comptables separes pour chaque type | P0 |
@@ -46,11 +46,12 @@ Les specifications detaillees du SMF ne sont pas disponibles publiquement sans a
 
 ## Plan de livraison technique
 
-### Lot 1 - Noyau fiscal inviolable
+### Lot 1 - Noyau fiscal inviolable (implemente sur `develop`, a migrer)
 
-- Tables `fiscal_document_series`, `fiscal_documents`, `fiscal_document_lines`, `fiscal_document_events`.
-- Fonction transactionnelle serveur pour emettre une facture et reserver son numero.
+- Tables `fiscal_document_series`, `fiscal_documents`, `fiscal_document_events`.
+- Fonction transactionnelle serveur pour emettre une facture et reserver son numero. Les lignes, emetteur, client et totaux sont figees dans un instantane JSONB avec le document.
 - Politique RLS : ecriture uniquement via fonctions controlees ; lecture selon le role et l'organisation.
+- Fonction securisee de note de credit, rattachee a la facture d'origine avec motif obligatoire.
 - Migration des ventes existantes sans modifier leur historique.
 
 ### Lot 2 - Corrections reglementees

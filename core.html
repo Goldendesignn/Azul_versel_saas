@@ -3447,6 +3447,26 @@
         <div class="card-title">Periodos fiscais preparados</div>
         <div class="fiscal-history" id="fiscal-history"><div class="empty">Ainda sem periodos preparados.</div></div>
       </section>
+
+      <section class="card fiscal-history-card">
+        <div class="fiscal-document-head">
+          <div>
+            <div class="card-title">Documentos fiscais</div>
+            <p class="fiscal-card-copy">Emita uma factura por cada venda e use nota de credito para corrigir um documento ja emitido.</p>
+          </div>
+          <button class="filter-btn" type="button" onclick="loadFiscalDocuments()">Atualizar documentos</button>
+        </div>
+        <div class="fiscal-document-columns">
+          <div>
+            <h3>Vendas a facturar</h3>
+            <div class="fiscal-history" id="fiscal-pending-sales"><div class="empty">A carregar...</div></div>
+          </div>
+          <div>
+            <h3>Ultimos documentos emitidos</h3>
+            <div class="fiscal-history" id="fiscal-documents"><div class="empty">A carregar...</div></div>
+          </div>
+        </div>
+      </section>
     </div>
     <!-- FORNECEDORES -->
     <!-- CORRECTIONS -->

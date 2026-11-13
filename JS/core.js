@@ -17602,7 +17602,7 @@ function getFiscalVatAmount(amount, rate, pricesIncludeVat) {
 
 function isFiscalSchemaUnavailable(error) {
   var message = String((error && (error.message || error.details || error.code)) || "").toLowerCase();
-  return message.indexOf("fiscal_profiles") >= 0 || message.indexOf("fiscal_periods") >= 0 || message.indexOf("pgrst205") >= 0;
+  return message.indexOf("fiscal_profiles") >= 0 || message.indexOf("fiscal_periods") >= 0 || message.indexOf("fiscal_documents") >= 0 || message.indexOf("pgrst205") >= 0;
 }
 
 function readFiscalProfileFromForm() {
@@ -17676,6 +17676,114 @@ function renderFiscalHistory(rows) {
   }).join("");
 }
 
+function renderFiscalDocuments(documents, pendingSales) {
+  var documentContainer = fiscalElement("fiscal-documents");
+  var pendingContainer = fiscalElement("fiscal-pending-sales");
+  documents = documents || [];
+  pendingSales = pendingSales || [];
+
+  if (documentContainer) {
+    if (!documents.length) {
+      documentContainer.innerHTML = '<div class="empty">Ainda sem documentos emitidos.</div>';
+    } else {
+      var typeLabels = { invoice: "Factura", invoice_receipt: "Factura recibo", credit_note: "Nota de credito", debit_note: "Nota de debito" };
+      documentContainer.innerHTML = documents.map(function(row) {
+        return '<div class="fiscal-history-row">' +
+          '<div><strong>' + escapeDespesaHtml(row.document_number || "Sem numero") + '</strong><small>' + escapeDespesaHtml(typeLabels[row.document_type] || row.document_type || "Documento") + ' - ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '</small></div>' +
+          '<div><span>Total</span><b>' + fmt((row.totals_snapshot || {}).total || 0) + '</b></div>' +
+        '</div>';
+      }).join("");
+    }
+  }
+
+  if (!pendingContainer) return;
+  if (!pendingSales.length) {
+    pendingContainer.innerHTML = '<div class="empty">Nenhuma venda pendente neste periodo.</div>';
+    return;
+  }
+
+  var canIssue = canRunAzulAction("fiscal:manage");
+  pendingContainer.innerHTML = pendingSales.map(function(row) {
+    var action = canIssue
+      ? '<button class="filter-btn fiscal-document-action" type="button" onclick="issueFiscalInvoice(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">Emitir factura</button>'
+      : '<small>Sem permissao para emitir</small>';
+    return '<div class="fiscal-history-row">' +
+      '<div><strong>' + escapeDespesaHtml(row.receipt_no || "Venda sem numero") + '</strong><small>' + escapeDespesaHtml(row.client_name || "Consumidor final") + ' - ' + escapeDespesaHtml(String(row.sale_date || "").slice(0, 10)) + '</small>' + action + '</div>' +
+      '<div><span>Total</span><b>' + fmt(row.total || 0) + '</b></div>' +
+    '</div>';
+  }).join("");
+}
+
+async function loadFiscalDocuments() {
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId || !supabaseClient) return;
+
+  var documentContainer = fiscalElement("fiscal-documents");
+  var pendingContainer = fiscalElement("fiscal-pending-sales");
+  if (documentContainer) documentContainer.innerHTML = '<div class="empty">A carregar...</div>';
+  if (pendingContainer) pendingContainer.innerHTML = '<div class="empty">A carregar...</div>';
+
+  try {
+    var bounds = getFiscalMonthBounds(getFiscalSelectedMonth());
+    var salesResult = await supabaseClient
+      .from("sales")
+      .select("id,receipt_no,sale_date,client_name,total")
+      .eq("organization_id", organizationId)
+      .gte("sale_date", bounds.from)
+      .lte("sale_date", bounds.to)
+      .order("sale_date", { ascending: false })
+      .limit(50);
+    if (salesResult.error) throw salesResult.error;
+
+    var documentsResult = await supabaseClient
+      .from("fiscal_documents")
+      .select("id,sale_id,document_type,document_number,operation_date,totals_snapshot")
+      .eq("organization_id", organizationId)
+      .order("issued_at", { ascending: false })
+      .limit(10);
+    if (documentsResult.error) throw documentsResult.error;
+
+    var saleIds = (salesResult.data || []).map(function(row) { return row.id; });
+    var issuedSales = new Set();
+    if (saleIds.length) {
+      var issuedResult = await supabaseClient
+        .from("fiscal_documents")
+        .select("sale_id")
+        .eq("organization_id", organizationId)
+        .eq("document_type", "invoice")
+        .in("sale_id", saleIds);
+      if (issuedResult.error) throw issuedResult.error;
+      issuedSales = new Set((issuedResult.data || []).filter(function(row) { return row.sale_id; }).map(function(row) { return String(row.sale_id); }));
+    }
+    var pendingSales = (salesResult.data || []).filter(function(row) { return !issuedSales.has(String(row.id)); });
+    renderFiscalDocuments(documentsResult.data || [], pendingSales);
+  } catch (e) {
+    console.error("Erro ao carregar documentos fiscais:", e);
+    if (documentContainer) documentContainer.innerHTML = '<div class="empty">Nao foi possivel carregar os documentos.</div>';
+    if (pendingContainer) pendingContainer.innerHTML = '<div class="empty">Nao foi possivel carregar as vendas.</div>';
+    if (!isFiscalSchemaUnavailable(e)) toast("Erro nos documentos fiscais: " + (e.message || e), "error");
+  }
+}
+
+async function issueFiscalInvoice(saleId) {
+  if (!canRunAzulAction("fiscal:manage")) {
+    toast("Sem permissao para emitir documentos fiscais.", "error");
+    return;
+  }
+  if (!saleId || !confirm("Emitir uma factura fiscal para esta venda? O documento nao podera ser alterado nem apagado.")) return;
+
+  try {
+    var result = await supabaseClient.rpc("issue_fiscal_invoice", { p_sale_id: saleId });
+    if (result.error) throw result.error;
+    var documentRow = (result.data || [])[0] || {};
+    toast("Factura emitida: " + (documentRow.document_number || "documento fiscal"), "success");
+    await loadFiscalDocuments();
+  } catch (e) {
+    console.error("Erro ao emitir factura fiscal:", e);
+    toast(isFiscalSchemaUnavailable(e) ? "Execute primeiro a nova migracao fiscal no Supabase." : "Nao foi possivel emitir a factura: " + (e.message || e), "error");
+  }
+}
+
 async function getFiscalMetrics(organizationId, bounds, profile) {
   var summaryResult = await supabaseClient.rpc("get_azul_period_summary", {
     p_organization_id: organizationId,
@@ -17736,6 +17844,7 @@ async function loadFiscalidade() {
     renderFiscalMetrics(metrics);
     renderFiscalChecklist(profile, metrics, periodResult.data);
     renderFiscalHistory(historyResult.data || []);
+    await loadFiscalDocuments();
     fiscalSetText("fiscal-health", profile.nif && profile.legal_name ? "Perfil completo" : "Perfil incompleto");
   } catch (e) {
     console.error("Erro fiscalidade:", e);
