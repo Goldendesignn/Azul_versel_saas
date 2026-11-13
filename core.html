@@ -3487,10 +3487,25 @@
       <section class="card fiscal-document-filter-card">
         <div class="fiscal-document-filters">
           <div class="form-group"><label class="form-label" for="fiscal-document-search">Pesquisar</label><input class="form-input" id="fiscal-document-search" placeholder="Numero, cliente ou NIF" oninput="filterFiscalDocuments()"></div>
-          <div class="form-group"><label class="form-label" for="fiscal-document-type">Tipo</label><select class="form-input" id="fiscal-document-type" onchange="filterFiscalDocuments()"><option value="">Todos</option><option value="invoice">Factura</option><option value="invoice_receipt">Factura recibo</option><option value="credit_note">Nota de credito</option><option value="debit_note">Nota de debito</option></select></div>
+          <div class="form-group"><label class="form-label" for="fiscal-document-type">Tipo</label><select class="form-input" id="fiscal-document-type" onchange="filterFiscalDocuments()"><option value="">Todos</option><option value="invoice">Factura</option><option value="invoice_receipt">Factura recibo</option><option value="receipt">Recibo</option><option value="proforma">Proforma</option><option value="credit_note">Nota de credito</option><option value="debit_note">Nota de debito</option></select></div>
           <div class="form-group"><label class="form-label" for="fiscal-document-from">De</label><input class="form-input" id="fiscal-document-from" type="date" onchange="filterFiscalDocuments()"></div>
           <div class="form-group"><label class="form-label" for="fiscal-document-to">Ate</label><input class="form-input" id="fiscal-document-to" type="date" onchange="filterFiscalDocuments()"></div>
         </div>
+      </section>
+
+      <section class="card fiscal-proforma-card">
+        <div class="card-title">Nova proforma</div>
+        <p class="fiscal-card-copy">Orcamento comercial. Nao altera stock, caixa ou impostos e sera identificado como documento nao fiscal.</p>
+        <div class="fiscal-proforma-grid">
+          <div class="form-group"><label class="form-label" for="proforma-client-name">Cliente</label><input class="form-input" id="proforma-client-name" placeholder="Nome do cliente"></div>
+          <div class="form-group"><label class="form-label" for="proforma-client-nif">NIF do cliente</label><input class="form-input" id="proforma-client-nif" placeholder="Opcional"></div>
+          <div class="form-group"><label class="form-label" for="proforma-description">Produto ou servico</label><input class="form-input" id="proforma-description" placeholder="Ex.: Instalacao electrica"></div>
+          <div class="form-group"><label class="form-label" for="proforma-quantity">Quantidade</label><input class="form-input" id="proforma-quantity" type="number" min="0.01" step="0.01" value="1"></div>
+          <div class="form-group"><label class="form-label" for="proforma-unit">Unidade</label><input class="form-input" id="proforma-unit" value="un"></div>
+          <div class="form-group"><label class="form-label" for="proforma-price">Preco unitario</label><input class="form-input" id="proforma-price" type="number" min="0" step="0.01" placeholder="0"></div>
+          <div class="form-group fiscal-form-wide"><label class="form-label" for="proforma-note">Observacao</label><input class="form-input" id="proforma-note" placeholder="Prazo ou condicao comercial (opcional)"></div>
+        </div>
+        <button class="form-submit fiscal-save-button" type="button" onclick="createFiscalProforma()">Criar proforma</button>
       </section>
 
       <div class="fiscal-register-layout">

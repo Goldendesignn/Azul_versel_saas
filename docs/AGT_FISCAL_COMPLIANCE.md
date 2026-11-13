@@ -44,6 +44,19 @@ Les specifications detaillees du SMF ne sont pas disponibles publiquement sans a
 5. Le serveur calcule les montants et verifie les droits. Le navigateur ne constitue pas une source de verite fiscale.
 6. Chaque export est reproductible, date, signe par son contenu et trace dans le journal d'audit.
 
+## Documents disponibles dans Azul
+
+| Document | Usage dans Azul | Effet sur stock / comptabilite | Regle de protection |
+| --- | --- | --- | --- |
+| Factura (FT) | Vente facturee, a payer ou deja payee selon le moyen de paiement | La vente source conserve ses effets | Document fiscal immuable |
+| Factura-recibo (FR) | Vente facturee et reglee immediatement | La vente source conserve ses effets | Document fiscal immuable |
+| Recibo (RC) | Preuve de reception du paiement d'une facture | Ne cree pas une nouvelle vente | Lie a la facture originale |
+| Proforma (PP) | Proposition commerciale avant acceptation | Aucun effet | Marquee explicitement « NAO E DOCUMENTO FISCAL » |
+| Nota de credito (NC) | Correction ou annulation motivee d'une facture | Effet comptable a completer dans le parcours de correction | Liee au document original |
+| Nota de debito (ND) | Ajustement augmente par une nouvelle dette justifiee | A finaliser avec les regles AGT | Liee au document original |
+
+Les series FT, FR, RC, PP, NC et ND sont des conventions Azul provisoires. Leur libelle et leur format final seront ajustes selon la specification SMF/AGT recue lors de la validation.
+
 ## Plan de livraison technique
 
 ### Lot 1 - Noyau fiscal inviolable (implemente sur `develop`, a migrer)

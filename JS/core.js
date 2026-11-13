@@ -17707,7 +17707,7 @@ function renderFiscalDocuments(documents, pendingSales) {
     if (!documents.length) {
       documentContainer.innerHTML = '<div class="empty">Ainda sem documentos emitidos.</div>';
     } else {
-      var typeLabels = { invoice: "Factura", invoice_receipt: "Factura recibo", credit_note: "Nota de credito", debit_note: "Nota de debito" };
+      var typeLabels = { invoice: "Factura", invoice_receipt: "Factura recibo", receipt: "Recibo", proforma: "Proforma", credit_note: "Nota de credito", debit_note: "Nota de debito" };
       documentContainer.innerHTML = documents.map(function(row) {
         return '<div class="fiscal-history-row">' +
           '<div><strong>' + escapeDespesaHtml(row.document_number || "Sem numero") + '</strong><small>' + escapeDespesaHtml(typeLabels[row.document_type] || row.document_type || "Documento") + ' - ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '</small></div>' +
@@ -17726,7 +17726,7 @@ function renderFiscalDocuments(documents, pendingSales) {
   var canIssue = canRunAzulAction("fiscal:manage");
   pendingContainer.innerHTML = pendingSales.map(function(row) {
     var action = canIssue
-      ? '<button class="filter-btn fiscal-document-action" type="button" onclick="issueFiscalInvoice(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">Emitir factura</button>'
+      ? '<div class="fiscal-document-detail-actions"><button class="filter-btn fiscal-document-action" type="button" onclick="issueSaleFiscalDocument(\'' + escapeDespesaHtml(String(row.id || "")) + '\', \'invoice\')">Factura</button><button class="filter-btn fiscal-document-action" type="button" onclick="issueSaleFiscalDocument(\'' + escapeDespesaHtml(String(row.id || "")) + '\', \'invoice_receipt\')">Factura-recibo</button></div>'
       : '<small>Sem permissao para emitir</small>';
     return '<div class="fiscal-history-row">' +
       '<div><strong>' + escapeDespesaHtml(row.receipt_no || "Venda sem numero") + '</strong><small>' + escapeDespesaHtml(row.client_name || "Consumidor final") + ' - ' + escapeDespesaHtml(String(row.sale_date || "").slice(0, 10)) + '</small>' + action + '</div>' +
@@ -17787,21 +17787,27 @@ async function loadFiscalDocuments() {
 }
 
 async function issueFiscalInvoice(saleId) {
+  return issueSaleFiscalDocument(saleId, "invoice");
+}
+
+async function issueSaleFiscalDocument(saleId, documentType) {
   if (!canRunAzulAction("fiscal:manage")) {
     toast("Sem permissao para emitir documentos fiscais.", "error");
     return;
   }
-  if (!saleId || !confirm("Emitir uma factura fiscal para esta venda? O documento nao podera ser alterado nem apagado.")) return;
+  var label = documentType === "invoice_receipt" ? "factura-recibo" : "factura";
+  if (!saleId || !confirm("Emitir " + label + " para esta venda? O documento nao podera ser alterado nem apagado.")) return;
 
   try {
-    var result = await supabaseClient.rpc("issue_fiscal_invoice", { p_sale_id: saleId });
+    var result = await supabaseClient.rpc("issue_sale_fiscal_document", { p_sale_id: saleId, p_document_type: documentType });
     if (result.error) throw result.error;
     var documentRow = (result.data || [])[0] || {};
-    toast("Factura emitida: " + (documentRow.document_number || "documento fiscal"), "success");
+    toast(label.charAt(0).toUpperCase() + label.slice(1) + " emitida: " + (documentRow.document_number || "documento fiscal"), "success");
     await loadFiscalDocuments();
+    await loadFiscalDocumentRegister();
   } catch (e) {
-    console.error("Erro ao emitir factura fiscal:", e);
-    toast(isFiscalSchemaUnavailable(e) ? "Execute primeiro a nova migracao fiscal no Supabase." : "Nao foi possivel emitir a factura: " + (e.message || e), "error");
+    console.error("Erro ao emitir documento fiscal:", e);
+    toast(isFiscalSchemaUnavailable(e) ? "Execute primeiro as migracoes fiscais no Supabase." : "Nao foi possivel emitir o documento: " + (e.message || e), "error");
   }
 }
 
@@ -17809,7 +17815,7 @@ var azulFiscalDocuments = [];
 var azulSelectedFiscalDocumentId = null;
 
 function fiscalDocumentTypeLabel(type) {
-  return { invoice: "Factura", invoice_receipt: "Factura recibo", credit_note: "Nota de credito", debit_note: "Nota de debito" }[type] || "Documento";
+  return { invoice: "Factura", invoice_receipt: "Factura recibo", receipt: "Recibo", proforma: "Proforma", credit_note: "Nota de credito", debit_note: "Nota de debito" }[type] || "Documento";
 }
 
 function filterFiscalDocuments() {
@@ -17872,7 +17878,9 @@ function renderFiscalDocumentDetail() {
   var lines = Array.isArray(row.lines_snapshot) ? row.lines_snapshot : [];
   var source = row.source_snapshot || {};
   var canCorrect = canRunAzulAction("fiscal:manage") && (row.document_type === "invoice" || row.document_type === "invoice_receipt");
+  var canIssueReceipt = canRunAzulAction("fiscal:manage") && row.document_type === "invoice";
   var correctionButton = canCorrect ? '<button class="filter-btn" type="button" onclick="issueFiscalCreditNote(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">Nota de credito</button>' : "";
+  var receiptButton = canIssueReceipt ? '<button class="filter-btn" type="button" onclick="issueFiscalReceipt(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">Emitir recibo</button>' : "";
   var sourceLabel = source.sale_receipt_no || source.original_document_number || "-";
   var linesHtml = lines.length ? lines.map(function(line) {
     return '<div class="fiscal-document-detail-line"><div><strong>' + escapeDespesaHtml(line.description || "Produto") + '</strong><small>' + Number(line.quantity || 0) + ' ' + escapeDespesaHtml(line.unit || "un") + ' x ' + fmt(line.unit_price || 0) + '</small></div><b>' + fmt(line.total || 0) + '</b></div>';
@@ -17890,7 +17898,8 @@ function renderFiscalDocumentDetail() {
     '</dl>' +
     (row.reason ? '<div class="fiscal-check fiscal-check-warning"><strong>Motivo</strong><span>' + escapeDespesaHtml(row.reason) + '</span></div>' : "") +
     '<div class="fiscal-document-detail-lines"><strong>Linhas do documento</strong>' + linesHtml + '</div>' +
-    '<div class="fiscal-document-detail-actions"><button class="filter-btn" type="button" onclick="printFiscalDocument(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">Imprimir</button>' + correctionButton + '</div>';
+    (row.is_fiscal_document === false ? '<div class="fiscal-check fiscal-check-warning"><strong>Documento comercial</strong><span>Esta proforma nao e documento fiscal e nao altera stock, caixa ou impostos.</span></div>' : "") +
+    '<div class="fiscal-document-detail-actions"><button class="filter-btn" type="button" onclick="printFiscalDocument(\'' + escapeDespesaHtml(String(row.id || "")) + '\')">Imprimir</button>' + receiptButton + correctionButton + '</div>';
 }
 
 async function loadFiscalDocumentRegister() {
@@ -17901,7 +17910,7 @@ async function loadFiscalDocumentRegister() {
   try {
     var result = await supabaseClient
       .from("fiscal_documents")
-      .select("id,document_type,document_number,operation_date,issued_at,original_document_id,reason,issuer_snapshot,customer_snapshot,totals_snapshot,lines_snapshot,source_snapshot")
+      .select("id,document_type,document_number,operation_date,issued_at,original_document_id,reason,issuer_snapshot,customer_snapshot,totals_snapshot,lines_snapshot,source_snapshot,document_status,is_fiscal_document")
       .eq("organization_id", organizationId)
       .order("issued_at", { ascending: false })
       .limit(200);
@@ -17949,6 +17958,61 @@ async function issueFiscalCreditNote(documentId) {
   }
 }
 
+async function issueFiscalReceipt(documentId) {
+  if (!canRunAzulAction("fiscal:manage")) {
+    toast("Sem permissao para emitir recibo.", "error");
+    return;
+  }
+  if (!confirm("Confirma que o pagamento desta factura foi recebido?")) return;
+  try {
+    var result = await supabaseClient.rpc("issue_fiscal_receipt", { p_original_document_id: documentId });
+    if (result.error) throw result.error;
+    var receipt = (result.data || [])[0] || {};
+    toast("Recibo emitido: " + (receipt.document_number || "documento"), "success");
+    azulSelectedFiscalDocumentId = receipt.document_id || null;
+    await loadFiscalDocumentRegister();
+  } catch (e) {
+    console.error("Erro ao emitir recibo:", e);
+    toast("Nao foi possivel emitir o recibo: " + (e.message || e), "error");
+  }
+}
+
+async function createFiscalProforma() {
+  if (!canRunAzulAction("fiscal:manage")) {
+    toast("Sem permissao para criar proforma.", "error");
+    return;
+  }
+  var value = function(id) { return String((fiscalElement(id) || {}).value || "").trim(); };
+  var customerName = value("proforma-client-name");
+  var description = value("proforma-description");
+  var quantity = Number(value("proforma-quantity"));
+  var unitPrice = Number(value("proforma-price"));
+  if (!customerName || !description || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+    toast("Preencha cliente, descricao, quantidade e preco da proforma.", "error");
+    return;
+  }
+  try {
+    var result = await supabaseClient.rpc("issue_proforma", {
+      p_organization_id: getAzulOrganizationId(),
+      p_customer_name: customerName,
+      p_customer_nif: value("proforma-client-nif"),
+      p_lines: [{ description: description, quantity: quantity, unit: value("proforma-unit") || "un", unit_price: unitPrice }],
+      p_note: value("proforma-note") || null
+    });
+    if (result.error) throw result.error;
+    var proforma = (result.data || [])[0] || {};
+    toast("Proforma criada: " + (proforma.document_number || "documento"), "success");
+    azulSelectedFiscalDocumentId = proforma.document_id || null;
+    ["proforma-client-name", "proforma-client-nif", "proforma-description", "proforma-price", "proforma-note"].forEach(function(id) {
+      var field = fiscalElement(id); if (field) field.value = "";
+    });
+    await loadFiscalDocumentRegister();
+  } catch (e) {
+    console.error("Erro ao criar proforma:", e);
+    toast("Nao foi possivel criar a proforma: " + (e.message || e), "error");
+  }
+}
+
 function printFiscalDocument(documentId) {
   var row = azulFiscalDocuments.find(function(item) { return String(item.id) === String(documentId); });
   if (!row) return;
@@ -17964,7 +18028,8 @@ function printFiscalDocument(documentId) {
   var lineRows = lines.map(function(line) {
     return '<tr><td>' + escapeDespesaHtml(line.description || "Produto") + '</td><td>' + Number(line.quantity || 0) + ' ' + escapeDespesaHtml(line.unit || "un") + '</td><td>' + fmt(line.unit_price || 0) + '</td><td>' + fmt(line.total || 0) + '</td></tr>';
   }).join("");
-  popup.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>' + escapeDespesaHtml(row.document_number || "Documento fiscal") + '</title><style>body{font-family:Arial,sans-serif;color:#111;margin:36px;max-width:700px}h1{margin:0 0 6px;font-size:24px}.muted{color:#555}table{border-collapse:collapse;width:100%;margin-top:24px}th,td{border-bottom:1px solid #ddd;padding:9px 4px;text-align:left}th:last-child,td:last-child{text-align:right}.total{font-size:20px;font-weight:700;text-align:right;margin-top:20px}.rule{border-top:1px solid #222;margin:20px 0}</style></head><body><h1>' + escapeDespesaHtml(issuer.legal_name || "Empresa") + '</h1><div class="muted">NIF: ' + escapeDespesaHtml(issuer.nif || "-") + '<br>Morada: ' + escapeDespesaHtml(issuer.address || "-") + '</div><div class="rule"></div><h2>' + escapeDespesaHtml(fiscalDocumentTypeLabel(row.document_type)) + ': ' + escapeDespesaHtml(row.document_number || "-") + '</h2><div>Data: ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '<br>Cliente: ' + escapeDespesaHtml(customer.name || "Consumidor final") + (customer.nif ? '<br>NIF cliente: ' + escapeDespesaHtml(customer.nif) : "") + '</div><table><thead><tr><th>Descricao</th><th>Quantidade</th><th>Preco unit.</th><th>Total</th></tr></thead><tbody>' + lineRows + '</tbody></table><div class="total">TOTAL: ' + fmt(totals.total || 0) + '</div></body></html>');
+  var commercialNotice = row.is_fiscal_document === false ? '<p><strong>NAO E DOCUMENTO FISCAL</strong></p>' : '';
+  popup.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>' + escapeDespesaHtml(row.document_number || "Documento fiscal") + '</title><style>body{font-family:Arial,sans-serif;color:#111;margin:36px;max-width:700px}h1{margin:0 0 6px;font-size:24px}.muted{color:#555}table{border-collapse:collapse;width:100%;margin-top:24px}th,td{border-bottom:1px solid #ddd;padding:9px 4px;text-align:left}th:last-child,td:last-child{text-align:right}.total{font-size:20px;font-weight:700;text-align:right;margin-top:20px}.rule{border-top:1px solid #222;margin:20px 0}</style></head><body><h1>' + escapeDespesaHtml(issuer.legal_name || "Empresa") + '</h1><div class="muted">NIF: ' + escapeDespesaHtml(issuer.nif || "-") + '<br>Morada: ' + escapeDespesaHtml(issuer.address || "-") + '</div><div class="rule"></div><h2>' + escapeDespesaHtml(fiscalDocumentTypeLabel(row.document_type)) + ': ' + escapeDespesaHtml(row.document_number || "-") + '</h2>' + commercialNotice + '<div>Data: ' + escapeDespesaHtml(String(row.operation_date || "").slice(0, 10)) + '<br>Cliente: ' + escapeDespesaHtml(customer.name || "Consumidor final") + (customer.nif ? '<br>NIF cliente: ' + escapeDespesaHtml(customer.nif) : "") + '</div><table><thead><tr><th>Descricao</th><th>Quantidade</th><th>Preco unit.</th><th>Total</th></tr></thead><tbody>' + lineRows + '</tbody></table><div class="total">TOTAL: ' + fmt(totals.total || 0) + '</div></body></html>');
   popup.document.close();
   popup.focus();
   setTimeout(function() { popup.print(); }, 250);

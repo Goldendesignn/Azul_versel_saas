@@ -830,6 +830,17 @@ html[data-theme="dark"] small {
   grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(130px, 1fr));
 }
 
+.fiscal-proforma-card {
+  margin-bottom: 16px;
+}
+
+.fiscal-proforma-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
 .fiscal-register-layout {
   display: grid;
   gap: 16px;
@@ -942,6 +953,7 @@ html[data-theme="dark"] small {
   .fiscal-grid { grid-template-columns: 1fr; }
   .fiscal-register-layout { grid-template-columns: 1fr; }
   .fiscal-document-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fiscal-proforma-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -954,7 +966,8 @@ html[data-theme="dark"] small {
   .fiscal-document-head .filter-btn { width: 100%; }
   .fiscal-kpi-grid,
   .fiscal-form-grid,
-  .fiscal-document-filters { grid-template-columns: 1fr; }
+  .fiscal-document-filters,
+  .fiscal-proforma-grid { grid-template-columns: 1fr; }
   .fiscal-form-wide { grid-column: auto; }
   .fiscal-document-row { grid-template-columns: 1fr auto; }
   .fiscal-document-row > div:nth-child(2) { grid-column: 1; }
