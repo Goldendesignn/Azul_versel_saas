@@ -1207,6 +1207,20 @@ var AZUL_CONTEXT_HELP = {
     ],
     tip: "Feche cada mes fiscal antes de iniciar a declaracao para evitar esquecer documentos."
   },
+  saft: {
+    title: "Preparacao SAF-T",
+    subtitle: "Controle os dados de faturacao antes da futura exportacao SAF-T para a AGT.",
+    main: [
+      "Escolha o periodo e execute o controlo de preparacao.",
+      "O Azul verifica NIF, razao social, codigos, unidades e cadeia de integridade.",
+      "Consulte o historico antes de entregar o ficheiro validado oficialmente."
+    ],
+    care: [
+      "Este controlo nao substitui a validacao XML oficial nem a submissao no Portal do Contribuinte.",
+      "Nao entregue um ficheiro SAF-T sem confirmar o XSD, a assinatura e as regras em vigor com a AGT ou contabilista."
+    ],
+    tip: "Corrija os avisos de dados mestre antes de fechar o periodo de faturacao."
+  },
   fiscal_documents: {
     title: "Documentos fiscais",
     subtitle: "Modulo para consultar, imprimir e corrigir documentos fiscais sem apagar o historico.",
@@ -2006,6 +2020,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:comptabilite": { label: "Contabilidade", group: "Paginas" },
   "page:fiscalidade": { label: "Fiscalidade", group: "Paginas" },
   "page:fiscal_documents": { label: "Documentos fiscais", group: "Paginas" },
+  "page:saft": { label: "Preparacao SAF-T", group: "Paginas" },
   "page:corrections": { label: "Correcoes", group: "Paginas" },
   "page:revendeurs": { label: "Revendedores", group: "Paginas" },
   "page:online": { label: "Venda Online", group: "Paginas" },
@@ -2063,11 +2078,11 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   accountant: {
     name: "Contabilista",
-    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:fiscal_documents", "page:corrections", "page:rh", "page:logistica", "page:importacoes", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "fiscal:view", "fiscal:manage", "hr:create", "hr:view", "logistics:view", "import_order:view"]
+    permissions: ["page:dashboard", "page:depenses", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:fiscal_documents", "page:saft", "page:corrections", "page:rh", "page:logistica", "page:importacoes", "expense:create", "expense:view", "client_payment:create", "supplier_payment:create", "correction:create", "cash:view", "accounting:view", "fiscal:view", "fiscal:manage", "hr:create", "hr:view", "logistics:view", "import_order:view"]
   },
   readonly: {
     name: "Leitura",
-    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:fiscal_documents", "page:rh", "page:logistica", "page:importacoes", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "fiscal:view", "hr:view", "logistics:view", "import_order:view"]
+    permissions: ["page:dashboard", "page:transfert", "page:clientes", "page:tresorerie", "page:comptabilite", "page:fiscalidade", "page:fiscal_documents", "page:saft", "page:rh", "page:logistica", "page:importacoes", "sale:view", "purchase:view", "expense:view", "cash:view", "accounting:view", "fiscal:view", "hr:view", "logistics:view", "import_order:view"]
   },
   member: {
     name: "Utilizador",
@@ -2180,6 +2195,7 @@ var AZUL_MENU_MODULES = {
   comptabilite: { group: "Relatorios", priority: 3, keywords: "contabilidade fiscal balanco resultado diario" },
   fiscalidade: { group: "Dinheiro", priority: 2, keywords: "fiscal iva nif agt imposto declaracao factura" },
   fiscal_documents: { group: "Dinheiro", priority: 2, keywords: "documento fiscal factura nota credito imprimir nif agt" },
+  saft: { group: "Dinheiro", priority: 2, keywords: "saft agt xml faturacao exportacao conformidade imposto" },
   corrections: { group: "Gestao avancada", priority: 3, keywords: "corrigir correcao anular erro venda compra pagamento" },
   revendeurs: { group: "Vendas", priority: 3, keywords: "revendedor consignacao retorno pagamento" },
   online: { group: "Vendas", priority: 2, keywords: "venda online whatsapp loja catalogo pedido" },
@@ -2364,6 +2380,7 @@ var AZUL_ICON_PATHS = {
   comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
   fiscalidade: '<path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path><path d="M19 3l2 2-2 2"></path>',
   fiscal_documents: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h6"></path>',
+  saft: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M8 9h2"></path>',
   corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
   revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
   online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
@@ -2397,6 +2414,7 @@ var AZUL_PAGE_ICON_MAP = {
   comptabilite: "comptabilite",
   fiscalidade: "fiscalidade",
   fiscal_documents: "fiscal_documents",
+  saft: "saft",
   corrections: "corrections",
   revendeurs: "revendeurs",
   online: "online",
@@ -4628,6 +4646,7 @@ function goTo(page, btn) {
     if (page === 'comptabilite') loadContabilidade();
     if (page === 'fiscalidade') loadFiscalidade();
     if (page === 'fiscal_documents') loadFiscalDocumentRegister();
+    if (page === 'saft') loadSaftPage();
     if (page === 'corrections') loadCorrections();
     if (page === 'transfert') {
       applyStockModeUi();
@@ -18040,6 +18059,132 @@ function printFiscalDocument(documentId) {
   popup.document.close();
   popup.focus();
   setTimeout(function() { popup.print(); }, 250);
+}
+
+function getSaftDefaultPeriod() {
+  var now = new Date();
+  var firstOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  var lastOfPreviousMonth = new Date(firstOfCurrentMonth.getTime() - 86400000);
+  var firstOfPreviousMonth = new Date(lastOfPreviousMonth.getFullYear(), lastOfPreviousMonth.getMonth(), 1);
+  return {
+    from: firstOfPreviousMonth.toISOString().slice(0, 10),
+    to: lastOfPreviousMonth.toISOString().slice(0, 10)
+  };
+}
+
+function getSaftPeriodFromForm() {
+  var defaults = getSaftDefaultPeriod();
+  return {
+    from: String((fiscalElement("saft-from") || {}).value || defaults.from),
+    to: String((fiscalElement("saft-to") || {}).value || defaults.to)
+  };
+}
+
+function renderSaftPreflight(result) {
+  var container = fiscalElement("saft-preflight-result");
+  if (!container) return;
+  if (!result) {
+    container.innerHTML = '<div class="empty">Escolha um periodo para verificar a preparacao.</div>';
+    return;
+  }
+  var errors = Array.isArray(result.errors) ? result.errors : [];
+  var ready = result.ready_for_xsd_validation === true;
+  var summary = '<div class="saft-preflight-summary ' + (ready ? 'is-ready' : 'has-errors') + '">' +
+    '<strong>' + (ready ? 'Dados prontos para a validacao XML' : 'Existem dados a corrigir') + '</strong>' +
+    '<span>' + Number(result.document_count || 0) + ' documento(s) fiscal(is) encontrado(s).</span>' +
+    '<small>Estado do esquema: ' + escapeDespesaHtml(result.schema_status || 'AGT_XSD_REQUIRED') + '</small>' +
+    '</div>';
+  var issues = errors.length
+    ? '<div class="saft-issue-list">' + errors.map(function(issue) {
+      return '<div class="fiscal-check fiscal-check-warning"><strong>' + escapeDespesaHtml(issue.code || 'VERIFICAR') + '</strong><span>' + escapeDespesaHtml(issue.message || 'Verifique os dados.') + (issue.count ? ' (' + Number(issue.count) + ')' : '') + '</span></div>';
+    }).join('') + '</div>'
+    : '<div class="fiscal-check fiscal-check-success"><strong>Sem bloqueios encontrados</strong><span>O periodo pode seguir para validacao contra o esquema XML oficial quando este estiver configurado.</span></div>';
+  container.innerHTML = summary + issues;
+}
+
+function renderSaftExportHistory(rows) {
+  var container = fiscalElement("saft-export-history");
+  if (!container) return;
+  if (!rows || !rows.length) {
+    container.innerHTML = '<div class="empty">Ainda nao existem preparacoes SAF-T guardadas.</div>';
+    return;
+  }
+  container.innerHTML = rows.map(function(row) {
+    var issues = Array.isArray(row.validation_errors) ? row.validation_errors.length : 0;
+    var status = row.status === 'validated' ? 'Pronto para XML' : 'Com avisos';
+    return '<div class="saft-history-row">' +
+      '<div><strong>' + escapeDespesaHtml(String(row.period_from || '').slice(0, 10)) + ' a ' + escapeDespesaHtml(String(row.period_to || '').slice(0, 10)) + '</strong>' +
+      '<small>' + Number(row.document_count || 0) + ' documentos - ' + issues + ' aviso(s)</small></div>' +
+      '<span class="saft-history-status ' + (row.status === 'validated' ? 'is-ready' : 'has-errors') + '">' + status + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+async function loadSaftPage() {
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId || !supabaseClient) return;
+  var defaults = getSaftDefaultPeriod();
+  var fromInput = fiscalElement("saft-from");
+  var toInput = fiscalElement("saft-to");
+  if (fromInput && !fromInput.value) fromInput.value = defaults.from;
+  if (toInput && !toInput.value) toInput.value = defaults.to;
+  fiscalSetText("saft-status", "A carregar");
+  try {
+    var history = await supabaseClient
+      .from("saft_exports")
+      .select("id,export_type,period_from,period_to,status,document_count,validation_errors,created_at")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(12);
+    if (history.error) throw history.error;
+    renderSaftExportHistory(history.data || []);
+    fiscalSetText("saft-status", canRunAzulAction("fiscal:manage") ? "Pronto" : "Consulta");
+  } catch (e) {
+    console.error("Erro ao carregar SAF-T:", e);
+    renderSaftExportHistory([]);
+    fiscalSetText("saft-status", "Indisponivel");
+    if (!isFiscalSchemaUnavailable(e)) toast("Erro SAF-T: " + (e.message || e), "error");
+  }
+}
+
+async function prepareSaftBillingExport() {
+  if (!canRunAzulAction("fiscal:manage")) {
+    toast("Sem permissao para preparar o controlo SAF-T.", "error");
+    return;
+  }
+  var organizationId = getAzulOrganizationId();
+  var period = getSaftPeriodFromForm();
+  if (!organizationId || !period.from || !period.to || period.from > period.to) {
+    toast("Indique um periodo SAF-T valido.", "error");
+    return;
+  }
+  var button = fiscalElement("saft-preflight-button");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A verificar...";
+  }
+  fiscalSetText("saft-status", "A verificar");
+  try {
+    var result = await supabaseClient.rpc("prepare_saft_billing_export", {
+      p_organization_id: organizationId,
+      p_from: period.from,
+      p_to: period.to
+    });
+    if (result.error) throw result.error;
+    renderSaftPreflight(result.data || {});
+    fiscalSetText("saft-status", result.data && result.data.ready_for_xsd_validation ? "Pronto para XML" : "Com avisos");
+    toast(result.data && result.data.ready_for_xsd_validation ? "Controlo SAF-T concluido sem bloqueios." : "Controlo SAF-T concluido. Corrija os avisos antes da exportacao XML.", result.data && result.data.ready_for_xsd_validation ? "success" : "error");
+    await loadSaftPage();
+  } catch (e) {
+    console.error("Erro no controlo SAF-T:", e);
+    fiscalSetText("saft-status", "Erro");
+    toast(isFiscalSchemaUnavailable(e) ? "Execute primeiro a migracao SAF-T no Supabase." : "Nao foi possivel preparar o SAF-T: " + (e.message || e), "error");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Preparar controlo SAF-T";
+    }
+  }
 }
 
 async function getFiscalMetrics(organizationId, bounds, profile) {

@@ -230,6 +230,7 @@
     <button class="tab" data-page="comptabilite" onclick="goTo('comptabilite', this)">Contabilidade</button>
     <button class="tab" data-page="fiscalidade" onclick="goTo('fiscalidade', this)">Fiscalidade</button>
     <button class="tab" data-page="fiscal_documents" onclick="goTo('fiscal_documents', this)">Documentos fiscais</button>
+    <button class="tab" data-page="saft" onclick="goTo('saft', this)">SAF-T</button>
     <button class="tab" data-page="corrections" onclick="goTo('corrections', this)">Correcoes</button>
     <button class="tab" data-page="revendeurs" onclick="goTo('revendeurs', this)">Revendedores</button>
     <button class="tab" data-page="online" onclick="goTo('online', this)">Venda Online</button>
@@ -254,6 +255,7 @@
       comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
       fiscalidade: '<path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path><path d="M19 3l2 2-2 2"></path>',
       fiscal_documents: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h6"></path>',
+      saft: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M8 9h2"></path>',
       corrections: '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>',
       revendeurs: '<path d="M3 7h18"></path><path d="M5 7l1 14h12l1-14"></path><path d="M9 7V5a3 3 0 0 1 6 0v2"></path><path d="M9 13h6"></path>',
       online: '<path d="M3 12h18"></path><path d="M12 3a15 15 0 0 1 0 18"></path><path d="M12 3a15 15 0 0 0 0 18"></path><circle cx="12" cy="12" r="9"></circle><path d="M7 16l2-5 3 3 5-7"></path>',
@@ -3517,6 +3519,45 @@
           <div class="empty">Seleciona um documento para ver os detalhes.</div>
         </aside>
       </div>
+    </div>
+    <!-- SAF-T -->
+    <div class="page" id="page-saft">
+      <section class="fiscal-hero">
+        <div>
+          <div class="eyebrow">Conformidade</div>
+          <h2>Preparação SAF-T</h2>
+          <p>Confirme os dados antes da futura validação XML oficial pela AGT.</p>
+        </div>
+        <div class="fiscal-hero-actions">
+          <button class="filter-btn" type="button" onclick="loadSaftPage()">Atualizar</button>
+          <span class="fiscal-status-pill" id="saft-status">A preparar</span>
+        </div>
+      </section>
+
+      <section class="fiscal-notice">
+        <strong>Estado atual:</strong> este controlo identifica dados em falta e guarda uma preparação por período. A criação do XML SAF-T e a assinatura certificada só serão ativadas após a configuração oficial da AGT.
+      </section>
+
+      <section class="card saft-preflight-card">
+        <div class="card-title">Controlar período de faturação</div>
+        <p class="fiscal-card-copy">Escolha o intervalo. O Azul verifica NIF, razão social, códigos, unidades e a cadeia de integridade dos documentos fiscais.</p>
+        <div class="saft-preflight-grid">
+          <div class="form-group"><label class="form-label" for="saft-from">De</label><input class="form-input" type="date" id="saft-from"></div>
+          <div class="form-group"><label class="form-label" for="saft-to">Até</label><input class="form-input" type="date" id="saft-to"></div>
+          <div class="saft-preflight-action"><button class="form-submit" type="button" id="saft-preflight-button" onclick="prepareSaftBillingExport()">Preparar controlo SAF-T</button></div>
+        </div>
+      </section>
+
+      <section class="saft-results-grid">
+        <article class="card saft-result-card">
+          <div class="card-title">Resultado do controlo</div>
+          <div id="saft-preflight-result" class="saft-preflight-result"><div class="empty">Escolha um período para verificar a preparação.</div></div>
+        </article>
+        <aside class="card saft-result-card">
+          <div class="card-title">Histórico de preparações</div>
+          <div id="saft-export-history" class="saft-export-history"><div class="empty">A carregar histórico...</div></div>
+        </aside>
+      </section>
     </div>
     <!-- FORNECEDORES -->
     <!-- CORRECTIONS -->

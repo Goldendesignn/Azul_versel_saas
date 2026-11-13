@@ -945,6 +945,88 @@ html[data-theme="dark"] small {
   margin-top: 18px;
 }
 
+.saft-preflight-card {
+  margin-bottom: 16px;
+}
+
+.saft-preflight-grid {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(210px, auto);
+  margin-top: 16px;
+}
+
+.saft-preflight-action .form-submit {
+  width: 100%;
+}
+
+.saft-results-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr);
+}
+
+.saft-result-card {
+  min-height: 210px;
+}
+
+.saft-preflight-result,
+.saft-export-history,
+.saft-issue-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.saft-preflight-summary {
+  border-left: 3px solid var(--orange);
+  background: rgba(239, 161, 52, .1);
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.saft-preflight-summary.is-ready {
+  border-left-color: var(--green);
+  background: rgba(32, 174, 112, .1);
+}
+
+.saft-preflight-summary span,
+.saft-preflight-summary small,
+.saft-history-row small {
+  color: var(--muted);
+}
+
+.saft-history-row {
+  align-items: center;
+  background: var(--soft);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.saft-history-row strong,
+.saft-history-row small {
+  display: block;
+}
+
+.saft-history-status {
+  border: 1px solid rgba(239, 161, 52, .4);
+  border-radius: 999px;
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.saft-history-status.is-ready {
+  border-color: rgba(32, 174, 112, .4);
+  color: var(--green);
+}
+
 .fiscal-amount-due { color: var(--red); }
 .fiscal-amount-credit { color: var(--green); }
 
@@ -954,6 +1036,7 @@ html[data-theme="dark"] small {
   .fiscal-register-layout { grid-template-columns: 1fr; }
   .fiscal-document-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fiscal-proforma-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .saft-results-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
@@ -967,7 +1050,8 @@ html[data-theme="dark"] small {
   .fiscal-kpi-grid,
   .fiscal-form-grid,
   .fiscal-document-filters,
-  .fiscal-proforma-grid { grid-template-columns: 1fr; }
+  .fiscal-proforma-grid,
+  .saft-preflight-grid { grid-template-columns: 1fr; }
   .fiscal-form-wide { grid-column: auto; }
   .fiscal-document-row { grid-template-columns: 1fr auto; }
   .fiscal-document-row > div:nth-child(2) { grid-column: 1; }

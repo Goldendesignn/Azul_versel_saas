@@ -29,7 +29,7 @@ Les specifications detaillees du SMF ne sont pas disponibles publiquement sans a
 | Mention « processado por computador » | A verifier | Ajouter aux impressions fiscales si la regle AGT applicable le requiert | P1 |
 | Journal d'audit | Partiel : corrections et historique applicatif | Journal append-only pour creation, impression, annulation, export, changement de serie | P0 |
 | Conservation et consultation 5 ans | Non formalise | Archivage, export par periode, retention et test de restauration | P0 |
-| Export de controle | Non disponible comme export fiscal dedie | Export fiscal versionne selon le format remis par l'AGT | P0 |
+| Export de controle | Preparation SAF-T par periode, avec historique et erreurs | Generer et valider le XML final avec le XSD AGT | P0 bloque par XSD AGT |
 | Sauvegarde et restauration | Backup existant mais a verifier | Backup chiffre, restauration testee et preuve de controle d'integrite | P1 |
 | Identification de la version Azul | Partiel | Version de build dans chaque document/export et registre des versions | P1 |
 | Acces par role | Existant | Interdire l'annulation et les reglages fiscaux aux roles non autorises | P1 |
@@ -79,9 +79,22 @@ Chaque document emis apres la migration de format fige aussi la devise AOA, la b
 
 ### Lot 3 - Archivage et controles
 
-- Export fiscal par periode et verification d'integrite.
+- Preparation SAF-T de facturation par periode, avec historique des controles et erreurs exploitables dans le module `SAF-T`.
+- Chaine d'integrite SHA-256 sur les nouveaux documents fiscaux. Ce hash est un controle interne ; il ne remplace pas la signature privee requise par l'AGT.
+- Donnees maitre SAF-T sur les produits : type et code de taxe, avec controle des codes et unites manquants.
 - Rapport des numeros manquants, documents annules, corrections et ecritures sans NIF.
 - Sauvegarde/restauration testee et tracee.
+
+### Limite explicite avant homologation
+
+Le module `SAF-T` actuellement livre ne cree pas encore de fichier XML officiel et ne marque aucun fichier comme soumis a l'AGT. Il reste en mode preparation tant que les elements suivants ne sont pas recus et testes :
+
+1. Le XSD/format SAF-T officiel applicable au logiciel de facturation et, si necessaire, au SAF-T comptable.
+2. Les regles de signature, de hachage et de numerotation confirmees pour la version d'Azul soumise.
+3. Les identifiants, certificats ou environnement de test SMF/AGT.
+4. Les scenarios de recette et la validation ecrite de l'AGT.
+
+La future generation XML sera executee cote serveur, avec les secrets dans un coffre et jamais dans le navigateur ni dans la base applicative.
 
 ### Lot 4 - Adaptateur SMF/AGT
 
