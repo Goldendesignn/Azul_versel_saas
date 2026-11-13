@@ -1,6 +1,5 @@
--- Azul Gestao: noyau de documents fiscaux immuables.
--- Les ventes existantes restent intactes; ce schema ajoute une couche fiscale
--- versionnee qui sera activee dans l'interface apres configuration du profil.
+-- Azul Gestao: immutable fiscal document engine.
+-- Existing sales remain unchanged; fiscal snapshots are stored separately.
 
 create table if not exists public.fiscal_document_series (
   id uuid primary key default gen_random_uuid(),
@@ -49,12 +48,9 @@ create table if not exists public.fiscal_document_events (
   created_at timestamptz not null default now()
 );
 
-create index if not exists fiscal_documents_org_issued_idx
-  on public.fiscal_documents (organization_id, issued_at desc);
-create index if not exists fiscal_documents_source_idx
-  on public.fiscal_documents (sale_id) where sale_id is not null;
-create index if not exists fiscal_document_events_doc_idx
-  on public.fiscal_document_events (fiscal_document_id, created_at asc);
+create index if not exists fiscal_documents_org_issued_idx on public.fiscal_documents (organization_id, issued_at desc);
+create index if not exists fiscal_documents_source_idx on public.fiscal_documents (sale_id) where sale_id is not null;
+create index if not exists fiscal_document_events_doc_idx on public.fiscal_document_events (fiscal_document_id, created_at asc);
 
 alter table public.fiscal_document_series enable row level security;
 alter table public.fiscal_documents enable row level security;
@@ -68,62 +64,40 @@ revoke all on public.fiscal_documents from authenticated;
 revoke all on public.fiscal_document_events from authenticated;
 grant select on public.fiscal_document_series, public.fiscal_documents, public.fiscal_document_events to authenticated;
 
-create policy fiscal_document_series_member_select on public.fiscal_document_series
-  for select to authenticated using (public.is_org_member(organization_id));
-create policy fiscal_documents_member_select on public.fiscal_documents
-  for select to authenticated using (public.is_org_member(organization_id));
-create policy fiscal_document_events_member_select on public.fiscal_document_events
-  for select to authenticated using (public.is_org_member(organization_id));
+drop policy if exists fiscal_document_series_member_select on public.fiscal_document_series;
+create policy fiscal_document_series_member_select on public.fiscal_document_series for select to authenticated using (public.is_org_member(organization_id));
+drop policy if exists fiscal_documents_member_select on public.fiscal_documents;
+create policy fiscal_documents_member_select on public.fiscal_documents for select to authenticated using (public.is_org_member(organization_id));
+drop policy if exists fiscal_document_events_member_select on public.fiscal_document_events;
+create policy fiscal_document_events_member_select on public.fiscal_document_events for select to authenticated using (public.is_org_member(organization_id));
 
 create or replace function public.can_manage_fiscal_documents(p_organization_id uuid)
-returns boolean
-language sql
-security definer
-set search_path = public
-stable
-as $$
+returns boolean language sql security definer set search_path = public stable as $$
   select exists (
-    select 1
-    from public.profiles p
+    select 1 from public.profiles p
     where p.organization_id = p_organization_id
       and coalesce(nullif(p.status, ''), 'active') = 'active'
       and lower(coalesce(nullif(p.role, ''), 'member')) in ('owner', 'manager', 'accountant')
-      and (
-        p.auth_user_id = auth.uid()
-        or lower(trim(coalesce(p.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', '')))
-      )
+      and (p.auth_user_id = auth.uid() or lower(trim(coalesce(p.email, ''))) = lower(trim(coalesce(auth.jwt() ->> 'email', ''))))
   );
 $$;
-
 revoke all on function public.can_manage_fiscal_documents(uuid) from public;
 grant execute on function public.can_manage_fiscal_documents(uuid) to authenticated;
 
 create or replace function public.azul_prevent_fiscal_history_change()
-returns trigger
-language plpgsql
-set search_path = public
-as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   raise exception 'Les documents fiscaux et leur journal ne peuvent pas etre modifies ou supprimes.';
 end;
 $$;
-
 drop trigger if exists fiscal_documents_immutable on public.fiscal_documents;
-create trigger fiscal_documents_immutable
-  before update or delete on public.fiscal_documents
-  for each row execute function public.azul_prevent_fiscal_history_change();
-
+create trigger fiscal_documents_immutable before update or delete on public.fiscal_documents for each row execute function public.azul_prevent_fiscal_history_change();
 drop trigger if exists fiscal_document_events_immutable on public.fiscal_document_events;
-create trigger fiscal_document_events_immutable
-  before update or delete on public.fiscal_document_events
-  for each row execute function public.azul_prevent_fiscal_history_change();
+create trigger fiscal_document_events_immutable before update or delete on public.fiscal_document_events for each row execute function public.azul_prevent_fiscal_history_change();
 
 create or replace function public.issue_fiscal_invoice(p_sale_id uuid)
 returns table (document_id uuid, document_number text)
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_sale public.sales%rowtype;
   v_profile public.fiscal_profiles%rowtype;
@@ -134,99 +108,47 @@ declare
   v_document_number text;
   v_lines jsonb;
 begin
-  if auth.uid() is null then
-    raise exception 'Autenticacao obrigatoria.';
-  end if;
-
+  if auth.uid() is null then raise exception 'Autenticacao obrigatoria.'; end if;
   select * into v_sale from public.sales where id = p_sale_id;
-  if not found then
-    raise exception 'Venda nao encontrada.';
-  end if;
-  if not public.can_manage_fiscal_documents(v_sale.organization_id) then
-    raise exception 'Sem permissao para emitir documento fiscal desta organizacao.';
-  end if;
-
+  if not found then raise exception 'Venda nao encontrada.'; end if;
+  if not public.can_manage_fiscal_documents(v_sale.organization_id) then raise exception 'Sem permissao para emitir documento fiscal desta organizacao.'; end if;
   select * into v_profile from public.fiscal_profiles where organization_id = v_sale.organization_id;
-  if not found or coalesce(trim(v_profile.legal_name), '') = '' or coalesce(trim(v_profile.nif), '') = '' then
-    raise exception 'Complete a razao social e o NIF no perfil fiscal antes de emitir uma factura.';
-  end if;
+  if not found or coalesce(trim(v_profile.legal_name), '') = '' or coalesce(trim(v_profile.nif), '') = '' then raise exception 'Complete a razao social e o NIF no perfil fiscal antes de emitir uma factura.'; end if;
 
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'product_id', si.product_id,
-    'description', si.product_name,
-    'quantity', si.quantity,
-    'unit', si.unit,
-    'unit_price', si.unit_price,
-    'total', si.total,
-    'variation', si.variation
-  ) order by si.id), '[]'::jsonb)
-  into v_lines
-  from public.sale_items si
-  where si.sale_id = v_sale.id;
-
-  if jsonb_array_length(v_lines) = 0 then
-    raise exception 'A venda nao possui linhas para facturacao.';
-  end if;
-
-  if exists (select 1 from public.fiscal_documents fd where fd.sale_id = v_sale.id and fd.document_type = 'invoice') then
-    raise exception 'Esta venda ja possui uma factura fiscal.';
-  end if;
+  select coalesce(jsonb_agg(jsonb_build_object('product_id', si.product_id, 'description', si.product_name, 'quantity', si.quantity, 'unit', si.unit, 'unit_price', si.unit_price, 'total', si.total, 'variation', si.variation) order by si.id), '[]'::jsonb)
+  into v_lines from public.sale_items si where si.sale_id = v_sale.id;
+  if jsonb_array_length(v_lines) = 0 then raise exception 'A venda nao possui linhas para facturacao.'; end if;
+  if exists (select 1 from public.fiscal_documents fd where fd.sale_id = v_sale.id and fd.document_type = 'invoice') then raise exception 'Esta venda ja possui uma factura fiscal.'; end if;
 
   v_year := extract(year from coalesce(v_sale.sale_date, current_date))::integer;
   insert into public.fiscal_document_series (organization_id, document_type, series_code, fiscal_year)
   values (v_sale.organization_id, 'invoice', v_series, v_year)
   on conflict (organization_id, document_type, series_code, fiscal_year) do nothing;
-
-  update public.fiscal_document_series
-     set next_number = next_number + 1
-   where organization_id = v_sale.organization_id
-     and document_type = 'invoice'
-     and series_code = v_series
-     and fiscal_year = v_year
-     and active = true
+  update public.fiscal_document_series set next_number = next_number + 1
+  where organization_id = v_sale.organization_id and document_type = 'invoice' and series_code = v_series and fiscal_year = v_year and active = true
   returning next_number - 1 into v_sequence;
-
-  if v_sequence is null then
-    raise exception 'Serie fiscal inativa ou indisponivel.';
-  end if;
-
-  -- This internal format remains configurable before AGT validation.
+  if v_sequence is null then raise exception 'Serie fiscal inativa ou indisponivel.'; end if;
   v_document_number := format('%s %s/%s/%s', v_series, v_year, lpad(v_sequence::text, 6, '0'), 'AZUL');
 
-  insert into public.fiscal_documents (
-    organization_id, sale_id, document_type, series_code, sequence_number, document_number,
-    operation_date, issuer_snapshot, customer_snapshot, totals_snapshot, lines_snapshot,
-    source_snapshot, created_by
-  ) values (
-    v_sale.organization_id, v_sale.id, 'invoice', v_series, v_sequence, v_document_number,
-    coalesce(v_sale.sale_date, current_date),
+  insert into public.fiscal_documents (organization_id, sale_id, document_type, series_code, sequence_number, document_number, operation_date, issuer_snapshot, customer_snapshot, totals_snapshot, lines_snapshot, source_snapshot, created_by)
+  values (
+    v_sale.organization_id, v_sale.id, 'invoice', v_series, v_sequence, v_document_number, coalesce(v_sale.sale_date, current_date),
     jsonb_build_object('legal_name', v_profile.legal_name, 'nif', v_profile.nif, 'address', v_profile.fiscal_address, 'regime', v_profile.tax_regime, 'vat_rate', v_profile.vat_rate),
     jsonb_build_object('name', coalesce(v_sale.client_name, 'Consumidor final')),
     jsonb_build_object('total', v_sale.total, 'payment_summary', v_sale.payment_summary, 'payment_lines', coalesce(v_sale.payment_lines, '[]'::jsonb)),
-    v_lines,
-    jsonb_build_object('sale_receipt_no', v_sale.receipt_no, 'sale_type', v_sale.sale_type, 'sale_id', v_sale.id),
-    auth.uid()
+    v_lines, jsonb_build_object('sale_receipt_no', v_sale.receipt_no, 'sale_type', v_sale.sale_type, 'sale_id', v_sale.id), auth.uid()
   ) returning id into v_document_id;
-
   insert into public.fiscal_document_events (organization_id, fiscal_document_id, event_type, event_data, actor_user_id)
   values (v_sale.organization_id, v_document_id, 'issued', jsonb_build_object('sale_id', v_sale.id), auth.uid());
-
   return query select v_document_id, v_document_number;
 end;
 $$;
-
 revoke all on function public.issue_fiscal_invoice(uuid) from public;
 grant execute on function public.issue_fiscal_invoice(uuid) to authenticated;
 
-create or replace function public.issue_fiscal_credit_note(
-  p_original_document_id uuid,
-  p_reason text
-)
+create or replace function public.issue_fiscal_credit_note(p_original_document_id uuid, p_reason text)
 returns table (document_id uuid, document_number text)
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_original public.fiscal_documents%rowtype;
   v_sequence bigint;
@@ -235,85 +157,37 @@ declare
   v_document_id uuid;
   v_document_number text;
 begin
-  if auth.uid() is null then
-    raise exception 'Autenticacao obrigatoria.';
-  end if;
-
-  if coalesce(trim(p_reason), '') = '' then
-    raise exception 'Indique o motivo da nota de credito.';
-  end if;
-
-  select * into v_original
-  from public.fiscal_documents
-  where id = p_original_document_id;
-
-  if not found or v_original.document_type not in ('invoice', 'invoice_receipt') then
-    raise exception 'Documento fiscal de origem invalido.';
-  end if;
-
-  if not public.can_manage_fiscal_documents(v_original.organization_id) then
-    raise exception 'Sem permissao para corrigir este documento fiscal.';
-  end if;
-
-  if exists (
-    select 1
-    from public.fiscal_documents fd
-    where fd.original_document_id = v_original.id
-      and fd.document_type = 'credit_note'
-  ) then
-    raise exception 'Este documento ja possui uma nota de credito.';
-  end if;
+  if auth.uid() is null then raise exception 'Autenticacao obrigatoria.'; end if;
+  if coalesce(trim(p_reason), '') = '' then raise exception 'Indique o motivo da nota de credito.'; end if;
+  select * into v_original from public.fiscal_documents where id = p_original_document_id;
+  if not found or v_original.document_type not in ('invoice', 'invoice_receipt') then raise exception 'Documento fiscal de origem invalido.'; end if;
+  if not public.can_manage_fiscal_documents(v_original.organization_id) then raise exception 'Sem permissao para corrigir este documento fiscal.'; end if;
+  if exists (select 1 from public.fiscal_documents fd where fd.original_document_id = v_original.id and fd.document_type = 'credit_note') then raise exception 'Este documento ja possui uma nota de credito.'; end if;
 
   v_year := extract(year from current_date)::integer;
   insert into public.fiscal_document_series (organization_id, document_type, series_code, fiscal_year)
   values (v_original.organization_id, 'credit_note', v_series, v_year)
   on conflict (organization_id, document_type, series_code, fiscal_year) do nothing;
-
-  update public.fiscal_document_series
-     set next_number = next_number + 1
-   where organization_id = v_original.organization_id
-     and document_type = 'credit_note'
-     and series_code = v_series
-     and fiscal_year = v_year
-     and active = true
+  update public.fiscal_document_series set next_number = next_number + 1
+  where organization_id = v_original.organization_id and document_type = 'credit_note' and series_code = v_series and fiscal_year = v_year and active = true
   returning next_number - 1 into v_sequence;
-
-  if v_sequence is null then
-    raise exception 'Serie fiscal inativa ou indisponivel.';
-  end if;
-
+  if v_sequence is null then raise exception 'Serie fiscal inativa ou indisponivel.'; end if;
   v_document_number := format('%s %s/%s/%s', v_series, v_year, lpad(v_sequence::text, 6, '0'), 'AZUL');
 
-  insert into public.fiscal_documents (
-    organization_id, sale_id, document_type, series_code, sequence_number, document_number,
-    operation_date, original_document_id, reason, issuer_snapshot, customer_snapshot,
-    totals_snapshot, lines_snapshot, source_snapshot, created_by
-  ) values (
-    v_original.organization_id, v_original.sale_id, 'credit_note', v_series, v_sequence, v_document_number,
-    current_date, v_original.id, trim(p_reason), v_original.issuer_snapshot, v_original.customer_snapshot,
-    v_original.totals_snapshot, v_original.lines_snapshot,
-    jsonb_build_object('original_document_id', v_original.id, 'original_document_number', v_original.document_number),
-    auth.uid()
-  ) returning id into v_document_id;
-
-  insert into public.fiscal_document_events (organization_id, fiscal_document_id, event_type, event_data, actor_user_id)
+  insert into public.fiscal_documents (organization_id, sale_id, document_type, series_code, sequence_number, document_number, operation_date, original_document_id, reason, issuer_snapshot, customer_snapshot, totals_snapshot, lines_snapshot, source_snapshot, created_by)
   values (
-    v_original.organization_id,
-    v_document_id,
-    'credited',
-    jsonb_build_object('original_document_id', v_original.id, 'reason', trim(p_reason)),
-    auth.uid()
-  );
-
+    v_original.organization_id, v_original.sale_id, 'credit_note', v_series, v_sequence, v_document_number, current_date, v_original.id, trim(p_reason),
+    v_original.issuer_snapshot, v_original.customer_snapshot, v_original.totals_snapshot, v_original.lines_snapshot,
+    jsonb_build_object('original_document_id', v_original.id, 'original_document_number', v_original.document_number), auth.uid()
+  ) returning id into v_document_id;
+  insert into public.fiscal_document_events (organization_id, fiscal_document_id, event_type, event_data, actor_user_id)
+  values (v_original.organization_id, v_document_id, 'credited', jsonb_build_object('original_document_id', v_original.id, 'reason', trim(p_reason)), auth.uid());
   return query select v_document_id, v_document_number;
 end;
 $$;
-
 revoke all on function public.issue_fiscal_credit_note(uuid, text) from public;
 grant execute on function public.issue_fiscal_credit_note(uuid, text) to authenticated;
 
 insert into public.role_permissions (organization_id, role_code, permission)
-values
-  (null, 'accountant', 'page:fiscal_documents'),
-  (null, 'readonly', 'page:fiscal_documents')
+values (null, 'accountant', 'page:fiscal_documents'), (null, 'readonly', 'page:fiscal_documents')
 on conflict do nothing;
