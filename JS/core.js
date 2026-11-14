@@ -18212,22 +18212,30 @@ async function downloadSaftXml() {
   }
   fiscalSetText("saft-status", "A gerar XML");
   try {
-    var result = await supabaseClient.functions.invoke("saft-export", {
-      body: {
+    var sessionResult = await supabaseClient.auth.getSession();
+    var accessToken = sessionResult && sessionResult.data && sessionResult.data.session
+      ? sessionResult.data.session.access_token
+      : "";
+    if (!accessToken) throw new Error("UNAUTHENTICATED");
+    var response = await fetch(SUPABASE_URL + "/functions/v1/saft-export", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + accessToken
+      },
+      body: JSON.stringify({
         organization_id: organizationId,
         export_type: exportType,
         period_from: period.from,
         period_to: period.to
-      }
+      })
     });
-    if (result.error) {
-      var response = result.error.context;
-      var detail = response && typeof response.json === "function" ? await response.json().catch(function() { return null; }) : null;
-      throw new Error((detail && detail.error) || result.error.message || "EXPORT_FAILED");
+    if (!response.ok) {
+      var detail = await response.json().catch(function() { return null; });
+      throw new Error((detail && detail.error) || "EXPORT_FAILED");
     }
-    var blob = result.data instanceof Blob
-      ? result.data
-      : new Blob([typeof result.data === "string" ? result.data : JSON.stringify(result.data)], { type: "application/xml;charset=utf-8" });
+    var blob = await response.blob();
     var fileName = "SAFT-AO-" + exportType + "-" + period.from + "-" + period.to + ".xml";
     var anchor = document.createElement("a");
     anchor.href = URL.createObjectURL(blob);
@@ -18245,6 +18253,8 @@ async function downloadSaftXml() {
     fiscalSetText("saft-status", "Erro de exportacao");
     if (message.indexOf("SAFT_SIGNING_NOT_CONFIGURED") >= 0) {
       toast("A chave privada SAF-T ainda nao esta configurada no servidor seguro.", "error");
+    } else if (message.indexOf("UNAUTHENTICATED") >= 0) {
+      toast("A sua sessao terminou. Entre novamente e tente gerar o XML.", "error");
     } else if (message.indexOf("PREFLIGHT_FAILED") >= 0) {
       toast("Corrija primeiro os avisos do controlo SAF-T.", "error");
     } else {
