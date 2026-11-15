@@ -3379,7 +3379,7 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
       organization_id: organizationId,
       receipt_no: receiptNo,
       client_name: data.clientName || "Anonimo",
-      client_nif: normalizeClientNif(data.clientNif),
+      client_nif: normalizeClientNif(data.clientNif) || null,
       sale_date: data.saleDate || new Date().toISOString().split("T")[0],
       sale_type: data.saleType || "interno",
       total: total,
