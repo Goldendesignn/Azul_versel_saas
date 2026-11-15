@@ -1172,7 +1172,9 @@
                   <div class="form-label" style="margin-bottom:4px;">Data da venda</div>
                   <input type="date" class="form-input" id="vendaDate" style="width:100%;padding:7px 10px;font-size:12px;">
               </div>
-              <input type="text" id="clientInput" placeholder=" Nome do cliente (deixa vazio = Anonimo)">
+              <input type="text" id="clientInput" list="sale-client-list" placeholder="Nome do cliente (vazio = Anonimo)" onfocus="renderClientDatalist()" onchange="prefillSaleClientNif()">
+              <datalist id="sale-client-list"></datalist>
+              <input type="text" id="clientNifInput" inputmode="numeric" maxlength="20" placeholder="NIF cliente" oninput="normalizeSaleClientNif()">
             </div>
             <div class="cart-body" id="cartBody">
               <div class="empty">Adiciona produtos ao carrinho</div>
@@ -3799,6 +3801,7 @@
     <div class="r-meta" id="r-num-line">N Recibo: <b id="r-num"></b></div>
     <div class="r-meta" id="r-date-line">Data: <b id="r-date"></b></div>
     <div class="r-meta" id="r-client-line">Cliente: <b id="r-client"></b></div>
+    <div class="r-meta" id="r-client-nif-line" style="display:none;">NIF cliente: <b id="r-client-nif"></b></div>
     <div class="r-meta" id="r-pay-line">Pagamento: <b id="r-pay"></b></div>
     <hr class="r-divider">
     <table class="r-table">

@@ -3379,6 +3379,7 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
       organization_id: organizationId,
       receipt_no: receiptNo,
       client_name: data.clientName || "Anonimo",
+      client_nif: normalizeClientNif(data.clientNif),
       sale_date: data.saleDate || new Date().toISOString().split("T")[0],
       sale_type: data.saleType || "interno",
       total: total,
@@ -3606,6 +3607,7 @@ async function getClientFicheFromSupabase(clientName) {
 
   return {
     name: clientName,
+    nif: (sales.find(function(sale) { return !!normalizeClientNif(sale.client_nif); }) || {}).client_nif || "",
     totalCompra: totalCompra,
     totalDette: totalDette,
     transactions: sales.length + payments.length,
@@ -11583,9 +11585,43 @@ function setCartQty(i, value) {
 
 function removeItem(i) { cart.splice(i, 1); renderCart(); }
 
+function normalizeClientNif(value) {
+  return String(value || "").trim().replace(/\s+/g, "").toUpperCase();
+}
+
+function normalizeSaleClientNif() {
+  var input = document.getElementById("clientNifInput");
+  if (input) input.value = normalizeClientNif(input.value);
+}
+
+async function prefillSaleClientNif() {
+  var nameInput = document.getElementById("clientInput");
+  var nifInput = document.getElementById("clientNifInput");
+  var organizationId = getAzulOrganizationId();
+  var clientName = String((nameInput || {}).value || "").trim();
+  if (!nifInput || !organizationId || !clientName || normalizeClientNif(nifInput.value)) return;
+  try {
+    var result = await supabaseClient
+      .from("sales")
+      .select("client_nif")
+      .eq("organization_id", organizationId)
+      .eq("client_name", clientName)
+      .not("client_nif", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (!result.error && result.data && result.data[0] && result.data[0].client_nif) {
+      nifInput.value = normalizeClientNif(result.data[0].client_nif);
+    }
+  } catch (e) {
+    console.warn("Nao foi possivel preencher o NIF do cliente:", e);
+  }
+}
+
 function clearCart() {
   cart = [];
   document.getElementById('clientInput').value = '';
+  var clientNifInput = document.getElementById('clientNifInput');
+  if (clientNifInput) clientNifInput.value = '';
   closePaymentModal();
   renderCart();
   updatePaymentStatus();
@@ -12896,6 +12932,7 @@ if (!finalPaymentLines) {
 
 var hasCredito = getCreditoAmountFromPaymentLines(finalPaymentLines, totalVenda) > 0;
 var clientName = document.getElementById("clientInput").value.trim();
+var clientNif = normalizeClientNif((document.getElementById("clientNifInput") || {}).value || "");
 
 if (hasCredito && !clientName) {
   toast("Venda a credito precisa de nome do cliente.", "error");
@@ -12914,6 +12951,7 @@ if (hasCredito && !clientName) {
   var salePayload = {
     saleDate: document.getElementById("vendaDate").value,
     clientName: clientName || "Anonimo",
+    clientNif: clientNif,
     saleType: selectedType,
     paymentLines: finalPaymentLines,
     items: cart
@@ -12928,6 +12966,7 @@ if (hasCredito && !clientName) {
       recibo: result.receiptNo,
       date: document.getElementById("vendaDate").value,
       client: document.getElementById("clientInput").value.trim() || "Anonimo",
+      clientNif: clientNif,
       pay: getPaymentSummary(paymentLines),
       items: cart.map(function(item) {
         return {
@@ -13245,6 +13284,7 @@ function getSampleReceiptData() {
     recibo: 'AZ-EXEMPLO-001',
     date: new Date().toISOString().split('T')[0],
     client: 'Cliente exemplo',
+    clientNif: '5000000000',
     pagamento: 'Cash: 5 000 ' + cur,
     total: 5000,
     items: [
@@ -13285,6 +13325,11 @@ function showReceipt(d) {
   document.getElementById('r-num').textContent = d.recibo;
   document.getElementById('r-date').textContent = d.date;
   document.getElementById('r-client').textContent = d.client;
+  var clientNif = normalizeClientNif(d.clientNif || d.nif || '');
+  var clientNifLine = document.getElementById('r-client-nif-line');
+  var clientNifValue = document.getElementById('r-client-nif');
+  if (clientNifValue) clientNifValue.textContent = clientNif;
+  if (clientNifLine) clientNifLine.style.display = clientNif ? 'block' : 'none';
   document.getElementById('r-pay').textContent = d.pagamento || d.pay || "-";
   document.getElementById('r-total').textContent = fmt(d.total);
 
@@ -13352,6 +13397,7 @@ function showReceipt(d) {
 
   document.getElementById('r-date-line').style.display   = showDate    ? 'block' : 'none';
   document.getElementById('r-client-line').style.display = showClient  ? 'block' : 'none';
+  if (clientNifLine) clientNifLine.style.display = showClient && clientNif ? 'block' : 'none';
   document.getElementById('r-pay-line').style.display    = showPayment ? 'block' : 'none';
   document.getElementById('r-num-line').style.display    = showRecibo  ? 'block' : 'none';
 
@@ -13399,7 +13445,7 @@ function printReceipt() {
     '.r-qr img { display:block; width:24mm; height:24mm; object-fit:contain; margin:0 auto 1mm; image-rendering:pixelated; }' +
     '.r-thanks { text-align:center; font-size:' + Math.max(textSize - 1, 8) + 'pt; color:#000; font-style:normal; font-weight:600; margin-top:3mm; }' +
     '.r-actions { display:none; }' +
-    '#r-address-line, #r-phone-line, #r-nif-line { font-size:' + Math.max(textSize - 1, 8) + 'pt; text-align:center; color:#000; font-weight:700; margin-bottom:1mm; }' +
+    '#r-address-line, #r-phone-line, #r-nif-line, #r-client-nif-line { font-size:' + Math.max(textSize - 1, 8) + 'pt; text-align:center; color:#000; font-weight:700; margin-bottom:1mm; }' +
     '</style></head><body>' + content + '</body></html>');
   w.document.close();
   waitForReceiptPrintAssets(w, function() {
@@ -13494,6 +13540,8 @@ function buildReceiptShareText(data) {
     "Total: " + fmt((data && data.total) || 0)
   ];
 
+  var clientNif = normalizeClientNif(data && (data.clientNif || data.nif));
+  if (clientNif) lines.splice(3, 0, "NIF cliente: " + clientNif);
   if (cfg.phone) lines.push("Telefone: " + cfg.phone);
   if (cfg.receiptQrMode === "link" && cfg.receiptQrLink) lines.push("Link: " + ensureReceiptUrlProtocol(cfg.receiptQrLink));
   return lines.filter(Boolean).join("\n");
@@ -13562,6 +13610,7 @@ async function createReceiptPdfBlob() {
   if (cfg.showRecibo !== false) line("N Recibo:", data.recibo || "-", textSize, true);
   if (cfg.showDate !== false) line("Data:", data.date || "-", textSize, false);
   if (cfg.showClient !== false) line("Cliente:", data.client || "Anonimo", textSize, false);
+  if (cfg.showClient !== false && normalizeClientNif(data.clientNif || data.nif || "")) line("NIF cliente:", normalizeClientNif(data.clientNif || data.nif || ""), textSize, false);
   if (cfg.showPayment !== false) line("Pagamento:", data.pagamento || data.pay || "-", textSize, false);
   divider();
 
@@ -19104,7 +19153,7 @@ async function renderClientDatalist() {
       return '<option value="' + escapeDespesaHtml(name) + '"></option>';
     }).join("");
 
-    document.querySelectorAll("#list-client").forEach(function(list) {
+    document.querySelectorAll("#list-client, #sale-client-list").forEach(function(list) {
       list.innerHTML = html;
     });
   } catch (e) {
@@ -19138,6 +19187,7 @@ async function loadClientDetail() {
             '<div>' +
               '<div style="font-family:Playfair Display,serif;font-size:25px;font-weight:800;">' + escapeDespesaHtml(data.name || nom) + '</div>' +
               '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Ficha do cliente</div>' +
+              (normalizeClientNif(data.nif) ? '<div style="font-size:12px;color:var(--muted);margin-top:4px;">NIF: <strong style="color:var(--text);">' + escapeDespesaHtml(normalizeClientNif(data.nif)) + '</strong></div>' : '') +
             '</div>' +
           '</div>' +
 
@@ -22520,6 +22570,7 @@ async function cancelSaleWithCorrection(saleId, reason) {
       organization_id: organizationId,
       receipt_no: receiptNo,
       client_name: sale.client_name || "Anonimo",
+      client_nif: sale.client_nif || null,
       sale_date: correctionToday(),
       sale_type: "Correction",
       total: -Math.abs(Number(sale.total) || 0),

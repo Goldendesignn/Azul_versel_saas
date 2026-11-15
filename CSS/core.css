@@ -4142,7 +4142,7 @@ html[data-theme="dark"] .quick-start-grid strong {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: 116px minmax(0, 1fr) 112px;
   gap: 8px;
   align-items: end;
 }
@@ -4815,7 +4815,8 @@ html[data-theme="dark"] .quick-start-grid strong {
 .r-meta b { color: #000; font-weight: 700; }
 #r-address-line,
 #r-phone-line,
-#r-nif-line {
+#r-nif-line,
+#r-client-nif-line {
   color: #000 !important;
   font-family: inherit !important;
   font-weight: 700 !important;
