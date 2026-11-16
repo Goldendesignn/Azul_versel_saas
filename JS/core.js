@@ -17218,7 +17218,7 @@ async function loadCashRegisterPanel() {
     panel.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">' +
         '<div><strong style="color:var(--green);">Caixa aberta</strong><div style="font-size:12px;color:var(--muted);margin-top:3px;">Aberta por ' + escapeDespesaHtml(session.opened_by_name || 'Utilizador') + ' em ' + escapeDespesaHtml(String(session.opened_at || '').replace('T', ' ').slice(0, 16)) + '</div></div>' +
-        '<div style="font-size:12px;color:var(--muted);">Feche apenas depois de contar o dinheiro real.</div>' +
+        '<div style="font-size:12px;color:var(--muted);">No fim, confira os bilhetes e moedas que estao fisicamente no caixa.</div>' +
       '</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">' +
         cashRegisterMetric('Fundo inicial', summary.opening_amount, 'var(--blue)') +
@@ -17238,11 +17238,11 @@ async function loadCashRegisterPanel() {
           '</div>' +
         '</div>' +
         '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;">' +
-          '<div class="card-title">Fechar caixa</div>' +
+          '<div class="card-title">Fechar caixa: conferir o dinheiro</div>' +
           '<div class="form-grid" style="max-width:none;">' +
-            '<div class="form-group"><label class="form-label">Dinheiro contado</label><input type="number" min="0" step="0.01" class="form-input" id="cashCountedAmount" placeholder="Conte o dinheiro real"></div>' +
+            '<div class="form-group"><label class="form-label">Total de bilhetes e moedas no caixa</label><input type="number" min="0" step="0.01" class="form-input" id="cashCountedAmount" placeholder="Ex: 50 000" oninput="previewCashCount(' + Number(summary.expected_amount || 0) + ')"><div id="cashCountPreview" style="font-size:12px;color:var(--muted);margin-top:6px;">O sistema espera ' + fmt(summary.expected_amount || 0) + '. Conte o dinheiro fisico e indique o total encontrado.</div></div>' +
             '<div class="form-group full"><label class="form-label">Justificacao do desvio</label><input type="text" maxlength="240" class="form-input" id="cashClosingNote" placeholder="Obrigatoria quando existe diferenca"></div>' +
-            '<div class="form-group full"><button class="form-submit" id="cashCloseBtn" onclick="closeCashRegister(\'' + session.id + '\')">Contar e fechar caixa</button></div>' +
+            '<div class="form-group full"><button class="form-submit" id="cashCloseBtn" onclick="closeCashRegister(\'' + session.id + '\')">Confirmar contagem e fechar caixa</button></div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -17250,6 +17250,31 @@ async function loadCashRegisterPanel() {
   } catch (e) {
     console.error("Erro tour de caixa:", e);
     panel.innerHTML = '<div class="empty">Erro ao carregar a caixa: ' + escapeDespesaHtml(e.message || e) + '</div>';
+  }
+}
+
+function previewCashCount(expectedAmount) {
+  var input = document.getElementById("cashCountedAmount");
+  var preview = document.getElementById("cashCountPreview");
+  if (!input || !preview) return;
+  if (String(input.value || "").trim() === "") {
+    preview.textContent = "O sistema espera " + fmt(expectedAmount || 0) + ". Conte o dinheiro fisico e indique o total encontrado.";
+    preview.style.color = "var(--muted)";
+    return;
+  }
+  var counted = Number(input.value);
+  if (!isFinite(counted) || counted < 0) {
+    preview.textContent = "Indique apenas o total encontrado no caixa.";
+    preview.style.color = "var(--red)";
+    return;
+  }
+  var difference = counted - (Number(expectedAmount) || 0);
+  if (Math.abs(difference) < 0.01) {
+    preview.textContent = "Perfeito: o dinheiro contado corresponde ao valor esperado.";
+    preview.style.color = "var(--green)";
+  } else {
+    preview.textContent = "Diferenca de " + fmt(difference) + ". Escreva o motivo antes de fechar.";
+    preview.style.color = "var(--red)";
   }
 }
 
