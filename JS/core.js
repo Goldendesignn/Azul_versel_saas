@@ -17217,6 +17217,10 @@ async function loadCashRegisterPanel() {
             '<label class="form-label">Fundo inicial em Cash</label>' +
             '<input type="number" min="0" step="0.01" class="form-input" id="cashOpeningAmount" placeholder="Ex: 20 000">' +
           '</div>' +
+          '<div class="form-group" style="margin:0;min-width:180px;flex:1;">' +
+            '<label class="form-label">Seu codigo caixa</label>' +
+            '<input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" class="form-input" id="cashAccessCode" placeholder="4 a 8 algarismos" autocomplete="one-time-code">' +
+          '</div>' +
           '<button class="form-submit" style="width:auto;min-width:190px;" id="cashOpenBtn" onclick="openCashRegister()">Abrir caixa</button>' +
         '</div>' +
         '<div style="font-size:12px;color:var(--muted);margin-top:10px;">O fundo inicial e o dinheiro de troco disponivel no inicio do tour.</div>';
@@ -17291,8 +17295,13 @@ function previewCashCount(expectedAmount) {
 async function openCashRegister() {
   if (!requireAzulAction("cash:manage", "abrir caixa") || cashRegisterActionInProgress) return;
   var amount = Number((document.getElementById("cashOpeningAmount") || {}).value);
+  var accessCode = String((document.getElementById("cashAccessCode") || {}).value || "").trim();
   if (!isFinite(amount) || amount < 0) {
     toast("Indique um fundo inicial valido.", "error");
+    return;
+  }
+  if (!/^[0-9]{4,8}$/.test(accessCode)) {
+    toast("Indique o seu codigo de caixa com 4 a 8 algarismos.", "error");
     return;
   }
   cashRegisterActionInProgress = true;
@@ -17302,7 +17311,8 @@ async function openCashRegister() {
     var result = await supabaseClient.rpc("open_cash_register", {
       p_organization_id: getAzulOrganizationId(),
       p_opening_amount: amount,
-      p_actor_name: getAzulCurrentUserName()
+      p_actor_name: getAzulCurrentUserName(),
+      p_access_code: accessCode
     });
     if (result.error) throw result.error;
     logAzulAction("cash:open", "cash_register", "success", { opening_amount: amount });
@@ -23477,6 +23487,7 @@ window.loadCorrections = loadCorrections;
 window.loadCorrectionsDebounced = loadCorrectionsDebounced;
 window.confirmCorrectionCancel = confirmCorrectionCancel;
 window.saveTeamMemberRoleStatus = saveTeamMemberRoleStatus;
+window.setCashierAccessCode = setCashierAccessCode;
 window.rejectTeamMember = rejectTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.createCustomRoleFromBase = createCustomRoleFromBase;
@@ -24021,6 +24032,35 @@ async function saveTeamMemberRoleStatus(encodedEmail) {
   }
 }
 
+async function setCashierAccessCode(encodedEmail) {
+  if (!canManageTeamRoles()) {
+    toast("Sem permissao para definir codigos de caixa.", "error");
+    return;
+  }
+
+  var email = decodeURIComponent(String(encodedEmail || ""));
+  var key = getTeamMemberDomKey(email);
+  var input = document.getElementById("team-cash-code-" + key);
+  var code = String((input || {}).value || "").trim();
+  if (!/^[0-9]{4,8}$/.test(code)) {
+    toast("O codigo de caixa deve ter 4 a 8 algarismos.", "error");
+    return;
+  }
+
+  try {
+    var result = await supabaseClient.rpc("set_cashier_access_code", {
+      p_organization_id: localStorage.getItem("azul_organization_id"),
+      p_email: email,
+      p_code: code
+    });
+    if (result.error) throw result.error;
+    if (input) input.value = "";
+    toast("Codigo de caixa definido. Entregue-o apenas a este caissier.", "success");
+  } catch (e) {
+    toast("Erro ao definir codigo de caixa: " + (e.message || e), "error");
+  }
+}
+
 async function rejectTeamMember(encodedEmail) {
   var email = decodeURIComponent(String(encodedEmail || ""));
   var key = getTeamMemberDomKey(email);
@@ -24465,6 +24505,13 @@ async function renderSettingsTeamCard() {
       var initial = getTeamInitial(name, email);
       var key = getTeamMemberDomKey(email);
       var encodedEmail = encodeURIComponent(email);
+      var cashCodeControl = rawRole === "cashier" ? `
+              <label>
+                <span>Codigo caixa</span>
+                <input id="team-cash-code-${escapeDespesaHtml(key)}" type="password" inputmode="numeric" maxlength="8" placeholder="Novo codigo">
+              </label>
+              <button type="button" onclick="setCashierAccessCode('${escapeDespesaHtml(encodedEmail)}')">Definir codigo</button>
+      ` : "";
       var controls = canManage ? `
             <div class="team-user-controls">
               <label>
@@ -24478,6 +24525,7 @@ async function renderSettingsTeamCard() {
               </label>
 
               <button type="button" onclick="saveTeamMemberRoleStatus('${escapeDespesaHtml(encodedEmail)}')">Guardar</button>
+              ${cashCodeControl}
               ${status === "pending" ? `<button type="button" class="approve" onclick="document.getElementById('team-status-${escapeDespesaHtml(key)}').value='active'; saveTeamMemberRoleStatus('${escapeDespesaHtml(encodedEmail)}')">Aceitar</button>` : ""}
               <button type="button" class="danger ghost" onclick="rejectTeamMember('${escapeDespesaHtml(encodedEmail)}')">Recusar</button>
               <button type="button" class="danger" onclick="deleteTeamMember('${escapeDespesaHtml(encodedEmail)}')">Eliminar</button>
