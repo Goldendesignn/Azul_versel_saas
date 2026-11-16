@@ -17133,12 +17133,21 @@ async function loadCashRegisterHistory() {
   var organizationId = getAzulOrganizationId();
   if (!organizationId) return;
 
-  var result = await supabaseClient
+  var from = String((document.getElementById("cashHistoryFrom") || {}).value || "");
+  var to = String((document.getElementById("cashHistoryTo") || {}).value || "");
+  var status = String((document.getElementById("cashHistoryStatus") || {}).value || "");
+
+  var query = supabaseClient
     .from("cash_register_sessions")
-    .select("id, opened_at, opened_by_name, status, expected_amount, counted_amount, difference_amount")
+    .select("id, opened_at, opened_by_name, status, expected_amount, counted_amount, difference_amount, closing_note")
     .eq("organization_id", organizationId)
     .order("opened_at", { ascending: false })
-    .limit(12);
+    .limit(100);
+  if (from) query = query.gte("opened_at", from + "T00:00:00");
+  if (to) query = query.lte("opened_at", to + "T23:59:59");
+  if (status) query = query.eq("status", status);
+
+  var result = await query;
   if (result.error) throw result.error;
 
   var rows = result.data || [];
@@ -17153,9 +17162,10 @@ async function loadCashRegisterHistory() {
       '<td>' + (isOpen ? '-' : fmt(row.expected_amount || 0)) + '</td>' +
       '<td>' + (isOpen ? '-' : fmt(row.counted_amount || 0)) + '</td>' +
       '<td style="font-weight:800;color:' + (isOpen ? 'var(--muted)' : differenceColor) + ';">' + (isOpen ? '-' : fmt(difference || 0)) + '</td>' +
+      '<td style="max-width:200px;font-size:12px;color:var(--muted);">' + escapeDespesaHtml(row.closing_note || (isOpen ? 'Em curso' : '-')) + '</td>' +
       '<td>' + (isOpen ? '' : '<button class="filter-btn" style="padding:6px 10px;font-size:11px;" onclick="printCashRegisterReport(\'' + row.id + '\')">Imprimir</button>') + '</td>' +
       '</tr>';
-  }).join("") : '<tr><td colspan="7" class="empty">Ainda sem tours de caixa.</td></tr>';
+  }).join("") : '<tr><td colspan="8" class="empty">Nenhum tour encontrado neste filtro.</td></tr>';
 }
 
 async function printCashRegisterReport(sessionId) {
