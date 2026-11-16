@@ -2048,6 +2048,7 @@ var AZUL_PERMISSION_CATALOG = {
   "import_order:update": { label: "Atualizar importacoes", group: "Importacoes" },
   "import_order:receive": { label: "Validar mercadoria", group: "Importacoes" },
   "cash:view": { label: "Ver tesouraria", group: "Financeiro" },
+  "cash:manage": { label: "Abrir e fechar caixa", group: "Financeiro" },
   "accounting:view": { label: "Ver contabilidade", group: "Financeiro" },
   "fiscal:view": { label: "Ver fiscalidade", group: "Financeiro" },
   "fiscal:manage": { label: "Gerir perfil fiscal", group: "Financeiro" },
@@ -2070,7 +2071,7 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   cashier: {
     name: "Caixa",
-    permissions: ["page:dashboard", "page:venda", "page:clientes", "page:logistica", "sale:create", "sale:view", "client:view", "client_payment:create", "logistics:create", "logistics:view", "logistics:update"]
+    permissions: ["page:dashboard", "page:venda", "page:clientes", "page:tresorerie", "page:logistica", "sale:create", "sale:view", "client:view", "client_payment:create", "cash:view", "cash:manage", "logistics:create", "logistics:view", "logistics:update"]
   },
   stock: {
     name: "Stock",
@@ -3385,7 +3386,8 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
       total: total,
       profit: profit,
       payment_summary: getPaymentSummary(data.paymentLines || []),
-      payment_lines: data.paymentLines || []
+      payment_lines: data.paymentLines || [],
+      cash_register_session_id: data.cashRegisterSessionId || null
     });
 
   if (saleResult.error) throw saleResult.error;
@@ -4644,7 +4646,10 @@ function goTo(page, btn) {
       switchFornTab('fiche', document.getElementById('forn-tab-fiche'));
     }
     if (page === 'clientes') renderClientDatalist();
-    if (page === 'tresorerie') loadTesouraria();
+    if (page === 'tresorerie') {
+      loadTesouraria();
+      loadCashRegisterPanel();
+    }
     if (page === 'comptabilite') loadContabilidade();
     if (page === 'fiscalidade') loadFiscalidade();
     if (page === 'fiscal_documents') loadFiscalDocumentRegister();
@@ -12933,10 +12938,24 @@ if (!finalPaymentLines) {
 var hasCredito = getCreditoAmountFromPaymentLines(finalPaymentLines, totalVenda) > 0;
 var clientName = document.getElementById("clientInput").value.trim();
 var clientNif = normalizeClientNif((document.getElementById("clientNifInput") || {}).value || "");
+var cashRegisterSession = null;
 
 if (hasCredito && !clientName) {
   toast("Venda a credito precisa de nome do cliente.", "error");
   return;
+}
+
+if (getPhysicalCashAmount(finalPaymentLines) > 0) {
+  try {
+    cashRegisterSession = await getOpenCashRegisterSession();
+  } catch (e) {
+    toast("Nao foi possivel verificar o tour de caixa: " + (e.message || e), "error");
+    return;
+  }
+  if (!cashRegisterSession) {
+    toast("Abra um tour de caixa em Tesouraria antes de receber dinheiro em Cash.", "error");
+    return;
+  }
 }
 
   var btn = document.getElementById("paymentConfirmBtn") || document.getElementById("confirmBtn");
@@ -12952,6 +12971,7 @@ if (hasCredito && !clientName) {
     saleDate: document.getElementById("vendaDate").value,
     clientName: clientName || "Anonimo",
     clientNif: clientNif,
+    cashRegisterSessionId: cashRegisterSession ? cashRegisterSession.id : null,
     saleType: selectedType,
     paymentLines: finalPaymentLines,
     items: cart
@@ -17059,6 +17079,263 @@ function initRhPage() {
   loadRhDashboard();
 }
 // Registo por chave de licenca
+
+var cashRegisterActionInProgress = false;
+
+function getPhysicalCashAmount(lines) {
+  return (lines || []).reduce(function(sum, line) {
+    var method = String(line.method || "").toLowerCase();
+    if (method === "cash" || method === "dinheiro") return sum + (Number(line.montant) || 0);
+    return sum;
+  }, 0);
+}
+
+async function getOpenCashRegisterSession() {
+  var organizationId = getAzulOrganizationId();
+  var userId = await getAzulCurrentUserId();
+  if (!organizationId || !userId) return null;
+
+  var result = await supabaseClient
+    .from("cash_register_sessions")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("opened_by", userId)
+    .eq("status", "open")
+    .order("opened_at", { ascending: false })
+    .limit(1);
+
+  if (result.error) throw result.error;
+  return (result.data || [])[0] || null;
+}
+
+async function getCashRegisterSummary(sessionId) {
+  var result = await supabaseClient.rpc("get_cash_register_summary", { p_session_id: sessionId });
+  if (result.error) throw result.error;
+  return (result.data || [])[0] || {
+    opening_amount: 0,
+    cash_sales: 0,
+    cash_in: 0,
+    cash_out: 0,
+    expected_amount: 0
+  };
+}
+
+function cashRegisterMetric(label, value, color) {
+  return '<div style="background:var(--surface2);border-radius:10px;padding:12px;min-width:120px;">' +
+    '<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);">' + escapeDespesaHtml(label) + '</div>' +
+    '<div style="margin-top:5px;font-size:18px;font-weight:800;color:' + (color || 'var(--text)') + ';">' + fmt(value || 0) + '</div>' +
+    '</div>';
+}
+
+async function loadCashRegisterHistory() {
+  var body = document.getElementById("cashRegisterHistoryBody");
+  if (!body) return;
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) return;
+
+  var result = await supabaseClient
+    .from("cash_register_sessions")
+    .select("id, opened_at, opened_by_name, status, expected_amount, counted_amount, difference_amount")
+    .eq("organization_id", organizationId)
+    .order("opened_at", { ascending: false })
+    .limit(12);
+  if (result.error) throw result.error;
+
+  var rows = result.data || [];
+  body.innerHTML = rows.length ? rows.map(function(row) {
+    var isOpen = row.status === "open";
+    var difference = row.difference_amount;
+    var differenceColor = Number(difference) === 0 ? 'var(--green)' : 'var(--red)';
+    return '<tr>' +
+      '<td>' + escapeDespesaHtml(String(row.opened_at || "").replace("T", " ").slice(0, 16)) + '</td>' +
+      '<td>' + escapeDespesaHtml(row.opened_by_name || "-") + '</td>' +
+      '<td><span style="font-weight:800;color:' + (isOpen ? 'var(--orange)' : 'var(--green)') + ';">' + (isOpen ? 'Aberto' : 'Fechado') + '</span></td>' +
+      '<td>' + (isOpen ? '-' : fmt(row.expected_amount || 0)) + '</td>' +
+      '<td>' + (isOpen ? '-' : fmt(row.counted_amount || 0)) + '</td>' +
+      '<td style="font-weight:800;color:' + (isOpen ? 'var(--muted)' : differenceColor) + ';">' + (isOpen ? '-' : fmt(difference || 0)) + '</td>' +
+      '<td>' + (isOpen ? '' : '<button class="filter-btn" style="padding:6px 10px;font-size:11px;" onclick="printCashRegisterReport(\'' + row.id + '\')">Imprimir</button>') + '</td>' +
+      '</tr>';
+  }).join("") : '<tr><td colspan="7" class="empty">Ainda sem tours de caixa.</td></tr>';
+}
+
+async function printCashRegisterReport(sessionId) {
+  try {
+    var sessionResult = await supabaseClient
+      .from("cash_register_sessions")
+      .select("*")
+      .eq("id", sessionId)
+      .single();
+    if (sessionResult.error) throw sessionResult.error;
+    var session = sessionResult.data;
+    var summary = await getCashRegisterSummary(sessionId);
+    var movementsResult = await supabaseClient
+      .from("cash_register_movements")
+      .select("movement_kind, amount, reason, occurred_at, created_by_name")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+    if (movementsResult.error) throw movementsResult.error;
+
+    var win = window.open("", "_blank", "width=680,height=820");
+    if (!win) { toast("Permite popups para imprimir o relatorio.", "error"); return; }
+    var movements = movementsResult.data || [];
+    var movementRows = movements.length ? movements.map(function(row) {
+      var isIn = row.movement_kind === "cash_in";
+      return '<tr><td>' + escapeDespesaHtml(String(row.occurred_at || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + (isIn ? 'Entrada' : 'Saida') + '</td><td>' + escapeDespesaHtml(row.reason || '') + '</td><td style="text-align:right;color:' + (isIn ? '#087f5b' : '#b42318') + ';font-weight:700;">' + (isIn ? '+' : '-') + fmt(row.amount || 0) + '</td></tr>';
+    }).join('') : '<tr><td colspan="4" style="color:#666;">Sem movimentos manuais neste tour.</td></tr>';
+    var difference = Number(session.difference_amount) || 0;
+    win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Fecho de caixa</title><style>body{font-family:Arial,sans-serif;color:#111;margin:28px;max-width:720px}h1{margin:0 0 4px;color:#0f4aa2}p{color:#555;margin:4px 0}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:22px 0}.metric{border:1px solid #ddd;border-radius:8px;padding:12px}.metric small{display:block;color:#666;text-transform:uppercase;font-weight:700}.metric b{display:block;font-size:20px;margin-top:5px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:9px 6px;border-bottom:1px solid #ddd;text-align:left;font-size:12px}th{color:#555;text-transform:uppercase;font-size:10px}.note{margin-top:20px;padding:12px;background:#f6f6f6;border-radius:8px}.footer{margin-top:32px;font-size:11px;color:#666;text-align:center}</style></head><body>' +
+      '<h1>Fecho de caixa</h1><p>Azul Gestao - Tour de ' + escapeDespesaHtml(session.opened_by_name || 'Caixa') + '</p><p>Abertura: ' + escapeDespesaHtml(String(session.opened_at || '').replace('T', ' ').slice(0, 16)) + ' | Fecho: ' + escapeDespesaHtml(String(session.closed_at || '').replace('T', ' ').slice(0, 16)) + '</p>' +
+      '<div class="grid"><div class="metric"><small>Fundo inicial</small><b>' + fmt(summary.opening_amount || 0) + '</b></div><div class="metric"><small>Vendas Cash</small><b>' + fmt(summary.cash_sales || 0) + '</b></div><div class="metric"><small>Entradas / Saidas</small><b>' + fmt(summary.cash_in || 0) + ' / ' + fmt(summary.cash_out || 0) + '</b></div><div class="metric"><small>Esperado</small><b>' + fmt(session.expected_amount || summary.expected_amount || 0) + '</b></div><div class="metric"><small>Contado</small><b>' + fmt(session.counted_amount || 0) + '</b></div><div class="metric"><small>Desvio</small><b style="color:' + (difference === 0 ? '#087f5b' : '#b42318') + ';">' + fmt(difference) + '</b></div></div>' +
+      '<h2 style="font-size:16px;">Movimentos manuais</h2><table><thead><tr><th>Data</th><th>Tipo</th><th>Motivo</th><th>Montante</th></tr></thead><tbody>' + movementRows + '</tbody></table>' +
+      (session.closing_note ? '<div class="note"><b>Justificacao:</b> ' + escapeDespesaHtml(session.closing_note) + '</div>' : '') +
+      '<div class="footer">Gerado por Azul Gestao</div><script>window.onload=function(){window.print();}</script></body></html>');
+    win.document.close();
+  } catch (e) {
+    toast("Erro ao preparar relatorio de caixa: " + (e.message || e), "error");
+  }
+}
+
+async function loadCashRegisterPanel() {
+  var panel = document.getElementById("cashRegisterPanel");
+  if (!panel) return;
+  try {
+    var session = await getOpenCashRegisterSession();
+    if (!session) {
+      panel.innerHTML =
+        '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">' +
+          '<div class="form-group" style="margin:0;min-width:220px;flex:1;">' +
+            '<label class="form-label">Fundo inicial em Cash</label>' +
+            '<input type="number" min="0" step="0.01" class="form-input" id="cashOpeningAmount" placeholder="Ex: 20 000">' +
+          '</div>' +
+          '<button class="form-submit" style="width:auto;min-width:190px;" id="cashOpenBtn" onclick="openCashRegister()">Abrir caixa</button>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--muted);margin-top:10px;">O fundo inicial e o dinheiro de troco disponivel no inicio do tour.</div>';
+      await loadCashRegisterHistory();
+      return;
+    }
+
+    var summary = await getCashRegisterSummary(session.id);
+    panel.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">' +
+        '<div><strong style="color:var(--green);">Caixa aberta</strong><div style="font-size:12px;color:var(--muted);margin-top:3px;">Aberta por ' + escapeDespesaHtml(session.opened_by_name || 'Utilizador') + ' em ' + escapeDespesaHtml(String(session.opened_at || '').replace('T', ' ').slice(0, 16)) + '</div></div>' +
+        '<div style="font-size:12px;color:var(--muted);">Feche apenas depois de contar o dinheiro real.</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">' +
+        cashRegisterMetric('Fundo inicial', summary.opening_amount, 'var(--blue)') +
+        cashRegisterMetric('Vendas Cash', summary.cash_sales, 'var(--green)') +
+        cashRegisterMetric('Entradas', summary.cash_in, 'var(--green)') +
+        cashRegisterMetric('Saidas', summary.cash_out, 'var(--red)') +
+        cashRegisterMetric('Esperado na caixa', summary.expected_amount, 'var(--blue)') +
+      '</div>' +
+      '<div class="row2" style="margin:0;">' +
+        '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;">' +
+          '<div class="card-title">Entrada ou saida de caixa</div>' +
+          '<div class="form-grid" style="max-width:none;">' +
+            '<div class="form-group"><label class="form-label">Movimento</label><select class="form-input" id="cashMovementKind"><option value="cash_in">Entrada</option><option value="cash_out">Saida</option></select></div>' +
+            '<div class="form-group"><label class="form-label">Montante</label><input type="number" min="0.01" step="0.01" class="form-input" id="cashMovementAmount" placeholder="0"></div>' +
+            '<div class="form-group full"><label class="form-label">Motivo</label><input type="text" maxlength="240" class="form-input" id="cashMovementReason" placeholder="Ex: Troco adicional, deposito no banco"></div>' +
+            '<div class="form-group full"><button class="filter-btn" id="cashMovementBtn" onclick="addCashRegisterMovement()">Registar movimento</button></div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;">' +
+          '<div class="card-title">Fechar caixa</div>' +
+          '<div class="form-grid" style="max-width:none;">' +
+            '<div class="form-group"><label class="form-label">Dinheiro contado</label><input type="number" min="0" step="0.01" class="form-input" id="cashCountedAmount" placeholder="Conte o dinheiro real"></div>' +
+            '<div class="form-group full"><label class="form-label">Justificacao do desvio</label><input type="text" maxlength="240" class="form-input" id="cashClosingNote" placeholder="Obrigatoria quando existe diferenca"></div>' +
+            '<div class="form-group full"><button class="form-submit" id="cashCloseBtn" onclick="closeCashRegister(\'' + session.id + '\')">Contar e fechar caixa</button></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    await loadCashRegisterHistory();
+  } catch (e) {
+    console.error("Erro tour de caixa:", e);
+    panel.innerHTML = '<div class="empty">Erro ao carregar a caixa: ' + escapeDespesaHtml(e.message || e) + '</div>';
+  }
+}
+
+async function openCashRegister() {
+  if (!requireAzulAction("cash:manage", "abrir caixa") || cashRegisterActionInProgress) return;
+  var amount = Number((document.getElementById("cashOpeningAmount") || {}).value);
+  if (!isFinite(amount) || amount < 0) {
+    toast("Indique um fundo inicial valido.", "error");
+    return;
+  }
+  cashRegisterActionInProgress = true;
+  var btn = document.getElementById("cashOpenBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "A abrir..."; }
+  try {
+    var result = await supabaseClient.rpc("open_cash_register", {
+      p_organization_id: getAzulOrganizationId(),
+      p_opening_amount: amount,
+      p_actor_name: getAzulCurrentUserName()
+    });
+    if (result.error) throw result.error;
+    logAzulAction("cash:open", "cash_register", "success", { opening_amount: amount });
+    toast("Caixa aberta com sucesso.", "success");
+    await loadCashRegisterPanel();
+  } catch (e) {
+    toast("Erro ao abrir caixa: " + (e.message || e), "error");
+  } finally {
+    cashRegisterActionInProgress = false;
+  }
+}
+
+async function addCashRegisterMovement() {
+  if (!requireAzulAction("cash:manage", "registar movimento de caixa") || cashRegisterActionInProgress) return;
+  var session;
+  try {
+    session = await getOpenCashRegisterSession();
+  } catch (e) {
+    toast("Nao foi possivel verificar o tour de caixa: " + (e.message || e), "error");
+    return;
+  }
+  var kind = (document.getElementById("cashMovementKind") || {}).value || "";
+  var amount = Number((document.getElementById("cashMovementAmount") || {}).value);
+  var reason = String((document.getElementById("cashMovementReason") || {}).value || "").trim();
+  if (!session) { toast("Abra uma caixa antes de registar um movimento.", "error"); return; }
+  if (!isFinite(amount) || amount <= 0 || reason.length < 2) { toast("Indique montante e motivo do movimento.", "error"); return; }
+  cashRegisterActionInProgress = true;
+  var btn = document.getElementById("cashMovementBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "A guardar..."; }
+  try {
+    var result = await supabaseClient.rpc("add_cash_register_movement", {
+      p_session_id: session.id, p_movement_kind: kind, p_amount: amount, p_reason: reason, p_actor_name: getAzulCurrentUserName()
+    });
+    if (result.error) throw result.error;
+    logAzulAction("cash:movement", "cash_register", "success", { movement_kind: kind, amount: amount, reason: reason });
+    toast("Movimento de caixa registado.", "success");
+    await loadCashRegisterPanel();
+  } catch (e) {
+    toast("Erro no movimento de caixa: " + (e.message || e), "error");
+  } finally {
+    cashRegisterActionInProgress = false;
+  }
+}
+
+async function closeCashRegister(sessionId) {
+  if (!requireAzulAction("cash:manage", "fechar caixa") || cashRegisterActionInProgress) return;
+  var amount = Number((document.getElementById("cashCountedAmount") || {}).value);
+  var note = String((document.getElementById("cashClosingNote") || {}).value || "").trim();
+  if (!isFinite(amount) || amount < 0) { toast("Indique o dinheiro realmente contado.", "error"); return; }
+  cashRegisterActionInProgress = true;
+  var btn = document.getElementById("cashCloseBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "A fechar..."; }
+  try {
+    var result = await supabaseClient.rpc("close_cash_register", {
+      p_session_id: sessionId, p_counted_amount: amount, p_closing_note: note || null, p_actor_name: getAzulCurrentUserName()
+    });
+    if (result.error) throw result.error;
+    var session = Array.isArray(result.data) ? result.data[0] : result.data;
+    logAzulAction("cash:close", "cash_register", "success", { counted_amount: amount, difference_amount: (session && session.difference_amount) || 0 });
+    toast("Caixa fechada. Desvio: " + fmt((session && session.difference_amount) || 0), Number((session && session.difference_amount) || 0) === 0 ? "success" : "error");
+    await loadCashRegisterPanel();
+    loadTesouraria();
+  } catch (e) {
+    toast("Erro ao fechar caixa: " + (e.message || e), "error");
+  } finally {
+    cashRegisterActionInProgress = false;
+  }
+}
 
 async function saveTesouraria() {
   var data = {

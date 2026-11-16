@@ -3267,6 +3267,17 @@
         <button class="filter-btn" onclick="loadTesouraria()">Atualizar</button>
       </div>
 
+      <div class="card" style="margin-bottom:18px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Tour de caixa</div>
+            <div style="font-size:12px;color:var(--muted);">Abra antes de receber dinheiro e feche depois da contagem real.</div>
+          </div>
+          <button class="filter-btn" onclick="loadCashRegisterPanel()">Atualizar tour</button>
+        </div>
+        <div id="cashRegisterPanel"><div class="empty">A carregar estado da caixa...</div></div>
+      </div>
+
       <div class="kpi-grid" style="grid-template-columns:repeat(3, minmax(0,1fr));">
         <div class="kpi">
           <div class="kpi-label">Solde Actuel</div>
@@ -3357,6 +3368,16 @@
             <tbody id="tresoBody">
               <tr><td colspan="6" class="empty">A carregar...</td></tr>
             </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <div class="card-title">Ultimos tours de caixa</div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>Abertura</th><th>Caixa</th><th>Estado</th><th>Esperado</th><th>Contado</th><th>Desvio</th><th></th></tr></thead>
+            <tbody id="cashRegisterHistoryBody"><tr><td colspan="7" class="empty">A carregar...</td></tr></tbody>
           </table>
         </div>
       </div>
