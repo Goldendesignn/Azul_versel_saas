@@ -17112,6 +17112,7 @@ function initRhPage() {
 // Registo por chave de licenca
 
 var cashRegisterActionInProgress = false;
+var cashRegisterCloseProgressTimers = [];
 
 function getPhysicalCashAmount(lines) {
   return (lines || []).reduce(function(sum, line) {
@@ -17571,6 +17572,14 @@ async function closeCashRegister(sessionId) {
   cashRegisterActionInProgress = true;
   var btn = document.getElementById("cashCloseBtn");
   if (btn) { btn.disabled = true; btn.textContent = "A fechar..."; }
+  cashRegisterCloseProgressTimers = [
+    setTimeout(function() {
+      if (cashRegisterActionInProgress && btn && document.body.contains(btn)) btn.textContent = "A confirmar fecho...";
+    }, 900),
+    setTimeout(function() {
+      if (cashRegisterActionInProgress && btn && document.body.contains(btn)) btn.textContent = "A verificar vendas em curso...";
+    }, 3500)
+  ];
   try {
     var result = await supabaseClient.rpc("close_cash_register", {
       p_session_id: sessionId, p_counted_amount: amount, p_closing_note: note || null, p_actor_name: getAzulCurrentUserName()
@@ -17583,9 +17592,20 @@ async function closeCashRegister(sessionId) {
     await loadCashRegisterPanel();
     if (canSuperviseCashRegister()) loadCashRegisterHistory();
   } catch (e) {
-    toast("Erro ao fechar caixa: " + (e.message || e), "error");
+    var message = String((e && e.message) || e || "");
+    if (message.indexOf("CAIXA_OCUPADA") >= 0) {
+      toast("Existe uma venda ou movimento ainda em curso. Aguarde alguns segundos e tente novamente.", "error");
+    } else {
+      toast("Erro ao fechar caixa: " + message, "error");
+    }
   } finally {
+    cashRegisterCloseProgressTimers.forEach(function(timer) { clearTimeout(timer); });
+    cashRegisterCloseProgressTimers = [];
     cashRegisterActionInProgress = false;
+    if (btn && document.body.contains(btn)) {
+      btn.disabled = false;
+      btn.textContent = "Confirmar contagem e fechar caixa";
+    }
   }
 }
 
