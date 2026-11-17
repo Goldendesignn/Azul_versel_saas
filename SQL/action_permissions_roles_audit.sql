@@ -287,13 +287,13 @@ begin
     raise exception 'TEAM_PERMISSION_DENIED';
   end if;
 
-  update public.role_definitions
+  update public.role_definitions as rd
   set
     name = trim(p_name),
     description = 'Role personalizado',
     is_system = false
-  where organization_id = p_organization_id
-    and lower(code) = v_code;
+  where rd.organization_id = p_organization_id
+    and lower(rd.code) = v_code;
 
   if not found then
     insert into public.role_definitions (organization_id, code, name, description, is_system)
