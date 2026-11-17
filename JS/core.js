@@ -1165,9 +1165,23 @@ var AZUL_CONTEXT_HELP = {
     ],
     tip: "Consulte fornecedores a pagar no dashboard antes de fazer novos pagamentos."
   },
+  caixa: {
+    title: "Caixa",
+    subtitle: "Modulo dedicado ao turno de cada caissier, desde a abertura ate ao fecho com contagem real.",
+    main: [
+      "Abra o turno com o seu codigo pessoal e indique o fundo inicial.",
+      "Registe qualquer entrada ou saida de dinheiro durante o turno.",
+      "No fecho, conte bilhetes e moedas e indique o valor fisico encontrado."
+    ],
+    care: [
+      "Cada caissier fecha apenas o seu proprio turno.",
+      "Quando houver diferenca, explique o motivo antes de fechar."
+    ],
+    tip: "O responsavel acompanha turnos, desvios e historico neste mesmo modulo."
+  },
   tresorerie: {
     title: "Tesouraria",
-    subtitle: "Modulo para acompanhar entradas, saidas, saldo e movimentos de caixa.",
+    subtitle: "Modulo para acompanhar entradas, saidas, saldo e movimentos financeiros globais.",
     main: [
       "Entradas podem vir de vendas, pagamentos de clientes e movimentos manuais.",
       "Saidas podem vir de despesas, fornecedores e movimentos manuais.",
@@ -1647,11 +1661,24 @@ var AZUL_ONBOARDING_STEPS = [
     ]
   },
   {
+    title: "Abrir e fechar o caixa",
+    icon: "caixa",
+    page: "caixa",
+    target: "#page-caixa",
+    intro: "No modulo Caixa cada caissier abre o seu turno, regista movimentos em dinheiro e fecha depois de contar o dinheiro fisico.",
+    bullets: [
+      "Indique o fundo inicial e o seu codigo pessoal para abrir o turno.",
+      "Registe entradas e saidas com um motivo claro.",
+      "No fecho, conte o dinheiro real; uma diferenca exige justificacao.",
+      "O responsavel encontra a supervisao e o historico neste mesmo modulo."
+    ]
+  },
+  {
     title: "Controlar a tesouraria",
     icon: "tresorerie",
     page: "tresorerie",
     target: "#page-tresorerie",
-    intro: "A Tesouraria mostra entradas, saidas, saldo e movimentos de caixa da loja.",
+    intro: "A Tesouraria mostra entradas, saidas, saldo e movimentos financeiros globais da loja.",
     bullets: [
       "Entradas podem vir de vendas e pagamentos recebidos.",
       "Saidas podem vir de despesas, compras e pagamentos a fornecedores.",
@@ -2016,6 +2043,7 @@ var AZUL_PERMISSION_CATALOG = {
   "page:clientes": { label: "Clientes", group: "Paginas" },
   "page:depenses": { label: "Despesas", group: "Paginas" },
   "page:forn": { label: "Fornecedores", group: "Paginas" },
+  "page:caixa": { label: "Caixa", group: "Paginas" },
   "page:tresorerie": { label: "Tesouraria", group: "Paginas" },
   "page:comptabilite": { label: "Contabilidade", group: "Paginas" },
   "page:fiscalidade": { label: "Fiscalidade", group: "Paginas" },
@@ -2071,7 +2099,7 @@ var AZUL_ROLE_PERMISSIONS = {
   },
   cashier: {
     name: "Caixa",
-    permissions: ["page:dashboard", "page:venda", "page:clientes", "page:tresorerie", "page:logistica", "sale:create", "sale:view", "client:view", "client_payment:create", "cash:view", "cash:manage", "logistics:create", "logistics:view", "logistics:update"]
+    permissions: ["page:dashboard", "page:venda", "page:clientes", "page:caixa", "page:logistica", "sale:create", "sale:view", "client:view", "client_payment:create", "cash:view", "cash:manage", "logistics:create", "logistics:view", "logistics:update"]
   },
   stock: {
     name: "Stock",
@@ -2194,7 +2222,8 @@ var AZUL_MENU_MODULES = {
   depenses: { group: "Essenciais", priority: 1, keywords: "despesa gasto saida dinheiro custo" },
   rh: { group: "Pessoas", priority: 3, keywords: "rh recursos humanos funcionario salario presenca" },
   forn: { group: "Pessoas", priority: 2, keywords: "fornecedor fornecedor pagamento divida compra" },
-  tresorerie: { group: "Dinheiro", priority: 2, keywords: "tesouraria caixa dinheiro entrada saida saldo" },
+  caixa: { group: "Dinheiro", priority: 1, keywords: "caixa turno abertura fecho dinheiro contado caissier" },
+  tresorerie: { group: "Dinheiro", priority: 2, keywords: "tesouraria dinheiro entrada saida saldo movimento financeiro" },
   comptabilite: { group: "Relatorios", priority: 3, keywords: "contabilidade fiscal balanco resultado diario" },
   fiscalidade: { group: "Dinheiro", priority: 2, keywords: "fiscal iva nif agt imposto declaracao factura" },
   fiscal_documents: { group: "Dinheiro", priority: 2, keywords: "documento fiscal factura nota credito imprimir nif agt" },
@@ -2379,6 +2408,7 @@ var AZUL_ICON_PATHS = {
   depenses: '<path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>',
   rh: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
   forn: '<path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9h1"></path><path d="M9 13h1"></path><path d="M9 17h1"></path>',
+  caixa: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
   tresorerie: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
   comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
   fiscalidade: '<path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path><path d="M19 3l2 2-2 2"></path>',
@@ -2413,6 +2443,7 @@ var AZUL_PAGE_ICON_MAP = {
   depenses: "depenses",
   rh: "rh",
   forn: "forn",
+  caixa: "caixa",
   tresorerie: "tresorerie",
   comptabilite: "comptabilite",
   fiscalidade: "fiscalidade",
@@ -4648,10 +4679,8 @@ function goTo(page, btn) {
       switchFornTab('fiche', document.getElementById('forn-tab-fiche'));
     }
     if (page === 'clientes') renderClientDatalist();
-    if (page === 'tresorerie') {
-      loadTesouraria();
-      loadCashRegisterPanel();
-    }
+    if (page === 'caixa') loadCashRegisterModule();
+    if (page === 'tresorerie') loadTesouraria();
     if (page === 'comptabilite') loadContabilidade();
     if (page === 'fiscalidade') loadFiscalidade();
     if (page === 'fiscal_documents') loadFiscalDocumentRegister();
@@ -12955,7 +12984,7 @@ if (getPhysicalCashAmount(finalPaymentLines) > 0) {
     return;
   }
   if (!cashRegisterSession) {
-    toast("Abra um tour de caixa em Tesouraria antes de receber dinheiro em Cash.", "error");
+    toast("Abra o seu turno no modulo Caixa antes de receber dinheiro em Cash.", "error");
     return;
   }
 }
@@ -17129,9 +17158,38 @@ function cashRegisterMetric(label, value, color) {
     '</div>';
 }
 
+function canSuperviseCashRegister() {
+  var role = getAzulCurrentRole();
+  return role === "owner" || role === "manager";
+}
+
+async function loadCashRegisterModule() {
+  await loadCashRegisterPanel();
+
+  var supervisionSection = document.getElementById("cashRegisterSupervisorSection");
+  var supervisionPanel = document.getElementById("cashierSupervisionPanel");
+  var historySection = document.getElementById("cashRegisterHistorySection");
+  if (!canSuperviseCashRegister()) {
+    if (supervisionSection) supervisionSection.style.display = "none";
+    if (historySection) historySection.style.display = "none";
+    return;
+  }
+
+  if (supervisionSection) supervisionSection.style.display = "";
+  if (historySection) historySection.style.display = "";
+  if (supervisionPanel) supervisionPanel.innerHTML = '<div class="empty">A carregar supervisao...</div>';
+
+  var supervision = await loadCashierSupervision();
+  if (supervisionPanel) {
+    supervisionPanel.innerHTML = renderCashierSupervision(supervision.rows, supervision.error);
+  }
+  await loadCashRegisterHistory();
+}
+
 async function loadCashRegisterHistory() {
   var body = document.getElementById("cashRegisterHistoryBody");
   if (!body) return;
+  if (!canSuperviseCashRegister()) return;
   var organizationId = getAzulOrganizationId();
   if (!organizationId) return;
 
@@ -17226,7 +17284,6 @@ async function loadCashRegisterPanel() {
           '<button class="form-submit" style="width:auto;min-width:190px;" id="cashOpenBtn" onclick="openCashRegister()">Abrir caixa</button>' +
         '</div>' +
         '<div style="font-size:12px;color:var(--muted);margin-top:10px;">O fundo inicial e o dinheiro de troco disponivel no inicio do tour.</div>';
-      await loadCashRegisterHistory();
       return;
     }
 
@@ -17262,7 +17319,6 @@ async function loadCashRegisterPanel() {
           '</div>' +
         '</div>' +
       '</div>';
-    await loadCashRegisterHistory();
   } catch (e) {
     console.error("Erro tour de caixa:", e);
     panel.innerHTML = '<div class="empty">Erro ao carregar a caixa: ' + escapeDespesaHtml(e.message || e) + '</div>';
@@ -23498,6 +23554,7 @@ window.deleteCustomRole = deleteCustomRole;
 window.filterCashierSupervision = filterCashierSupervision;
 window.showCashierShiftHistory = showCashierShiftHistory;
 window.closeCashierShiftHistory = closeCashierShiftHistory;
+window.loadCashRegisterModule = loadCashRegisterModule;
 window.rejectTeamMember = rejectTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.createCustomRoleFromBase = createCustomRoleFromBase;
@@ -24780,7 +24837,6 @@ async function renderSettingsTeamCard() {
     if (result.error) throw result.error;
 
     var users = result.data || [];
-    var cashierSupervision = await loadCashierSupervision();
 
     if (!users.length) {
       list.innerHTML = '<div class="empty">Nenhum utilizador encontrado.</div>';
@@ -24833,7 +24889,7 @@ async function renderSettingsTeamCard() {
 
     var customRoleEditor = canManage ? renderCustomRolePermissionEditor(roleCatalog) : "";
 
-    list.innerHTML = invitationBuilder + renderCashierSupervision(cashierSupervision.rows, cashierSupervision.error) + customRoleBuilder + customRoleEditor + users.map(function(user) {
+    list.innerHTML = invitationBuilder + customRoleBuilder + customRoleEditor + users.map(function(user) {
       var name = user.name || "Utilizador";
       var email = user.email || "-";
       var phone = user.phone || "-";

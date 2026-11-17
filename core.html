@@ -226,6 +226,7 @@
     <button class="tab" data-page="depenses" onclick="goTo('depenses', this)">Despesas</button>
     <button class="tab" data-page="rh" onclick="goTo('rh', this)">Recursos Humanos</button>
     <button class="tab" data-page="forn" onclick="goTo('forn', this)">Fornecedores</button>
+    <button class="tab" data-page="caixa" onclick="goTo('caixa', this)">Caixa</button>
     <button class="tab" data-page="tresorerie" onclick="goTo('tresorerie', this)">Tesouraria</button>
     <button class="tab" data-page="comptabilite" onclick="goTo('comptabilite', this)">Contabilidade</button>
     <button class="tab" data-page="fiscalidade" onclick="goTo('fiscalidade', this)">Fiscalidade</button>
@@ -251,6 +252,7 @@
       depenses: '<path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>',
       rh: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
       forn: '<path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9h1"></path><path d="M9 13h1"></path><path d="M9 17h1"></path>',
+      caixa: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
       tresorerie: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M16 12h4"></path><circle cx="8" cy="12" r="2"></circle>',
       comptabilite: '<path d="M4 19.5V4a2 2 0 0 1 2-2h12v20H6a2 2 0 0 1-2-2.5z"></path><path d="M8 7h6"></path><path d="M8 11h8"></path><path d="M8 15h5"></path>',
       fiscalidade: '<path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path><path d="M19 3l2 2-2 2"></path>',
@@ -3260,22 +3262,64 @@
         </section>
       </div>
     </div>
-    <!-- TRESORERIE -->
-    <div class="page" id="page-tresorerie">
+    <!-- CAIXA -->
+    <div class="page" id="page-caixa">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-        <div class="section-title" style="margin:0;">Tesouraria</div>
-        <button class="filter-btn" onclick="loadTesouraria()">Atualizar</button>
+        <div>
+          <div class="section-title" style="margin:0;">Caixa</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Abra o seu turno, registe movimentos em dinheiro e feche depois de contar o dinheiro fisico.</div>
+        </div>
+        <button class="filter-btn" onclick="loadCashRegisterModule()">Atualizar caixa</button>
       </div>
 
       <div class="card" style="margin-bottom:18px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
           <div>
-            <div class="card-title" style="margin-bottom:4px;">Tour de caixa</div>
-            <div style="font-size:12px;color:var(--muted);">Abra antes de receber dinheiro e feche depois da contagem real.</div>
+            <div class="card-title" style="margin-bottom:4px;">O meu turno de caixa</div>
+            <div style="font-size:12px;color:var(--muted);">Use o seu codigo pessoal para abrir o turno. Apenas voce pode fechar o seu proprio turno.</div>
           </div>
-          <button class="filter-btn" onclick="loadCashRegisterPanel()">Atualizar tour</button>
+          <button class="filter-btn" onclick="loadCashRegisterPanel()">Atualizar turno</button>
         </div>
         <div id="cashRegisterPanel"><div class="empty">A carregar estado da caixa...</div></div>
+      </div>
+
+      <div class="card" id="cashRegisterSupervisorSection" style="margin-bottom:18px;display:none;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Supervisao de caixas</div>
+            <div style="font-size:12px;color:var(--muted);">Acompanhe os caissiers, turnos abertos e desvios que precisam de verificacao.</div>
+          </div>
+        </div>
+        <div id="cashierSupervisionPanel"><div class="empty">A carregar supervisao...</div></div>
+      </div>
+
+      <div class="card" id="cashRegisterHistorySection" style="margin-top:18px;display:none;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Historico de caixa</div>
+            <div style="font-size:12px;color:var(--muted);">Compare o valor esperado com o valor contado e abra o relatorio de cada turno.</div>
+          </div>
+          <button class="filter-btn" onclick="loadCashRegisterHistory()">Aplicar filtros</button>
+        </div>
+        <div class="form-grid" style="max-width:none;margin-bottom:14px;">
+          <div class="form-group"><label class="form-label">De</label><input type="date" class="form-input" id="cashHistoryFrom"></div>
+          <div class="form-group"><label class="form-label">Ate</label><input type="date" class="form-input" id="cashHistoryTo"></div>
+          <div class="form-group"><label class="form-label">Estado</label><select class="form-input" id="cashHistoryStatus"><option value="">Todos os turnos</option><option value="open">Abertos</option><option value="closed">Fechados</option></select></div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>Abertura</th><th>Caixa</th><th>Estado</th><th>Esperado</th><th>Contado</th><th>Desvio</th><th>Justificacao</th><th></th></tr></thead>
+            <tbody id="cashRegisterHistoryBody"><tr><td colspan="8" class="empty">A carregar...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRESORERIE -->
+    <div class="page" id="page-tresorerie">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+        <div class="section-title" style="margin:0;">Tesouraria</div>
+        <button class="filter-btn" onclick="loadTesouraria()">Atualizar</button>
       </div>
 
       <div class="kpi-grid" style="grid-template-columns:repeat(3, minmax(0,1fr));">
@@ -3372,26 +3416,6 @@
         </div>
       </div>
 
-      <div class="card" style="margin-top:18px;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
-          <div>
-            <div class="card-title" style="margin-bottom:4px;">Historico de caixa para responsavel</div>
-            <div style="font-size:12px;color:var(--muted);">Compare o valor esperado com o valor contado e abra o relatorio de cada tour.</div>
-          </div>
-          <button class="filter-btn" onclick="loadCashRegisterHistory()">Aplicar filtros</button>
-        </div>
-        <div class="form-grid" style="max-width:none;margin-bottom:14px;">
-          <div class="form-group"><label class="form-label">De</label><input type="date" class="form-input" id="cashHistoryFrom"></div>
-          <div class="form-group"><label class="form-label">Ate</label><input type="date" class="form-input" id="cashHistoryTo"></div>
-          <div class="form-group"><label class="form-label">Estado</label><select class="form-input" id="cashHistoryStatus"><option value="">Todos os tours</option><option value="open">Abertos</option><option value="closed">Fechados</option></select></div>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="data-table">
-            <thead><tr><th>Abertura</th><th>Caixa</th><th>Estado</th><th>Esperado</th><th>Contado</th><th>Desvio</th><th>Justificacao</th><th></th></tr></thead>
-            <tbody id="cashRegisterHistoryBody"><tr><td colspan="8" class="empty">A carregar...</td></tr></tbody>
-          </table>
-        </div>
-      </div>
     </div>
 
     <!-- COMPTABILITE -->
