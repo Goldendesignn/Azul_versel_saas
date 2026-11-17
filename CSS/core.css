@@ -12637,6 +12637,128 @@ html[data-theme="dark"] #page-dashboard .important-alert-action {
   padding: 16px 4px;
 }
 
+.cash-shift-review-lock {
+  display: flex;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--orange) 50%, var(--border));
+  border-left: 4px solid var(--orange);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--orange) 8%, var(--surface));
+  padding: 16px;
+}
+
+.cash-shift-review-lock strong {
+  color: var(--text);
+}
+
+.cash-shift-review-lock p {
+  max-width: 700px;
+  margin: 6px 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.cash-shift-review-lock small {
+  color: var(--orange);
+  font-weight: 800;
+}
+
+.cash-shift-review-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.cash-shift-review-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cash-shift-review-metrics > div,
+.cash-shift-review-context {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  padding: 12px;
+}
+
+.cash-shift-review-metrics span,
+.cash-shift-review-note span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.cash-shift-review-metrics strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 19px;
+}
+
+.cash-shift-review-metrics .difference strong {
+  color: var(--red);
+}
+
+.cash-shift-review-context strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.cash-shift-review-context p {
+  margin: 7px 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.cash-shift-review-context small {
+  color: var(--muted);
+}
+
+.cash-shift-review-note textarea {
+  width: 100%;
+  min-height: 94px;
+  box-sizing: border-box;
+  margin-top: 6px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px;
+  font: inherit;
+}
+
+.cash-shift-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cash-shift-review-actions .form-submit {
+  width: auto;
+  min-width: 190px;
+}
+
+@media (max-width: 560px) {
+  .cash-shift-review-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .cash-shift-review-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .cash-shift-review-actions .form-submit {
+    width: 100%;
+  }
+}
+
 .cashier-history-modal {
   position: fixed;
   inset: 0;

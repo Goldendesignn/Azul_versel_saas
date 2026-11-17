@@ -17139,6 +17139,30 @@ async function getOpenCashRegisterSession() {
   return (result.data || [])[0] || null;
 }
 
+function isCashShiftMigrationPending(error) {
+  var message = String((error && error.message) || error || "").toLowerCase();
+  return message.indexOf("review_status") >= 0 || message.indexOf("cash_register_events") >= 0 || message.indexOf("schema cache") >= 0;
+}
+
+async function getOwnPendingCashReview() {
+  var organizationId = getAzulOrganizationId();
+  var userId = await getAzulCurrentUserId();
+  if (!organizationId || !userId) return null;
+  var result = await supabaseClient
+    .from("cash_register_sessions")
+    .select("id, closed_at, difference_amount, closing_note")
+    .eq("organization_id", organizationId)
+    .eq("opened_by", userId)
+    .eq("review_status", "pending")
+    .order("closed_at", { ascending: false })
+    .limit(1);
+  if (result.error) {
+    if (isCashShiftMigrationPending(result.error)) return null;
+    throw result.error;
+  }
+  return (result.data || [])[0] || null;
+}
+
 async function getCashRegisterSummary(sessionId) {
   var result = await supabaseClient.rpc("get_cash_register_summary", { p_session_id: sessionId });
   if (result.error) throw result.error;
@@ -17199,7 +17223,7 @@ async function loadCashRegisterHistory() {
 
   var query = supabaseClient
     .from("cash_register_sessions")
-    .select("id, opened_at, opened_by_name, status, expected_amount, counted_amount, difference_amount, closing_note")
+    .select("id, opened_at, opened_by_name, status, expected_amount, counted_amount, difference_amount, closing_note, review_status, reviewed_at, reviewed_by_name, review_note")
     .eq("organization_id", organizationId)
     .order("opened_at", { ascending: false })
     .limit(100);
@@ -17208,6 +17232,18 @@ async function loadCashRegisterHistory() {
   if (status) query = query.eq("status", status);
 
   var result = await query;
+  if (result.error && isCashShiftMigrationPending(result.error)) {
+    var fallbackQuery = supabaseClient
+      .from("cash_register_sessions")
+      .select("id, opened_at, opened_by_name, status, expected_amount, counted_amount, difference_amount, closing_note")
+      .eq("organization_id", organizationId)
+      .order("opened_at", { ascending: false })
+      .limit(100);
+    if (from) fallbackQuery = fallbackQuery.gte("opened_at", from + "T00:00:00");
+    if (to) fallbackQuery = fallbackQuery.lte("opened_at", to + "T23:59:59");
+    if (status) fallbackQuery = fallbackQuery.eq("status", status);
+    result = await fallbackQuery;
+  }
   if (result.error) throw result.error;
 
   var rows = result.data || [];
@@ -17215,6 +17251,12 @@ async function loadCashRegisterHistory() {
     var isOpen = row.status === "open";
     var difference = row.difference_amount;
     var differenceColor = Number(difference) === 0 ? 'var(--green)' : 'var(--red)';
+    var reviewStatus = String(row.review_status || 'not_required');
+    var review = isOpen ? '-' : reviewStatus === 'pending'
+      ? '<span class="cashier-state pending">A verificar</span><button type="button" class="cashier-history-btn" style="margin-left:6px;" onclick="openCashShiftReview(\'' + row.id + '\')">Rever</button>'
+      : reviewStatus === 'reviewed'
+        ? '<span class="cashier-state closed">Revisto</span><small style="display:block;margin-top:4px;color:var(--muted);">' + escapeDespesaHtml(row.reviewed_by_name || '-') + '</small>'
+        : '<span class="cashier-state closed">Equilibrado</span>';
     return '<tr>' +
       '<td>' + escapeDespesaHtml(String(row.opened_at || "").replace("T", " ").slice(0, 16)) + '</td>' +
       '<td>' + escapeDespesaHtml(row.opened_by_name || "-") + '</td>' +
@@ -17223,9 +17265,10 @@ async function loadCashRegisterHistory() {
       '<td>' + (isOpen ? '-' : fmt(row.counted_amount || 0)) + '</td>' +
       '<td style="font-weight:800;color:' + (isOpen ? 'var(--muted)' : differenceColor) + ';">' + (isOpen ? '-' : fmt(difference || 0)) + '</td>' +
       '<td style="max-width:200px;font-size:12px;color:var(--muted);">' + escapeDespesaHtml(row.closing_note || (isOpen ? 'Em curso' : '-')) + '</td>' +
+      '<td>' + review + '</td>' +
       '<td>' + (isOpen ? '' : '<button class="filter-btn" style="padding:6px 10px;font-size:11px;" onclick="printCashRegisterReport(\'' + row.id + '\')">Imprimir</button>') + '</td>' +
       '</tr>';
-  }).join("") : '<tr><td colspan="8" class="empty">Nenhum tour encontrado neste filtro.</td></tr>';
+  }).join("") : '<tr><td colspan="9" class="empty">Nenhum tour encontrado neste filtro.</td></tr>';
 }
 
 async function printCashRegisterReport(sessionId) {
@@ -17244,6 +17287,12 @@ async function printCashRegisterReport(sessionId) {
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true });
     if (movementsResult.error) throw movementsResult.error;
+    var eventsResult = await supabaseClient
+      .from("cash_register_events")
+      .select("event_type, actor_name, details, created_at")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+    if (eventsResult.error && !isCashShiftMigrationPending(eventsResult.error)) throw eventsResult.error;
 
     var win = window.open("", "_blank", "width=680,height=820");
     if (!win) { toast("Permite popups para imprimir o relatorio.", "error"); return; }
@@ -17253,15 +17302,106 @@ async function printCashRegisterReport(sessionId) {
       return '<tr><td>' + escapeDespesaHtml(String(row.occurred_at || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + (isIn ? 'Entrada' : 'Saida') + '</td><td>' + escapeDespesaHtml(row.reason || '') + '</td><td style="text-align:right;color:' + (isIn ? '#087f5b' : '#b42318') + ';font-weight:700;">' + (isIn ? '+' : '-') + fmt(row.amount || 0) + '</td></tr>';
     }).join('') : '<tr><td colspan="4" style="color:#666;">Sem movimentos manuais neste tour.</td></tr>';
     var difference = Number(session.difference_amount) || 0;
+    var reviewText = session.review_status === 'pending'
+      ? '<div class="note"><b>Revisao obrigatoria:</b> este desvio aguarda verificacao do responsavel.</div>'
+      : session.review_status === 'reviewed'
+        ? '<div class="note"><b>Revisao:</b> ' + escapeDespesaHtml(session.reviewed_by_name || '-') + ' - ' + escapeDespesaHtml(session.review_note || '') + '</div>'
+        : '';
+    var events = eventsResult.data || [];
+    var eventRows = events.length ? events.map(function(event) {
+      var labels = { opened: 'Abertura', cash_in: 'Entrada', cash_out: 'Saida', closed: 'Fecho', reviewed: 'Revisao' };
+      return '<tr><td>' + escapeDespesaHtml(String(event.created_at || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + escapeDespesaHtml(labels[event.event_type] || event.event_type) + '</td><td>' + escapeDespesaHtml(event.actor_name || '-') + '</td></tr>';
+    }).join('') : '<tr><td colspan="3" style="color:#666;">Sem eventos registados.</td></tr>';
     win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Fecho de caixa</title><style>body{font-family:Arial,sans-serif;color:#111;margin:28px;max-width:720px}h1{margin:0 0 4px;color:#0f4aa2}p{color:#555;margin:4px 0}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:22px 0}.metric{border:1px solid #ddd;border-radius:8px;padding:12px}.metric small{display:block;color:#666;text-transform:uppercase;font-weight:700}.metric b{display:block;font-size:20px;margin-top:5px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:9px 6px;border-bottom:1px solid #ddd;text-align:left;font-size:12px}th{color:#555;text-transform:uppercase;font-size:10px}.note{margin-top:20px;padding:12px;background:#f6f6f6;border-radius:8px}.footer{margin-top:32px;font-size:11px;color:#666;text-align:center}</style></head><body>' +
       '<h1>Fecho de caixa</h1><p>Azul Gestao - Tour de ' + escapeDespesaHtml(session.opened_by_name || 'Caixa') + '</p><p>Abertura: ' + escapeDespesaHtml(String(session.opened_at || '').replace('T', ' ').slice(0, 16)) + ' | Fecho: ' + escapeDespesaHtml(String(session.closed_at || '').replace('T', ' ').slice(0, 16)) + '</p>' +
       '<div class="grid"><div class="metric"><small>Fundo inicial</small><b>' + fmt(summary.opening_amount || 0) + '</b></div><div class="metric"><small>Vendas Cash</small><b>' + fmt(summary.cash_sales || 0) + '</b></div><div class="metric"><small>Entradas / Saidas</small><b>' + fmt(summary.cash_in || 0) + ' / ' + fmt(summary.cash_out || 0) + '</b></div><div class="metric"><small>Esperado</small><b>' + fmt(session.expected_amount || summary.expected_amount || 0) + '</b></div><div class="metric"><small>Contado</small><b>' + fmt(session.counted_amount || 0) + '</b></div><div class="metric"><small>Desvio</small><b style="color:' + (difference === 0 ? '#087f5b' : '#b42318') + ';">' + fmt(difference) + '</b></div></div>' +
       '<h2 style="font-size:16px;">Movimentos manuais</h2><table><thead><tr><th>Data</th><th>Tipo</th><th>Motivo</th><th>Montante</th></tr></thead><tbody>' + movementRows + '</tbody></table>' +
       (session.closing_note ? '<div class="note"><b>Justificacao:</b> ' + escapeDespesaHtml(session.closing_note) + '</div>' : '') +
+      reviewText +
+      '<h2 style="font-size:16px;">Rasto do turno</h2><table><thead><tr><th>Data</th><th>Evento</th><th>Responsavel</th></tr></thead><tbody>' + eventRows + '</tbody></table>' +
       '<div class="footer">Gerado por Azul Gestao</div><script>window.onload=function(){window.print();}</script></body></html>');
     win.document.close();
   } catch (e) {
     toast("Erro ao preparar relatorio de caixa: " + (e.message || e), "error");
+  }
+}
+
+function closeCashShiftReview() {
+  var modal = document.getElementById("cash-shift-review-modal");
+  if (modal) modal.remove();
+}
+
+async function openCashShiftReview(sessionId) {
+  if (!canSuperviseCashRegister()) {
+    toast("Apenas o proprietario ou gerente pode rever desvios.", "error");
+    return;
+  }
+
+  closeCashShiftReview();
+  var modal = document.createElement("div");
+  modal.id = "cash-shift-review-modal";
+  modal.className = "cashier-history-modal";
+  modal.innerHTML = '<div class="cashier-history-dialog cash-shift-review-dialog" role="dialog" aria-modal="true" aria-label="Rever desvio de caixa">' +
+    '<div class="cashier-history-dialog-head"><div><span>REVISAO DE DESVIO</span><strong>A carregar turno...</strong></div><button type="button" onclick="closeCashShiftReview()" aria-label="Fechar">x</button></div>' +
+    '<div class="cash-shift-review-body"><div class="empty">A carregar dados do turno...</div></div></div>';
+  document.body.appendChild(modal);
+
+  try {
+    var result = await supabaseClient
+      .from("cash_register_sessions")
+      .select("id, opened_at, closed_at, opened_by_name, expected_amount, counted_amount, difference_amount, closing_note, review_status")
+      .eq("id", sessionId)
+      .single();
+    if (result.error) throw result.error;
+    var session = result.data;
+    if (session.review_status !== "pending") {
+      throw new Error("Este turno ja nao aguarda revisao.");
+    }
+
+    modal.querySelector(".cashier-history-dialog-head strong").textContent = "Tour de " + (session.opened_by_name || "Caissier");
+    var body = modal.querySelector(".cash-shift-review-body");
+    body.innerHTML =
+      '<div class="cash-shift-review-metrics">' +
+        '<div><span>Esperado</span><strong>' + fmt(session.expected_amount || 0) + '</strong></div>' +
+        '<div><span>Contado</span><strong>' + fmt(session.counted_amount || 0) + '</strong></div>' +
+        '<div class="difference"><span>Desvio</span><strong>' + fmt(session.difference_amount || 0) + '</strong></div>' +
+      '</div>' +
+      '<div class="cash-shift-review-context"><strong>Justificacao do caissier</strong><p>' + escapeDespesaHtml(session.closing_note || "Nenhuma justificacao registada.") + '</p><small>Fechado em ' + escapeDespesaHtml(String(session.closed_at || "").replace("T", " ").slice(0, 16)) + '</small></div>' +
+      '<label class="cash-shift-review-note"><span>Nota do responsavel</span><textarea id="cashShiftReviewNote" maxlength="240" placeholder="Ex: Conferido com o caissier; 500 Kz entregues a cliente por erro de troco."></textarea></label>' +
+      '<div class="cash-shift-review-actions"><button type="button" class="ghost" onclick="closeCashShiftReview()">Cancelar</button><button type="button" class="form-submit" id="cashShiftReviewSubmit" onclick="submitCashShiftReview(\'' + session.id + '\')">Confirmar revisao</button></div>';
+  } catch (e) {
+    var body = modal.querySelector(".cash-shift-review-body");
+    if (body) body.innerHTML = '<div class="cashier-supervision-empty">Nao foi possivel abrir a revisao: ' + escapeDespesaHtml(e.message || e) + '</div>';
+  }
+}
+
+async function submitCashShiftReview(sessionId) {
+  if (!canSuperviseCashRegister() || cashRegisterActionInProgress) return;
+  var note = String((document.getElementById("cashShiftReviewNote") || {}).value || "").trim();
+  if (note.length < 5) {
+    toast("Escreva uma nota de revisao com pelo menos 5 caracteres.", "error");
+    return;
+  }
+
+  cashRegisterActionInProgress = true;
+  var button = document.getElementById("cashShiftReviewSubmit");
+  if (button) { button.disabled = true; button.textContent = "A confirmar..."; }
+  try {
+    var result = await supabaseClient.rpc("review_cash_register_shift", {
+      p_session_id: sessionId,
+      p_review_note: note,
+      p_actor_name: getAzulCurrentUserName()
+    });
+    if (result.error) throw result.error;
+    logAzulAction("cash:review", "cash_register", "success", { session_id: sessionId });
+    closeCashShiftReview();
+    toast("Desvio revisto e registado no historico.", "success");
+    await loadCashRegisterModule();
+  } catch (e) {
+    toast("Erro ao rever o desvio: " + (e.message || e), "error");
+  } finally {
+    cashRegisterActionInProgress = false;
+    if (button) { button.disabled = false; button.textContent = "Confirmar revisao"; }
   }
 }
 
@@ -17271,6 +17411,14 @@ async function loadCashRegisterPanel() {
   try {
     var session = await getOpenCashRegisterSession();
     if (!session) {
+      var pendingReview = await getOwnPendingCashReview();
+      if (pendingReview) {
+        panel.innerHTML = '<div class="cash-shift-review-lock">' +
+          '<div><strong>Tour bloqueado para verificacao</strong><p>O seu ultimo tour fechou com um desvio de ' + fmt(pendingReview.difference_amount || 0) + '. O responsavel deve analisar a justificacao antes de abrir outro turno.</p>' +
+          '<small>Fecho: ' + escapeDespesaHtml(String(pendingReview.closed_at || '').replace('T', ' ').slice(0, 16)) + '</small></div>' +
+          '</div>';
+        return;
+      }
       panel.innerHTML =
         '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">' +
           '<div class="form-group" style="margin:0;min-width:220px;flex:1;">' +
@@ -17430,9 +17578,10 @@ async function closeCashRegister(sessionId) {
     if (result.error) throw result.error;
     var session = Array.isArray(result.data) ? result.data[0] : result.data;
     logAzulAction("cash:close", "cash_register", "success", { counted_amount: amount, difference_amount: (session && session.difference_amount) || 0 });
-    toast("Caixa fechada. Desvio: " + fmt((session && session.difference_amount) || 0), Number((session && session.difference_amount) || 0) === 0 ? "success" : "error");
+    var difference = Number((session && session.difference_amount) || 0);
+    toast(difference === 0 ? "Caixa fechada e equilibrada." : "Caixa fechada com desvio. Aguarda verificacao do responsavel.", difference === 0 ? "success" : "error");
     await loadCashRegisterPanel();
-    loadTesouraria();
+    if (canSuperviseCashRegister()) loadCashRegisterHistory();
   } catch (e) {
     toast("Erro ao fechar caixa: " + (e.message || e), "error");
   } finally {
@@ -23555,6 +23704,9 @@ window.filterCashierSupervision = filterCashierSupervision;
 window.showCashierShiftHistory = showCashierShiftHistory;
 window.closeCashierShiftHistory = closeCashierShiftHistory;
 window.loadCashRegisterModule = loadCashRegisterModule;
+window.openCashShiftReview = openCashShiftReview;
+window.closeCashShiftReview = closeCashShiftReview;
+window.submitCashShiftReview = submitCashShiftReview;
 window.rejectTeamMember = rejectTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.createCustomRoleFromBase = createCustomRoleFromBase;
