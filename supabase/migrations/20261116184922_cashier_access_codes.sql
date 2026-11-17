@@ -55,7 +55,7 @@ begin
   if v_user_id is null then raise exception 'Caixa nao encontrado ou inactivo.'; end if;
 
   insert into public.cash_register_access_codes (organization_id, user_id, pin_hash, active, assigned_by, assigned_at, updated_at)
-  values (p_organization_id, v_user_id, crypt(p_code, gen_salt('bf', 10)), true, auth.uid(), now(), now())
+  values (p_organization_id, v_user_id, extensions.crypt(p_code, extensions.gen_salt('bf', 10)), true, auth.uid(), now(), now())
   on conflict (organization_id, user_id) do update
   set pin_hash = excluded.pin_hash,
       active = true,
@@ -85,7 +85,7 @@ as $$
       and c.user_id = auth.uid()
       and c.active = true
       and coalesce(lower(p.status), 'active') = 'active'
-      and c.pin_hash = crypt(p_code, c.pin_hash)
+      and c.pin_hash = extensions.crypt(p_code, c.pin_hash)
   );
 $$;
 revoke all on function public.verify_cashier_access_code(uuid, text) from public;
