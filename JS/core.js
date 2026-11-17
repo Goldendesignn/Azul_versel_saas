@@ -2093,6 +2093,7 @@ var AZUL_ROLE_PERMISSIONS = {
 
 var azulRoleCatalogCache = null;
 var azulCustomRoleEditorCode = "";
+var azulCashierSupervisionRows = [];
 
 function getAzulCurrentRole() {
   return String(localStorage.getItem("azul_user_role") || "member").toLowerCase();
@@ -23494,6 +23495,9 @@ window.generateTeamAccessCode = generateTeamAccessCode;
 window.openCustomRoleEditor = openCustomRoleEditor;
 window.saveCustomRolePermissions = saveCustomRolePermissions;
 window.deleteCustomRole = deleteCustomRole;
+window.filterCashierSupervision = filterCashierSupervision;
+window.showCashierShiftHistory = showCashierShiftHistory;
+window.closeCashierShiftHistory = closeCashierShiftHistory;
 window.rejectTeamMember = rejectTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.createCustomRoleFromBase = createCustomRoleFromBase;
@@ -24136,6 +24140,118 @@ async function createTeamAccessInvitation() {
   }
 }
 
+async function loadCashierSupervision() {
+  try {
+    var result = await supabaseClient.rpc("get_cashier_supervision", {
+      p_organization_id: getAzulOrganizationId()
+    });
+    if (result.error) throw result.error;
+    azulCashierSupervisionRows = result.data || [];
+    return { rows: azulCashierSupervisionRows, error: null };
+  } catch (e) {
+    console.warn("Supervisao de caixas indisponivel:", e);
+    return { rows: [], error: e };
+  }
+}
+
+function getCashierSupervisionState(row) {
+  var accountStatus = String(row.status || "").toLowerCase();
+  if (accountStatus === "pending") return { code: "pending", label: "A aguardar acesso" };
+  if (accountStatus !== "active") return { code: "blocked", label: "Acesso suspenso" };
+  if (row.cash_status === "open") return { code: "open", label: "Caixa aberta" };
+  if (row.session_id) return { code: "closed", label: "Ultima caixa fechada" };
+  return { code: "none", label: "Sem tour registado" };
+}
+
+function renderCashierSupervision(rows, error) {
+  if (error) {
+    return '<div class="cashier-supervision-card"><div class="cashier-supervision-head"><div><span>SUPERVISAO</span><strong>Caissiers</strong></div></div>' +
+      '<div class="cashier-supervision-empty">Aplique a migracao de supervisao para ver o painel de caissiers.</div></div>';
+  }
+
+  var total = rows.length;
+  var open = rows.filter(function(row) { return row.cash_status === "open"; }).length;
+  var pending = rows.filter(function(row) { return String(row.status || "").toLowerCase() === "pending"; }).length;
+  var deviations = rows.filter(function(row) {
+    return row.cash_status === "closed" && Math.abs(Number(row.difference_amount) || 0) > 0.009;
+  }).length;
+  var items = rows.length ? rows.map(function(row) {
+    var state = getCashierSupervisionState(row);
+    var email = String(row.email || "");
+    var encodedEmail = encodeURIComponent(email);
+    var amount = row.cash_status === "closed" ? fmt(row.difference_amount || 0) : "-";
+    var differenceClass = Number(row.difference_amount) === 0 ? "ok" : "alert";
+    return '<tr class="cashier-supervision-row" data-cashier-search="' + escapeDespesaHtml((row.name || "") + " " + email + " " + (row.role || "")) + '" data-cashier-state="' + state.code + '">' +
+      '<td><strong>' + escapeDespesaHtml(row.name || email || "-") + '</strong><small>' + escapeDespesaHtml(email) + '</small></td>' +
+      '<td>' + escapeDespesaHtml(getTeamRoleLabel(row.role || "member")) + '</td>' +
+      '<td><span class="cashier-state ' + state.code + '">' + state.label + '</span></td>' +
+      '<td>' + escapeDespesaHtml(row.opened_at ? formatTeamDate(row.opened_at) : "-") + '</td>' +
+      '<td class="cashier-difference ' + differenceClass + '">' + amount + '</td>' +
+      '<td><button type="button" class="cashier-history-btn"' + (row.session_id ? ' onclick="showCashierShiftHistory(\'' + escapeDespesaHtml(encodedEmail) + '\')"' : ' disabled') + '>Historico</button></td>' +
+    '</tr>';
+  }).join("") : '<tr><td colspan="6" class="cashier-supervision-empty">Ainda nao ha caissiers. Use Adicionar utilizador e escolha um role com acesso a caixa.</td></tr>';
+
+  return '<section class="cashier-supervision-card">' +
+    '<div class="cashier-supervision-head"><div><span>SUPERVISAO</span><strong>Caissiers</strong><small>Veja rapidamente quem esta a trabalhar, quem deixou a caixa aberta e onde existem desvios.</small></div></div>' +
+    '<div class="cashier-supervision-metrics">' +
+      '<div><span>Caissiers</span><strong>' + total + '</strong></div>' +
+      '<div><span>Caixas abertas</span><strong class="blue">' + open + '</strong></div>' +
+      '<div><span>A aguardar acesso</span><strong class="orange">' + pending + '</strong></div>' +
+      '<div><span>Desvios a analisar</span><strong class="red">' + deviations + '</strong></div>' +
+    '</div>' +
+    '<div class="cashier-supervision-filters">' +
+      '<input id="cashier-supervision-search" type="search" placeholder="Pesquisar nome ou email" oninput="filterCashierSupervision()">' +
+      '<select id="cashier-supervision-state" onchange="filterCashierSupervision()"><option value="">Todos os estados</option><option value="open">Caixa aberta</option><option value="closed">Ultima caixa fechada</option><option value="pending">A aguardar acesso</option><option value="blocked">Acesso suspenso</option><option value="none">Sem tour</option></select>' +
+    '</div>' +
+    '<div class="cashier-supervision-table-wrap"><table class="cashier-supervision-table"><thead><tr><th>Caissier</th><th>Role</th><th>Estado</th><th>Ultimo tour</th><th>Ultimo desvio</th><th></th></tr></thead><tbody>' + items + '</tbody></table></div>' +
+  '</section>';
+}
+
+function filterCashierSupervision() {
+  var search = String((document.getElementById("cashier-supervision-search") || {}).value || "").trim().toLowerCase();
+  var state = String((document.getElementById("cashier-supervision-state") || {}).value || "");
+  Array.prototype.slice.call(document.querySelectorAll(".cashier-supervision-row")).forEach(function(row) {
+    var matchesSearch = !search || String(row.getAttribute("data-cashier-search") || "").toLowerCase().indexOf(search) >= 0;
+    var matchesState = !state || row.getAttribute("data-cashier-state") === state;
+    row.hidden = !(matchesSearch && matchesState);
+  });
+}
+
+function closeCashierShiftHistory() {
+  var modal = document.getElementById("cashier-shift-history-modal");
+  if (modal) modal.remove();
+}
+
+async function showCashierShiftHistory(encodedEmail) {
+  var email = decodeURIComponent(String(encodedEmail || ""));
+  closeCashierShiftHistory();
+  var modal = document.createElement("div");
+  modal.id = "cashier-shift-history-modal";
+  modal.className = "cashier-history-modal";
+  modal.innerHTML = '<div class="cashier-history-dialog" role="dialog" aria-modal="true" aria-label="Historico do caissier">' +
+    '<div class="cashier-history-dialog-head"><div><span>HISTORICO DE CAIXA</span><strong>' + escapeDespesaHtml(email) + '</strong></div><button type="button" onclick="closeCashierShiftHistory()" aria-label="Fechar">x</button></div>' +
+    '<div class="cashier-history-dialog-body"><div class="empty">A carregar historico...</div></div></div>';
+  document.body.appendChild(modal);
+
+  try {
+    var result = await supabaseClient.rpc("get_cashier_shift_history", {
+      p_organization_id: getAzulOrganizationId(),
+      p_email: email
+    });
+    if (result.error) throw result.error;
+    var rows = result.data || [];
+    var body = modal.querySelector(".cashier-history-dialog-body");
+    body.innerHTML = rows.length ? '<div class="cashier-history-table-wrap"><table class="cashier-supervision-table"><thead><tr><th>Abertura</th><th>Fecho</th><th>Estado</th><th>Esperado</th><th>Contado</th><th>Desvio</th><th></th></tr></thead><tbody>' + rows.map(function(row) {
+      var state = row.status === "open" ? "Caixa aberta" : "Fechada";
+      var diff = row.status === "closed" ? fmt(row.difference_amount || 0) : "-";
+      return '<tr><td>' + escapeDespesaHtml(formatTeamDate(row.opened_at)) + '</td><td>' + escapeDespesaHtml(row.closed_at ? formatTeamDate(row.closed_at) : "-") + '</td><td>' + state + '</td><td>' + fmt(row.expected_amount || 0) + '</td><td>' + (row.counted_amount == null ? "-" : fmt(row.counted_amount)) + '</td><td class="cashier-difference ' + (Number(row.difference_amount) === 0 ? "ok" : "alert") + '">' + diff + '</td><td>' + (row.status === "closed" ? '<button type="button" class="cashier-history-btn" onclick="printCashRegisterReport(\'' + row.session_id + '\')">Imprimir</button>' : "") + '</td></tr>';
+    }).join("") + '</tbody></table></div>' : '<div class="cashier-supervision-empty">Este caissier ainda nao abriu nenhum tour.</div>';
+  } catch (e) {
+    var dialogBody = modal.querySelector(".cashier-history-dialog-body");
+    if (dialogBody) dialogBody.innerHTML = '<div class="cashier-supervision-empty">Nao foi possivel carregar o historico: ' + escapeDespesaHtml(e.message || e) + '</div>';
+  }
+}
+
 async function createCustomRoleFromBase() {
   if (!canManageTeamRoles()) {
     toast("Sem permissao para criar roles.", "error");
@@ -24664,6 +24780,7 @@ async function renderSettingsTeamCard() {
     if (result.error) throw result.error;
 
     var users = result.data || [];
+    var cashierSupervision = await loadCashierSupervision();
 
     if (!users.length) {
       list.innerHTML = '<div class="empty">Nenhum utilizador encontrado.</div>';
@@ -24716,7 +24833,7 @@ async function renderSettingsTeamCard() {
 
     var customRoleEditor = canManage ? renderCustomRolePermissionEditor(roleCatalog) : "";
 
-    list.innerHTML = invitationBuilder + customRoleBuilder + customRoleEditor + users.map(function(user) {
+    list.innerHTML = invitationBuilder + renderCashierSupervision(cashierSupervision.rows, cashierSupervision.error) + customRoleBuilder + customRoleEditor + users.map(function(user) {
       var name = user.name || "Utilizador";
       var email = user.email || "-";
       var phone = user.phone || "-";
