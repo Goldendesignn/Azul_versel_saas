@@ -152,6 +152,7 @@ html[data-theme="dark"] .correction-search-card,
 html[data-theme="dark"] .correction-notice,
 html[data-theme="dark"] .team-user-meta span,
 html[data-theme="dark"] .custom-role-list span,
+html[data-theme="dark"] .custom-role-list button,
 html[data-theme="dark"] .approval-lock-card {
   background: var(--surface) !important;
   color: var(--text) !important;
@@ -13061,11 +13062,143 @@ html[data-theme="dark"] #page-dashboard .important-alert-action {
   margin-top: 10px;
 }
 
-.custom-role-list span {
+.custom-role-list span,
+.custom-role-list button {
   border-radius: 999px;
   background: #fff;
   border: 1px solid var(--border);
   padding: 5px 9px;
+}
+
+.custom-role-list button {
+  color: var(--blue);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.custom-role-editor {
+  margin: 12px 0;
+  border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--border));
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.custom-role-editor-head,
+.custom-role-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.custom-role-editor-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.custom-role-editor-head strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.custom-role-editor-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.custom-role-name-field {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.custom-role-name-field span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.custom-role-name-field input {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--text);
+  padding: 0 10px;
+  font: inherit;
+}
+
+.custom-role-permission-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.custom-role-permission-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.custom-role-permission-group h4 {
+  margin: 0 0 8px;
+  color: var(--blue);
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.custom-role-permission-group > div {
+  display: grid;
+  gap: 7px;
+}
+
+.custom-role-permission-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.custom-role-permission-option input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--blue);
+  margin: 0;
+}
+
+.custom-role-editor-actions {
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.custom-role-editor button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--blue);
+  color: var(--accent-text);
+  padding: 0 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.custom-role-editor button.ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.custom-role-editor button.danger {
+  background: var(--red);
 }
 
 .team-user-controls {
@@ -13157,6 +13290,20 @@ html[data-theme="dark"] #page-dashboard .important-alert-action {
 
   .team-invite-form {
     grid-template-columns: 1fr;
+  }
+
+  .custom-role-permission-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .custom-role-editor-head,
+  .custom-role-editor-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .custom-role-editor button {
+    width: 100%;
   }
 }
 

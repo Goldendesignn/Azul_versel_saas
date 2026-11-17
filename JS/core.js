@@ -2092,6 +2092,7 @@ var AZUL_ROLE_PERMISSIONS = {
 };
 
 var azulRoleCatalogCache = null;
+var azulCustomRoleEditorCode = "";
 
 function getAzulCurrentRole() {
   return String(localStorage.getItem("azul_user_role") || "member").toLowerCase();
@@ -23490,6 +23491,9 @@ window.saveTeamMemberRoleStatus = saveTeamMemberRoleStatus;
 window.setCashierAccessCode = setCashierAccessCode;
 window.createTeamAccessInvitation = createTeamAccessInvitation;
 window.generateTeamAccessCode = generateTeamAccessCode;
+window.openCustomRoleEditor = openCustomRoleEditor;
+window.saveCustomRolePermissions = saveCustomRolePermissions;
+window.deleteCustomRole = deleteCustomRole;
 window.rejectTeamMember = rejectTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.createCustomRoleFromBase = createCustomRoleFromBase;
@@ -23939,6 +23943,109 @@ function getBaseRoleOptionsForCustomRole() {
   }).join("");
 }
 
+function getCustomRolePermissionGroups() {
+  return Object.keys(AZUL_PERMISSION_CATALOG).filter(function(permission) {
+    return permission !== "*";
+  }).reduce(function(groups, permission) {
+    var meta = AZUL_PERMISSION_CATALOG[permission] || {};
+    var group = meta.group || "Outros";
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(permission);
+    return groups;
+  }, {});
+}
+
+function openCustomRoleEditor(encodedCode) {
+  azulCustomRoleEditorCode = decodeURIComponent(String(encodedCode || ""));
+  renderSettingsTeamCard();
+}
+
+function renderCustomRolePermissionEditor(roleCatalog) {
+  var code = String(azulCustomRoleEditorCode || "");
+  var role = roleCatalog && roleCatalog[code];
+  if (!role || role.isSystem) return "";
+
+  var encodedCode = encodeURIComponent(code);
+  var selected = role.permissions || [];
+  var groups = getCustomRolePermissionGroups();
+  var sections = Object.keys(groups).map(function(group) {
+    var options = groups[group].map(function(permission) {
+      var meta = AZUL_PERMISSION_CATALOG[permission] || {};
+      return '<label class="custom-role-permission-option">' +
+        '<input type="checkbox" data-custom-role-permission="' + escapeDespesaHtml(permission) + '"' + (selected.indexOf(permission) >= 0 ? " checked" : "") + '>' +
+        '<span>' + escapeDespesaHtml(meta.label || permission) + '</span>' +
+      '</label>';
+    }).join("");
+    return '<section class="custom-role-permission-group"><h4>' + escapeDespesaHtml(group) + '</h4><div>' + options + '</div></section>';
+  }).join("");
+
+  return '<div class="custom-role-editor">' +
+    '<div class="custom-role-editor-head"><div><strong>Permissoes: ' + escapeDespesaHtml(role.name || code) + '</strong><span>Escolha exactamente o que este role pode ver e fazer.</span></div>' +
+    '<button type="button" class="ghost" onclick="openCustomRoleEditor(\'\')">Fechar</button></div>' +
+    '<label class="custom-role-name-field"><span>Nome do role</span><input id="custom-role-editor-name" type="text" value="' + escapeDespesaHtml(role.name || "") + '"></label>' +
+    '<div class="custom-role-permission-grid">' + sections + '</div>' +
+    '<div class="custom-role-editor-actions"><button type="button" onclick="saveCustomRolePermissions(\'' + escapeDespesaHtml(encodedCode) + '\')">Guardar permissoes</button>' +
+    '<button type="button" class="danger" onclick="deleteCustomRole(\'' + escapeDespesaHtml(encodedCode) + '\')">Eliminar role</button></div>' +
+  '</div>';
+}
+
+async function saveCustomRolePermissions(encodedCode) {
+  if (!canManageTeamRoles()) return;
+  var code = decodeURIComponent(String(encodedCode || ""));
+  var role = (azulRoleCatalogCache || {})[code];
+  var nameInput = document.getElementById("custom-role-editor-name");
+  var name = String((nameInput || {}).value || "").trim();
+  var permissions = Array.prototype.slice.call(document.querySelectorAll("[data-custom-role-permission]:checked"))
+    .map(function(input) { return input.getAttribute("data-custom-role-permission"); });
+
+  if (!role || role.isSystem || !name) {
+    toast("Role personalizado invalido.", "error");
+    return;
+  }
+
+  try {
+    var result = await supabaseClient.rpc("upsert_custom_role", {
+      p_organization_id: getAzulOrganizationId(),
+      p_code: code,
+      p_name: name,
+      p_permissions: permissions
+    });
+    if (result.error) throw result.error;
+    azulRoleCatalogCache = null;
+    await loadAzulRoleCatalog(true);
+    toast("Permissoes do role actualizadas.", "success");
+    await renderSettingsTeamCard();
+  } catch (e) {
+    toast("Erro ao guardar permissoes: " + (e.message || e), "error");
+  }
+}
+
+async function deleteCustomRole(encodedCode) {
+  if (!canManageTeamRoles()) return;
+  var code = decodeURIComponent(String(encodedCode || ""));
+  var role = (azulRoleCatalogCache || {})[code];
+  if (!role || role.isSystem) {
+    toast("Apenas roles personalizados podem ser eliminados.", "error");
+    return;
+  }
+  if (!confirm('Eliminar o role "' + (role.name || code) + '"? Os utilizadores com este role voltam para Utilizador.')) return;
+
+  try {
+    var result = await supabaseClient.rpc("delete_custom_role", {
+      p_organization_id: getAzulOrganizationId(),
+      p_code: code
+    });
+    if (result.error) throw result.error;
+    azulCustomRoleEditorCode = "";
+    azulRoleCatalogCache = null;
+    await loadAzulRoleCatalog(true);
+    toast("Role eliminado. " + (Number(result.data) || 0) + " utilizador(es) foram redefinidos.", "success");
+    await renderSettingsTeamCard();
+  } catch (e) {
+    toast("Erro ao eliminar role: " + (e.message || e), "error");
+  }
+}
+
 function getTeamInviteRoleOptions(roleCatalog) {
   roleCatalog = roleCatalog || azulRoleCatalogCache || {};
   var roles = Object.keys(roleCatalog).filter(function(code) {
@@ -24071,6 +24178,7 @@ async function createCustomRoleFromBase() {
     if (nameInput) nameInput.value = "";
 
     await loadAzulRoleCatalog(true);
+    azulCustomRoleEditorCode = slugifyCustomRole(roleName);
     await renderSettingsTeamCard();
   } catch (e) {
     var msg = String(e && e.message ? e.message : e);
@@ -24600,13 +24708,15 @@ async function renderSettingsTeamCard() {
         </div>
         <div class="custom-role-list">
           ${customRoles.length ? customRoles.map(function(code) {
-            return '<span>' + escapeDespesaHtml(roleCatalog[code].name || code) + '</span>';
+            return '<button type="button" onclick="openCustomRoleEditor(\'' + escapeDespesaHtml(encodeURIComponent(code)) + '\')">' + escapeDespesaHtml(roleCatalog[code].name || code) + '</button>';
           }).join("") : '<em>Nenhum role personalizado ainda.</em>'}
         </div>
       </div>
     ` : "";
 
-    list.innerHTML = invitationBuilder + customRoleBuilder + users.map(function(user) {
+    var customRoleEditor = canManage ? renderCustomRolePermissionEditor(roleCatalog) : "";
+
+    list.innerHTML = invitationBuilder + customRoleBuilder + customRoleEditor + users.map(function(user) {
       var name = user.name || "Utilizador";
       var email = user.email || "-";
       var phone = user.phone || "-";
@@ -24617,7 +24727,8 @@ async function renderSettingsTeamCard() {
       var initial = getTeamInitial(name, email);
       var key = getTeamMemberDomKey(email);
       var encodedEmail = encodeURIComponent(email);
-      var cashCodeControl = rawRole === "cashier" && status === "active" ? `
+      var rolePermissions = (roleCatalog[rawRole] && roleCatalog[rawRole].permissions) || getAzulRoleDefinition(rawRole).permissions || [];
+      var cashCodeControl = rolePermissions.indexOf("cash:manage") >= 0 && status === "active" ? `
               <label>
                 <span>Codigo caixa</span>
                 <input id="team-cash-code-${escapeDespesaHtml(key)}" type="password" inputmode="numeric" maxlength="8" placeholder="Novo codigo">
