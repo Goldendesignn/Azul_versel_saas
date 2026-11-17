@@ -85,6 +85,9 @@
           <button class="link-btn" type="button" onclick="showLoginMode('register')">
             Criar conta
           </button>
+          <button class="link-btn" type="button" onclick="showLoginMode('team')">
+            Entrar na equipa
+          </button>
         </div>
 
         <div id="panel-recovery" class="login-panel">
@@ -178,9 +181,43 @@
           </button>
         </div>
 
+        <div id="panel-team-register" class="login-panel">
+          <div class="login-header">
+            <p class="login-kicker">Acesso de equipa</p>
+            <h2>Entrar na equipa</h2>
+            <p>Use o email e o codigo pessoal fornecidos pelo responsavel da loja.</p>
+          </div>
+
+          <div class="cont-input-login">
+            <label class="input-field">
+              <span class="field-icon">✉</span>
+              <input type="email" placeholder="O seu email" id="team-register-email" autocomplete="email">
+            </label>
+
+            <label class="input-field">
+              <span class="field-icon">#</span>
+              <input type="password" inputmode="numeric" maxlength="8" placeholder="Codigo de acesso de 8 algarismos" id="team-register-code" autocomplete="one-time-code">
+            </label>
+
+            <label class="input-field">
+              <span class="field-icon">🔒</span>
+              <input type="password" placeholder="Criar palavra-passe" id="team-register-password" autocomplete="new-password">
+            </label>
+
+            <label class="input-field">
+              <span class="field-icon">🔒</span>
+              <input type="password" placeholder="Confirmar palavra-passe" id="team-register-password-confirm" autocomplete="new-password">
+            </label>
+          </div>
+
+          <button id="team-register-btn" type="button" onclick="activateTeamAccount()">Criar o meu acesso</button>
+          <button class="link-btn" type="button" onclick="showLoginMode('login')">Voltar ao login</button>
+        </div>
+
         <div class="login-tabs" role="tablist" aria-label="Acesso Azul">
           <button id="tab-login" class="login-tab active" type="button" onclick="showLoginMode('login')">Entrar</button>
           <button id="tab-register" class="login-tab" type="button" onclick="showLoginMode('register')">Criar conta</button>
+          <button id="tab-team-register" class="login-tab" type="button" onclick="showLoginMode('team')">Equipa</button>
         </div>
 
         <div id="login-message" class="login-message"></div>

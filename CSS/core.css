@@ -12463,6 +12463,73 @@ html[data-theme="dark"] #page-dashboard .important-alert-action {
   padding: 12px;
 }
 
+.team-invite-builder {
+  border: 1px solid color-mix(in srgb, var(--green) 38%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--green) 5%, var(--surface));
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.team-invite-builder > div:first-child {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.team-invite-builder strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.team-invite-builder span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.team-invite-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.team-invite-form input,
+.team-invite-form select,
+.team-invite-code-row input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 10px;
+  font: inherit;
+}
+
+.team-invite-code-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.team-invite-form button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--green);
+  color: var(--accent-text);
+  padding: 0 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.team-invite-form button.ghost {
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  padding: 0 10px;
+}
+
 .custom-role-builder > div:first-child {
   display: grid;
   gap: 4px;
@@ -13085,6 +13152,10 @@ html[data-theme="dark"] #page-dashboard .important-alert-action {
   }
 
   .custom-role-form {
+    grid-template-columns: 1fr;
+  }
+
+  .team-invite-form {
     grid-template-columns: 1fr;
   }
 }

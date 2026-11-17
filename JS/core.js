@@ -23488,6 +23488,8 @@ window.loadCorrectionsDebounced = loadCorrectionsDebounced;
 window.confirmCorrectionCancel = confirmCorrectionCancel;
 window.saveTeamMemberRoleStatus = saveTeamMemberRoleStatus;
 window.setCashierAccessCode = setCashierAccessCode;
+window.createTeamAccessInvitation = createTeamAccessInvitation;
+window.generateTeamAccessCode = generateTeamAccessCode;
 window.rejectTeamMember = rejectTeamMember;
 window.deleteTeamMember = deleteTeamMember;
 window.createCustomRoleFromBase = createCustomRoleFromBase;
@@ -23935,6 +23937,96 @@ function getBaseRoleOptionsForCustomRole() {
   return baseRoles.map(function(role) {
     return '<option value="' + role + '">' + escapeDespesaHtml(getTeamRoleLabel(role)) + '</option>';
   }).join("");
+}
+
+function getTeamInviteRoleOptions(roleCatalog) {
+  roleCatalog = roleCatalog || azulRoleCatalogCache || {};
+  var roles = Object.keys(roleCatalog).filter(function(code) {
+    return code !== "owner" && code !== "manager";
+  });
+
+  if (!roles.length) roles = ["cashier", "stock", "accountant", "readonly", "member"];
+
+  return roles.map(function(code) {
+    return '<option value="' + escapeDespesaHtml(code) + '"' + (code === "cashier" ? " selected" : "") + '>' +
+      escapeDespesaHtml(roleCatalog[code] && roleCatalog[code].name || getTeamRoleLabel(code)) + '</option>';
+  }).join("");
+}
+
+function isValidTeamEmail(value) {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(value || ""));
+}
+
+function generateTeamAccessCode() {
+  var input = document.getElementById("team-invite-code");
+  if (!input) return;
+
+  var digits = "";
+  if (window.crypto && window.crypto.getRandomValues) {
+    var values = new Uint32Array(8);
+    window.crypto.getRandomValues(values);
+    digits = Array.prototype.map.call(values, function(value) { return String(value % 10); }).join("");
+  } else {
+    for (var i = 0; i < 8; i += 1) digits += String(Math.floor(Math.random() * 10));
+  }
+  input.value = digits;
+  input.focus();
+  input.select();
+}
+
+async function createTeamAccessInvitation() {
+  if (!canManageTeamRoles()) {
+    toast("Sem permissao para convidar utilizadores.", "error");
+    return;
+  }
+
+  var organizationId = getAzulOrganizationId();
+  var name = String((document.getElementById("team-invite-name") || {}).value || "").trim();
+  var phone = String((document.getElementById("team-invite-phone") || {}).value || "").trim();
+  var email = String((document.getElementById("team-invite-email") || {}).value || "").trim().toLowerCase();
+  var role = String((document.getElementById("team-invite-role") || {}).value || "cashier");
+  var code = String((document.getElementById("team-invite-code") || {}).value || "").trim();
+  var button = document.getElementById("team-invite-submit");
+
+  if (!organizationId || !name || !isValidTeamEmail(email) || !/^[0-9]{8}$/.test(code)) {
+    toast("Informe nome, email e um codigo de acesso com 8 algarismos.", "error");
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A criar acesso...";
+  }
+
+  try {
+    var result = await supabaseClient.rpc("create_team_access_invitation", {
+      p_organization_id: organizationId,
+      p_name: name,
+      p_phone: phone,
+      p_email: email,
+      p_role: role,
+      p_access_code: code
+    });
+    if (result.error) throw result.error;
+
+    ["team-invite-name", "team-invite-phone", "team-invite-email", "team-invite-code"].forEach(function(id) {
+      var input = document.getElementById(id);
+      if (input) input.value = "";
+    });
+    toast("Acesso preparado. Entregue o codigo ao utilizador de forma privada.", "success");
+    await renderSettingsTeamCard();
+  } catch (e) {
+    var message = String(e && e.message ? e.message : e || "");
+    if (message.indexOf("TEAM_MEMBER_ALREADY_ACTIVE") >= 0) message = "Este utilizador ja possui uma conta activa nesta loja.";
+    if (message.indexOf("CODIGO_CONVITE_INVALIDO") >= 0) message = "O codigo de acesso deve ter 8 algarismos.";
+    if (message.indexOf("DADOS_CONVITE_INVALIDOS") >= 0) message = "Verifique o nome e o email do utilizador.";
+    toast("Erro ao preparar acesso: " + message, "error");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Preparar acesso";
+    }
+  }
 }
 
 async function createCustomRoleFromBase() {
@@ -24475,6 +24567,26 @@ async function renderSettingsTeamCard() {
       return roleCatalog[code] && !roleCatalog[code].isSystem;
     });
 
+    var invitationBuilder = canManage ? `
+      <div class="team-invite-builder">
+        <div>
+          <strong>Adicionar utilizador</strong>
+          <span>Crie um acesso pessoal. O utilizador recebe o email e o codigo de acesso que vai usar para criar a sua palavra-passe.</span>
+        </div>
+        <div class="team-invite-form">
+          <input id="team-invite-name" type="text" placeholder="Nome completo">
+          <input id="team-invite-phone" type="tel" placeholder="Telefone (opcional)">
+          <input id="team-invite-email" type="email" placeholder="Email do utilizador">
+          <select id="team-invite-role">${getTeamInviteRoleOptions(roleCatalog)}</select>
+          <div class="team-invite-code-row">
+            <input id="team-invite-code" type="text" inputmode="numeric" maxlength="8" placeholder="Codigo de 8 algarismos">
+            <button type="button" class="ghost" onclick="generateTeamAccessCode()" title="Gerar codigo">Gerar</button>
+          </div>
+          <button id="team-invite-submit" type="button" onclick="createTeamAccessInvitation()">Preparar acesso</button>
+        </div>
+      </div>
+    ` : "";
+
     var customRoleBuilder = canManage ? `
       <div class="custom-role-builder">
         <div>
@@ -24494,7 +24606,7 @@ async function renderSettingsTeamCard() {
       </div>
     ` : "";
 
-    list.innerHTML = customRoleBuilder + users.map(function(user) {
+    list.innerHTML = invitationBuilder + customRoleBuilder + users.map(function(user) {
       var name = user.name || "Utilizador";
       var email = user.email || "-";
       var phone = user.phone || "-";
@@ -24505,7 +24617,7 @@ async function renderSettingsTeamCard() {
       var initial = getTeamInitial(name, email);
       var key = getTeamMemberDomKey(email);
       var encodedEmail = encodeURIComponent(email);
-      var cashCodeControl = rawRole === "cashier" ? `
+      var cashCodeControl = rawRole === "cashier" && status === "active" ? `
               <label>
                 <span>Codigo caixa</span>
                 <input id="team-cash-code-${escapeDespesaHtml(key)}" type="password" inputmode="numeric" maxlength="8" placeholder="Novo codigo">

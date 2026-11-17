@@ -51,18 +51,23 @@ function formatLicenseInput(input) {
 function showLoginMode(mode) {
   var isRegister = mode === "register";
   var isRecovery = mode === "recovery";
+  var isTeam = mode === "team";
   var loginTabs = document.querySelector(".login-tabs");
   var tabLogin = document.getElementById("tab-login");
   var tabRegister = document.getElementById("tab-register");
+  var tabTeam = document.getElementById("tab-team-register");
   var panelLogin = document.getElementById("panel-login");
   var panelRegister = document.getElementById("panel-register");
   var panelRecovery = document.getElementById("panel-recovery");
+  var panelTeam = document.getElementById("panel-team-register");
 
-  if (tabLogin) tabLogin.classList.toggle("active", !isRegister && !isRecovery);
+  if (tabLogin) tabLogin.classList.toggle("active", !isRegister && !isRecovery && !isTeam);
   if (tabRegister) tabRegister.classList.toggle("active", isRegister);
-  if (panelLogin) panelLogin.classList.toggle("active", !isRegister && !isRecovery);
+  if (tabTeam) tabTeam.classList.toggle("active", isTeam);
+  if (panelLogin) panelLogin.classList.toggle("active", !isRegister && !isRecovery && !isTeam);
   if (panelRegister) panelRegister.classList.toggle("active", isRegister);
   if (panelRecovery) panelRecovery.classList.toggle("active", isRecovery);
+  if (panelTeam) panelTeam.classList.toggle("active", isTeam);
   if (loginTabs) loginTabs.hidden = isRecovery;
 
   showMessage("");
@@ -658,5 +663,67 @@ async function login() {
     );
     btn.disabled = false;
     btn.textContent = "Ativar o meu ERP";
+  }
+}
+
+async function activateTeamAccount() {
+  var btn = document.getElementById("team-register-btn");
+  var email = String((document.getElementById("team-register-email") || {}).value || "").trim().toLowerCase();
+  var code = String((document.getElementById("team-register-code") || {}).value || "").trim();
+  var password = String((document.getElementById("team-register-password") || {}).value || "");
+  var passwordConfirm = String((document.getElementById("team-register-password-confirm") || {}).value || "");
+
+  if (!isEmail(email) || !/^[0-9]{8}$/.test(code) || !password || !passwordConfirm) {
+    showMessage("Informe o email, o codigo de acesso de 8 algarismos e a palavra-passe.");
+    return;
+  }
+  if (password.length < 8) {
+    showMessage("A palavra-passe deve ter pelo menos 8 caracteres.");
+    return;
+  }
+  if (password !== passwordConfirm) {
+    showMessage("As palavras-passe nao coincidem.");
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "A criar acesso...";
+  }
+  showMessage("");
+
+  try {
+    await authenticateRegistrationUser({
+      email: email,
+      password: password,
+      nom: "Membro da equipa",
+      numero: ""
+    });
+
+    var activation = await supabaseClient.rpc("activate_team_access_invitation", {
+      p_email: email,
+      p_access_code: code
+    }).maybeSingle();
+    if (activation.error) throw activation.error;
+    if (!activation.data || !activation.data.organization_id) throw new Error("CONVITE_INVALIDO");
+
+    var organization = await checkOrganizationAccess(activation.data.organization_id);
+    openCoreSession(organization, activation.data, organization.license_key);
+  } catch (e) {
+    var message = String(e && e.message ? e.message : e || "");
+    try { await supabaseClient.auth.signOut(); } catch (signOutError) { console.warn("Erro ao terminar activacao:", signOutError); }
+    clearLoginSessionOnly();
+
+    if (message.indexOf("CONVITE_INVALIDO") >= 0) {
+      showMessage("Codigo invalido, expirado ou associado a outro email. Peca um novo codigo ao responsavel.");
+    } else if (message.indexOf("AUTH_EMAIL_CONFIRMATION_REQUIRED") >= 0) {
+      showMessage("Confirme o email recebido e depois volte a entrar na equipa.");
+    } else {
+      showMessage(getAuthErrorMessage(e));
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Criar o meu acesso";
+    }
   }
 }
