@@ -140,6 +140,10 @@
   
     <div class="logo">Azul</div>
     <div class="header-actions">
+      <div class="store-switcher" id="storeSwitcher" hidden>
+        <label for="activeStoreSelect">Boutique</label>
+        <select id="activeStoreSelect" onchange="changeActiveAzulStore(this.value)"></select>
+      </div>
       <div class="notification-wrap" id="notificationWrap">
         <button class="notification-btn" type="button" onclick="toggleAzulNotifications()" aria-label="Notificacoes">
           <span class="notification-symbol">!</span>
@@ -2215,6 +2219,17 @@
     </div>
   </div>
 </div>
+        <div class="card store-settings-card" id="settings-stores-card" style="grid-column:1/-1;display:none;">
+          <div class="team-settings-head">
+            <div>
+              <div class="card-title">Boutiques</div>
+              <div class="team-settings-subtitle">Crie les boutiques de l'entreprise, choisissez celle utilisee maintenant et attribuez l'acces a l'equipe.</div>
+            </div>
+            <button type="button" class="team-refresh-btn" onclick="loadAzulStores()">Actualizar</button>
+          </div>
+          <div id="settings-stores-content" class="store-settings-content"><div class="empty">A carregar boutiques...</div></div>
+        </div>
+
         <div class="card team-settings-card" id="settings-team-card" style="grid-column:1/-1;">
   <div class="team-settings-head">
     <div>

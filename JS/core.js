@@ -42,6 +42,178 @@ function clearAzulSession() {
   localStorage.removeItem("azul_user_status");
   localStorage.removeItem("azul_license_key");
   localStorage.removeItem("azul_plan");
+  localStorage.removeItem("azul_store_id");
+  localStorage.removeItem("azul_store_name");
+}
+
+var azulStores = [];
+var azulStoreTeam = [];
+
+function isAzulStoreSchemaMissing(error) {
+  var message = String((error && error.message) || error || "").toLowerCase();
+  return message.indexOf("stores") >= 0 && (
+    message.indexOf("schema cache") >= 0 ||
+    message.indexOf("does not exist") >= 0 ||
+    message.indexOf("could not find") >= 0
+  );
+}
+
+function getActiveAzulStoreId() {
+  return localStorage.getItem("azul_store_id") || "";
+}
+
+function getActiveAzulStoreName() {
+  return localStorage.getItem("azul_store_name") || "";
+}
+
+function getAzulStoreCodeFromName(name) {
+  var code = String(name || "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 16);
+  return code || "BOUTIQUE";
+}
+
+function renderAzulStoreSwitcher() {
+  var wrap = document.getElementById("storeSwitcher");
+  var select = document.getElementById("activeStoreSelect");
+  if (!wrap || !select) return;
+  if (!azulStores.length) {
+    wrap.hidden = true;
+    return;
+  }
+
+  var activeId = getActiveAzulStoreId();
+  select.innerHTML = azulStores.map(function(store) {
+    return '<option value="' + escapeDespesaHtml(store.id) + '"' + (String(store.id) === String(activeId) ? " selected" : "") + '>' +
+      escapeDespesaHtml(store.name || "Boutique") + '</option>';
+  }).join("");
+  wrap.hidden = false;
+}
+
+function renderAzulStoreManagement() {
+  var card = document.getElementById("settings-stores-card");
+  var box = document.getElementById("settings-stores-content");
+  if (!card || !box) return;
+  if (!azulStores.length || !canManageTeamRoles()) {
+    card.style.display = "none";
+    return;
+  }
+
+  card.style.display = "";
+  var users = (azulStoreTeam || []).filter(function(user) {
+    return String(user.status || "active").toLowerCase() === "active" && user.email;
+  });
+  var userOptions = users.map(function(user) {
+    return '<option value="' + escapeDespesaHtml(user.email) + '">' + escapeDespesaHtml((user.name || user.email) + " - " + user.email) + '</option>';
+  }).join("");
+
+  var createForm = '<div class="store-card">' +
+    '<div class="card-title" style="margin-bottom:10px;">Nova boutique</div>' +
+    '<div class="store-create-grid">' +
+      '<label class="form-group"><span class="form-label">Nome</span><input id="store-create-name" class="form-input" maxlength="120" placeholder="Ex: Boutique Talatona"></label>' +
+      '<label class="form-group"><span class="form-label">Codigo</span><input id="store-create-code" class="form-input" maxlength="16" placeholder="TALATONA"></label>' +
+      '<label class="form-group"><span class="form-label">Endereco</span><input id="store-create-address" class="form-input" maxlength="240" placeholder="Rua ou bairro"></label>' +
+      '<button type="button" class="filter-btn" onclick="createAzulStore()">Criar boutique</button>' +
+    '</div></div>';
+
+  var stores = azulStores.map(function(store) {
+    var isActive = String(store.id) === String(getActiveAzulStoreId());
+    var encodedId = encodeURIComponent(store.id);
+    return '<div class="store-card">' +
+      '<div class="store-card-head"><div><strong>' + escapeDespesaHtml(store.name || "Boutique") + '</strong><small>' + escapeDespesaHtml(store.code || "") + (store.address ? " · " + escapeDespesaHtml(store.address) : "") + '</small></div>' +
+      (store.is_primary ? '<span class="store-primary-badge">Principal</span>' : (isActive ? '<span class="store-primary-badge">Em utilizacao</span>' : '')) + '</div>' +
+      '<div class="store-access-grid">' +
+        '<label class="form-group"><span class="form-label">Membro da equipa</span><select id="store-member-' + escapeDespesaHtml(store.id) + '" class="form-input"><option value="">Escolher utilizador</option>' + userOptions + '</select></label>' +
+        '<button type="button" class="filter-btn" onclick="setAzulStoreMemberAccess(\'' + escapeDespesaHtml(encodedId) + '\',true)">Dar acesso</button>' +
+        '<button type="button" class="filter-btn ghost" onclick="setAzulStoreMemberAccess(\'' + escapeDespesaHtml(encodedId) + '\',false)">Retirar acesso</button>' +
+      '</div></div>';
+  }).join("");
+  box.innerHTML = createForm + stores;
+}
+
+async function loadAzulStores() {
+  var organizationId = getAzulOrganizationId();
+  if (!organizationId) return [];
+  try {
+    var result = await supabaseClient
+      .from("stores")
+      .select("id,name,code,address,phone,active,is_primary")
+      .eq("organization_id", organizationId)
+      .eq("active", true)
+      .order("is_primary", { ascending: false })
+      .order("name", { ascending: true });
+    if (result.error) throw result.error;
+
+    azulStores = result.data || [];
+    var activeId = getActiveAzulStoreId();
+    var active = azulStores.find(function(store) { return String(store.id) === String(activeId); }) || azulStores.find(function(store) { return store.is_primary; }) || azulStores[0];
+    if (active) {
+      localStorage.setItem("azul_store_id", active.id);
+      localStorage.setItem("azul_store_name", active.name || "Boutique");
+    }
+
+    if (canManageTeamRoles()) {
+      var team = await supabaseClient.rpc("get_organization_team", { p_organization_id: organizationId });
+      if (!team.error) azulStoreTeam = team.data || [];
+    }
+    renderAzulStoreSwitcher();
+    renderAzulStoreManagement();
+    return azulStores;
+  } catch (error) {
+    if (!isAzulStoreSchemaMissing(error)) console.warn("Boutiques indisponiveis:", error);
+    azulStores = [];
+    renderAzulStoreSwitcher();
+    renderAzulStoreManagement();
+    return [];
+  }
+}
+
+async function changeActiveAzulStore(storeId) {
+  var store = azulStores.find(function(row) { return String(row.id) === String(storeId); });
+  if (!store || String(store.id) === String(getActiveAzulStoreId())) return;
+  localStorage.setItem("azul_store_id", store.id);
+  localStorage.setItem("azul_store_name", store.name || "Boutique");
+  cart = [];
+  revCart = [];
+  products = [];
+  renderAzulStoreSwitcher();
+  toast("Boutique activa: " + (store.name || "Boutique") + ".", "success");
+  await Promise.all([
+    safeRun("Dashboard", loadDashboard),
+    safeRun("Produtos", function() { return loadProducts(true); })
+  ]);
+  if (document.getElementById("page-caixa") && document.getElementById("page-caixa").classList.contains("active")) {
+    safeRun("Caixa", loadCashRegisterModule);
+  }
+}
+
+async function createAzulStore() {
+  var name = String((document.getElementById("store-create-name") || {}).value || "").trim();
+  var code = String((document.getElementById("store-create-code") || {}).value || "").trim() || getAzulStoreCodeFromName(name);
+  var address = String((document.getElementById("store-create-address") || {}).value || "").trim();
+  if (name.length < 2) { toast("Indique o nome da boutique.", "error"); return; }
+  try {
+    var result = await supabaseClient.rpc("create_store", {
+      p_organization_id: getAzulOrganizationId(), p_name: name, p_code: code, p_address: address, p_phone: ""
+    });
+    if (result.error) throw result.error;
+    toast("Boutique criada. Agora pode dar acesso a equipa.", "success");
+    await loadAzulStores();
+  } catch (error) {
+    toast("Erro ao criar boutique: " + ((error && error.message) || error), "error");
+  }
+}
+
+async function setAzulStoreMemberAccess(encodedStoreId, active) {
+  var storeId = decodeURIComponent(encodedStoreId || "");
+  var select = document.getElementById("store-member-" + storeId);
+  var email = String((select || {}).value || "").trim();
+  if (!email) { toast("Escolha um utilizador da equipa.", "error"); return; }
+  try {
+    var result = await supabaseClient.rpc("set_store_member_access", { p_store_id: storeId, p_email: email, p_active: !!active });
+    if (result.error) throw result.error;
+    toast(active ? "Acesso a boutique concedido." : "Acesso a boutique retirado.", "success");
+  } catch (error) {
+    toast("Erro no acesso da boutique: " + ((error && error.message) || error), "error");
+  }
 }
 
 var azulAuditCache = null;
@@ -3054,6 +3226,7 @@ function createCompraLineDefault() {
 async function getProductsFromSupabase() {
   var organizationId = getAzulOrganizationId();
   if (!organizationId) return [];
+  var storeId = getActiveAzulStoreId();
 
   var selectColumns = "id,name,category,supplier,purchase_price,sale_price,stock_warehouse,stock_shop,min_stock,created_at,code,variation,variations,photo,hidden_from_pos,unit";
   var result = await supabaseClient
@@ -3074,7 +3247,26 @@ async function getProductsFromSupabase() {
     if (result.error) throw result.error;
   }
 
-  return (result.data || []).map(mapSupabaseProduct);
+  var rows = result.data || [];
+  if (storeId && rows.length) {
+    var stockResult = await supabaseClient
+      .from("store_product_stocks")
+      .select("product_id,quantity")
+      .eq("store_id", storeId)
+      .in("product_id", rows.map(function(row) { return row.id; }));
+    if (stockResult.error && !isAzulStoreSchemaMissing(stockResult.error)) throw stockResult.error;
+    if (!stockResult.error) {
+      var stockByProduct = {};
+      (stockResult.data || []).forEach(function(stock) { stockByProduct[stock.product_id] = Number(stock.quantity) || 0; });
+      rows = rows.map(function(row) {
+        var scoped = Object.assign({}, row);
+        scoped.stock_shop = stockByProduct[row.id] || 0;
+        return scoped;
+      });
+    }
+  }
+
+  return rows.map(mapSupabaseProduct);
 }
 
 function isServicesTableMissing(error) {
@@ -3197,6 +3389,7 @@ async function recordStockTransfers(rows) {
 
 async function transferProductToShop(productName, quantity) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
   productName = String(productName || "").trim();
   quantity = Number(quantity) || 0;
 
@@ -3216,20 +3409,26 @@ async function transferProductToShop(productName, quantity) {
   var product = productResult.data;
   var warehouse = Number(product.stock_warehouse) || 0;
   var shop = Number(product.stock_shop) || 0;
+  if (storeId) {
+    var stockResult = await supabaseClient.from("store_product_stocks").select("quantity").eq("store_id", storeId).eq("product_id", product.id).maybeSingle();
+    if (stockResult.error) throw stockResult.error;
+    shop = Number(stockResult.data && stockResult.data.quantity) || 0;
+  }
 
   if (warehouse < quantity) {
     throw new Error("Stock armazem insuficiente. Disponivel: " + warehouse);
   }
 
-  var updateResult = await supabaseClient
-    .from("products")
-    .update({
-      stock_warehouse: warehouse - quantity,
-      stock_shop: shop + quantity
-    })
-    .eq("id", product.id);
-
-  if (updateResult.error) throw updateResult.error;
+  if (storeId) {
+    var transfer = await supabaseClient.rpc("transfer_warehouse_to_store", { p_store_id: storeId, p_product_id: product.id, p_quantity: quantity });
+    if (transfer.error) throw transfer.error;
+  } else {
+    var updateResult = await supabaseClient
+      .from("products")
+      .update({ stock_warehouse: warehouse - quantity, stock_shop: shop + quantity })
+      .eq("id", product.id);
+    if (updateResult.error) throw updateResult.error;
+  }
 
   return {
     product_id: product.id,
@@ -3244,6 +3443,7 @@ async function transferProductToShop(productName, quantity) {
 
 async function transferAllProductsToShop() {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
 
   var productsResult = await supabaseClient
     .from("products")
@@ -3261,18 +3461,24 @@ async function transferAllProductsToShop() {
     var row = rows[i];
     var warehouse = Number(row.stock_warehouse) || 0;
     var shop = Number(row.stock_shop) || 0;
+    if (storeId) {
+      var stockRow = await supabaseClient.from("store_product_stocks").select("quantity").eq("store_id", storeId).eq("product_id", row.id).maybeSingle();
+      if (stockRow.error) throw stockRow.error;
+      shop = Number(stockRow.data && stockRow.data.quantity) || 0;
+    }
 
     if (warehouse <= 0) continue;
 
-    var updateResult = await supabaseClient
-      .from("products")
-      .update({
-        stock_warehouse: 0,
-        stock_shop: shop + warehouse
-      })
-      .eq("id", row.id);
-
-    if (updateResult.error) throw updateResult.error;
+    if (storeId) {
+      var transfer = await supabaseClient.rpc("transfer_warehouse_to_store", { p_store_id: storeId, p_product_id: row.id, p_quantity: warehouse });
+      if (transfer.error) throw transfer.error;
+    } else {
+      var updateResult = await supabaseClient
+        .from("products")
+        .update({ stock_warehouse: 0, stock_shop: shop + warehouse })
+        .eq("id", row.id);
+      if (updateResult.error) throw updateResult.error;
+    }
 
     movedRows.push({
       product_id: row.id,
@@ -3371,6 +3577,7 @@ function findProductForCartItem(item) {
 }
 async function saveSaleToSupabase(data) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
 
   var items = data.items || [];
   var receiptNo = generateReceiptNo();
@@ -3409,7 +3616,7 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
   }
 });
 
-  var saleResult = await insertSingleWithAzulAudit("sales", {
+  var salePayload = {
       organization_id: organizationId,
       receipt_no: receiptNo,
       client_name: data.clientName || "Anonimo",
@@ -3421,7 +3628,9 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
       payment_summary: getPaymentSummary(data.paymentLines || []),
       payment_lines: data.paymentLines || [],
       cash_register_session_id: data.cashRegisterSessionId || null
-    });
+    };
+  if (storeId) salePayload.store_id = storeId;
+  var saleResult = await insertSingleWithAzulAudit("sales", salePayload);
 
   if (saleResult.error) throw saleResult.error;
 
@@ -3476,17 +3685,16 @@ Object.keys(qtyByProduct).forEach(function(productKey) {
 
   if (!stockProduct) continue;
 
-    var newShopStock = Math.max(
-      0,
-      (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockKey]) || 0)
-    );
-
-    var stockResult = await supabaseClient
-      .from("products")
-      .update({
-        stock_shop: newShopStock
-      })
-      .eq("id", stockProduct.id);
+    var stockResult = storeId
+      ? await supabaseClient.rpc("adjust_store_product_stock", {
+          p_store_id: storeId,
+          p_product_id: stockProduct.id,
+          p_delta: -(Number(groupedStock[stockKey]) || 0)
+        })
+      : await supabaseClient
+          .from("products")
+          .update({ stock_shop: Math.max(0, (Number(stockProduct.stockBoutique) || 0) - (Number(groupedStock[stockKey]) || 0)) })
+          .eq("id", stockProduct.id);
 
     if (stockResult.error) throw stockResult.error;
     }
@@ -3720,6 +3928,7 @@ async function registerClientPaymentInSupabase(data) {
 
 async function getSalesHistoryFromSupabase(params) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
 
   params = params || {};
   var from = params.from || "";
@@ -3732,6 +3941,8 @@ async function getSalesHistoryFromSupabase(params) {
     .eq("organization_id", organizationId)
     .order("sale_date", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (storeId) salesQuery = salesQuery.eq("store_id", storeId);
 
   if (from) {
     salesQuery = salesQuery.gte("sale_date", from);
@@ -4020,6 +4231,7 @@ async function createClientDebtIfNeeded(sale, data, total) {
 }
 async function getDashboardDataFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
 
   filters = filters || {};
   var from = filters.from || "";
@@ -4031,6 +4243,8 @@ async function getDashboardDataFromSupabase(filters) {
     .from("sales")
     .select("*")
     .eq("organization_id", organizationId);
+
+  if (storeId) salesQuery = salesQuery.eq("store_id", storeId);
 
   if (from) salesQuery = salesQuery.gte("sale_date", from);
   if (to) salesQuery = salesQuery.lte("sale_date", to);
@@ -4059,6 +4273,21 @@ async function getDashboardDataFromSupabase(filters) {
   if (productsResult.error) throw productsResult.error;
 
   var productRows = productsResult.data || [];
+  if (storeId && productRows.length) {
+    var dashboardStocks = await supabaseClient
+      .from("store_product_stocks")
+      .select("product_id,quantity")
+      .eq("store_id", storeId)
+      .in("product_id", productRows.map(function(product) { return product.id; }));
+    if (dashboardStocks.error) throw dashboardStocks.error;
+    var dashboardStockMap = {};
+    (dashboardStocks.data || []).forEach(function(stock) { dashboardStockMap[stock.product_id] = Number(stock.quantity) || 0; });
+    productRows = productRows.map(function(product) {
+      var scoped = Object.assign({}, product);
+      scoped.stock_shop = dashboardStockMap[product.id] || 0;
+      return scoped;
+    });
+  }
   var dashboardProductRows = filterDashboardProducts(productRows, prodFilter, fornFilter);
   var productByName = {};
 
@@ -4155,6 +4384,8 @@ console.log(items);
   .eq("organization_id", organizationId)
   .order("expense_date", { ascending: false })
   .order("created_at", { ascending: false });
+
+if (storeId) expenseQuery = expenseQuery.eq("store_id", storeId);
 
 if (from) expenseQuery = expenseQuery.gte("expense_date", from);
 if (to) expenseQuery = expenseQuery.lte("expense_date", to);
@@ -4270,6 +4501,7 @@ function getPurchaseStockUpdate(currentWarehouse, currentShop, quantity) {
 
 async function upsertProductFromPurchase(item, supplier) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
 
   var productName = String(item.prod || item.name || "").trim();
   var quantity = Number(item.qty || item.quantity) || 0;
@@ -4315,25 +4547,25 @@ async function upsertProductFromPurchase(item, supplier) {
     : null;
 
   if (existingProduct) {
-    var currentWarehouse = Number(existingProduct.stock_warehouse) || 0;
-    var currentShop = Number(existingProduct.stock_shop) || 0;
-    var stockUpdate = getPurchaseStockUpdate(currentWarehouse, currentShop, quantity);
-
+    var productUpdate = {
+      supplier: supplier || existingProduct.supplier || "",
+      category: category || existingProduct.category || "",
+      code: code || existingProduct.code || "",
+      photo: photo || existingProduct.photo || "",
+      unit: unit || normalizeMeasureUnit(existingProduct.unit),
+      variation: variation || existingProduct.variation || "",
+      variations: variations.length ? variations : existingProduct.variations || [],
+      purchase_price: purchasePrice || Number(existingProduct.purchase_price) || 0,
+      sale_price: salePrice || Number(existingProduct.sale_price) || 0
+    };
+    if (!storeId) {
+      var stockUpdate = getPurchaseStockUpdate(existingProduct.stock_warehouse, existingProduct.stock_shop, quantity);
+      productUpdate.stock_warehouse = stockUpdate.stock_warehouse;
+      productUpdate.stock_shop = stockUpdate.stock_shop;
+    }
     var updateResult = await supabaseClient
       .from("products")
-      .update({
-        supplier: supplier || existingProduct.supplier || "",
-        category: category || existingProduct.category || "",
-        code: code || existingProduct.code || "",
-        photo: photo || existingProduct.photo || "",
-        unit: unit || normalizeMeasureUnit(existingProduct.unit),
-        variation: variation || existingProduct.variation || "",
-        variations: variations.length ? variations : existingProduct.variations || [],
-        purchase_price: purchasePrice || Number(existingProduct.purchase_price) || 0,
-        sale_price: salePrice || Number(existingProduct.sale_price) || 0,
-        stock_warehouse: stockUpdate.stock_warehouse,
-        stock_shop: stockUpdate.stock_shop
-      })
+      .update(productUpdate)
       .eq("id", existingProduct.id)
       .select()
       .limit(1);
@@ -4359,8 +4591,8 @@ async function upsertProductFromPurchase(item, supplier) {
       variations: variations,
       purchase_price: purchasePrice,
       sale_price: salePrice,
-      stock_warehouse: isWarehouseStockMode() ? quantity : 0,
-      stock_shop: isWarehouseStockMode() ? 0 : quantity,
+      stock_warehouse: storeId ? 0 : (isWarehouseStockMode() ? quantity : 0),
+      stock_shop: storeId ? 0 : (isWarehouseStockMode() ? 0 : quantity),
       min_stock: 0
     })
     .select()
@@ -4378,6 +4610,7 @@ async function upsertProductFromPurchase(item, supplier) {
 
 async function savePurchaseToSupabase(data) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
   var audit = await getAzulAuditFields();
 
   var supplier = String(data.forn || data.supplier || "").trim();
@@ -4432,7 +4665,7 @@ async function savePurchaseToSupabase(data) {
 
   }
 
-  var purchaseResult = await supabaseClient.rpc("create_purchase_for_org", {
+  var purchaseArgs = {
     p_organization_id: organizationId,
     p_supplier: supplier,
     p_total: total,
@@ -4441,7 +4674,9 @@ async function savePurchaseToSupabase(data) {
     p_is_credit: remainingAmount > 0,
     p_created_at: data.purchaseDate ? data.purchaseDate + "T12:00:00" : null,
     p_items: purchaseItems
-  });
+  };
+  if (storeId) purchaseArgs.p_store_id = storeId;
+  var purchaseResult = await supabaseClient.rpc("create_purchase_for_org", purchaseArgs);
 
   if (purchaseResult.error) {
     throw purchaseResult.error;
@@ -4544,6 +4779,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   var userOk = await verifyCurrentUserAccess();
   if (!userOk) return;
   await loadAzulRoleCatalog();
+  await loadAzulStores();
   var now = new Date();
   document.getElementById('dateTxt').textContent =
     now.toLocaleDateString('pt-PT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -5770,6 +6006,7 @@ function renderDashboardDebts(data) {
 
 async function getDashboardPurchasesFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
   filters = filters || {};
   var now = new Date();
   var today = localDateKey(now);
@@ -5783,6 +6020,8 @@ async function getDashboardPurchasesFromSupabase(filters) {
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(300);
+
+  if (storeId) query = query.eq("store_id", storeId);
 
   if (from) query = query.gte("created_at", from + "T00:00:00");
   if (to) query = query.lte("created_at", to + "T23:59:59");
@@ -6609,6 +6848,7 @@ function getSalesAnalyticsFilters() {
 
 async function getSalesAnalyticsFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
   var salesQuery = supabaseClient
     .from("sales")
     .select("*")
@@ -6617,6 +6857,8 @@ async function getSalesAnalyticsFromSupabase(filters) {
     .lte("sale_date", filters.to)
     .order("sale_date", { ascending: true })
     .order("created_at", { ascending: true });
+
+  if (storeId) salesQuery = salesQuery.eq("store_id", storeId);
 
   var salesResult = await salesQuery;
   if (salesResult.error) throw salesResult.error;
@@ -13786,6 +14028,7 @@ function loadCompraHistoriqueDebounced() {
 
 async function getCompraHistoriqueFromSupabase() {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
 
   var from = document.getElementById("achatHistFrom") ? document.getElementById("achatHistFrom").value : "";
   var to = document.getElementById("achatHistTo") ? document.getElementById("achatHistTo").value : "";
@@ -16410,14 +16653,17 @@ function renderDespesaDashboard(data) {
 }
 async function saveExpenseToSupabase(data) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
 
-  var result = await insertSingleWithAzulAudit("expenses", {
+  var expensePayload = {
       organization_id: organizationId,
       expense_date: data.date || new Date().toISOString().split("T")[0],
       category: normalizeDespesaCategoriaLabel(data.tipo || data.category || "Outros"),
       description: data.desc || "",
       amount: Number(data.montant) || 0
-    });
+    };
+  if (storeId) expensePayload.store_id = storeId;
+  var result = await insertSingleWithAzulAudit("expenses", expensePayload);
 
   if (result.error) throw result.error;
 
@@ -16426,6 +16672,7 @@ async function saveExpenseToSupabase(data) {
 
 async function getExpensesFromSupabase(filters) {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
 
   filters = filters || {};
 
@@ -16435,6 +16682,8 @@ async function getExpensesFromSupabase(filters) {
     .eq("organization_id", organizationId)
     .order("expense_date", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (storeId) query = query.eq("store_id", storeId);
 
   if (filters.from) query = query.gte("expense_date", filters.from);
   if (filters.to) query = query.lte("expense_date", filters.to);
@@ -16913,6 +17162,8 @@ async function getRhHistoryFromSupabase() {
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(300);
+
+  if (storeId) query = query.eq("store_id", storeId);
   if (employeesResult.error) throw employeesResult.error;
 
   var attendanceResult = await supabaseClient
@@ -17124,10 +17375,11 @@ function getPhysicalCashAmount(lines) {
 
 async function getOpenCashRegisterSession() {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
   var userId = await getAzulCurrentUserId();
   if (!organizationId || !userId) return null;
 
-  var result = await supabaseClient
+  var query = supabaseClient
     .from("cash_register_sessions")
     .select("*")
     .eq("organization_id", organizationId)
@@ -17135,6 +17387,8 @@ async function getOpenCashRegisterSession() {
     .eq("status", "open")
     .order("opened_at", { ascending: false })
     .limit(1);
+  if (storeId) query = query.eq("store_id", storeId);
+  var result = await query;
 
   if (result.error) throw result.error;
   return (result.data || [])[0] || null;
@@ -17147,6 +17401,7 @@ function isCashShiftMigrationPending(error) {
 
 async function getOwnPendingCashReview() {
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
   var userId = await getAzulCurrentUserId();
   if (!organizationId || !userId) return null;
   var result = await supabaseClient
@@ -17155,6 +17410,15 @@ async function getOwnPendingCashReview() {
     .eq("organization_id", organizationId)
     .eq("opened_by", userId)
     .eq("review_status", "pending")
+    .order("closed_at", { ascending: false })
+    .limit(1);
+  if (storeId) result = await supabaseClient
+    .from("cash_register_sessions")
+    .select("id, closed_at, difference_amount, closing_note")
+    .eq("organization_id", organizationId)
+    .eq("opened_by", userId)
+    .eq("review_status", "pending")
+    .eq("store_id", storeId)
     .order("closed_at", { ascending: false })
     .limit(1);
   if (result.error) {
@@ -17216,6 +17480,7 @@ async function loadCashRegisterHistory() {
   if (!body) return;
   if (!canSuperviseCashRegister()) return;
   var organizationId = getAzulOrganizationId();
+  var storeId = getActiveAzulStoreId();
   if (!organizationId) return;
 
   var from = String((document.getElementById("cashHistoryFrom") || {}).value || "");
@@ -17228,6 +17493,7 @@ async function loadCashRegisterHistory() {
     .eq("organization_id", organizationId)
     .order("opened_at", { ascending: false })
     .limit(100);
+  if (storeId) query = query.eq("store_id", storeId);
   if (from) query = query.gte("opened_at", from + "T00:00:00");
   if (to) query = query.lte("opened_at", to + "T23:59:59");
   if (status) query = query.eq("status", status);
@@ -17240,6 +17506,7 @@ async function loadCashRegisterHistory() {
       .eq("organization_id", organizationId)
       .order("opened_at", { ascending: false })
       .limit(100);
+    if (storeId) fallbackQuery = fallbackQuery.eq("store_id", storeId);
     if (from) fallbackQuery = fallbackQuery.gte("opened_at", from + "T00:00:00");
     if (to) fallbackQuery = fallbackQuery.lte("opened_at", to + "T23:59:59");
     if (status) fallbackQuery = fallbackQuery.eq("status", status);
@@ -17515,12 +17782,14 @@ async function openCashRegister() {
   var btn = document.getElementById("cashOpenBtn");
   if (btn) { btn.disabled = true; btn.textContent = "A abrir..."; }
   try {
-    var result = await supabaseClient.rpc("open_cash_register", {
+    var openCashArgs = {
       p_organization_id: getAzulOrganizationId(),
       p_opening_amount: amount,
       p_actor_name: getAzulCurrentUserName(),
       p_access_code: accessCode
-    });
+    };
+    if (getActiveAzulStoreId()) openCashArgs.p_store_id = getActiveAzulStoreId();
+    var result = await supabaseClient.rpc("open_cash_register", openCashArgs);
     if (result.error) throw result.error;
     logAzulAction("cash:open", "cash_register", "success", { opening_amount: amount });
     toast("Caixa aberta com sucesso.", "success");
@@ -25009,6 +25278,8 @@ async function renderSettingsTeamCard() {
     if (result.error) throw result.error;
 
     var users = result.data || [];
+    azulStoreTeam = users;
+    renderAzulStoreManagement();
 
     if (!users.length) {
       list.innerHTML = '<div class="empty">Nenhum utilizador encontrado.</div>';

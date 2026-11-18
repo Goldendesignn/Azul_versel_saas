@@ -327,6 +327,34 @@ html[data-theme="dark"] small {
   margin-left: auto;
 }
 
+.store-switcher {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.store-switcher label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
+.store-switcher select {
+  max-width: 210px;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface2);
+  color: var(--text);
+  padding: 0 28px 0 9px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .logout-btn {
   min-height: 34px;
   border: 1px solid color-mix(in srgb, var(--red) 34%, var(--border));
@@ -12257,6 +12285,55 @@ html[data-theme="dark"] #page-dashboard .important-alert-action {
 .team-settings-list {
   display: grid;
   gap: 10px;
+}
+
+.store-settings-content {
+  display: grid;
+  gap: 14px;
+}
+
+.store-create-grid,
+.store-access-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.25fr) minmax(110px, .65fr) minmax(160px, 1fr) auto;
+  gap: 9px;
+  align-items: end;
+}
+
+.store-card {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 13px;
+}
+
+.store-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.store-card-head strong { color: var(--text); }
+.store-card-head small { display: block; margin-top: 3px; }
+
+.store-primary-badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--blue) 12%, var(--surface));
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.store-access-grid { margin-top: 12px; }
+
+@media (max-width: 760px) {
+  .store-switcher label { display: none; }
+  .store-switcher select { max-width: 132px; }
+  .store-create-grid,
+  .store-access-grid { grid-template-columns: 1fr; }
 }
 
 .team-user-card {
