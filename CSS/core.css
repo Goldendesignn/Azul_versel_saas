@@ -11648,6 +11648,58 @@ textarea,
   gap: 10px;
 }
 
+/* Settings use the whole workspace: account information stays easy to scan,
+   while operational configuration gets the width it needs. */
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 1240px;
+  align-items: start;
+}
+
+.settings-layout > .settings-full,
+.settings-layout > .user-settings-card,
+.settings-layout > .store-settings-card,
+.settings-layout > .team-settings-card,
+.settings-layout > .onboarding-settings-card {
+  grid-column: 1 / -1;
+}
+
+.settings-layout > .user-settings-card,
+.settings-layout > .settings-identity-card,
+.settings-layout > .settings-currency-card,
+.settings-layout > .settings-theme-card,
+.settings-layout > .settings-security-card,
+.settings-layout > .settings-import-card,
+.settings-layout > .settings-backup-card,
+.settings-layout > .store-settings-card {
+  min-width: 0;
+}
+
+.settings-identity-card .form-group {
+  margin-bottom: 0;
+}
+
+.settings-identity-card > div:last-child {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px !important;
+}
+
+.settings-identity-card > div:last-child .form-group:first-child {
+  grid-column: 1 / -1;
+}
+
+.settings-currency-card,
+.settings-theme-card,
+.settings-security-card,
+.settings-import-card,
+.settings-backup-card {
+  align-self: start;
+}
+
 .user-settings-item {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -11707,6 +11759,23 @@ textarea,
 }
 
 @media (max-width: 760px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .settings-layout > * {
+    grid-column: auto !important;
+  }
+
+  .settings-identity-card > div:last-child {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-identity-card > div:last-child .form-group:first-child {
+    grid-column: auto;
+  }
+
   .user-settings-head {
     align-items: flex-start;
   }

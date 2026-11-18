@@ -2162,8 +2162,8 @@
     <div class="page" id="page-settings">
       <div class="section-title">Definicoes</div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:700px;">
-        <div class="card user-settings-card" id="settings-user-card" style="grid-column:1/-1;">
+      <div class="settings-layout">
+        <div class="card user-settings-card" id="settings-user-card">
   <div class="user-settings-head">
     <div class="user-settings-avatar" id="settings-user-avatar">U</div>
     <div>
@@ -2219,7 +2219,7 @@
     </div>
   </div>
 </div>
-        <div class="card store-settings-card" id="settings-stores-card" style="grid-column:1/-1;display:none;">
+        <div class="card store-settings-card" id="settings-stores-card" style="display:none;">
           <div class="team-settings-head">
             <div>
               <div class="card-title">Boutiques</div>
@@ -2259,7 +2259,7 @@
           </button>
         </div>
 
-        <div class="card" style="grid-column:1/-1;">
+        <div class="card settings-identity-card">
           <div class="card-title"> Identidade no recibo</div>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div class="form-group">
@@ -2273,7 +2273,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card settings-currency-card">
           <div class="card-title"> Moeda</div>
           <select class="form-input" id="cfg-currency" style="width:100%;">
             <option value="Kz"> Kwanza (Kz)</option>
@@ -2285,7 +2285,7 @@
           </select>
         </div>
 
-        <div class="card">
+        <div class="card settings-theme-card">
           <div class="card-title"> Tema</div>
           <div style="display:flex;gap:8px;margin-bottom:12px;">
             <button class="mode-btn" id="cfg-theme-light" onclick="selectTheme('light',this)" style="flex:1;"> Claro</button>
@@ -2302,7 +2302,7 @@
           </div>
         </div>
 
-        <div class="card" style="grid-column:1/-1;">
+        <div class="card settings-full">
           <div class="card-title"> Modo de Stock</div>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border:2px solid var(--border);border-radius:8px;cursor:pointer;" id="cfg-stock-loja" onclick="setCfgStockMode('loja')">
@@ -2324,7 +2324,7 @@
           <input type="checkbox" id="toggleArmazem" style="display:none;" onchange="saveSettings()">
         </div>
 
-        <div class="card" style="grid-column:1/-1;">
+        <div class="card settings-full">
           <div class="card-title"> Personalizacao do Recibo</div>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div class="form-group">
@@ -2428,7 +2428,7 @@
           </div>
         </div>
 
-        <div class="card" style="grid-column:1/-1;">
+        <div class="card settings-security-card">
           <div class="card-title">Seguranca</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div>
@@ -2441,7 +2441,7 @@
           </button>
           <div id="editModeTimer" style="display:none;text-align:center;font-size:12px;color:var(--red);margin-top:8px;font-weight:600;"></div>
         </div>
-        <div class="card" style="grid-column:1/-1;">
+        <div class="card settings-import-card">
           <div class="card-title">Importacao dos dados</div>
           <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;">
             Importa compras com um ficheiro CSV modelo. Os produtos entram no stock e os fornecedores sao criados automaticamente.
@@ -2450,7 +2450,7 @@
             Abrir importação
           </button>
         </div>
-        <div class="card" style="grid-column:1/-1;">
+        <div class="card settings-backup-card">
           <div class="card-title">Backup dos dados</div>
           <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;">
             Baixa uma copia de seguranca em JSON com os dados que esta loja consegue ver. Usa antes de grandes alteracoes ou manutencao.
@@ -2460,13 +2460,13 @@
           </button>
           <div id="export-backup-status" style="font-size:12px;color:var(--muted);margin-top:8px;"></div>
         </div>
-        <div class="card" style="grid-column:1/-1;">
+        <div class="card settings-full">
           <button class="form-submit" onclick="saveAllSettings()" style="width:100%;">Guardar Configuracoes</button>
           <div style="margin-top:10px;text-align:center;">
             <button onclick="showSetup()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">Reiniciar configuracao</button>
           </div>
         </div>
-        <div class="card" style="grid-column:1/-1;">
+        <div class="card settings-full">
            <button class="form-submit" id="logoutBtn" class="btn-logout" style="width:100%;background: red;">Terminar sessão</button>
         </div>
 
