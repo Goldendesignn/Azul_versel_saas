@@ -184,11 +184,14 @@ begin
   foreach v_table in array array['sales', 'purchases', 'expenses', 'cash_register_sessions', 'fiscal_documents', 'deliveries', 'online_orders'] loop
     if to_regclass('public.' || v_table) is not null then
       execute format('alter table public.%I add column if not exists store_id uuid references public.stores(id) on delete restrict', v_table);
-      execute format($sql$
-        update public.%I r set store_id = s.id
-        from public.stores s
-        where s.organization_id = r.organization_id and s.is_primary and r.store_id is null
-      $sql$, v_table);
+      -- Fiscal documents are legally immutable once issued. Keep their historical rows unchanged.
+      if v_table <> 'fiscal_documents' then
+        execute format($sql$
+          update public.%I r set store_id = s.id
+          from public.stores s
+          where s.organization_id = r.organization_id and s.is_primary and r.store_id is null
+        $sql$, v_table);
+      end if;
       execute format('create index if not exists %I on public.%I (organization_id, store_id)', v_table || '_organization_store_idx', v_table);
     end if;
   end loop;
@@ -203,8 +206,16 @@ as $$
 declare v_store_org uuid;
 begin
   if new.store_id is null then
+    if tg_table_name = 'fiscal_documents' and nullif(to_jsonb(new)->>'sale_id', '') is not null then
+      select store_id into new.store_id
+      from public.sales
+      where id = (to_jsonb(new)->>'sale_id')::uuid;
+    end if;
+
+    if new.store_id is null then
     select id into new.store_id from public.stores
     where organization_id = new.organization_id and is_primary and active;
+    end if;
   end if;
   select organization_id into v_store_org from public.stores where id = new.store_id and active;
   if v_store_org is null or v_store_org <> new.organization_id then
@@ -224,7 +235,11 @@ begin
   foreach v_table in array array['sales', 'purchases', 'expenses', 'cash_register_sessions', 'fiscal_documents', 'deliveries', 'online_orders'] loop
     if to_regclass('public.' || v_table) is not null then
       execute format('drop trigger if exists %I on public.%I', v_table || '_apply_store_scope', v_table);
-      execute format('create trigger %I before insert or update of organization_id, store_id on public.%I for each row execute function public.apply_store_scope()', v_table || '_apply_store_scope', v_table);
+      if v_table = 'fiscal_documents' then
+        execute format('create trigger %I before insert on public.%I for each row execute function public.apply_store_scope()', v_table || '_apply_store_scope', v_table);
+      else
+        execute format('create trigger %I before insert or update of organization_id, store_id on public.%I for each row execute function public.apply_store_scope()', v_table || '_apply_store_scope', v_table);
+      end if;
     end if;
   end loop;
 end;
